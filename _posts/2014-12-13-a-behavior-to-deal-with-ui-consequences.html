@@ -1,0 +1,171 @@
+---
+layout: post
+title: A behavior to deal with UI consequences of full screen and Software Keys in
+  Windows Phone 8.1
+date: '2014-12-13T17:20:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Windows phone 8.1
+- Universal Apps
+- behavior
+modified_time: '2014-12-14T14:10:40.628+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-244206646668457607
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/12/a-behavior-to-deal-with-ui-consequences.html
+---
+
+<p>This week I was presented with an interesting challenge. Using <a href="http://dotnetbyexample.blogspot.com/2014/10/making-application-bar-display-on-of.html" target="_blank">this technique</a>, I used the whole screen for my app. The problem was I had not anticipated a Denim feature for the so called software buttons. For those unfamiliar with that – on the newest low and mid-tier phones the back, start and search buttons are not necessarily hardware buttons anymore, but can be a dedicated piece of screen that <em>shows</em> buttons. This enables hardware manufacturers to make phones for all platforms in one (hardware) package. Now the Denim firmware – that comes with the Lumia 73x and 83x - enables users to make those software buttons disappear – so the extra piece of screen <em>can be used by the app itself</em>. Pretty awesome. This can be done by using pressing a little arrow that appears on the left of the button bar:<a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-keep-a-pop-over-window-sti_E4E9/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-keep-a-pop-over-window-sti_E4E9/image_thumb.png" width="244" align="left" height="31"></a></p> <p><br>It can be brought up again by swiping in from the bottom of the <a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-keep-a-pop-over-window-sti_E4E9/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-keep-a-pop-over-window-sti_E4E9/image_thumb_3.png" width="154" align="right" height="154"></a>screen. Pretty cool, but with a side effect I had not anticipated. If the application view bound mode is set to <a href="http://dotnetbyexample.blogspot.com/2014/10/making-application-bar-display-on-of.html" target="_blank">ApplicationViewBoundsMode.UseCoreWindow</a> in App.Xaml.cs the phone reports the whole screen size – not only the part that is normally taken by the status bar on top and the application bar at the bottom, <em>but also the part that is used by the button bar</em>. The My SensorCore app Travalyzer employs slide-in ‘windows’ that slide in from the side and stick to the bottom. I just took an offset the size of the application bar, and I was done, right? Yeah. Until my app got deployed to Denim phones. When the button bar is hidden, there is no problem as you can see to the right. But when it is <em>not </em>hidden… <a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-keep-a-pop-over-window-sti_E4E9/image_4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; margin: 0px 4px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-keep-a-pop-over-window-sti_E4E9/image_thumb_4.png" width="204" align="left" height="204"></a>  <p>I believe the correct word in this circumstance is something like “blimey”, or maybe “crikey”, depending on what kind part of the globe you come from. </p> <p>The solution is – you guessed it – a behavior. Or actually, two. But one is an oldie. Never one for original names, I have called it KeepFromBottomBehavior.</p> <div style="clear: both">The code is actually surprisingly simple:</div><pre style="font-size: 12px">using Windows.UI.ViewManagement;
+using Windows.UI.Xaml;
+
+namespace WpWinNl.Behaviors
+{
+  public class KeepFromBottomBehavior : SafeBehavior&lt;FrameworkElement&gt;
+  {
+    private double originalBottomMargin;
+    protected override void OnSetup()
+    {
+      originalBottomMargin = AssociatedObject.Margin.Bottom;
+      UpdateBottomMargin();
+      ApplicationView.GetForCurrentView().VisibleBoundsChanged += 
+        KeepInViewBehaviorVisibleBoundsChanged;
+
+      base.OnSetup();
+    }
+
+    void KeepInViewBehaviorVisibleBoundsChanged(ApplicationView sender, object args)
+    {
+      UpdateBottomMargin();
+    }
+
+    private void UpdateBottomMargin()
+    {
+      if (WindowHeight &gt; 0.01)
+      {
+        var currentMargins = AssociatedObject.Margin;
+
+        var newMargin = new Thickness(
+          currentMargins.Left, currentMargins.Top, currentMargins.Right,
+          originalBottomMargin + 
+            (WindowHeight - ApplicationView.GetForCurrentView().VisibleBounds.Bottom));
+        AssociatedObject.Margin = newMargin;
+      }
+    }
+
+    #region WindowHeight
+  }
+}</pre>
+<p>Like all my behaviors, it’s a <a href="http://dotnetbyexample.blogspot.com/2011/11/safe-event-detachment-base-class-for.html" target="_blank">SafeBehavior</a> so you have a nice and easy base class. It first saves the current Bottom margin, and then calls the “UpdateBottomMargin” method. That method assumes “WindowHeight” contains the actual (full) height of the space available to the app. It subtracts that from that height the bottom of the rectangle depicting the <em>visible</em> bounds, that is – the part that is, according to the phone, not obscured by an App Bar. That it adds to the original bottom margin (in my app that is zero – I want the window to stick to the very bottom). Net effect: the object to which this behavior is attached always moves upward and downward if the user opens or closes the ‘software button bar’, and if he rotates the phone, it takes that into account as well.</p>
+<p>Now WindowHeight is a region (yeah flame me, I use that for Dependency properties) containing a&nbsp; Dependency property that calls UpdateBottomMargin as well if the WindowHeight changes. </p><pre style="font-size: 12px">public const string WindowHeightPropertyName = "WindowHeight";
+
+public double WindowHeight
+{
+  get { return (double)GetValue(WindowHeightProperty); }
+  set { SetValue(WindowHeightProperty, value); }
+}
+
+public static readonly DependencyProperty WindowHeightProperty = DependencyProperty.Register(
+    WindowHeightPropertyName,
+    typeof(double),
+    typeof(KeepFromBottomBehavior),
+    new PropertyMetadata(default(double), WindowHeightChanged));
+ 
+public static void WindowHeightChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+{
+  var thisobj = d as KeepFromBottomBehavior;
+  var newValue = (double)e.NewValue;
+  if (thisobj != null)
+  {
+    thisobj.UpdateBottomMargin();
+  }
+}</pre>
+<div>
+<p>But how does this property get it’s value? Enter our old friend <a href="http://dotnetbyexample.blogspot.com/2014/04/a-screen-size-independent-scroll-into.html" target="_blank">SizeListenerBehavior</a>. How this all works, will be demonstrated using a simple app. First,we need to have an emulator capable of displaying software keys. The 8.1 U1 WXGA 4.5 inch fits the bill.To enable soft keys display, you will need to open the additional tools, and under sensor you will find the “Software buttons” checkbox. The emulator will reboot, and then show a screen with software keys<a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-deal-with-UI-consequence.1_10A44/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-deal-with-UI-consequence.1_10A44/image_thumb.png" width="670" height="393"></a><a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-deal-with-UI-consequence.1_10A44/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; margin: 0px 6px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-deal-with-UI-consequence.1_10A44/image_thumb_3.png" width="210" align="left" height="378"></a>Even with just hardware keys most of the ‘popup’ already disappears behind the app bar, but if you hide the software keys, then swipe them up again, it indeed looks pretty bad – the text “Some popup” has disappeared behind the software buttons bar, and most of the controls that could be there are hardly readable, let alone usable to the user.</p></div>
+<div style="clear: both">The XAML for this page is not quite the most complex in the world.</div><pre>&lt;Page [name space stuff omitted]
+    &gt;
+  &lt;Page.BottomAppBar&gt;
+    &lt;CommandBar Opacity="0.7"&gt;
+      &lt;AppBarButton Icon="Accept" Label="Click"/&gt;
+    &lt;/CommandBar&gt;
+  &lt;/Page.BottomAppBar&gt;
+
+  &lt;Grid&gt;
+    &lt;Grid.RowDefinitions&gt;
+      &lt;RowDefinition Height="Auto"/&gt;
+      &lt;RowDefinition Height="*"/&gt;
+    &lt;/Grid.RowDefinitions&gt;
+
+    &lt;!-- Title Panel --&gt;
+    &lt;StackPanel Grid.Row="0" Margin="12,0,0,0"&gt;
+      &lt;TextBlock  Text="MY APP" Style="{ThemeResource TitleTextBlockStyle}" 
+                  Margin="0,12,0,0" /&gt;
+      &lt;TextBlock Text="a map" Margin="0,-6.5,0,26.5" 
+                 Style="{ThemeResource HeaderTextBlockStyle}" 
+                 CharacterSpacing="{ThemeResource PivotHeaderItemCharacterSpacing}" 
+                 VerticalAlignment="Top"/&gt;
+    &lt;/StackPanel&gt;
+
+    &lt;Maps:MapControl Grid.Row="1"/&gt;
+    &lt;Grid Height="150" Grid.Row="1" VerticalAlignment="Bottom" 
+      Background="#FF7A2222" &gt;
+      &lt;TextBlock Text="Some popup"  
+                 Style="{ThemeResource TitleTextBlockStyle}" 
+                 VerticalAlignment="Bottom" HorizontalAlignment="Center" /&gt;
+    &lt;/Grid&gt;
+  &lt;/Grid&gt;
+&lt;/Page&gt;</pre>
+<p>Now to solve the problem, follow just these easy steps:</p>
+<ol>
+<li>Pull in the newest version of <a href="https://www.nuget.org/packages/WpWinNl/2.1.2-alpha">WpWinNl</a> from NuGet. Make sure you have set the NuGet package manager settings to “including prerelease’. You will need to have the 2.1.2 alpha version or higher. Don’t worry about that alpha – I am already using this in my apps, I just haven’t got around to making this a final version. 
+<li>Compile the application 
+<li>Open the Windows Phone project in Blend 
+<li>Find the SizeListenerBehavior in “Assets” , drag it on top of the Page Element, rename it to ContentRootListener<br><a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-deal-with-UI-consequence.1_10A44/image_4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-deal-with-UI-consequence.1_10A44/image_thumb_4.png" width="184" height="304"></a> 
+<li>Find the “KeepFromBottomBehavior”, then drag it on top of the grid holding the ‘popup’<br><a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-deal-with-UI-consequence.1_10A44/image_5.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-deal-with-UI-consequence.1_10A44/image_thumb_5.png" width="184" height="334"></a> 
+<li>On the right hand side, find the “Properties” tab and select the little square beside “WindowHeight”<br><a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-deal-with-UI-consequence.1_10A44/image_6.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-deal-with-UI-consequence.1_10A44/image_thumb_6.png" width="244" height="162"></a><br>In the popup menu, select “Bind to Element” 
+<li>Now select ContentRootListener element again (in the Objects and TimeLine tab where you just put it in step 4 
+<li>Select WatchedObjectHeight. That’s it. You are done.</li></ol>The XAML now looks like this: <pre>&lt;Page [name space stuff omitted]
+   &gt;
+  &lt;Page.BottomAppBar&gt;
+    &lt;CommandBar Opacity="0.7"&gt;
+      &lt;AppBarButton Icon="Accept" Label="Click"/&gt;
+    &lt;/CommandBar&gt;
+  &lt;/Page.BottomAppBar&gt;
+
+<strong><font color="#ff0000">  &lt;Interactivity:Interaction.Behaviors&gt;
+    &lt;Behaviors:SizeListenerBehavior x:Name="ContentRootListener"/&gt;
+  &lt;/Interactivity:Interaction.Behaviors&gt;</font></strong>
+
+  &lt;Grid&gt;
+    &lt;Grid.RowDefinitions&gt;
+      &lt;RowDefinition Height="Auto"/&gt;
+      &lt;RowDefinition Height="*"/&gt;
+    &lt;/Grid.RowDefinitions&gt;
+
+    &lt;!-- Title Panel --&gt;
+    &lt;StackPanel Grid.Row="0" Margin="12,0,0,0"&gt;
+      &lt;TextBlock  Text="MY APP" Style="{ThemeResource TitleTextBlockStyle}" 
+        Margin="0,12,0,0" /&gt;
+      &lt;TextBlock Text="a map" Margin="0,-6.5,0,26.5" 
+        Style="{ThemeResource HeaderTextBlockStyle}" 
+        CharacterSpacing="{ThemeResource PivotHeaderItemCharacterSpacing}" 
+        VerticalAlignment="Top"/&gt;
+    &lt;/StackPanel&gt;
+
+    &lt;Maps:MapControl Grid.Row="1"/&gt;
+    &lt;Grid Height="150"  Grid.Row="1" VerticalAlignment="Bottom" 
+    Background="#FF7A2222" &gt;
+      <font color="#ff0000"><strong>&lt;Interactivity:Interaction.Behaviors&gt;
+        &lt;Behaviors:KeepFromBottomBehavior 
+        WindowHeight="{Binding WatchedObjectHeight, 
+        ElementName=ContentRootListener}"/&gt;
+      &lt;/Interactivity:Interaction.Behaviors&gt;</strong></font>
+      &lt;TextBlock Text="Some popup"  
+        Style="{ThemeResource TitleTextBlockStyle}" 
+        VerticalAlignment="Bottom" HorizontalAlignment="Center" /&gt;
+    &lt;/Grid&gt;
+  &lt;/Grid&gt;
+&lt;/Page</pre>
+<p>In bold and red you see the new parts. And sure enough, if you now watch the ‘popup’ it will always be above the App Bar – it will even move dynamically move up and down if you open and close the software buttons.</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-deal-with-UI-consequence.1_10A44/image_7.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-deal-with-UI-consequence.1_10A44/image_thumb_7.png" width="210" height="378"></a><a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-deal-with-UI-consequence.1_10A44/image_8.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px 0px 0px 11px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-deal-with-UI-consequence.1_10A44/image_thumb_8.png" width="210" height="378"></a></p>
+<p>Problem solved, case closed. You don’t even have to type code because the behavior is already in WpWinNl.</p>
+<p>Mind you – this behavior works only on Windows Phone 8.1, since it only is applicable to Windows Phone. That’s because the ApplicationView.GetForCurrentView().<strong>VisibleBoundsChanged</strong> event is only available on Windows Phone.</p>
+<p>Demo solutions – before and after adding NuGet Package and behaviors – <a href="http://www.schaikweb.net/dotnetbyexample/SoftwareKeysDemo.zip">can be found here</a>. Mind you – both solutions contain a Windows 8.1 project, but that does not do anything.</p>
+<p>Special thanks to my colleague <a href="http://nl.linkedin.com/in/vmakkenz">Valentijn Makkenze</a> for first noticing this problem, <a href="https://twitter.com/bengreeve">Ben Greeve</a> and <a href="https://twitter.com/lomax_hjs">this guy</a> for sending me screenshots, and <a href="https://twitter.com/hermitdave">Hermit Dave</a> for some valuable pointers.</p>  

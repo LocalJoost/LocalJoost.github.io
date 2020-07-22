@@ -1,0 +1,191 @@
+---
+layout: post
+title: ViewModel driven animations using the Visual State Manager, DataStateBehavior
+  and Expression Blend
+date: '2011-01-30T14:38:00.003+01:00'
+author: Joost van Schaik
+tags:
+- Blend
+- Visual State Manager
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- MVVM Light
+- WP7
+- MVVM
+- UX
+- Silverlight
+- XAML
+- behavior
+modified_time: '2011-11-25T10:19:19.793+01:00'
+thumbnail: http://lh4.ggpht.com/_QXPoKuE9q6k/TUVp37g_lsI/AAAAAAAAF90/orS-sNDGays/s72-c/ModelDrivenAnimations1_thumb.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-981961707990625477
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/01/viewmodel-driven-animations-using.html
+---
+
+<p><a href="http://twitter.com/#!/leonzandman" target="_blank">Leon Zandman</a>, fellow member of the <a href="http://twitter.com/#!/list/LocalJoost/wp7nl" target="_blank">Dutch Windows Phone 7 developer community</a>, told me that my <a href="http://social.zune.net/redirect?type=phoneApp&amp;id=8b5f61a1-3ffa-df11-9264-00237de2db9e" target="_blank">MapMania</a> app used too much screen real estate for secondary controls and too little for the actual map, especially in landscape mode. I got the same feedback within 24 hours of app certification from one NY Chua from Singapore, who apparently had <em>bought</em> MapMania (which shows, by the way, that something like the <a href="http://dotnetbyexample.blogspot.com/2011/01/standard-about-page-for-windows-phone-7.html" target="_blank">Standard About Page</a> does work very well for user/customer feedback). So it was time to do something.</p>  <p>I decided to make the page title collapsible by the user, using a nice animation. And of course I wanted this to be a setting that could be tombstoned, and I should be able to drive the animation from my ViewModel. Since&#160; Windows Phone 7 does not support <a href="http://msdn.microsoft.com/en-us/library/system.windows.datatrigger.aspx" target="_blank">DataTriggers</a>, there are some challenges, but they are easy to overcome. I will demonstrate my solution and the technique I used by making a small application from scratch, for I like to give complete examples – so you won’t have to hunt for the missing clues. You will pick up some Blend knowledge long the way as well. I hope.</p>  <p>Start out the usual way:</p>  <ul>   <li>Create a new Windows Phone 7 application – this one I called “ModelDrivenAnimations” </li>    <li>Add a Solution Folder “Binaries” </li>    <li>Put “GalaSoft.MvvmLight.WP7.dll”, “GalaSoft.MvvmLight.Extras.WP7.dll” and “System.Windows.Interactivity.dll” in it. </li> </ul>  <p>And this time add a fourth assembly: Expression.Samples.Interactivity.dll. Get it from <a href="http://expressionblend.codeplex.com/" target="_blank">CodePlex</a> (or just nick it out of my <a href="http://www.schaikweb.net/dotnetbyexample/ModelDrivenAnimations.zip" target="_blank">sample solution</a>). Put it in the Binaries Solution folder as well, make a reference to all four assemblies from the project and we are ready to go.</p>  <p>First of all, muck up the page by putting something in the ContentPanel grid, like this:</p>  <pre>&lt;Grid x:Name=&quot;ContentPanel&quot; Grid.Row=&quot;1&quot; Margin=&quot;12,0,12,0&quot;&gt;
+  &lt;TextBlock TextWrapping=&quot;Wrap&quot; FontSize=&quot;85&quot;&gt; 
+   This is content that could do with some more space
+  &lt;/TextBlock&gt;
+&lt;/Grid&gt;</pre>
+
+<p><a href="http://lh3.ggpht.com/_QXPoKuE9q6k/TUVp3sqbRmI/AAAAAAAAF9w/ftSfbKac-ms/s1600-h/ModelDrivenAnimations1.png"><img style="background-image: none; border-right-width: 0px; margin: 0px 0px 0px 8px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="ModelDrivenAnimations1" border="0" alt="ModelDrivenAnimations1" align="right" src="http://lh4.ggpht.com/_QXPoKuE9q6k/TUVp37g_lsI/AAAAAAAAF90/orS-sNDGays/ModelDrivenAnimations1_thumb.png?imgmax=800" width="118" height="220" /></a></p>
+
+<p>Which will yield a very pretty *cough* looking application screen similar to the image to the right. </p>
+
+<p>Next is a very simple view model:</p>
+
+<pre>using System.Windows.Input;
+using GalaSoft.MvvmLight;
+using GalaSoft.MvvmLight.Command;
+
+namespace ModelDrivenAnimations
+{
+  public class SampleViewModel : ViewModelBase
+  {
+    private string _appName = &quot;ModelDrivenAnimations&quot;;
+    public string AppName
+    {
+      get { return _appName; }
+      set
+      {
+        _appName = value;
+        RaisePropertyChanged(&quot;AppName&quot;);
+      }
+    }
+
+    private bool _isPageTitleVisible = true;
+    public bool IsPageTitleVisible
+    {
+      get { return _isPageTitleVisible; }
+      set
+      {
+        _isPageTitleVisible = value;
+        RaisePropertyChanged(&quot;IsPageTitleVisible&quot;);
+      }
+    }
+
+    public ICommand TogglePageTitleCollapsed
+    {
+      get
+      {
+        return new RelayCommand(() =&gt;
+        {
+          IsPageTitleVisible = !IsPageTitleVisible;
+        });
+      }
+    }
+  }
+}</pre>
+
+<p>Very basic: a property “IsPageTitleVisible” to control the actual display of the Page Title, a command to fire the actual toggle, and a property with the app name to see if the binding actually works ;-) - normally this would come from a resource file, eh? If you’ve read my blog before, you should be starting to recognize the next part. First, add this to the namespace declarations of MainPage.xaml by adding </p>
+
+<pre>xmlns:ModelDrivenAnimations=&quot;clr-namespace:ModelDrivenAnimations&quot;<br /></pre>
+
+<p>to the namespaces, then declare the SampleViewModel just above the LayoutRoot grid:</p>
+
+<pre>&lt;phone:PhoneApplicationPage.Resources&gt;
+  &lt;ModelDrivenAnimations:SampleViewModel x:Key=&quot;SampleViewModel&quot;/&gt;
+&lt;/phone:PhoneApplicationPage.Resources&gt;</pre>
+set the DataContext of your layout root grid to be the SampleViewModel: 
+
+<pre>&lt;Grid x:Name=&quot;LayoutRoot&quot; Background=&quot;Transparent&quot; 
+  DataContext=&quot;{StaticResource SampleViewModel}&quot;&gt;</pre>
+
+<p>and then change <strong>Text=&quot;MY APPLICATON&quot;</strong> into <strong>Text=&quot;{Binding AppName}&quot;</strong> on the ApplicationTitle TextBlock. Rebuild the application, and even in design time the application name changes to “ModelDrivenAnimations”. Well done. The stage is set. Now proceed to start <strong><em>Expression Blend</em></strong> and open your project. Go on! Contrary to what most developers think, it won’t bite ;-)</p>
+
+<p>First of all, we are going to bind the command. I decided to let the PageTitle disappear as the user taps on the ApplicationTitle, so select the ApplicationTitle on the design pane screen. Then proceed as follows:</p>
+
+<ul>
+  <li>Top left, select the “Assets” tab, and start to type “EventToCommand” in the search box. Long before you are even halfway done, the “EventToCommand” behavior appears. </li>
+
+  <li>Drag the EventToCommand command on top of the ApplicationTitle in the “Objects and Timeline” panel about halfway left on the screen. </li>
+
+  <li>Go to the right top side of the screen. Select the “Properties” tab. In the panel “Trigger” is a dropdown “EventName” which is currently set to “Loaded”. Change that to “MouseLeftButtonDown” – we want the effect appear when the user taps the title, not when it is loaded ;-). </li>
+
+  <li>Select the tab “Data” at the top right of the screen. Way down below at the bottom right a panel “Data Context” with “SampleViewModel” in it will appear. Expand this, find the “TogglePageTitleCollapsed&quot; (last entry) and drag this onto the EventToCommand. </li>
+
+  <li>Hit “Ok” on the popup that appears. </li>
+</ul>
+
+<p>You have just created a command binding without even typing a line of code. Expression Blend <em>even added all the namespace prefixes for you.</em></p>
+
+<p>One little piece of preparation – once again, select the PageTitle and select the “Properties” tab. In the panel “Layout” there is a property “Height” and that is set to “Auto (95.765625)”. This needs to be a fixed value, or else the Visual State Manager cannot infer how to change states. So change this value to “95”.</p>
+
+<p>Now we are going to have some fun with the Visual State Manager itself:</p>
+
+<ul>
+  <li>Looking back at the top left of the screen you will notice a “States” tab. Select that, and two very small icons will appear. </li>
+
+  <li>Clicking the first one will create a new Visual State Group and three more icons. </li>
+
+  <li>Click on the middle one (“Add state”) and add a state “Expanded”. The top of the design pane in the middle will now show a little red button with the text “Expanded state recording is on”. </li>
+
+  <li>Click the red button to turn <em>off</em> the recording. </li>
+
+  <li>Add another Visual State called “Collapsed” but <em>don’t turn off the recording now</em>. In stead, select the PageTitle again (either in design view or in the Objects and Timeline panel). </li>
+
+  <li>Click tab “Properties” on the right top side of the screen. </li>
+
+  <li>Change the Height property again – this time to 0 (zero). The PageTitle will collapse to a thin blue indicator line. </li>
+
+  <li>Look down, and find the panel “Transform”. It’s likely to be collapsed at this point, so expand it first. Select the third tab, called “Scale”. </li>
+
+  <li>Change the Y value to 0 . </li>
+</ul>
+
+<p>Click on visual state “Expanded” in the tab “States” on the left top of the screen and the PageTitle will reappear again. <em>Now</em> turn of the recording for visual states by clicking the red button on top of the design pane, and commence to the last step: connecting the states to the ViewModel by using DataStateBehavior. </p>
+
+<ul>
+  <li>Select “Assets” again in the top left panel, type “DataState” in the search box and “DataStateBehavior” and “DataSwitchBehavior” will appear. </li>
+
+  <li>Drag <em>DataStateBehavior</em> on top of “ApplicationTitle” in the “Objects and Timeline” panel. </li>
+
+  <li>On the right side of the screen, select the Properties tab again, and the properties of the behavior will appear. </li>
+
+  <li>Click the little grey square behind “Binding”, select “Data binding” in the popup menu, and then “IsPageTitleVisible” in the popup. </li>
+
+  <li>Click the down pointing arrow on the bottom of the dialog for more options, and select TwoWay.</li>
+
+  <li>Click OK. </li>
+
+  <li>Enter “Collapsed” for “FalseState”, </li>
+
+  <li>Enter “Expanded” for TrueState, </li>
+
+  <li>Enter “True” for Value. </li>
+</ul>
+
+<p>The odd thing is – sometimes Blend does not let you enter “True” for Value. I am not sure if this is a bug. Please switch to XAML in that case and enter the value manually (use the small button with “&lt; &gt;” on the top right of the design pane to switch to XAML and find the DataStateBehavior; the button above (with the circle) will take you back to design view).</p>
+
+<p>Then hit F5. Yes, hit F5. Even designers need to test stuff runtime, and they can do so by hitting F5, just like a developer. If you’ve done everything right, the Page Title will disappear and reappear when you click on the application title. But that’s hardly an animation. So switch back to Blend one more time:</p>
+
+<ul>
+  <li>Select the “States” tab once more, </li>
+
+  <li>Select “Default Transition” </li>
+
+  <li>Change the “0 s” in the little textbox to the right into “1”. </li>
+</ul>
+
+<p>Then hit F5 again. The Visual State Manager now takes 1 second to change from one state to another, <em>and infers an animation from that</em>. Your PageTitle now appears to fold away in itself. The net effect, as I implemented it in MapMania, looks like this: </p>
+
+<div style="padding-bottom: 0px; margin: 0px; padding-left: 0px; padding-right: 9px; display: inline; float: left; padding-top: 0px" id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:ed97f4a6-f7c6-4ace-85c1-52f416c45af7" class="wlWriterEditableSmartContent"><div id="3f48ea84-bc2c-49d6-9983-dc90f7f1f3f0" style="margin: 0px; padding: 0px; display: inline;"><div><a href="http://www.youtube.com/watch?v=Q5hAg7d_mPQ" target="_new"><img src="http://lh5.ggpht.com/_QXPoKuE9q6k/TUV8OftWMRI/AAAAAAAAGZo/m2ql3-Vh3qA/videob348f9a25e47%5B9%5D.jpg?imgmax=800" style="border-style: none" galleryimg="no" onload="var downlevelDiv = document.getElementById('3f48ea84-bc2c-49d6-9983-dc90f7f1f3f0'); downlevelDiv.innerHTML = &quot;&lt;div&gt;&lt;object width=\&quot;448\&quot; height=\&quot;277\&quot;&gt;&lt;param name=\&quot;movie\&quot; value=\&quot;http://www.youtube.com/v/Q5hAg7d_mPQ?hl=en&amp;hd=1\&quot;&gt;&lt;\/param&gt;&lt;embed src=\&quot;http://www.youtube.com/v/Q5hAg7d_mPQ?hl=en&amp;hd=1\&quot; type=\&quot;application/x-shockwave-flash\&quot; width=\&quot;448\&quot; height=\&quot;277\&quot;&gt;&lt;\/embed&gt;&lt;\/object&gt;&lt;\/div&gt;&quot;;" alt=""></a></div></div><div style="width:448px;clear:both;font-size:.8em">Animated header as implemented on MapMania</div></div>
+
+<br />Notice the little visual cue next to the app name ;-). And this is about the simplest of animations. There are lots of other possibilities – you can even make your own transitions, let things rotate in or out of existence, whatever. I really encourage you to explore the possibilities of Transform tab – I just started doing that myself ;-). 
+
+<p>&#160;</p>
+
+<p>&#160;</p>
+
+<p>&#160;</p>
+
+<p>The Visual State Manager is, when all is said and done, nothing more than a State Machine in which you can define states and transitions, that can be easily controlled from your View Model – i.e. code, the developer’s comfort zone&#160; – by using DataStateBehavior. And DataSwitchBehavior – this can handle more states than just true or false, as far as I understood. </p>
+
+<p>For those who lost the way in text, a little “Blend Road Map” showing everything we have used to get to this result:<a href="http://lh5.ggpht.com/_QXPoKuE9q6k/TUVp5tSRX6I/AAAAAAAAF9g/drhvFAYapsM/s1600-h/Blend%5B10%5D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="Blend" border="0" alt="Blend" src="http://lh5.ggpht.com/_QXPoKuE9q6k/TUVp6RAyM1I/AAAAAAAAF9o/oyh7xK5f3nU/Blend_thumb%5B6%5D.png?imgmax=800" width="681" height="533" /></a></p>
+
+<p>A little rant to conclude this post: some of you may have noticed that since we’ve hooked up the ViewModel to the View <em>we did not type a single line of code at all</em>. I can hear some of you think “maybe this dolt should rename his blog “Blend by Example” and leave us alone” ;-)</p>
+
+<p>I am convinced that, as a WPF, Silverlight or Windows Phone developer, you should have at least a basic understanding of what you can do with Blend. First of all, even if you work without a separate designer, it saves you a lot of XAML typing, which I can assure you is not very much fun, and every good developer is a lazy developer. Second, creating things like animations and pretty user interfaces is pretty hard, and Blend helps you a lot with it. Maybe <em>you</em> as a developer like bare-bones GUI’s, but your <em>users</em> don’t, so better use a tool that can help with it. Third, as you do work with a separate designer, you need to know what he or she needs to have to make the application tick. Developer and designer need to communicate and understand each other. Now what do you think is more likely – that a <em>designer</em> understands what you as a <em>developer</em> are doing, or the other way around? And who will be calling the shots in a development process – the one that only understands his own side of the designer/development fence, or the one that can look <em>over</em> the fence and stomp around at the other side, if only a little? So get going and get to grips with Blend. Or else – heaven forbid - have designers commandeering you around ;-)</p>
+
+<p>If something went wrong along the way, please refer to <a href="http://www.schaikweb.net/dotnetbyexample/ModelDrivenAnimations.zip" target="_blank">the sample solution</a>. </p>

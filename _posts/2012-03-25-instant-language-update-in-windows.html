@@ -1,0 +1,119 @@
+---
+layout: post
+title: Instant language update in a Windows Phone 7 application using MVVM
+date: '2012-03-25T21:18:00.001+02:00'
+author: Joost van Schaik
+tags:
+- DataBinding
+- wpdev
+- dotnetmag
+- WP7NL
+- MVVM Light
+- WP7
+modified_time: '2012-03-27T09:16:04.112+02:00'
+thumbnail: http://lh6.ggpht.com/-crGszbshyw8/T3Fo7ubub9I/AAAAAAAAIGc/oFQG4fUcPv4/s72-c/InstantLanuage_thumb%25255B1%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4458466024821482068
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/03/instant-language-update-in-windows.html
+---
+
+<p>With <a href="http://windowsteamblog.com/windows_phone/b/wpdev/archive/2012/03/15/app-hub-accepting-submissions-for-new-markets-soon.aspx?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">more and more Marketplaces being added</a> to the <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> ecosystem, globalization of your app becomes all the more more important. I am happy to see a lot of apps these days support multiple languages. I usually employ a solution described in my article <a href="http://dotnetbyexample.blogspot.com/2011/07/mvvmlight-based-language-selection-for.html">MVVMLight based language selection for Windows Phone 7</a> – this automatically picks up the language from the phone and defaults to English/US if the default language is not supported by the app. But I also like to give the user the chance to <em>override</em> the automatically selected language. I, for instance, run the phone OS in English/US, but I’d like specific Dutch apps to run in Dutch, thank you. If you follow the globalization example <a href="http://msdn.microsoft.com/en-us/library/ff637520(v=VS.92).aspx?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">as described by MSDN</a> using my code, that unfortunately requires the app to be restarted after applying the language change. Well, no more!</p> <p>The sample as provided by MSDN provides a localized string helper that looks more or less like this:</p><pre>namespace InstantLanguage.Resources
+{
+  public class LocalizedStrings
+  {
+    public LocalizedStrings()
+    {
+    }
+  
+    private static AppResources localizedResources = new AppResources();
+
+    public AppResources LocalizedResources 
+    { 
+      get { return localizedResources; } 
+    }
+  }
+}</pre>
+<p>I employed it since my first localized app, and I usually put it in the same directory as my resource files. You declare it in your App.xaml like this:</p><pre>&lt;Application.Resources&gt;
+    &lt;!-- More resources --&gt;
+    &lt;Resources:LocalizedStrings x:Key="LocalizedStrings"/&gt;
+&lt;/Application.Resources&gt;</pre>Of course you need to declare the namespace for LocalizedResources first, so in the top you will add something like <pre>xmlns:Resources="clr-namespace:InstantLanguage.Resources"</pre>
+<p>And now you can use it to show localized strings by binding to it like this:</p><pre style="font-size: 11px">&lt;TextBlock x:Name="ApplicationTitle" 
+  Text="{Binding LocalizedResources.AppTitle, Source={StaticResource LocalizedStrings}}" 
+  Style="{StaticResource PhoneTextNormalStyle}"/&gt;</pre>
+<p>But unfortunately, as I said, if you change the language, for instance by calling this code, nothing happens.</p><pre>Thread.CurrentThread.CurrentUICulture = new CultureInfo("de-DE");
+Thread.CurrentThread.CurrentCulture = Thread.CurrentThread.CurrentUICulture;</pre>
+<p>The reason for this is pretty simple: the app has <em>no way of informing the GUI</em>, as LocalizedStrings has no support for <a href="http://msdn.microsoft.com/en-us/library/system.componentmodel.inotifypropertychanged.aspx?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">INotifyPropertyChanged</a>. But that can be easily fixed, by taking <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> and implement LocalizedStrings as a child class of ViewModelBase:</p><pre>using System.Windows;
+
+namespace InstantLanguage.Resources
+{
+  using GalaSoft.MvvmLight;
+
+  public class LocalizedStrings : ViewModelBase
+  {
+    private static AppResources localizedresources = new AppResources();
+
+    public AppResources LocalizedResources
+    {
+      get { return localizedresources; }
+    }
+
+    public void UpdateLanguage()
+    {
+      localizedresources = new AppResources();
+      RaisePropertyChanged(() =&gt; LocalizedResources);
+    }
+
+    public static LocalizedStrings LocalizedStringsResource
+    {
+      get
+      {
+        return Application.Current.Resources["<font color="#ff0000">LocalizedStrings</font>"]
+            as LocalizedStrings;
+      }
+    }
+  }
+}</pre>
+<p>and then there is another matter: the app needs to have a way of <em>kicking off the RaisePropertyChanged event on a class used as a StaticResource</em>. That’s what UpdateLanguage and the static LocalizedStringsResource are for. Note that for this to work, you will need to have defined the resource with the key LocalizedStrings:<pre>&lt;Resources:LocalizedStrings x:Key="<font color="#ff0000">LocalizedStrings</font>"/&gt;</pre>
+<p>The keys that need to match are marked in red in both pieces of code. Anyway, after you changed the language, call:</p><pre>LocalizedStrings.LocalizedStringsResource.UpdateLanguage();</pre>
+<p>And boom – all your texts coming from the resource file will update instantaneously.</p>
+<p><a href="http://lh3.ggpht.com/-wCSpNm5A9gw/T3Fo68fW_qI/AAAAAAAAIGU/WGDXCLV51RE/s1600-h/InstantLanuage%25255B3%25255D.png"><img style="background-image: none; border-bottom: 0px; border-left: 0px; padding-left: 0px; padding-right: 0px; display: block; float: none; margin-left: auto; border-top: 0px; margin-right: auto; border-right: 0px; padding-top: 0px" title="InstantLanuage" border="0" alt="InstantLanuage" src="http://lh6.ggpht.com/-crGszbshyw8/T3Fo7ubub9I/AAAAAAAAIGc/oFQG4fUcPv4/InstantLanuage_thumb%25255B1%25255D.png?imgmax=800" width="598" height="395"></a></p>
+<p>Here you can find <a href="http://www.schaikweb.net/dotnetbyexample/InstantLanguage.zip" target="_blank">a sample solution demonstrating this principle</a> using the newest release of my <a href="http://twitter.com/#!/search/%23wp7nl" target="_blank">#<a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a> and the <a href="http://dotnetbyexample.blogspot.com/2011/07/mvvmlight-based-language-selection-for.html" target="_blank">technique I mentioned earlier</a>. There’s a simple viewmodel subclassing LanguageSettingsViewModel, and you can see the call to UpdateLanguage directly after the language setting has been changed:</p><pre>using System.ComponentModel;
+using InstantLanguage.Resources;
+using Wp7nl.Globalization;
+
+namespace InstantLanguage.ViewModel
+{
+  /// &lt;summary&gt;
+  /// Main view model. By subclassing LanguageSettingsViewModel we get properties 
+  /// "SupportedLanguages" and "CurrentLanguage" for free. 
+  /// &lt;/summary&gt;
+  public class MainViewModel : LanguageSettingsViewModel
+  {
+
+    public MainViewModel()
+    {
+      // Note: en-US is added by default
+      AddLanguages(new Language 
+	    { Description = "Deutsch", Locale = "de-DE" });
+      AddLanguages(new Language 
+	   { Description = "Nederlands", Locale = "nl-NL" });
+      PropertyChanged += MainViewModelPropertyChanged;
+    }
+
+    void MainViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
+    {
+      if (e.PropertyName == "CurrentLanguage")
+      {
+        SetLanguageFromCurrentLocale();
+        LocalizedStrings.LocalizedStringsResource.UpdateLanguage();
+      }
+    }
+  }
+}</pre>
+<p>In the end, it’s always pretty simple.</p>
+<p>Note that for this globalization and the code to work properly, you will need to take into account the following:</p>
+<ul>
+<li>You will need to change the “Custom Tool” property for each resource file to “PublicResXFileCodeGenerator” (default is ResXFileCodeGenerator) 
+<li>You will need to have a .resx file for every language you support. For the default language I call mine usually AppResources.resx, for German I then have to define AppResources.de-DE.resx, etc. 
+<li>You will also need to add supported extra languages in the SupportedCultures tag in your main project. You need to do <em>manually</em>, by opening the <em>project</em> file in for instance notepad. Why this can’t be done from Visual Studio – don’t ask me, I’m just the messenger here ;-). To support Dutch and German for instance you change the tag’s contents to:</li></ul><pre>&lt;SupportedCultures&gt;nl-NL;de-DE&lt;/SupportedCultures&gt;</pre>
+<p>Note: I got the idea from a gentleman I met at the 2012 edition of the Microsoft Techdays in The Hague while while I was manning at the Ask The Expert stand. He showed me it could be done, but did only briefly showed me some of code and certainly not all of it. Once I knew it could be done, I more or less pieced this together in the moments I was not being bombarded by questions from developers dropping by. Unfortunately I don’t remember the gentleman’s name, or else I would have added some credits.</p>
+<p>Have fun! I hope this helps you storm the new Marketplaces! ;-)</p>  

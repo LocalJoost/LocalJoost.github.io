@@ -1,0 +1,31 @@
+---
+layout: post
+title: Returning Task<T> from a Windows Runtime Component
+date: '2014-11-11T21:31:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Windows phone 8.1
+- async
+- Universal Apps
+- windows 8.1
+modified_time: '2014-11-12T13:32:20.007+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4290280441127684346
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/11/returning-task-from-windows-runtime.html
+---
+
+<p>A very short tip this time, that took me some time to find out.</p> <p>You will need a <a href="http://msdn.microsoft.com/en-us/library/hh441572.aspx" target="_blank">Windows Runtime Component</a> if you want, for instance, host a background task in an Universal App. The problem with these components is that you cannot return a <strong>Task&lt;T&gt;</strong> from a public method. You can use Task&lt;T&gt; <em>inside</em> the component, but not return it to the outside world. If you have a method</p><pre>public async Task&lt;bool&gt; SomeMethod()
+{
+  return false; // whatever
+}</pre>
+<p>in your Windows RT component, it <em>won’t even compile</em>. But there is a solution – you <em>can</em> return an <strong>IAsyncOperation&lt;T&gt;</strong>, and that is awaitable too.</p>
+<p>Therefore, I use this simple wrapper to use the method both from inside and outside:</p><pre>public IAsyncOperation&lt;bool&gt; PublicMethod()
+{
+  return InternalMethod().AsAsyncOperation();
+}
+
+private Task&lt;bool&gt; InternalMethod()
+{
+  return false; // whatever
+}</pre>
+<p>And we’re done. This will compile, and you can now call “<strong>await myObject.PublicMethod()</strong>” from outside the Windows Runtime Component.</p>
+<p>Sometimes code is so easy if you just know how to do it. No sample this time (again) as this is such a small piece of code. If you want to see it running, wait for the next post ;)</p>  

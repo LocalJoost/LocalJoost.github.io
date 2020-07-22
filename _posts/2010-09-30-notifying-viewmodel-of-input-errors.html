@@ -1,0 +1,146 @@
+---
+layout: post
+title: Notifying the viewmodel of input errors using MVVMLight in Silverlight
+date: '2010-09-30T21:20:00.002+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- MVVM
+- UX
+- Architecture
+- Silverlight
+- XAML
+- MVVM Light
+modified_time: '2012-08-30T11:55:27.429+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2255704038289469670
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/09/notifying-viewmodel-of-input-errors.html
+---
+
+<p>I was creating a little application that had some input fields and a submit button. I wanted the submit button only to be enabled when the user input was valid. No a very unusual use case. So I set out to create a viewmodel the usual <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> way, extending ViewModelBase and making properties using the snippets <a href="www.twitter.com/lbugnion" target="_blank">Laurent Bugnion</a> provides with the MVVMLight toolkit. To validate them, I decorated them with attributes from System.ComponentModel.DataAnnotations, and validated them with using the Validator. A typical property looks like this:</p>  <pre>/// <summary>
+/// The <see cref="Somecode" /> property's name.
+/// </summary>
+public const string SomecodePropertyName = &quot;Somecode&quot;;
+
+private int _somecode = 0;
+
+[Range(0, 2000)]
+public int Somecode
+{
+  get
+  {
+    return _someCode;
+  }
+
+  set
+  {
+    if (_someCode == value)
+    {
+      return;
+    }
+    Validator.ValidateProperty(value,
+      new ValidationContext(this, null, null) 
+      { MemberName = SomecodePropertyName });
+
+    _someCode = value;
+
+    // Update bindings, no broadcast
+    RaisePropertyChanged(SomecodePropertyName);
+  }
+}</pre>
+
+<p>Then I thought I was smart, so I added the following code:</p>
+
+<pre>private void RaisePropertyChangedAndRevalidate(string propertyName)
+{
+  RaisePropertyChanged(propertyName);
+  RaisePropertyChanged(&quot;IsValid&quot;);
+}
+
+public bool IsValid
+{
+  get
+  {
+    return Validator.TryValidateObject(this, 
+                       new ValidationContext(this, null, null),
+                       new List&lt;ValidationResult&gt;());
+  }
+}</pre>
+
+<p>and changed every other call to RaisePropertyChanged to RaisePropertyChangedAndRevalidate. Then I bound my button’s IsEnabled property to IsValid</p>
+
+<pre style="font-size: 8pt">&lt;Button Content=&quot;subMit&quot; x:Name=&quot;btnSave&quot; 
+  IsEnabled=&quot;{Binding IsValid,ValidatesOnExceptions=True,NotifyOnValidationError=True}&quot;&gt;</pre>
+
+<p>and I turned out not be so very smart after all, for it did not work. When the user entered a value that was outside the range of 0-2000 or even plain nonsense – like “thisisnonumber”, the UI gave an error message, I even got the message in my ValidationSummary, but for some reason the viewmodel still found itself valid.</p>
+
+<p>This puzzled me for a while, but it turned out to be perfectly logical. If the user inputs nonsense this <em>throws an exception</em>, and so does a call to Validator.ValidateProperty. So the invalid input <em>never makes to the viewmodel property</em>, and the viewmodel, if it was initially valid, <em>stays</em> valid en thus my button stays enabled. How to get around this?</p>
+
+<p>Actually, it’s pretty simple: notify your viewmodel of input errors, so it can keep track of whatever nonsense the user has tried to cram down its throat. The way I chose to do it was like this:</p>
+
+<ul>
+  <li>Add a field int _fieldErrors; </li>
+
+  <li>Bind the event BindingValidationError<strong> </strong>to a command in the viewmodel, passing it’s parameters along </li>
+
+  <li>Add to or subtract 1 from_fieldErrors for every time the command was called depending on the parameter</li>
+
+  <li>Modify the IsValid property so it checks the _fieldErrors field to. </li>
+</ul>
+
+<p>In code:</p>
+
+<pre>private void RaisePropertyChangedAndRevalidate(string propertyName)
+{
+  RaisePropertyChanged(propertyName);
+  if (_fieldBindingErrors == 0)
+  {
+    RaisePropertyChanged(&quot;IsValid&quot;);
+  }           
+}
+private int _fieldBindingErrors = 0;
+
+public ICommand RegisterFieldBindingErrors
+{
+  get
+  {
+    return new RelayCommand&lt;ValidationErrorEventArgs&gt;(e =&gt;
+    {
+      if (e.Action == ValidationErrorEventAction.Added)
+      {
+        _fieldBindingErrors++;
+      }
+      else
+      {
+        _fieldBindingErrors--;
+      }
+      RaisePropertyChanged(&quot;IsValid&quot;);
+    });
+  }
+}
+
+public bool IsValid
+{
+  get
+  {
+    return Validator.TryValidateObject(this, 
+                       new ValidationContext(this, null, null),
+                       new List&lt;ValidationResult&gt;()) 
+                       &amp;&amp; _fieldBindingErrors == 0;
+  }
+}</pre>
+
+<p>Binding the stuff in XAML goes like this:</p>
+
+<pre style="font-size: 7.5pt">&lt;StackPanel
+  DataContext=&quot;{Binding MyModel,Mode=TwoWay,ValidatesOnExceptions=True,NotifyOnValidationError=True}&quot;&gt;
+  &lt;i:Interaction.Triggers&gt;
+    &lt;i:EventTrigger EventName=&quot;BindingValidationError&quot;&gt;
+          &lt;cmd:EventToCommand Command=&quot;{Binding RegisterFieldBindingErrors}&quot; 
+            PassEventArgsToCommand=&quot;true&quot;/&gt;
+        &lt;/i:EventTrigger&gt;
+      &lt;/i:Interaction.Triggers&gt;
+&lt;/StackPanel&gt;</pre>
+
+<p>And thus the viewmodel maintains its own integrity, is notified by the UI of all problems playing around there, and can decide based upon the sum of this information whether or not the user can actually save.</p>
+
+<p>Thanks to <a href="http://twitter.com/mtaulty" target="_blank">Mike Taulty</a> for helping me out on the Validator in real-time on Twitter.</p>

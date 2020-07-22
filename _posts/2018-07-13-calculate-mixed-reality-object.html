@@ -1,0 +1,122 @@
+---
+layout: post
+title: Calculate Mixed Reality object locations on top or in front of obstructions
+  using BoxCastAll
+date: '2018-07-13T07:02:00.000+02:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Windows Mixed Reality
+- Unity3D
+modified_time: '2018-07-25T15:06:12.514+02:00'
+thumbnail: https://lh3.googleusercontent.com/-4IlyDsqpPRg/W0YhGc7x1II/AAAAAAAAP88/raxHaF7PO-kQdcQHeIjBFtYBeZxf2hvoQCHMYCw/s72-c/image_thumb%255B24%255D?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5955439929413202071
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2018/07/calculate-mixed-reality-object.html
+---
+
+<h2>Intro</h2><p>It was quite difficult to name this article. Usually I try to find a title that more or less describes a good search term that I used myself when I was looking for ‘something like this’, but I could not really find what I was looking for. What I have here is code that calculates locations for objects to be in front or on top of other objects and/or the Spatial Mesh. It does so using a <a href="https://docs.unity3d.com/ScriptReference/Physics.BoxCastAll.html" target="_blank">BoxCastAll</a>, something I have tried to use before, but not very successfully.&nbsp; <a href="https://dotnetbyexample.blogspot.com/2017/01/dragging-holograms-with-gaze-and.html" target="_blank">I have tried using Rigidbody.SweepTest</a> and although it works for some scenarios, it did not work for all. My floating info screens ended up half a mountain anyway (in <a href="https://www.microsoft.com/store/productId/9P6SVQQCP2SQ" target="_blank">Walk the World</a>), or the airport could not move over the ground because of some tiny obstacle blocking it (in <a href="https://www.microsoft.com/store/productId/9P6SVQQCP2SQ" target="_blank">AMS HoloATC</a>). So I tried a new approach.</p><p>This is part one of a two-post blog post. Explaining how the BoxCast works and what extra tricks and calculations were necessary to get it to work properly proved to need quite a long text, so I will leave the behaviour actually <em>using</em> this code in good way for the next post.</p><h2>BoxCast magic</h2><p>So what is a BoxCast, actually? It’s comparable to a normal RayCast. But where a RayCast gives you the intersection of a <em>line</em> and an obstruction, a BoxCast does that – suprise - with a box. You essentially throw a box from a point along a vector until it hits something – or some <em>things</em>, as a BoxCastAll potentially returns more than one hit. If you take the one that is closest to your camera (a hit has a convenient “distance” property) you potentially have a place where you can place the object.</p><p>… except that it does not take into account the following things:</p><ul><li>An object’s (center) position and the center of it’s bounding box are not always the same; this will make the BoxCast not always happen at the place you think it does</li><li>The vector from the camera to the hit may or may not be parallel to the direction of the BoxCast; therefore, we need to <em>project</em> the vector from the camera to the hit on the vector of the BoxCast.</li><li>The BoxCast hit detection happens at the <em>edge</em> of the casted box, and an objects position is determined by it’s <em>center</em> – so, we need so we need to move <em>back</em> a little towards the camera, or else about half of our object – determined by it’s actual orientation - will end up <em>inside</em> the obstruction. </li></ul><p>My code takes all of that into account. It was quite hard won knowledge before I uncovered all the lovely pitfalls.</p><h2>First a new utility method</h2><p>For a BoxCast to work, you need a box. You typically accomplish that by getting the bounds of all the Renderers in the object you want to cast and combine those to one big bounding box. I hate typing or copying code more than once, so I create this little extension method to GameObject</p><pre style="font-size: 11px;">public static class GameObjectExtensions
+{
+    public static Bounds GetEncapsulatingBounds(this GameObject obj)
+    {
+        Bounds totalBounds = new Bounds();
+
+        foreach (var renderer in obj.GetComponentsInChildren&lt;Renderer&gt;())
+        {
+            if (totalBounds.size.magnitude == 0f)
+            {
+                totalBounds = renderer.bounds;
+            }
+            else
+            {
+                totalBounds.Encapsulate(renderer.bounds);
+            }
+        }
+
+        return totalBounds;
+    }
+}</pre> <h2>BoxCast Magic</h2><p>In LookingDirectionHelpers, a static class containing utilities to calculate directions and places the direction the user is looking (duh) at I have created a method that does the BoxCast magic. It does quite a lot, and I am going through it step by step. It starts like this:</p><pre style="font-size: 11px;">public static Vector3 GetObjectBeforeObstruction(GameObject obj, float maxDistance = 2,
+    float distanceFromObstruction = 0.02f, int layerMask = Physics.DefaultRaycastLayers,
+    BaseRayStabilizer stabilizer = null, bool showDebugLines = false)
+{
+    var totalBounds = obj.GetEncapsulatingBounds();
+
+    var headRay = stabilizer != null
+        ? stabilizer.StableRay
+        : new Ray(CameraCache.Main.transform.position, CameraCache.Main.transform.forward);
+
+     var hits = Physics.BoxCastAll(GetCameraPosition(stabilizer),
+                                  totalBounds.extents, headRay.direction,
+                                  Quaternion.identity, maxDistance, layerMask)
+                                  .Where(h =&gt; !h.transform.IsChildOf(obj.transform)).ToList();</pre> <p>As you can see, the method accepts quite some parameters, most of them optional:</p><ul><li>obj – the actual object to cast and place against or on top of the obstruction</li><li>maxDistance – the maximum distance to place the object from the camera (if it does not hit another object first)</li><li>distanceFromObstruction – the distance to keep between the object and the obstruction</li><li>layerMask – what layers should we ‘hit’ when we are looking for obstructions (default is everything)</li><li>stabilizer – used to get a more stable location and viewpoint source than the camera itself</li><li>showDebugLines – use some awesome help classes I <a href="https://answers.unity.com/questions/1156087/how-can-you-visualize-a-boxcast-boxcheck-etc.html" target="_blank">nicked from the Unity Forums</a> from “<a href="https://answers.unity.com/users/496850/hiddenmonk.html" target="_blank">HiddenMonk</a>” to show how the BoxCast is performed. Without these, I sure as hell would not have been able to identify all issues that I had to address.</li></ul><p>Well then – first we get the total encapsulating bounds, then we check if we can either use the Stabilizer that we need to use the camera to define a ray in the direction we want to cast. The we calculate a point dead ahead of the camera – this is the.</p><p>And then we do the actual BoxCast, or actually a BoxCastAll. The cast is done:</p><ul><li>From the Camera position</li><li>Using the total extents of the object</li><li>In the direction of the viewing ray (so a line from your head to where the gaze cursor is)</li><li>using no rotation (we used the <em>Render's </em>bounds, that already takes any rotation into account) </li><li>over a maximum distance</li><li>against the layers described by the layer mask (default is all)</li></ul><p>Notice the <em>Where</em> clause at the end. BoxCasts hit everything, <em>including child objects of the cast object itself</em>, as it may be in the path of it’s own cast. So we need to weed out any hits that apply to <em>the object itself or its children.</em></p><p>The next piece of visualizes how the BoxCast is performed, using HiddenMonk's code:</p><pre style="font-size: 11px;">if (showDebugLines)
+{
+    BoxCastHelper.DrawBoxCastBox(GetCameraPosition(stabilizer),
+        totalBounds.extents, headRay.direction,
+        Quaternion.identity, maxDistance, Color.green);
+}</pre><p>This uses Debug.Draw – these lines are only visible in the Unity editor, in Play mode. They will not show up in the Game pane but in the <em>Scene</em> pane. Which makes sense, as you can them look at the result from every angle without affecting the actual scene in the game.</p><p>This looks like this:</p><p><a href="https://lh3.googleusercontent.com/-vsWRoo2xJFc/W0YhFrJkbGI/AAAAAAAAP84/bDNcyhj8ezwss5ll6fdxyNw4x2bZR6xmQCHMYCw/s1600-h/image%255B38%255D"><img width="650" height="344" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-4IlyDsqpPRg/W0YhGc7x1II/AAAAAAAAP88/raxHaF7PO-kQdcQHeIjBFtYBeZxf2hvoQCHMYCw/image_thumb%255B24%255D?imgmax=800" border="0"></a></p><p>Now to address the issues I listed on top of this article, we need to do a few things.</p><h2>Giving it the best <strike>shot</strike> cast</h2><p>The next line is a weird one but is explained by the fact that there may be a difference between the center of the actual bounding box (and thus the cast) and center of the object as reported by Unity. I am not entirely sure why this is, but trust me, it's happens with some objects. We need to compensate for that.</p><pre style="font-size: 11px;">var centerCorrection = obj.transform.position - totalBounds.center;</pre><p>Below you see an example of such an object. I typically happens when an object is composed of one or more other objects that are off center, and especially when the object is asymmetrical. Like this 'floating screen'. You will see it's an empty game object containing a Quad and a 3DTextPrefab that are moved upwards in local space. Without the correction factor, you get the situation on the left - the BoxCast happens 'too low' </p><p><a href="https://lh3.googleusercontent.com/-erW4Skbjy0c/W0YhHEj-pRI/AAAAAAAAP9A/9_bv73pcILYIAr3ztn1S0JLDDca1az53gCHMYCw/s1600-h/image%255B7%255D"><img width="285" height="230" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-J7C-DYNSoJY/W0YhH4EpT9I/AAAAAAAAP9E/RViGvvKgiFwuDX8rxhDmnuabOFELZ2JeACHMYCw/image_thumb%255B5%255D?imgmax=800" border="0"></a><a href="https://lh3.googleusercontent.com/-hLGmBVbxCL0/W0YhIsACe5I/AAAAAAAAP9I/eImb-JLH5hsHsSXBdOnTQsiDw2MkTsiRwCHMYCw/s1600-h/image3%255B4%255D"><img width="294" height="230" title="image" align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-4F2lHufxchs/W0YhJa5AyII/AAAAAAAAP9M/6jFqDCyHMjsmx6qX_0MpUDVo6XBInpCDACHMYCw/image3_thumb%255B3%255D?imgmax=800" border="0"></a></p><p>On the right side, you see the the desired effect. I opted to change the location to of the object to the center of the BoxCast – you might also consider changing the start location of the <em>BoxCast</em>, but that a side effect: the ray won’t <em>start</em> at the user’s viewpoint (but in this case, a little bit <em>above</em> it) which might be confusing or produce undesirable results.</p><h2>Hit or miss - projection</h2><p>We need to find the closest hit… but that hit might not be right in front us, along the viewing vector. So&nbsp; we need to create a vector from the camera to the hit, then make a (longer) vector that follows the user’s gaze, and finally <a href="https://docs.unity3d.com/ScriptReference/Vector3.Project.html" target="_blank"><em>project</em></a><em> </em>the ‘hit vector’ to the ‘gaze vector’. Then and only then we know how much room there is <em>in front</em> of us.</p><pre style="font-size: 11px;">if (hits.Any())
+{
+    var closestHit = hits.First(p =&gt; p.distance == hits.Select(q =&gt; q.distance).Min());
+    var hitVector = closestHit.point - GetCameraPosition(stabilizer);
+    var gazeVector = CalculatePositionDeadAhead(closestHit.distance * 2) - 
+                       GetCameraPosition(stabilizer);
+    var projectedHitVector = Vector3.Project(hitVector, gazeVector);</pre><p>To show what happens, I have made a screenshot where I made Unity draw debug lines for every calculated vector:</p><pre style="font-size: 11px;">if (showDebugLines)
+{
+    Debug.DrawLine(GetCameraPosition(stabilizer), closestHit.point, Color.yellow);
+    Debug.DrawRay(GetCameraPosition(stabilizer), gazeVector, Color.blue);
+    Debug.DrawRay(GetCameraPosition(stabilizer), projectedHitVector, Color.magenta);
+}</pre><p>Which results in the following view (for clarity I have disabled the code that draws the BoxCast for this screenshot)</p><p><a href="https://lh3.googleusercontent.com/-kmytTkwWAcg/W0YhJ-4LluI/AAAAAAAAP9Q/DKXrYkPPfI4WGY4XdSjl02kg6xFYgEWaQCHMYCw/s1600-h/image%255B8%255D"><img width="650" height="306" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-3-cNeHF5S64/W0YhKkT1JPI/AAAAAAAAP9U/YWLdvE5YzSU66GthLCPJ6G6sDAVCmd-NgCHMYCw/image_thumb%255B6%255D?imgmax=800" border="0"></a></p><p>A little magnification shows the area of interest a little bit better:<p><a href="https://lh3.googleusercontent.com/-Ngg7_7dztwI/W0YhLHy5xGI/AAAAAAAAP9Y/oox3mJp0JF4GIuqXsDa40mJR_IIhcFqcACHMYCw/s1600-h/image%255B13%255D"><img width="379" height="300" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-5rL5zzqvMe8/W0YhLx2y_YI/AAAAAAAAP9c/ceTDnjzJaQMHetqcdIJG7oNBtjliT-_YQCHMYCw/image_thumb%255B9%255D?imgmax=800" border="0"></a><p>You can clearly see the the yellow line from the camera to the original hit, the blue line which is the viewing direction of the user, and the magenta line projected on that.<h2>Keep your distance please</h2><p>Now this all works fine for a flat object like a Quad (posing as an 'info screen' here. But not on a box like this for instance (which I made partially translucent for clarity).<p><a href="https://lh3.googleusercontent.com/-A6XQpwxx38I/W0YhMqHr4wI/AAAAAAAAP9g/ZST03Ho-QFUWf-bkXSaqVp6t_s3u66zjwCHMYCw/s1600-h/image%255B22%255D"><img width="436" height="300" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-qxupadXqeJw/W0YhNTRc2YI/AAAAAAAAP9k/WLTwoNZOghslqUJU66bCFGKX5sIQa1gvACHMYCw/image_thumb%255B14%255D?imgmax=800" border="0"></a><p>The issue here is simple, although it took me some time to figure out what was causing it. Like I said before, the hit takes place at the <em>edge</em> of the shape, but the object's position is tied to it's <em>center</em>, so if I set the object's position to that hit, it will end up halfway the obstruction. QED.<p>So what we need to do is make yet <em>another</em> ray, that will go from the center of the object to the edge, following the same direction as the projected hit vector (the magenta line). Now RayCasts don't work from inside an object, but fortunately there's another way - the <em>Bounds</em> class supports an IntersectRay method. It works a bit kludgy IMHO but it does the trick:<pre style="font-size: 11px;">var edgeRay = new Ray(totalBounds.center, projectedHitVector);
+float edgeDistance;
+if(totalBounds.IntersectRay(edgeRay,  out edgeDistance))
+{
+    if (showDebugLines)
+    {
+        Debug.DrawRay(totalBounds.center, 
+            projectedHitVector.normalized * Mathf.Abs(edgeDistance + distanceFromObstruction),
+            Color.cyan);
+    }
+}</pre><p>So we intersect the projected hit vector from the center of the bounds to the edge of the bounds. This will give us the distance from the center to the part of the object that hit the obstruction, and we can move the object 'backwards' to the desired position. Since I specified a 'distanceFromObstruction' we can add that to the distance the object needs to be moved 'back'&nbsp; as well to keep a distance from an obstruction, in stead of touching it (although for this object it's 0). Yet another debug line, cyan this time, shows what's happening:</p><p><a href="https://lh3.googleusercontent.com/-4E-P2VsZZeU/W0YhNy-q2zI/AAAAAAAAP9o/J7YUAuHETs4oCJt4LJNHiqstam7H3aE3gCHMYCw/s1600-h/image%255B27%255D"><img width="507" height="300" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-zYm5TqQytHs/W0YhOuMBuYI/AAAAAAAAP9s/aNpVnc4ydfY_AqO6Gk8IZDPHtYGQ7NwUQCHMYCw/image_thumb%255B17%255D?imgmax=800" border="0"></a></p><p>The cyan line is the part over which the object is moved back. Now the only thing left is to calculate the new <em>position </em>and return it, this time using the centerCorrection we used before to make the object actually appear within the BoxCast's 'outlines':</p><pre style="font-size: 11px;">return GetCameraPosition(stabilizer) +
+            projectedHitVector - projectedHitVector.normalized * <br>            Mathf.Abs(edgeDistance + distanceFromObstruction) +
+            centerCorrection;</pre><h2>Nobody is perfect</h2><p>If you think "hey, it looks like it is not completely perfectly aligned", you are right. This is because Unity has it's limits in determining volumes and bounding boxes. This is probably because the main concern of a game is performance, not 100% accuracy. If I add this line to the code</p><pre style="font-size: 11px;">BoxCastHelper.DrawBox(totalBounds.center, totalBounds.extents, Quaternion.identity, Color.red);</pre><p>it actually shows the bounding box:</p><p><a href="https://lh3.googleusercontent.com/-AKEhU1wm_Mg/W0YhPd5onyI/AAAAAAAAP9w/4sLqYqceJnc3CnO9DT_tZFGcUQxZSRfOgCHMYCw/s1600-h/image%255B32%255D"><img width="414" height="300" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-pD3xSnpYZ6M/W0YhQOr76LI/AAAAAAAAP90/yoIgIYEdceYPDtofFmS7umsn4ZbqxjMmwCHMYCw/image_thumb%255B20%255D?imgmax=800" border="0"></a></p><p>So this explains a bit more what is going on. With all the debug lines enabled it looks like this, which I can imagine is as confusing as helpful ;)</p><p><a href="https://lh3.googleusercontent.com/-kQ813cmyrjI/W0YmRx4FwmI/AAAAAAAAP-U/Sa-ptjRiy9ABAGxXiqi91h7jk-eUolzpQCHMYCw/s1600-h/image%255B44%255D"><img width="650" height="347" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-39Dz1sc-8SM/W0YmSmY5RgI/AAAAAAAAP-Y/UTCoRKkoWqkdsaLvTebO4-YgBqi2u_7OACHMYCw/image_thumb%255B28%255D?imgmax=800" border="0"></a></p><h2>Show and tell</h2><p>It’s actually not really easy to properly show you how this method can be utilized. As I said in the beginning, I will save that for the next post. In the mean time, I have cobbled together <a href="https://github.com/LocalJoost/BoxCastDemo" target="_blank">a demo project</a> that uses the GetObjectBeforeObstruction in a very simple way. I have created a SimpleKeepInViewController that polls every so many seconds (2 is default) where the user looks, then calls GetObjectBeforeObstruction and moves the object there. This gives a bit of a nervous result, but you get the idea.</p><pre style="font-size: 11px;">public class SimpleKeepInViewController : MonoBehaviour
+{
+    [Tooltip("Max distance to display object before user")]
+    public float MaxDistance = 2f;
+
+    [Tooltip("Distance before the obstruction to keep the current object")]
+    public float DistanceBeforeObstruction = 0.02f;
+
+    [Tooltip("Layers to 'see' when detecting obstructions")]
+    public int LayerMask = Physics.DefaultRaycastLayers;
+
+    [Tooltip("Time before calculating a new position")]
+    public float PollInterval = 2f;
+
+    [SerializeField]
+    private BaseRayStabilizer _stabilizer;
+
+    [SerializeField]
+    private bool _showDebugBoxcastLines = true;
+
+    private float _lastPollTime;
+
+
+    void Update()
+    {
+        if (Time.time &gt; _lastPollTime)
+        {
+            _lastPollTime = Time.time + PollInterval;
+            LeanTween.move(gameObject, GetNewPosition(), 0.5f).setEaseInOutSine();
+        }
+#if UNITY_EDITOR
+        if (_showDebugBoxcastLines)
+        {
+            LookingDirectionHelpers.GetObjectBeforeObstruction(gameObject, MaxDistance,
+                DistanceBeforeObstruction, LayerMask, _stabilizer, true);
+        }
+#endif
+    }
+
+    private Vector3 GetNewPosition()
+    {
+        return LookingDirectionHelpers.GetObjectBeforeObstruction(gameObject, MaxDistance,
+            DistanceBeforeObstruction, LayerMask, _stabilizer);
+    }
+}</pre><p>There is only one oddity here – you see I actually call GetObjectBeforeObstruction twice. But the first time only happens in the editor, and only if you select the Show Debug Boxcast Line checkbox:</p><p><a href="https://lh3.googleusercontent.com/-A_vQC0A-O3w/W0bj5xSFU6I/AAAAAAAAP-s/TEfpLUyq69cuTJaICgnFMV_W_6Gx_esMgCHMYCw/s1600-h/image%255B4%255D"><img width="312" height="100" title="image" align="left" style="margin: 0px 9px 0px 0px; border: 0px currentcolor; border-image: none; float: left; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-NmNESkTy-LI/W0bj7OnSKyI/AAAAAAAAP-w/7imsiseHYlgoCePiJMXxoQoQ0G2WNzN7QCHMYCw/image_thumb%255B2%255D?imgmax=800" border="0"></a>If I did not add this, you would see the lines flash for one frame every 2 seconds, which is hardly enlightening. This way, you can see them all the time in the editor</p><p><br></p><p><br></p><p><a href="https://lh3.googleusercontent.com/-vWSz5SynsXc/W0d5dnF9FGI/AAAAAAAAP_Y/TTfI2ZA_lw8mQRxwnntW6G5Bw3uVrE6JACHMYCw/s1600-h/image13"><img width="181" height="150" title="image" align="left" style="margin: 0px 9px 0px 0px; border: 0px currentcolor; border-image: none; float: left; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-SwXt31K6IEc/W0d5fdqRyqI/AAAAAAAAP_c/Ff5IVW6D6L01x0_qW6uHuLAgtQJqoJ5XACHMYCw/image_thumb6?imgmax=800" border="0"></a>In <a href="https://github.com/LocalJoost/BoxCastDemo" target="_blank">the demo project</a> you will find three objects – in the images above you have already seen a single block (the default), a rotating ‘info screen’ that shows “Hello World” and there’s also this composite object on the left (two cubes off-center), here displayed with all debug lines enabled ;). You can toggle between the three objects by saying “Toggle” or by pressing the “T”. The latter will actually also work in a HoloLens if you have a Bluetooth keyboard attached - and believe me, I tried ;-)</p><p><br></p><h2>Conclusion</h2><p>Yet another way to make an object appear next to on on top of an obstruction ;). This code actually took me way too much time to complete, but I learned a lot from it and at some point it became a matter of honor to get the bloody thing to work.</p><p> Fun factoid: most of the code, and a big part of the blog post, was actually written on train trips to an from an awesome HoloLens project I am currently involved in. Both the <a href="https://github.com/LocalJoost/BoxCastDemo" target="_blank">demo project</a> and this blog post were actually published while being on my way, courtesy of the Dutch Railways free WiFi service ;)</p>

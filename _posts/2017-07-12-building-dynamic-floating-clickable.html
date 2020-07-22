@@ -1,0 +1,212 @@
+---
+layout: post
+title: Building a dynamic floating clickable menu for HoloLens/Windows MR
+date: '2017-07-12T13:44:00.001+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- HoloLens
+- Windows Mixed Reality
+- Unity3D
+modified_time: '2017-07-13T07:36:26.982+02:00'
+thumbnail: https://i.ytimg.com/vi/5jkn9aEIB8Y/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4560823261355412318
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2017/07/building-dynamic-floating-clickable.html
+---
+
+<h2>Intro</h2><p>In the various XAML-based platforms (WPF, UWP, Xamarin) that were created by or are now part of Microsoft we have the great capability to perform databinding and templating - essentially saying to for instance a list 'this is my data, this is how a single item should look, good luck with it' and the UI kind of creates itself. This we don't quite have in Unity projects for <a href="https://developer.microsoft.com/en-us/windows/mixed-reality" target="_blank">Windows Mixed Reality</a>. But still I gave it my best shot when I created a dynamic floating menu for my app <a href="https://www.microsoft.com/store/productid/9P6SVQQCP2SQ" target="_blank">Walk the World</a> (only the first few seconds are relevant, the rest is just showing off a view of Machu Picchu)</p><p><iframe width="650" height="365" src="https://www.youtube.com/embed/5jkn9aEIB8Y" frameborder="0" allowfullscreen=""></iframe></p><h2>Starting point</h2><p>We actually start <a href="https://dotnetbyexample.blogspot.com/2017/07/building-floating-hololens-info-screen-2.html" target="_blank">using the end result of my previous post</a>, as I don't really like to do things twice. So copy that project to another folder, or make a branch, whatever. I called the renamed folder FloatingDynamicMenuDemo. Then proceed as follows:</p><ul><li>Delete FloatingScreenDemo.* from the project's root</li><li>Empty the App sub folder - just leave the .gitignore</li><li>Open the project in Unity</li><li>Open the Build Settings window (CTRL+B) </li><li>Hit the "Player Settings..." button</li><li>Change "FloatingScreenDemo" in "FloatingDynamicMenuDemo" whereever you see it. Initially you will see only one place, but please expand the "Icon" and "Publishing Settings" panels as well, there are more boxes to fill in.</li><li>Rename the HelpHolder to MenuHolder</li><li>Remove the Help Text Controller from the HelpHolder. </li><li>Change the text in the 3DTextPrefab from the Lorum ipsum to "Select a place too see" </li><li>Change the text's Y position from 0.84 to 0.23 so it will end up at the top of the 'screen' </li></ul><p>So now we have a workspace with most of the stuff we need already in it. Time to fill in the gaps.</p><h2>Building a Menu Item part 1 - graphics</h2><p><a href="https://lh3.googleusercontent.com/-KtpyrlwB9m4/WV5A_34LVCI/AAAAAAAAPDE/N5gZOtDhg5YWhBM1eTCxzA6a9D0Q3e4xQCHMYCw/s1600-h/image%255B4%255D"><img width="300" height="377" title="image" align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-yN1_rYfBnXI/WV5BAWsDdAI/AAAAAAAAPDI/nAJk5AXd_cwVT6fsXVdXFNUpBXOf40tbgCHMYCw/image_thumb%255B2%255D?imgmax=800" border="0"></a>So, think templating. We first need to have a template before we can instantiate it. But the only thing I can instantiate are <em>game objects</em>. So... we need to make one... a combination of graphics and code. That sounds like - a prefab indeed!</p><p>First, we will make a material for the menu items, as this will be easier for debugging. Go to the App/Materials folder, find HelpScreenMaterial, hit CTRL-D, and rename HelpScreenMaterial 1 to MenuItemMaterial. Then, change its color to a kind of green, for instance 00B476FF. Also, change the rendering mode to "Opaque". This is so we can easily see the plane. </p><p>Inside the MenuHolder we make a new empty game object. I called it - d'oh - MenuItem. Inside that MenuItem, we first make a 3DTextPrefab, then a Plane. The plane will be of course humongous again, and very white. So first drag the green MenuItemMaterial on it. Then change it's X Rotation to 270 so it will be upright again. Then you have to experiment a little with the X and Z scale until it is more or less the same width as your blue Plane, and a little over 1 line of text height, as showed to the left.The values I got were X = 0.065 and Z = 0.004 but this depends of course on the font size you take. Make sure there is some extra padding between the left and right edges of the green Plane and the blue Plane.</p><p><a href="https://lh3.googleusercontent.com/-NZpmioW6l-o/WV5BA7FmjbI/AAAAAAAAPDM/ZaC3Q8Rb9cAyuhV3cET4Lr067Dr6qqTgACHMYCw/s1600-h/image%255B22%255D"><img width="300" height="185" title="image" align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-PbkwsV0lZm0/WV5BBL5FeeI/AAAAAAAAPDQ/rjhDTAMvRPgCa8LPazPf52a20m65umiLgCHMYCw/image_thumb%255B14%255D?imgmax=800" border="0"></a>As you can see in the top panel, the text and the menu pane are invisible - they are only visible when looked upon dead right from the camera in the game view. This is because they basically are at the same distance as the screen. So we need to set -0.02 to the Z of the green Plane - so it appears in front of the blue screen - and -0.04 to the Z of the 3DTextPrefab so it will appear in front of the green Plane, and you will see the effect in the Scene pane as well now. </p><p>Since this is a Menu, we want the text to appear from the left. The Anchor is now middle center and it's Alignment Center, and that is not desirable. So we have to set Alignment to Left and Anchor to Middle Left, and then we drag the text prefab to the left till the edge of the green plane. I found an X position value of -0.32.</p><p>Now create a folder "Prefabs" in your App folder in the Assets pane, and drag the MenuItem object from there. This will create a Prefab. The text MenuItem in the Hierarchy will turn blue. </p><p><a href="https://lh3.googleusercontent.com/-38nySy7Em2E/WV5BBiyTD1I/AAAAAAAAPDU/q_AjUeKxGQYd8FOXx7QWjt8z_hd3JjWwwCHMYCw/s1600-h/image%255B63%255D"><img width="336" height="438" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-HIMaYyLV8LI/WV5BBzSaS4I/AAAAAAAAPDY/0RnjXZGOpE8SMtcpAtz-DTaEnqs79RETgCHMYCw/image_thumb%255B51%255D?imgmax=800" border="0"></a></p><p>You can now safely delete the MenuItem from the Hierarchy. Mind you, the Hierarchy. Make sure it stays in Prefabs.</p><h2>Building a Menu Item part 2 - code</h2><p>Our 'menu' needs some general data structure helper. So we start with an interface for that:</p><pre style="font-size: 11px;">public interface IMenuItemData
+{
+    object SelectMessageObject { get; set; }
+
+    string Title { get; set; }
+
+    int MenuId { get; set; }
+}</pre><p>And a default implementation:</p><pre style="font-size: 11px;">public class MenuItemData : IMenuItemData
+{
+    public object SelectMessageObject { get; set; }
+
+    public string Title { get; set; }
+
+    public int MenuId { get; set; }
+}
+</pre><p>The SelectedMessageObject is the payload - the actual data. The Title contains the text we want to have displayed on the menu, and the MenuId we need so we can distinguish select events coming from multiple menus, should your application have such. For the distribution of events we once again use the <a href="https://dotnetbyexample.blogspot.com/2017/04/using-messenger-to-communicate-between.html" target="_blank">Messenger</a> that I introduced before (and have used extensively ever since).</p><p>To send a selected object around we need a message class:</p><pre style="font-size: 11px;">public class MenuSelectedMessage
+{
+    public IMenuItemData MenuItem { get; set; }
+}</pre><p>And then we only need to add this simple MenuItemController, a behaviour that handles when the MenuItem is tapped:</p><pre style="font-size: 11px;">using HoloToolkit.Unity.InputModule;
+using HoloToolkitExtensions.Messaging;
+using UnityEngine;
+
+public class MenuItemController : MonoBehaviour, IInputClickHandler
+{
+    private TextMesh _textMesh;
+    private IMenuItemData _menuItemData;
+
+    public IMenuItemData MenuItemData
+    {
+        get { return _menuItemData; }
+        set
+        {
+            if (_menuItemData == value)
+            {
+                return;
+            }
+            _menuItemData = value;
+            _textMesh = GetComponentInChildren&lt;TextMesh&gt;();
+            if (_menuItemData != null &amp;&amp; _textMesh != null)
+            {
+                _textMesh.text = _menuItemData.Title;
+            }
+        }
+    }
+
+    public void OnInputClicked(InputClickedEventData eventData)
+    {
+        if (MenuItemData != null)
+        {
+            Messenger.Instance.Broadcast(<br>                new MenuSelectedMessage {MenuItem = MenuItemData});
+            PlayConfirmationSound();
+        }
+    }
+
+    private AudioSource _audioSource;
+    private void PlayConfirmationSound()
+    {
+        if (_audioSource == null)
+        {
+            _audioSource = GetComponent&lt;AudioSource&gt;();
+        }
+        if (_audioSource != null)
+        {
+            _audioSource.Play();
+        }
+    }
+}
+
+</pre><p>There is a property MenuItemData that accepts an IMenuItemData. If you set it, it will retain the value in a private field but also shows the value of Title in a TextMesh component. This behaviour is also an IInputClickHandler, so if the user taps this, the OnInputClicked method is called. Essentially all it does, is sending off it's MenuItemData object - that was used to fill the text with a value - to the Messenger. And it tries to play a sound. You should decide for yourself if you want that.</p><p>So all we have to to is add this behaviour MenuItem prefab, as <em>this</em> is the thing we are going to click on. That way, if you click next to the text but at the correct height (the menu 'row'), it's still selected. So select MenuItem, hit the "Add Component" button and add the Menu Item Controller.</p><p><a href="https://lh3.googleusercontent.com/-Hd6f3r6geKI/WV_BuMRJ9cI/AAAAAAAAPEA/VB22nLicvysdHphdibX-bA7hNXBxjAXJgCHMYCw/s1600-h/image%255B11%255D"><img width="600" height="230" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/--fUWezCf5ig/WV_BuevHuaI/AAAAAAAAPEE/AUhsslBZh90Mrh-VL3uhlRMj6mt62TJbQCHMYCw/image_thumb%255B6%255D?imgmax=800" border="0"></a></p><p>Now if you like, you can add an with AudioSource with a special sound that signifies the selection of a menu. As I have stated before, immediate (audio) feedback is very important in immersive applications. I have done not so. I usually let the receiver of a MenuSelectedMessage do the notification sound.</p><h2>Building the menu itself</h2><p>This is done by a surprisingly small and simple behavior. All it does is instantiate a number of game object on a certain positions.</p><pre style="font-size: 11px;">using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;public class MenuBuilder :MonoBehaviour
+{
+    public float MaxNumber = 10;
+
+    public float TopMargin = 0.1f;
+
+    public float MenuItemSize = 0.1f;
+
+    private List&lt;GameObject&gt; _createdMenuItems = new List&lt;GameObject&gt;();
+    public MenuBuilder()
+    {
+        _menuItems = new List&lt;IMenuItemData&gt;();
+    }
+    public GameObject MenuItem;
+
+    private IList&lt;IMenuItemData&gt; _menuItems;
+
+    public IList&lt;IMenuItemData&gt; MenuItems
+    {
+        get { return _menuItems; }
+        set
+        {
+            _menuItems = value;
+            BuildMenuItems();
+        }
+    }
+
+    private void BuildMenuItems()
+    {
+        foreach (var menuItem in _createdMenuItems)
+        {
+            DestroyImmediate(menuItem);
+        }
+        if (_menuItems == null || !_menuItems.Any())
+        {
+            return;
+        }
+        for (var index = 0; index &lt; MenuItems.Count; index++)
+        {
+            var newMenuItem = MenuItems[index];
+            var newGameObject = Instantiate(MenuItem, gameObject.transform);
+            newGameObject.transform.localPosition -= 
+                new Vector3(0,(MenuItemSize * index) - TopMargin, 0);
+
+            var controller = newGameObject.GetComponent&lt;MenuItemController&gt;();
+            controller.MenuItemData = newMenuItem;
+            _createdMenuItems.Add(newGameObject);
+        }
+    }
+}
+</pre><p>All the important work happens in BuildMenuItems. Any existing items are destroyed first, then we simply loop through the list of menu items - these are IMenuItemData objects. Then a game object provided in MenuItem is instantiated inside the current game object, and it's vertical position is calculated and set. Then it gets the MenuItemController from the instantiated game object - it just assumes it must be there - and puts the newMenuItem in it - so the MenuItem will show the associated text.</p><p>So now add the MenuBuilder to the HelpHolder. Then, from prefabs, drag the MenuItem prefab onto the Menu Item property. Net result:</p><p><a href="https://lh3.googleusercontent.com/-d4zodqeM58Y/WV_Buw4yaPI/AAAAAAAAPEI/_h4pzxKb-4QSDP1GIUZYLx_RmXvBNxFPQCHMYCw/s1600-h/image%255B5%255D"><img width="400" height="117" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-mg92iYsxG1A/WV_BvHVAGZI/AAAAAAAAPEM/uwz-S3lF6B0jsM5bsVZAHHXlKfMS8KM3ACHMYCw/image_thumb%255B2%255D?imgmax=800" border="0"></a></p><p>Now let's add an initialization behaviour to actually make stuff appear in the menu. This behavior has some hard coded data in it, but you can imagine this coming from some Azure data source</p><pre style="font-size: 11px;">using System.Collections.Generic;
+using UnityEngine;
+
+public class VistaMenuController : MonoBehaviour
+{
+    void Start()
+    {
+        var builder = GetComponent&lt;MenuBuilder&gt;();
+
+        IList&lt;IMenuItemData&gt; list = new List&lt;IMenuItemData&gt;();
+        list.Add(new MenuItemData
+        {
+            Title = "Mount Everest, Nepal",
+            MenuId = 1,
+            SelectMessageObject = new WorldCoordinate(27.91282f, 86.94221f)
+        });
+        list.Add(new MenuItemData
+        {
+            Title = "Kilomanjaro, Tanzania",
+            MenuId = 1,
+            SelectMessageObject = new WorldCoordinate(-3.21508f, 37.37316f)
+        });
+        list.Add(new MenuItemData
+        {
+            Title = "Mount Rainier, Washington, USA",
+            MenuId = 1,
+            SelectMessageObject = new WorldCoordinate(46.76566f, -121.7554f)
+        });
+        list.Add(new MenuItemData
+        {
+            Title = "Niagra falls (from Canada)",
+            MenuId = 1,
+            SelectMessageObject = new WorldCoordinate(43.07306f, -79.07561f)
+        });
+        list.Add(new MenuItemData
+        {
+            Title = "Mount Robson, British Columbia, Canada",
+            MenuId = 1,
+            SelectMessageObject = new WorldCoordinate(53.061809f, -119.168358f)
+        });
+        list.Add(new MenuItemData
+        {
+            Title = "Athabasca Glacier, Alberta, Canada",
+            MenuId = 1,
+            SelectMessageObject = new WorldCoordinate(52.18406f, -117.257f)
+        });
+        list.Add(new MenuItemData
+        {
+            Title = "Etna, Sicily, Italy",
+            MenuId = 1,
+            SelectMessageObject = new WorldCoordinate(37.67865f, 14.9964f)
+        });
+
+        builder.MenuItems = list;
+    }
+}
+</pre><font color="#ff0000"></font><p>This comes straight from Walk the World - these 7 of it's 10 vistas with a location to look from it. Add this behaviour to the Help Holder as well. Now it's time to run the code and see our menu for the very first time!</p><h2><a href="https://lh3.googleusercontent.com/-XIUEZaofoe0/WWYL8W7H9rI/AAAAAAAAPF4/HC5FcbO4fUwXp5uPvRzMZc4C3USYprWQgCHMYCw/s1600-h/image271%255B2%255D"><img width="186" height="240" title="image" align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-MQWoCiAInhE/WWYL8ypbc4I/AAAAAAAAPF8/Rd8iup6a4jcx4YNQZ55uKDlSIFka1rvsgCHMYCw/image271_thumb%255B1%255D?imgmax=800" border="0"></a>Some tweaking and fiddling</h2><p>If you press the play button in Unity, you will get something like displayed to the left. A former British colleague would say something among the lines of "<a href="https://verybritishproblems.teemill.co.uk/product/bloody-hell-t-shirt/" target="_blank">It's not quite what I had in mind</a>". But we can fix this, fortunately.</p><p>In the Menu Item Builder that you have added to HelpHolder, there's two more properties:</p><p><a href="https://lh3.googleusercontent.com/-lC12v0OH2WQ/WV_BweUmCxI/AAAAAAAAPEY/RK-2Bn6gPCA8LfEW0MUqeVa9bUw7rkFLgCHMYCw/s1600-h/image%255B26%255D"><img width="398" height="76" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-6MwYN8MCkwo/WV_Bw-F0OhI/AAAAAAAAPEc/_s-5Z3hAcnk217z17u1h6nbnNE0S2mXAQCHMYCw/image_thumb%255B13%255D?imgmax=800" border="0"></a></p><p>The first one is the relative location where the first item should appear, and the second the size allotted for each menu. Clearly the first MenuItem is placed too low. The only way to really get this done is by trial an error. The higher you make Top Margin, the higher up the first item moves. A value of 0.18 gives about this and that seems about right:</p><p><a href="https://lh3.googleusercontent.com/-XAPbpL7Q98Y/WV_BxSvcroI/AAAAAAAAPEg/eyI27lbGc4EYpZCjVzKq-dGonfZqNfw0wCHMYCw/s1600-h/image%255B34%255D"><img width="304" height="232" title="image" style="display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-NkAXPSvMGak/WV_Bx6vSCcI/AAAAAAAAPEk/y0KHU4VB-6o5fQPOKTSjqsGnRXmyCbn_QCHMYCw/image_thumb%255B17%255D?imgmax=800" border="0"></a></p><p>And 0.041 for Menu Item Size gives this:</p><p><a href="https://lh3.googleusercontent.com/-PK5qLnKRYZs/WV_ByLDyPFI/AAAAAAAAPEo/fqxpxvKNVLAsZC6utQmXqJhilN3qYcdYwCHMYCw/s1600-h/image%255B35%255D"><img width="304" height="220" title="image" style="display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-VGwIQ6jGN7I/WV_BysABH6I/AAAAAAAAPEs/L_pWV0MaDE851zeOdU356O6oC_MLGBi1wCHMYCw/image_thumb%255B18%255D?imgmax=800" border="0"></a></p><p>Which is just what you want - a tiny little space between the menu items. Like I said, just trial and error.</p><h2>Testing if its works</h2><p>Once again, a bit lame: a simple behaviour to listen to the menu selection messages:</p><pre style="font-size: 11px;">using HoloToolkitExtensions.Messaging;
+
+public class MenuListener : MonoBehaviour
+{
+    // Use this for initialization
+    void Start()
+    {
+        Messenger.Instance.AddListener&lt;MenuSelectedMessage&gt;(ProcessMenuMessage);
+    }
+
+    private void ProcessMenuMessage(MenuSelectedMessage msg)
+    {
+        if (msg.MenuItem.MenuId == 1 )
+        {
+            Debug.Log("Taking you to " + msg.MenuItem.Title);
+            Debug.Log(msg.MenuItem.SelectMessageObject.ToString());
+        }
+    }
+}
+</pre><p>Add this behaviour to the Managers object, click play, and sure enough if you click menu items, you will see in Unity's debug console:</p><p><a href="https://lh3.googleusercontent.com/-Su4tpan-COg/WWJffYcePxI/AAAAAAAAPFM/ZCt1bvRJLnw5588uNj7IxADy-ncwM7CnwCHMYCw/s1600-h/image%255B7%255D"><img width="350" height="260" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-qNfOnBbD8H0/WWJff3rreNI/AAAAAAAAPFQ/OSoKiRN9azEI6wGhUURJGiLIj_ij9F0AQCHMYCw/image_thumb%255B4%255D?imgmax=800" border="0"></a></p><p>Yes, I know, that's a lame demo - <em>you</em> connect something to the message that actually does something. Speak out the name. Have a dancing popup. The point is that it works and the messages get out when you click :)</p><h2>Some final look &amp; feel bits</h2><p>Yah! We have a more or less working menu but it looks kind of ugly and not everything works - the close button, for instance. Let's fix the look &amp; feel first. We needed the greenish background of the menu item to properly space and align the items, but now we do not need it anymore. So go to the MenuItemMaterial. Select a new <a href="https://lh3.googleusercontent.com/-ftWiu677OvM/WWYL9Yj_kbI/AAAAAAAAPGA/KiS42tTEpggEWglc0dYhqd8g9pqOkMLmgCHMYCw/s1600-h/image%255B23%255D"><img width="350" height="115" title="image" align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-9vn9hlMI-Hc/WWYL99awtyI/AAAAAAAAPGE/AxIeGeVDdGU863sMHsPcHqrdNa7amEjhQCHMYCw/image_thumb%255B14%255D?imgmax=800" border="0"></a>shader: under <a href="https://github.com/Microsoft/HoloToolkit-Unity" target="_blank">HoloToolkit</a>, you will find "Vertex Lit Configurable Transparent".</p><p>Then go all the way down, to "Other" and set "Cull" to front. That way, the front part of the plane - the green strips will be invisible - but still hittable. </p><p>If you press play, the menu should now look like this:</p><p><a href="https://lh3.googleusercontent.com/-dhghZON6FAI/WWYOG1Pm5XI/AAAAAAAAPGQ/Xwz2X797trU1iGVZz4y3fQUpIW3nOGgWwCHMYCw/s1600-h/image%255B27%255D"><img width="304" height="220" title="image" style="display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-voc1BQLF0x0/WWYOHDXw5lI/AAAAAAAAPGU/3gCYe2X3fV4vMNXd1RkNgMsW1_5eBor_QCHMYCw/image_thumb%255B16%255D?imgmax=800" border="0"></a></p><h2>Getting the button to work</h2><p>As stated above, the button is not working - and for a very simple reason: in my <a href="https://dotnetbyexample.blogspot.com/2017/07/building-floating-hololens-info-screen-2.html" target="_blank">previous post</a> I showed that it looks for a component in it's parent that is a BaseTextScreenController (or a child class of that). There are none. </p><p>So let's go back to the VistaMenuController again. The top says</p><pre style="font-size: 11px;">public class VistaMenuController : MonoBehaviour</pre><p>Let's change that into </p><pre style="font-size: 11px;">public class VistaMenuController : BaseTextScreenController</pre><p>You will need to add "using HoloToolkitExtensions.Animation;" to top to get this to work. You will also need to change</p><pre style="font-size: 11px;">void Start()<br>{</pre><p>into </p><pre style="font-size: 11px;">public override void Start()<br>{<br>  base.Start();</pre><p>If you now hit "Play" in Unity you will end up with this</p><p><a href="https://lh3.googleusercontent.com/-5q5SD7vXjOc/WWYL-M4wfYI/AAAAAAAAPGI/Jshs8kNpz_kUICNu_u6tcuyuGbS2jD_yQCHMYCw/s1600-h/image%255B14%255D"><img width="304" height="249" title="image" style="display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-wAgcsVQ6CT4/WWYL-cfxyHI/AAAAAAAAPGM/cqzzt4dJP7MDy6ch_dKEcYZszK0ezbEmgCHMYCw/image_thumb%255B7%255D?imgmax=800" border="0"></a></p><p>Right. Nothing at all :). This is because the base Start method (which is the Start method of BaseTextScreenController) actually <em>hides</em> the menu, on the premises that you don't want to see the menu initially. So we have to have a way to make it visible. Fortunately, that's very easy. We will just re-use the ShowHelpMessage from the previous post again to make this work. Go back one more time to the VistaMenuController "Start" method, and add one more statement:</p><pre style="font-size: 11px;">public override void Start()<br>{<br>  base.Start();<br> <strong> <font color="#ff0000">Messenger.Instance.AddListener&lt;ShowHelpMessage&gt;(m =&gt; Show());</font></strong></pre><p>If you now press play, you will still see nothing. But if you yell "Show help" to your computer (or press "0" - zero) the menu pops up and comes into view. With, I might add, the for my apps now iconic "pling" sound. And if you click the button, the menu will disappear with the equally iconic "clonk" .</p><h2>Some concluding remarks</h2><p>Of course, this is still pretty primitive. With the current font size and menu item size, stuff will be happily rendered outside of the actual menu screen if your texts are too long or you have more than 7 menu items. That is because the screen is just a floating backdrop. Scrolling for more items? Nope. Dynamic or manual resizing? Nope. But it is a start, and I have used it with great success. </p><p>Let me know if this was valuable to you, and what you used it for. <a href="https://github.com/LocalJoost/FloatingDynamicMenuDemo" target="_blank">Full demo project at GitHub</a>, as always.</p>

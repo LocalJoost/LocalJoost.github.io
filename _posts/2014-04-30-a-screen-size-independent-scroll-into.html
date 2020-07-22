@@ -1,0 +1,108 @@
+---
+layout: post
+title: A screen-size independent scroll-into-view pane for Windows Phone and Windows
+  Store apps
+date: '2014-04-30T16:25:00.001+02:00'
+author: Joost van Schaik
+tags:
+- windev
+- Windows Phone
+- Windows 8
+- XAML
+- behavior
+modified_time: '2014-05-01T08:34:51.726+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3962243993965437944
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/04/a-screen-size-independent-scroll-into.html
+---
+
+<p>In <a href="http://dotnetbyexample.blogspot.nl/2013/09/a-behavior-to-implement-scroll-into.html" target="_blank">this article</a> I introduced <a href="http://wpwinnl.codeplex.com/SourceControl/latest#win81/WpWinNl/Behaviors/MoveObjectBehavior.cs" target="_blank">MoveObjectBehavior</a> and a way to use it to make Facebook-app like scroll-into-view panes. All very nice, but with a minor drawback – it basically needs a fixed screen size. That’s OK under <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> 8 (albeit it does not look so good on a Lumia 1520) but still – you got away with it.</p> <p>That is no longer the case in Windows Phone 8.1, and it never was the case in <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a>. You have to take multiple screen sizes into account now, and in the case of Windows 8 the screen size can change while the app is running – as the user can arbitrarily change the horizontal space an app is using while it’s running. </p> <p>Like this:</p> <div id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:456922bc-3d72-488a-9a12-a598a60528e6" class="wlWriterEditableSmartContent" style="float: none; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px"><div><object width="587" height="330"><param name="movie" value="http://www.youtube.com/v/n_Q6BiWg-vk?hl=en&amp;hd=1"></param><embed src="http://www.youtube.com/v/n_Q6BiWg-vk?hl=en&amp;hd=1" type="application/x-shockwave-flash" width="587" height="330"></embed></object></div><div style="width:587px;clear:both;font-size:.8em">Scroll-into-view pane for Windows 8</div></div> <p>Now MoveObjectBehavior has an ActivatedXValue Property and of course I could try, in stead of setting a fixed value, to bind that to the value of ActualWidth of the Page. Unfortunately that is not a Dependecy Property, so although it works initially, changes to it’s value are not populated. Yet, as you can see above, it can be done, and with a pretty animation as well.</p> <p>This, of course, is were a second behavior comes in handy. Meet SizeListenerBehavior:</p><pre>using Windows.UI.Xaml;
+
+namespace WpWinNl.Behaviors
+{
+
+  /// &lt;summary&gt;
+  /// This behavior listens to a size change of the attached object
+  /// and puts the resulting size into two bindable dependecy properties
+  /// &lt;/summary&gt;
+  public class SizeListenerBehavior : SafeBehavior&lt;FrameworkElement&gt;
+  {
+    protected override void OnSetup()
+    {
+      AssociatedObject.SizeChanged += AssociatedObjectSizeChanged;
+      base.OnSetup();
+      PropagateSizes();
+    }
+
+    protected override void OnCleanup()
+    {
+      AssociatedObject.SizeChanged -= AssociatedObjectSizeChanged;
+      base.OnCleanup();
+    }
+
+    void AssociatedObjectSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+      PropagateSizes();
+    }
+
+    private void PropagateSizes()
+    {
+      WatchedObjectHeight = AssociatedObject.ActualHeight;
+      WatchedObjectWidth = AssociatedObject.ActualWidth;
+    }
+  }
+}</pre>
+<p>It is very simple - it listens to the SizeChanged event that <em>does</em> get triggered on any size change, then populates that to two dependency properties. And <em>those</em> <em>are bindable</em>. I omitted both properties from the code above as they are fairly standard. So if you give the behavior a <em>name </em>you can use <em>Element binding</em> to bind this properties to MoveObjectBehavior.</p>
+<p>Which is done like this:</p><pre style="font-size: 12px">&lt;Page
+    x:Class="SizeListener.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:interactivity="using:Microsoft.Xaml.Interactivity"
+    xmlns:behaviors="using:WpWinNl.Behaviors"
+    mc:Ignorable="d" <br>    DataContext="{Binding Source={StaticResource DemoViewModelDataSource}}"&gt;
+
+
+  &lt;Page.BottomAppBar &gt;
+    &lt;CommandBar x:Name="BottomBar"&gt;
+      &lt;AppBarButton Icon="Help" Command="{Binding MyCommand}"&gt;
+      &lt;/AppBarButton&gt;
+    &lt;/CommandBar&gt;
+  &lt;/Page.BottomAppBar &gt;
+
+  &lt;interactivity:Interaction.Behaviors&gt;
+    <strong><font color="#ff0000"><u>&lt;behaviors:SizeListenerBehavior x:Name="pageRootSizeListener"/&gt;</u></font></strong>
+  &lt;/interactivity:Interaction.Behaviors&gt;
+  &lt;Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" &gt;
+    &lt;Grid&gt;
+      &lt;interactivity:Interaction.Behaviors&gt;
+        &lt;behaviors:MoveObjectBehavior Activated="{Binding ShowSettings}" 
+                                      Duration="1000" 
+                                      <strong><font color="#ff0000">ActivatedXValue="{Binding WatchedObjectWidth,</font></strong> 
+                                      <strong><u><font color="#ff0000">ElementName=pageRootSizeListener}"</font></u></strong>/&gt;
+      &lt;/interactivity:Interaction.Behaviors&gt;
+      &lt;Grid Background="Green"&gt;
+        &lt;Grid Margin="50"&gt;
+          &lt;TextBlock FontSize="50"&gt;THIS IS MY MAIN PAGE&lt;/TextBlock&gt;
+        &lt;/Grid&gt;
+      &lt;/Grid&gt;
+
+      &lt;Grid RenderTransformOrigin="0,0.5" Background="Blue"&gt;
+        &lt;Grid.RenderTransform&gt;
+          &lt;CompositeTransform ScaleX="-1"/&gt;
+        &lt;/Grid.RenderTransform&gt;
+        &lt;Grid&gt;
+          &lt;Grid RenderTransformOrigin="0.5,0.5" Margin="50" &gt;
+            &lt;Grid.RenderTransform&gt;
+              &lt;CompositeTransform ScaleX="-1"/&gt;
+            &lt;/Grid.RenderTransform&gt;
+            &lt;TextBlock FontSize="50"&gt;THIS IS MY MESSAGE PAGE&lt;/TextBlock&gt;
+          &lt;/Grid&gt;
+        &lt;/Grid&gt;
+      &lt;/Grid&gt;
+    &lt;/Grid&gt;
+  &lt;/Grid&gt;
+&lt;/Page&gt;</pre>
+<p>You see the parts that are actually do the work underlined, red and bold (so I hope that this is clear for everyone, even color blind people).</p>
+<p>The trick with the mirroring grids to put stuff to the left (and the right) of your screen is described in my article, <a href="http://dotnetbyexample.blogspot.nl/2013/09/aligning-xaml-elements-outside-screen.html" target="_blank">Aligning XAML elements outside the screen using scaling (for a Facebook-like GUI)</a>, so I won’t repeat that here.</p>
+<p>The demo solution can be found <a href="http://www.schaikweb.net/dotnetbyexample/SizeListener.zip" target="_blank">here</a>. If you are looking for the source in the code, you can keep looking, as it’s been sitting in my <a href="http://wpwinnl.codeplex.com/" target="_blank">WpWinNl</a> library on CodePlex for a while – but I just did not have the time to blog about it. If you want just the behavior’s source, that’s <a href="http://wpwinnl.codeplex.com/SourceControl/latest#win81/WpWinNl/Behaviors/SizeListenerBehavior.cs" target="_blank">here</a>.</p>  

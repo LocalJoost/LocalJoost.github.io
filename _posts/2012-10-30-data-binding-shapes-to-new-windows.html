@@ -1,0 +1,88 @@
+---
+layout: post
+title: Data binding shapes to the new Windows Phone 8 Map control (and more)
+date: '2012-10-30T19:25:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- Mapping
+- dotnetmag
+- MVVM
+- MVVM Light
+modified_time: '2012-11-23T21:48:04.921+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1323957409596803256
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/10/data-binding-shapes-to-new-windows.html
+---
+
+<p><font size="4">A little history</font></p>When I accepted the invitation from <a href="http://www.eventbrite.com/event/4039089024/eorg">MADNbe to talk about Maps and MVVM on September 20</a> early in the summer (or what was supposed to be the summer) of 2012 the actual release date for the <a href="http://wpdev.ms/wpsdkdl?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone SDK 8.0</a> was still a mystery. As it gradually became clear the SDK would not be available at the date my talk was scheduled, I devised a plan B and in stead talked about Windows Phone 7 mapping and how to port this code and knowledge to <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a>. I also <a href="http://dotnetbyexample.blogspot.nl/2012/09/data-binding-shapes-to-winrt-bing-maps.html">wrote a blog post I wrote about it</a>. Now the funny thing is - the Windows Phone 8 mapping control and the Windows 8 Bing Maps control show some remarkable similarities. So if you read this article and think “Huh? I’ve read this before” that’s entirely possible!&nbsp; <p><a href="http://www.schaikweb.net/dotnetbyexample/019e0590d2d4_AD04/Hello-8-World.png"><img title="Hello 8 World" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="Hello 8 World" align="right" src="http://www.schaikweb.net/dotnetbyexample/019e0590d2d4_AD04/Hello-8-World_thumb.png" width="161" height="274"></a>So world in general, and Belgium in particular, meet the new Hello World, Windows Phone 8 style!</p> <p><font size="4">Windows Phone 7 map binding recap</font> </p> <p>Not going to happen - I am not going to repeat myself for the sake of content ;-). In the <a href="http://dotnetbyexample.blogspot.nl/2012/09/data-binding-shapes-to-winrt-bing-maps.html">the Windows 8 article I give a short recap</a> of how you can bind to a Windows Phone 7 map, using templates. I’d suggest you read that if you haven’t done so already ;-). By the way, the sample solution contained with this project is mostly the same as the <a title="here" href="http://www.schaikweb.net/dotnetbyexample/mvvmmaps.zip">sample Windows Phone 7</a> application I use in my talk. I upgraded to Windows Phone but did not even bother to change the libraries I used. (like <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a>, <a href="http://phone7.codeplex.com/" target="_blank">Phone7.Fx</a> or my own <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library</a>). That’s still Windows Phone 7 code and you call that code from Windows Phone 8 without any problem. Very soon I hope to publish updates for the libraries specific to the platform, and you will see them appearing in your NuGet package manager. The only thing you have to keep in mind is that the app no longer runs in quirks mode once you upgraded to Windows Phone 8. That means – if your library code does something funky that has a different behavior under Windows Phone 8, the platform is not going to help you keep that funky behavior&nbsp; - unlike when you run a (real) Windows Phone 7 app on it. </p> <p><font size="4">Data binding and the new map control</font></p> <p>Without cheering overly loud for ‘my’ home team, I actually think the Windows Phone mapping team actually has done a better job on this part than their Windows 8 brethren. That’s actually not so very hard, as the Windows 8 Bing Maps control does not support data binding <em>at all. </em>The Windows Phone 8 control actually (still) supports the binding of Center and ZoomLevel, as well as the new properties CartographicMode, LandMarksEnabled, Heading and Pitch, – “Heading” being the direction of the top of the map, default 0, being North – and Pitch the viewing angle of the map (normally zero, or ‘straight from above’). And probably some more I haven’t used yet.</p> <p>But as far as drawing shapes on the maps are concerned, we are in the same boat as in Windows 8:</p> <ul> <li>The shapes the control draws cannot be templated. They are apparently just projections of something native (as is the map itself).  <li>There are only two kinds of shapes: MapPolygon and MapPolyline, both descending from MapElement (as opposed to <em>MapShape</em> in Windows 8), which in turn descends from DependencyObject – so I can use the same trick again – storing data in attached dependency properties.</li></ul> <p>To solve this, I use the same approach as I did in Windows 8: apply behaviors. Only that’s a lot easier now because unlike Windows 8, Windows Phone 8 supports behaviors out of the box.</p> <p><font size="4">Introducing MapShapeDrawBehavior for Windows Phone 8</font><font size="4"><br></font></p> <p>This behavior is, just like it’s Windows 8 brother, called MapShapeDrawBehavior. It’s use is quite similar:<br></p><pre>&lt;Maps:Map x:Name="map" CartographicMode="Road"&gt;
+  &lt;i:Interaction.Behaviors&gt;
+    &lt;MapBinding:MapShapeDrawBehavior LayerName="Roadblocks" 
+       ItemsSource="{Binding RoadBlocks}" 
+       PathPropertyName="Geometry"&gt;
+      &lt;MapBinding:MapShapeDrawBehavior.EventToCommandMappers&gt;
+        &lt;MapBinding:EventToCommandMapper EventName="Tap" 
+                                         CommandName="SelectCommand"/&gt;
+      &lt;/MapBinding:MapShapeDrawBehavior.EventToCommandMappers&gt;
+      &lt;MapBinding:MapShapeDrawBehavior.ShapeDrawer&gt;
+        &lt;MapBinding:MapPolylineDrawer Color="Green" Width="10"/&gt;
+      &lt;/MapBinding:MapShapeDrawBehavior.ShapeDrawer&gt;
+    &lt;/MapBinding:MapShapeDrawBehavior&gt;
+  &lt;/i:Interaction.Behaviors&gt;
+&lt;/Maps:Map&gt;</pre>
+<p>The only difference, in fact, with the Windows 8 behavior is that there is not a TapCommand <em>property</em> but an EventMapper <em>collection</em>. That is because unlike the Windows 8 map shapes, Windows Phone 8 shapes don’t support events <em>at all</em>. These are events of the <em>map</em>. There aren’t any layers for shapes too – there is just a MapElements collection that you can add shapes to. </p>
+<p>So for every<em> </em>category of objects you define a behavior; in this case the road blocks (the green line on the app sceenshot above). This translates conceptually to a ‘layer’. Then you need to define three things per layer: 
+<ul>
+<li>Which property in the item view model contains the <em>Path</em> – this is the terminology for a MapElement collection of points. This is of type <em>GeoCoordinateCollection</em>. 
+<li><em>A</em>&nbsp;<em>drawer</em>. A drawer is a concept I made up myself. It’s a class that creates a shape from a collection of points contained in a GeoCoordinateCollection. It’s my way to make something that’s not templatable more or less configurable and the idea behind is exactly the same as for Windows 8. 
+<li>What command in the item view model (in this case, a RoadBlockViewModel) must be called when a GestureEvent is called on the map. This can be either Tap or DoubleTap. You do this by adding an EventToCommandMapper to the EventToCommandMappers list. </li></ul>
+<ul></ul>
+<ul></ul>
+<ul></ul>
+<ul></ul>
+<p>This behavior comes, just like it’s Windows 8 brother,&nbsp; the three out-of-the box standard drawers: MapPolylineDrawer, MapPolygonDrawer, and MapStarDrawer. The last one draws a configurable star shaped polygon around a point – since map shapes cannot be points by themselves. A drawer needs only to implement one method:</p><pre>public override MapElement CreateShape(object viewModel, LocationCollection path)</pre>
+<p>The basic drawers don’t do anything with the view model: they just take the settings from XAML. You can write your own if you want for instance return a shape of a different color based upon view model values. Thematic mapping again, just like I said last time. 
+<p>If you just want to use the behavior, download the <a href="http://www.schaikweb.net/dotnetbyexample/mvvmmaps728.zip">sample solution</a>, rip the Wp8nl.Contrib project from it and use it. It just needs a reference to System.Windows.Interactivity.dll, that’s about all. 
+<p><font size="4">Some technical details</font></p>As the inner workings of the behavior are almost identical to that of their Windows 8 counterparts, I am not going to recap everything again. The trick is the same: view models and layer names are stored in and retrieved from attached dependency properties that are attached to the shapes themselves - the behavior uses this how to hold view models and map shapes together, and which shape belongs to which layer. For the technically interested I will stress a few small points. First of all, I already said the map elements themselves don’t have any events. Therefore, I have to attach events to the <em>map</em>, using the “AddEventMappings” method that’s loaded when the behavior’s OnLoad is called: <pre>private void AddEventMappings()
+{
+  foreach (var mapper in EventToCommandMappers)
+  {
+    var evt = AssociatedObject.GetType().GetRuntimeEvent(mapper.EventName);
+    if (evt != null)
+    {
+      AddEventMapping(mapper);
+    }
+  }
+}
+
+private void AddEventMapping(EventToCommandMapper mapper)
+{
+  Observable.FromEvent&lt;GestureEventArgs&gt;(AssociatedObject, mapper.EventName)
+    .Subscribe(se =&gt;
+     {
+       var gestureArgs = se.EventArgs;
+       if (gestureArgs != null)
+       {
+         var shape = 
+            AssociatedObject.<font color="#ff0000">GetMapElementsAt</font>(
+               gestureArgs.GetPosition(AssociatedObject)).FirstOrDefault(
+                 p =&gt; MapElementProperties.GetLayerName(p)==LayerName);
+         if (shape != null)
+         {
+           FireViewmodelCommand(
+             MapElementProperties.GetViewModel(shape), mapper.CommandName);
+         }
+       }
+     });
+}</pre>
+<p>So this works fundamentally different from it’s Windows 8 counterpart: not the shapes respond to events, but the <em>map</em> does so, and reports the shapes found at a location of the tap or the doubletap. The shapes in question can be retrieved using the map’s GetMapElementsAt method. And then I select the first shape I find that has the same layer name in it’s LayerName attached dependency property as the behavior. Note this filter is necessary: the <em>map</em> reports the shapes and it reports <em>all</em> of them - since there is no real layer structure the map has no notion of which behavior put the shape on the map. And you don’t want every behavior reporting all other shapes that happen to be on the same location as well – that would result in double events. But if the behavior finds a hit, it calls the FireViewModelCommand, which is essentially the same as in Windows 8, and it shows the window with alphanumeric info. That part has not been changed at all.</p>
+<p>The rest of the behavior is mainly concerned with adding, removing and replacing shapes again. I would suggest you’d study that if you are interested in how to respond to the various events of an ObservableCollection. To prove that data binding actually works, you can open the menu and select “change dhl building”.&nbsp; That’s the most eastward building on the map. If you choose that, you will actually see the building change shape. The only thing the TestChangedShapeCommand command - that’s called when you hit that menu item – does, it change a building’s geometry property. The image on the map is updated automatically.</p>
+<p><font size="4">Some concluding observations</font></p>
+<p>Somewhere down in the guts of Windows Phone 8 there’s a native control, and I very much think both it and it’s Bing Maps control for Windows 8 counterpart are of the same breed. Both have similar, yet subtly different projections to managed code. As I already mentioned – in Windows 8 the shapes descend from MapShape, in Windows Phone 8 from MapElement. In addition, Windows Phone Map Elements support StrokeColor, StrokeThickness and StrokeDash – no such thing on Windows 8 - one more cheer for the Windows Phone team ;). But neither are supporting complex shapes and things like donuts (polygons with holes in it). These are the hallmarks of the real heavy duty GIS systems like the stuff <a href="http://www.cadcorp.com/">Cadcorp</a>. <a href="http://www.esri.com/">ESRI</a> et al are making. </p>
+<p>Also important when sharing code is to note the following:</p>
+<ul>
+<li>In Windows Phone 7, we made shapes from a LocationCollection, which is a collection of GeoCoordinate 
+<li>In Windows Phone 8, shapes are created from a GeoCoordinateCollection, which is a collection of GeoCoordinate 
+<li>In Windows 8, shapes are created from a LocationCollection which is a collection of Location. </li></ul>
+<p>So <em>both</em> platforms refactored the Locations and their collection, and both in opposite ways. This can be solved by using converters or a generic subclass specific for both platforms but I leave things like that as exercise for the reader. The fun thing is: once again it shows that a lot of code can be reused as long as you keep application and business logic in models and view models – that way, you only have to deal with user interface and platform considerations, but your basic app structure stays intact. Once more: three cheers for MVVM.</p>
+<p>And as usual you can download the <a href="http://www.schaikweb.net/dotnetbyexample/mvvmmaps728.zip">sample solution</a>. I will shortly add this stuff to the Windows Phone 8 specific version of the <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on CodePlex</a></p>
+<p>Happy mapping on <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> 8! </p>  

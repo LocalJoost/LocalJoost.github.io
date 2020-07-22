@@ -1,0 +1,166 @@
+---
+layout: post
+title: A HoloLens airplane tracker 7–activating an aircraft by air tapping
+date: '2016-11-13T07:03:00.000+01:00'
+author: Joost van Schaik
+tags:
+- UWP
+- HoloLens
+- Spatial Sound
+- Unity3D
+- Azure
+modified_time: '2016-12-29T08:38:33.125+01:00'
+thumbnail: https://lh3.googleusercontent.com/-QCL9lxS4dKE/WCgCFmDEflI/AAAAAAAAOYc/DHju8giURX0/s72-c/image_thumb%25255B1%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5550570692610386573
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/11/a-hololens-airplane-tracker-7activating.html
+---
+
+<h2>Intro</h2> <p>In this episode I am going to describe how the airplanes are selected in the sky by air tapping them. This requires some changes made to both the Azure Mobile App service and the app. The change to the app service is necessary as I want to share the selected airplane between all possible HoloLenses using the app. Why? Because ;). You actually can do this with the app in the store. This is why sometimes airplanes get selected even when you don’t select them – that is because someone else, somewhere in the world, selects an airplane.</p> <h2>Adapting the service</h2> <p>We need to be able to post to the service which aircraft is active, and in the data that is pulled from the server the active airplane needs to be indicated. Remember in the very <a href="http://dotnetbyexample.blogspot.com/2016/10/a-hololens-airplane-tracker-1.html">first episode</a> the “Flight” object had an unused “IsActive” field? It won’t be unused very much longer. First, you add a reference to System.Runtime.Caching </p> <p><a href="https://lh3.googleusercontent.com/-JgzKJpEKk3Q/WCgCFWxMaFI/AAAAAAAAOYY/8q2_8EbP1IE/s1600-h/image%25255B3%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-QCL9lxS4dKE/WCgCFmDEflI/AAAAAAAAOYc/DHju8giURX0/image_thumb%25255B1%25255D.png?imgmax=800" width="448" height="204"></a></p> <p>Then, add using statements:</p><pre>using System.Runtime.Caching;
+using System.Net.Http;
+using System.Net;</pre>
+<p>Proceed by adding the following two fields:</p><pre>private ObjectCache Cache = MemoryCache.Default;
+
+private const string ActiveIdKey = "ActiveId";</pre>
+<p>We will need to add a method to post the desired active plane’s Id to the server:</p><pre>[HttpPost]
+public HttpResponseMessage Post(string activeId)
+{
+  Cache[ActiveIdKey] = activeId;
+  return Request.CreateResponse(HttpStatusCode.OK);
+}</pre>
+<p>Then, in the Get method, insert right before the “return flights” statement the following code:</p><pre>var activeKey = Cache[ActiveIdKey] as string;
+if (activeKey != null)
+{
+  var activeFlight = flights.FirstOrDefault(p =&gt; p.Id == activeKey);
+  if (activeFlight != null)
+  {
+    activeFlight.IsActive = true;
+  }
+}</pre>
+<p>This is a rather naive way of ‘storing’ data on a server but I am just do darn lazy to set up a database if I only want to have one simple id kept active. So I am using the MemoryCache. If you post an id to the Post method, it will simply set the cache key – which will be copied into the data in the next data download, provided it’s actually an id used in the data. Publish your service, and let’s go the Unity project again</p>
+<h2>Adding a gaze cursor – and messing a bit with it</h2>
+<p>The HoloToolkit has a number of gaze cursors, but I am not quite happy with those, so I made one for myself – by adding a bit into an existing one. The procedure is as follows:</p>
+<ul>
+<li>From HoloToolkit/Input/scripts, drag Handsmanager on top of the HologramCollection 
+<li>From HoloToolkit/Input/scripts, drag Gazemanager on top of the HologramCollection 
+<li>From HoloToolkit/Input/Prefabs, drag Cursor on top of the HologramCollection</li></ul>
+<p>Then we create a little extra behavior, called HandColorCursor </p><pre>using UnityEngine;
+using HoloToolkit.Unity;
+
+public class HandColorCursor : Singleton&lt;HandColorCursor&gt;
+{
+  // Use this for initialization
+  private GameObject _cursorOnHolograms;
+
+  public Color HandDetectedColor;
+
+  private Color _originalColor = Color.green;
+
+  void Start()
+  {
+    _cursorOnHolograms = CursorManager.Instance.CursorOnHolograms;
+    _originalColor = 
+      _cursorOnHolograms.GetComponent&lt;MeshRenderer&gt;().material.color;
+  }
+
+  // Update is called once per frame
+  void LateUpdate()
+  {
+    if (_cursorOnHolograms != null &amp;&amp; HandsManager.Instance != null)
+    {
+      _cursorOnHolograms.GetComponent&lt;MeshRenderer&gt;().material.color =
+        HandsManager.Instance.HandDetected ? Color.green : _originalColor;
+    }
+  }
+}</pre>
+<p>Drag this behavior on top of the Cursor prefab. Now if you build and run the app and point the gaze cursor to the airport it should become a kind of blue circle. If you move your hand into view, the cursor should appear and go green. </p>
+<p><a href="https://lh3.googleusercontent.com/-T7eIrPSZyyU/WCiv4rAeK9I/AAAAAAAAOYw/385PqXqzqHc/s1600-h/image%25255B4%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-yVPEzx-SgzI/WCiv43EcRtI/AAAAAAAAOY0/lvwRXDsx6Z0/image_thumb%25255B1%25255D.png?imgmax=800" width="654" height="370"></a></p>
+<p><a href="https://lh3.googleusercontent.com/-F44887GrGnU/WCjDxxsGsFI/AAAAAAAAOZE/UKUBcsC1Ohg/s1600-h/image%25255B30%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-nMCCucl8A5A/WCjDyVUOD1I/AAAAAAAAOZI/2x65NpMOQsM/image_thumb%25255B13%25255D.png?imgmax=800" width="54" align="right" height="55"></a>If you move it back, the cursor should again become blue. Unfortunately, if you point it at anything else, you will still see the fuzzy ‘CursorOffHologram’ image. That it’s because the airport is the only thing that has a collider. To make aircraft selectable, we will need to do some work at AircraftHolder.</p>
+<h2>Updating the airplane</h2>
+<p>To be selectable, it needs to have a collider. I have chosen a box collider that is pretty big with respect to the actual airplane model – to make it easier to actually select the airplane (as it can be quite some distance away, or at least seem to be) and a box makes it possible to actually see the cursor sitting pretty stable on the selection area as it hits the collider (as opposed to a mesh collider that will make it wobble around). Go to your AircraftHolder prefab in the App/Prefab folder, and add an 80x80x80 Box Collider </p>
+<p><a href="https://lh3.googleusercontent.com/-dTb2bgqaces/WCjDzElU_lI/AAAAAAAAOZM/wl8vGaOiV0E/s1600-h/image%25255B15%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-gw0RRmzHliI/WCjDz5DLMZI/AAAAAAAAOZQ/kA0o7Q4gxUY/image_thumb%25255B6%25255D.png?imgmax=800" width="304" height="70"></a></p>
+<p>And you will indeed see the cursor appear over the airplane</p><a href="https://lh3.googleusercontent.com/-gzHc9aCHh4k/WCjD0EUB72I/AAAAAAAAOZU/rriLQ22ASdQ/s1600-h/image%25255B19%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-T0BDz2RNOcw/WCjD0nTYzcI/AAAAAAAAOZY/w2BDRKUoNGQ/image_thumb%25255B8%25255D.png?imgmax=800" width="544" height="308"></a> 
+<h2>Getting some selecting done – code first</h2>
+<p>From HoloToolkit/Input/scripts, drag GestureManage on top of the HologramCollection. GestureManager sends an OnSelect message to any GameObject that happens to be hit by a gaze (and where, incidentally, the cursor is hanging out out) using this code:</p><pre>private void OnTap()
+{
+  if (FocusedObject != null)
+  {
+    FocusedObject.SendMessage("OnSelect");
+  }
+}</pre>
+<p>So there needs to be an OnSelect method in the AircraftController to handle this. First we will need to add the following fields to the AircraftController:</p><pre>private bool _isActive;
+private AudioSource _sound;
+private Dictionary&lt;MeshRenderer, Color&gt; _originalColors;</pre>
+<p>To the Start method, we add the following code, just in front of the “_initComplete = true;” statement</p><pre>_sound = GetComponent&lt;AudioSource&gt;();
+_originalColors = new Dictionary&lt;MeshRenderer, Color&gt;();
+foreach (var component in GetComponentsInChildren&lt;MeshRenderer&gt;())
+{
+  _originalColors.Add(component, component.material.color);
+}</pre>
+<p>So this actually initializes some things by getting the audio source and reads the color of all sub components – so we can revert it easily later. Then add this method:</p><pre>private void SetHighlight()
+{
+  if (_isActive != _flightData.IsActive)
+  {
+    foreach (var component in GetComponentsInChildren&lt;MeshRenderer&gt;())
+    {
+      if (component.material.color == Color.white || 
+          component.material.color == Color.red)
+      {
+        component.material.color = _flightData.IsActive ?
+           Color.red : _originalColors[component];
+      }
+    }
+    if (_flightData.IsActive)
+    {
+      _sound.Play();
+    }
+    else
+    {
+      _sound.Stop();
+    }
+    _isActive = _flightData.IsActive;
+  }
+}</pre>
+<p>If the _isActive field of the current airplane differs from the new _flightData.IsActive, then flip white things to red – or red things back to white, depending on the actual value of _flightData.IsActive. And it turns on the sound – the annoying sonar ping you saw in the movie I made in the first episode. And fortunately it can also turn in it off ;)</p>
+<p>Next, add a call to this new method at the end of the already existing “SetNewFlightData” method. Then, add this code:</p><pre>private void OnSelect()
+{
+  SendMessageUpwards("AircraftSelected", _flightData.Id);
+}</pre>
+<p>This is like SendMessage, but then <em>upwards</em> through the object hierarchy, in stead of down to the children. So this will look for an AircraftSelected method in the parent. </p>
+<p>Save the file. Now we go to the DataService, and add the following method. Make sure it is sitting between #if UNITY_UWP – #endif directives.</p><pre>#if UNITY_UWP
+public async Task SelectFlight(string flightId)
+{
+  var parms = new Dictionary&lt;string, string&gt;
+  {
+    { "activeId", flightId }
+  };
+  await _client.InvokeApiAsync&lt;List&lt;Flight&gt;&gt;("FlightData", 
+           HttpMethod.Post, parms);
+}
+#endif</pre>
+<p>This does the actual calling of the App service. And then we need to go to AircraftLoader, which plays the select sound and passes the call trough to the DataService:</p><pre>public void AircraftSelected(object id)
+{
+  _sound.Play();
+#if UNITY_UWP
+  DataService.Instance.SelectFlight(id.ToString());
+#endif
+}</pre>
+<p>Save everything, go back to Unity.</p>
+<h2>Getting some selecting done – connecting the dots in Unity</h2>
+<p>There are a few things we need to be doing in Unity, but one thing is very important. One I forgot in my first CubeBouncer demo app <em>and</em> in the app that’s in the store, simply because I was not aware of it. Fortunately someone who shall remain nameless here made me aware of it.</p>
+<p>First, in the main Unity window, hit Edit/Project Settings/Audio. Then check “Ms HRTF Spatialization” for “Spatializer plugin”</p>
+<p><a href="https://lh3.googleusercontent.com/-eDCGaUuMuBY/WCjpACkXgmI/AAAAAAAAOZs/mwakbAG-hX0/s1600-h/image%25255B34%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-3uLHZYNntBM/WCjpAS4qvdI/AAAAAAAAOZw/TBbXVnMk8WY/image_thumb%25255B15%25255D.png?imgmax=800" width="354" height="213"></a></p>
+<p>Then open the AircraftHolder prefab again, and add an AudioSource. Important advice, also from the person mentioned above: hit the “Spatialize” checkbox. Then select the “Loop” checkbox and <em>uncheck</em> the “Play On Awake” checkbox. Finally, find a sound you would like to be played by a selected airplane. I took a sonar ping. I put it in the Assets/App/Audio folder, and dragged it on the Audio Clip property. I also moved the “Spatial Blend” slider all the way to the right but I don’t think that is necessary anymore now I use the Spatializer. Net result:</p>
+<p><a href="https://lh3.googleusercontent.com/-_0-aHnJ-nKs/WCkxIkx2nyI/AAAAAAAAOaE/3he4VJFNwgo/s1600-h/image%25255B38%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-Vk8PqFPmH3g/WCkxI3OwU0I/AAAAAAAAOaI/faEYZDYipK4/image_thumb%25255B17%25255D.png?imgmax=800" width="354" height="315"></a></p>
+<p>And sure enough, if you now air tap an airplane it shows like below, and it starts pinging:</p>
+<p><a href="https://lh3.googleusercontent.com/-kNwtvuOlnrQ/WCkxJZTUqQI/AAAAAAAAOaM/8tLilF8Ck_M/s1600-h/image%25255B41%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-nckrmJ0rEec/WCkxJmFTc-I/AAAAAAAAOaQ/cFqen_v5haU/image_thumb%25255B18%25255D.png?imgmax=800" width="126" height="68"></a></p>
+<h2>Adding confirmation sound to selection</h2>
+<p>I think it’s good practice to add a confirmation sound of some sorts to any user input that is ‘understood’. This is especially necessary with speech commands, but I like to add it to air taps. Sometimes the effect of what you do is not immediately visible, and an audio confirmation the HoloLens has understood you and is working on making your command getting executed is very nice. I tend to add a kind of “pringgg” sound. I used the “Ready” file that is in Assets/App/Audio.</p>
+<p>First, add an AudioSource to the HologramCollection and drag the “Ready” sound on top of the “AudioClip” field. Don’t forget to uncheck the “Play On Awake” checkbox.Then go to the AircraftLoader behaviour. Since this receives the message from every AircraftController and passes it through to the DataService, this is a nice central place to play the confirmation sound. So we add a new field:</p><pre>private AudioSource _sound;</pre>
+<p>that needs to be initialized in the Start method:</p><pre>_sound = GetComponent&lt;AudioSource&gt;();
+</pre>
+<p>and finally in the AircraftSelected method, insert this line at the top of the method:</p><pre>_sound.Play();</pre>
+<p>And we are done. Now if you airtap on the aircraft your HoloLens will sound a ‘pringgg’ sound. That is, if you tapped correctly.</p>
+<h2>Conclusion</h2>
+<p>And that’s that. Selecting an airplane by by air tapping it it, and posting an id to the Azure Mobile App service is pretty easy indeed. A lot of the interaction components are basically dragged in from the HoloToolkit, very little actual programming is required. This is the power of the HoloToolkit – I use as much from what is already there, and make as little as possible myself. As any good programmer I am a lazy programmer ;)</p>
+<p>This blog post written far, far away from home, in Sammamish, WA, USA, shortly after the MVP summit that left me very inspired – again. After posting this I will soon retire – and go to SEA-TAC tomorrow for my flight back home in the Netherlands. </p>
+<p>Code can be found, as always, <a href="https://github.com/LocalJoost/HoloATC_Demo/tree/Blog7">here on github</a>. </p>

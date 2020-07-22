@@ -1,0 +1,16 @@
+---
+layout: post
+title: How to detect your Windows Mixed Reality app is actually running on a head
+  set
+date: '2018-04-02T17:35:00.001+02:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Windows Mixed Reality
+- Unity3D
+modified_time: '2018-04-02T17:35:33.784+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5442937779114003138
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2018/04/how-to-detect-your-windows-mixed.html
+---
+
+<p>Very short and small tip – Windows <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality</a> can run on a <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a>, on an immersive headset – but although the Store warns about necessary hardware to run the app, there’s basically nothing stopping users from installing the app on a regular Windows PC. We can discuss whether or not that is a smart thing to do, but I approach it from the other side – if a users runs my app on a device that has <em>no</em> immersive capabilities, I can either quit the app, or offer her or him some basic functionality, show menus that can be easily controlled by a mouse click, whatever. </p><p>It is actually hilariously simple to detect that: just check</p><pre>UnityEngine.XR.XRDevice.isPresent</pre><p>Which returns true if your app is running on either an immersive headset or a HoloLens, and false if the user has started it on some other Windows device.</p><p>Thanks to <a href="https://www.linkedin.com/in/peter-nolen-6918b84/" target="_blank">Peter Nolen</a> for the tip!</p>

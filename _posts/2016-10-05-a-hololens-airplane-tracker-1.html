@@ -1,0 +1,129 @@
+---
+layout: post
+title: A HoloLens airplane tracker 1–an Azure dataservice for aircraft data
+date: '2016-10-05T20:57:00.001+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- HoloLens
+- Unity3D
+- Azure
+modified_time: '2016-11-25T17:46:15.809+01:00'
+thumbnail: https://i.ytimg.com/vi/WzTCBRp6X2w/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4696051705937481517
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/10/a-hololens-airplane-tracker-1.html
+---
+
+<h2>Introduction </h2> <p>Recently I posted my first HoloLens app “<a href="ms-windows-store://pdp/?ProductId=9NBLGGH52SZP">AMS HoloATC</a>” to the public store, Now it has been showed to the important customers, I have no longer to keep it under wraps, and I can start doing what I always planned to do – bring this app in the open, and blogging in detail how I built it. So here we are, a little earlier than I anticipated. For those who have not seen it, a little video of the app, recorded the <a href="http://wortell.nl/">Wortell</a> offices, which are housed in an converted Roman Catholic church (hence some unusual details). </p><iframe height="365" src="https://www.youtube.com/embed/WzTCBRp6X2w" frameborder="0" width="650" allowfullscreen></iframe> <h2>&nbsp;</h2> <h2>A little rant</h2> <p>So why am I ‘giving this all away’? If there is one thing around the HoloLens that really annoys me it’s the <em>secrecy</em>. Not secrecy from Microsoft – I am talking about the videos that show beautiful apps, and tell <em>zilch</em> about how things are made, nothing about best practices or experiences. It’s a far cry from what I was used to in the Windows Phone and am used to in the UWP world. I get it: HoloLenses are expensive, investments need to be protected, commercial interest are at stake, your fellow community member is maybe a competitor too – but approaching how-to knowledge as a <em>trade secret </em>is taking it a bit too far IMHO. This is, after all, the age of Open Source. So I am going to show you (almost) every little detail, show you the places where I stumbled, and include all the code – like you are used from me from way back before I was MVP. I hope it will be useful for you. And I sincerely hope some more people will participate in being more open about their experiences in this new and exiting field. End of rant.</p> <h2>Planned series</h2> <p>As far as I can see, this is going to be an 8 part series. </p> <ol> <li>A data service for aircraft data (this article)  <li><a href="http://dotnetbyexample.blogspot.com/2016/10/a-hololens-airplane-tracker-2setting-up.html" target="_blank">Setting up the project and getting airplane assets</a>  <li><a href="http://dotnetbyexample.blogspot.com/2016/10/a-hololens-airplane-tracker-3creating.html" target="_blank">Creating an annotated airplane</a>  <li><a href="http://dotnetbyexample.blogspot.com/2016/10/a-hololens-airplane-tracker-4reading.html" target="_blank">Reading data and positioning airplanes</a>  <li><a href="http://dotnetbyexample.blogspot.com/2016/10/a-hololens-airplane-tracker-5-smooth.html" target="_blank">Smooth movement with iTween and adding a trail</a>&nbsp; <li><a href="http://dotnetbyexample.blogspot.com/2016/10/a-hololens-airplane-tracker-6adding.html" target="_blank">Adding an airport (and a tower)</a>  <li><a href="http://dotnetbyexample.blogspot.com/2016/11/a-hololens-airplane-tracker-7activating.html" target="_blank">Activating an aircraft by air tapping</a>  <li><a href="http://dotnetbyexample.blogspot.com/2016/11/a-hololens-airplane-tracker-8adding.html" target="_blank">Adding the church and the billboard</a></li></ol> <p>As you can see, in the first part we are not even <em>touching</em> on a HoloLens yet. So let’s get started with</p> <h2>A demo data service</h2> <p>For what I hope are obvious reasons I cannot give you access to my live data feed, but what I can do is provide a sample. It serves up a 10 hour loop of recorded live data data, using data files. And this actually the feed the app in the store uses. We start with creating an App Service called “FlightDataService”. </p> <p><a href="http://www.schaikweb.net/dotnetbyexample/6bc223385a03_F863/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/6bc223385a03_F863/image_thumb.png" width="644" height="448"></a></p> <p>I put this in a subdirectory HoloATC_Demo as this will be the home for both projects – the data service <em>and</em> the Unity projects/the UWP app. On the next screen I suggest you select ‘Host in the cloud’ on <a href="https://azure.microsoft.com">Azure</a> indeed and take it from there. Provided of course you have an Azure subscription. If you don’t, <a href="https://azure.microsoft.com/en-us/free/">take a free trial.</a> </p> <p><a href="http://www.schaikweb.net/dotnetbyexample/6bc223385a03_F863/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/6bc223385a03_F863/image_thumb_3.png" width="644" height="503"></a></p> <p>I will skip the details of hosting the service in the cloud for now, you can also do that later. First, we do a big cleaning out. We empty the Controllers, DataObjects and Models directory of the project. Then open App_Start/Startup.MobileApp.cs and remove the class MobileServiceInitializer at the bottom of the file, as well as line 25 and 26 of the Startup class:</p><pre>// Use Entity Framework Code First to create database tables based on your DbContext
+Database.SetInitializer(new MobileServiceInitializer());</pre>
+<p>Also, use all unused namespaces in that file, in particular FlightDataService.DataObjects and FlightDataService.Models as they no longer exist.</p>
+<h2>Adding data objects</h2>
+<p>The service employs two data objects and one enumeration. The last one is the most simple:</p><pre>namespace FlightDataService.DataObjects
+{
+  public enum TrackType
+  {
+    Up = 1,
+    Down = 2
+  }
+}</pre>A plane is either going up or down. At least - for now. Then we need a coordinate, and this looks a bit peculiar <pre>namespace FlightDataService.DataObjects
+{
+  public class Coordinate
+  {
+    public double Lon { get; set; }
+    public double Lat { get; set; }
+    public double? Alt { get; set; }
+    public double X { get; set; }
+    public double Y { get; set; }
+    public double Z { get; set; }
+  }
+}
+
+</pre>
+<p>There’s not only Latitude, Longitude and Altitude, but also X, Y and Z. This is is the already converted Lat/Lon/Alt coordinate into Unity X/Y/Z space as used by HoloLens. How this is done, you can read in <a href="http://dotnetbyexample.blogspot.com/2016/09/converting-latlon-coordinates-to-local.html">the precursor to this series</a>. You won’t see this conversion in the solution as this is already converted data. But the important point it this – for every every airplane, it’s coordinate and that of it’s track (see later) needs to be converted by a set of complex mathematical calculations. Every 10 seconds the HoloLens app will pull in new aircraft data, this may means every 10 seconds up to 500 points need to be converted. it’s much more logical to run that conversion where the available computing power is next to unlimited – in <em>Azure</em> – in stead of a HoloLens, whose resources are limited to what Microsoft could cram into it. </p>
+<p>The final data class is the Flight:</p><pre>using System.Collections.Generic;
+
+namespace FlightDataService.DataObjects
+{
+  public class Flight
+  {
+    public Flight()
+    {
+      Track = new List&lt;Coordinate&gt;();
+    }
+
+    public string Id { get; set; }
+
+    public string FlightNr { get; set; }
+
+    public string Aircraft { get; set; }
+
+    public Coordinate Location { get; set; }
+
+    public double? Speed { get; set; }
+
+    public double? Heading { get; set; }
+
+    public List&lt;Coordinate&gt; Track { get; set; }
+
+    public TrackType TypeTrack { get; set; }
+
+    public bool IsActive { get; set; }
+
+    public override string ToString()
+    {
+      return string.Format("{0} {1} {2} {3} {4} {5}", FlightNr, Aircraft,  
+        Location.Alt, Speed, Heading, TypeTrack).Trim();
+    }
+  }
+}</pre>
+<p>My aircraft data feed does not always give speed or heading, especially when airplanes just have taken off, so both are nullable types. Notice also the track – the list of points where the aircraft has already been observed. IsActive is a special case – we won’t use that until much much later.</p>
+<h2>Adding a controller</h2>
+<p>We add a simple Azure Mobile App Custom Controller “FlightDataController”</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/6bc223385a03_F863/image_4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/6bc223385a03_F863/image_thumb_4.png" width="644" height="129"></a></p>
+<p>And put the following code in it:</p><pre style="font-size: 12px">using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Web.Http;
+using FlightDataService.DataObjects;
+using Microsoft.Azure.Mobile.Server.Config;
+using Newtonsoft.Json;
+
+namespace FlightDataService.Controllers
+{
+  [MobileAppController]
+  public class FlightDataController : ApiController
+  {
+    // GET api/FlightData
+    [HttpGet]
+    public List<flight> Get()
+    {
+      var dataDirectory = new DirectoryInfo(
+        System.Web.HttpContext.Current.Server.MapPath(@"~/App_Data"));
+
+      var time = DateTimeOffset.UtcNow;
+      var maxPattern = $"{time.Hour % 10 + 8:00}_{time.Minute:00}_{time.Second:00}.json";
+      var datafile =
+          dataDirectory.EnumerateFiles()
+              .Where(p =&gt; string.Compare(p.Name, maxPattern, StringComparison.Ordinal) &gt;= 0)
+              .OrderBy(p =&gt; p.Name)
+              .First();
+      using (var stream = datafile.OpenText())
+      {
+        var flights = JsonConvert.DeserializeObject<list><flight>&gt;(stream.ReadLine());
+        return flights;
+      }
+    }
+  }
+}
+</pre>
+<p>So what does this do? Well, basically look for a json file with a HH_mm_ss.json name. I have recorded a 10 hour loop from 8am to 6pm and this algorithm makes sure the data files are served up in the right order. It takes the first file whose name is ‘larger or equal’ (i.e. represents the same or a later time) than the actual time.</p>
+<p>And that’s it for this very humble start. Publish it to Azure somewhere, and note the URL. You cannot test it directly in your browser because it’s an Azure App Service. If you run the service and&nbsp; hit <a title="http://localhost:59541/api/flightdata" href="http://localhost:59541/api/flightdata">http://localhost:59541/api/flightdata</a> in your browser you get {"message":"No API version was specified in the request, this request needs to specify a ZUMO-API-VERSION of '2.0.0'. For more information and supported clients see: http://go.microsoft.com/fwlink/?LinkId=690568#2.0.0"} </p>
+<p>You can test it using Fiddler though by using the composer:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/6bc223385a03_F863/image_5.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/6bc223385a03_F863/image_thumb_5.png" width="644" height="135"></a></p>
+<p>The important thing is adding ZUMO-API-HEADER:2.0.0 to the headers, then hit execute. In the session list to the left you will see then </p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/6bc223385a03_F863/image_6.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/6bc223385a03_F863/image_thumb_6.png" width="644" height="50"></a></p>
+<p>And on the right hand side below the composer a lot of JSON:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/6bc223385a03_F863/image_7.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/6bc223385a03_F863/image_thumb_7.png" width="644" height="308"></a></p>
+<p>That is, if you select TextView. Right. Our service is now working. We can now move on to make a real HoloLens application that read this stuff and transforms it into airplanes moving through your room.</p>
+<p>Code, as always, can be viewed on and downloaded <a href="https://github.com/LocalJoost/HoloATC_Demo/tree/Blog1">from GitHub.</a></p>

@@ -1,0 +1,81 @@
+---
+layout: post
+title: Caveats when migrating existing CLSA.NET objects to Silverlight
+date: '2010-04-01T22:21:00.000+02:00'
+author: Joost van Schaik
+tags:
+- CSLA
+- dotnetmag
+- Silverlight
+modified_time: '2010-04-06T11:17:29.847+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3401603541015256451
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/04/caveats-when-migrating-existing-clsanet.html
+---
+
+<p>So you have been working for a while with <a href="http://www.lhotka.net/cslanet/" target="_blank">CSLA .NET</a> by <a href="http://twitter.com/RockyLhotka" target="_blank">Rockford Lhotka</a> and now you want – like me – jump on the Silverlight bandwagon. So you want to reuse the business objects in Silverlight. There are some nice samples in the cslalight samples but when I started to try to use my own business objects, things did not run so smoothly as the samples suggest.</p>  <p>The samples by Rockford show the general outline:</p>  <ul>   <li>You make a second assembly into which you add the exisiting business class source files as a link </li>    <li>You start adding specific Silverlight functionality surrounded by      <br />#if SILVERLIGHT (…) #endif preprocessor directives </li>    <li>You make sure that the server stuff like data access is not active in the Silverlight configuration (#if !SILVERLIGHT)</li>    <li>You add a Silverlight-specific factory method to load an object, that looks a bit like this: </li> </ul><pre>public static void Get(int id, 
+  EventHandler&lt;DataPortalResult&lt;MyBusinessClass&gt;&gt; callback)
+{
+  var dp = new DataPortal&lt;MyBusinessClass&gt;( );
+  dp.FetchCompleted += callback;
+  dp.BeginFetch( new IdCriteria(id) );
+}</pre><p>If you try to call this from your Silverlight client the result is - unless you are very lucky - most likely that the sky starts caving in. Turns out there are a few 'hidden requirements' –or at least some less apparent ones. Maybe there are more, but this was what I found so far:</p>
+<ul>
+  <li>Both the Silverlight and the full framework assemblies must have the same <em>name</em>, so even if your <em>projects</em> are called MyLib.Server and MyLib.Client, the resulting dll’s <em>must</em> have the same name, for example MyLib.dll. </li>
+
+  <li>If your full framework assembly is signed, your Silverlight assembly should be signed as well. They then also must have the same <em>version number – all the way to the <u>build number</u>.</em> This is important – and it took me the most time before the penny dropped.</li>
+
+  <li>All the Silverlight classes <em>must </em>have <em>public constructors</em>. So you add </li>
+</ul><pre>#if! SILVERLIGHT   
+  private MyBusinessClass()
+  {
+  }
+#else
+  public MyBusinessClass()
+  {
+  }
+#endif</pre><ul>
+  <li>Properties should be defined in the ‘modern’ format. You have still properties in this format? </li>
+</ul><pre>private string _oldProp = string.Empty;
+
+public string OldProp
+{
+  get
+  {
+    return _oldProp;
+  }	 
+  set
+  {
+    if (value == null) value = string.Empty;
+    if (!_oldProp.Equals(value))
+    {
+      _oldProp = value;
+      PropertyHasChanged(&quot;OldProp&quot;);
+    }
+  }
+}</pre>Tough luck. Change that into the 'new' form, e.g.<pre>private static PropertyInfo<string> NewPropProperty = 
+  RegisterProperty<string>(c =&gt; c.NewProp);
+public string NewProp
+{
+	get { return GetProperty(NewPropProperty); }
+	set { SetProperty(NewPropProperty, value); }
+}</pre><ul>
+  <li>Criteria objects should have public constructors as well, and should be public classes – that is, if you have defined them as private classes inside your business object, you should make them public </li>
+
+  <li>Your Criteria should implement IMobileObject. The easiest way is to let your class descend from CriteriaBase, but then you will find out that although the <em>class</em> is serialized to the server, the <em>properties</em> are not. Turns out that for Criteria objects the property format has changed too. In the past you could just make a simple class with a few getters and setters, now you have to make something along this line: </li>
+</ul><pre>[Serializable]
+public class IdCriteria : CriteriaBase
+{
+  public static PropertyInfo&lt;int&gt; IdProperty = 
+    RegisterProperty(typeof(IdCriteria), new PropertyInfo&lt;int&gt;(&quot;Id&quot;));
+  public int Id
+  {
+    get { return ReadProperty(IdProperty); }
+    set { LoadProperty(IdProperty, value); }
+  }
+  public IdCriteria() { }
+
+  public IdCriteria(int id)
+  {
+    Id = id;
+  }
+}</pre><p>So, although CLSA ‘light’ promises a lot of reuse (which is true of course, in the case of business and validation rules) you need a lot of extra plumbing to get going. And mind you, this is a simple single object that I only read – I haven’t covered lists yet, nor updates and deletes. The power of CSLA can come to Silverlight – but certainly for existing libraries it is not quite a free ride. But then again - this is Silverlight, so it should run on Windows Phone 7 series as wel... which will be my next experiment. I will keep you posted!</p>  

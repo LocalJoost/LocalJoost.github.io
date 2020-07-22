@@ -1,0 +1,53 @@
+---
+layout: post
+title: Xamarin Forms 2.1 upgrade–some surprises (and how to get around it)
+date: '2016-03-30T13:53:00.001+02:00'
+author: Joost van Schaik
+tags:
+- XPlat
+- Xamarin Forms
+- Xamarin
+- behavior
+modified_time: '2016-03-30T15:28:14.912+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8349421411319589078
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/03/xamarin-form-21-upgradesome-surprises.html
+---
+
+<p>Back in June I wrote about a <a href="http://dotnetbyexample.blogspot.com/2015/06/view-model-driven-animations-using.html" target="_blank">proof-of-concept for view model driven animations using behaviors</a> in Xamarin Forms. This concept made it into my employer’s standard Xamarin library (more about that soon) but after an upgrade I noticed the animation behaviors did not work anymore – at least on Android. I have no idea what happened along the way, but fact is that the the behavior no longer worked after upgrading to Xamarin Forms 2.1. A prolonged debugging session learned me the following:</p> <ol> <li>At the ViewAppearing stage user interface elements don’t have a size allocated yet – whereas they <em>used</em> to have that.  <li>A parent object - especially something a grid – does not does not necessarily has to have it’s size set yet (width and height are still –1)</li></ol> <p>I will write about this soon in more detail, but what needs to be done to get this working again is:</p> <ol> <li>We need to initialize the behavior on the page’s OnSizeAllocated, not the OnViewAppearing method  <li>We need to go up recursively until we find an element that does <em>not</em> have a size of –1 in stead of blindly taking the parent.</li></ol> <p>So, in StartPage.xaml.cs:</p><pre><strike>protected override void OnAppearing()
+{
+  Context.OnViewAppearing();
+  base.OnAppearing();
+}</strike>
+
+protected override void OnSizeAllocated(double width, double height)
+{
+  Context.OnViewAppearing();
+  base.OnSizeAllocated(width, height);
+}</pre>
+<p>It is a bit of a kludge, but it will do for now. In FoldingPaneBehavior we will first need to add a method to recursively find a parent with a size:</p><pre>protected VisualElement GetParentView()
+{
+  var parent = associatedObject as Element;
+  VisualElement parentView = null;
+  if (parent != null)
+  {
+    do
+    {
+      parent = parent.Parent;
+      parentView = parent as VisualElement;
+    } 
+    while (parentView?.Width &lt;= 0 &amp;&amp; parent.Parent != null);
+  }
+
+  return parentView;
+}</pre>And the first line of the Init method neededs to be changed from <pre>var p = associatedObject.ParentView;</pre>to <pre>var p = GetParentView();</pre>
+<p>And then the behavior will work again.</p>
+<p>A second surprise when upgrading to Xamarin Forms 2.1 is that the declaration of Dependency properties using generics is deprecated. It will still work, but not for long. So in stead of</p><pre>public static readonly BindableProperty IsPopupVisibleProperty =
+       BindableProperty.Create&lt;FoldingPaneBehavior, bool&gt;(t =&gt; t.IsPopupVisible,
+       default(bool), BindingMode.OneWay,
+       propertyChanged: OnIsPopupVisibleChanged);</pre>You will know have to use <pre>public static readonly BindableProperty IsPopupVisibleProperty =
+       BindableProperty.Create(nameof(IsPopupVisible), typeof(bool), 
+       typeof(FoldingPaneBehavior),
+       default(bool), BindingMode.OneWay,
+       propertyChanged: OnIsPopupVisibleChanged);</pre>And the callback loses its type safety because that becomes <pre>private static void OnIsPopupVisibleChanged(BindableObject bindable, object oldValue, object newValue)</pre>in stead of <pre>private static void OnIsPopupVisibleChanged(BindableObject bindable, bool oldValue, object bool)</pre>
+<p>and thus you have to cast oldValue and newValue to bool. This makes the code inherently more brittle and harder to read, but I assume there is a good reason for this. I have updated the xadp snippet for creating these properties accordingly.</p>
+<p>A typical case of moved cheese, but fortunately not too far. The <a href="https://github.com/LocalJoost/AnimationXamarinBehaviorDemo" target="_blank">updated demo solution is still on GitHub</a></p>

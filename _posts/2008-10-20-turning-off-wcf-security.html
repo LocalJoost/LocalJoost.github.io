@@ -1,0 +1,54 @@
+---
+layout: post
+title: Turning off WCF security
+date: '2008-10-20T20:35:00.005+02:00'
+author: Joost van Schaik
+tags:
+- Security
+- WCF
+modified_time: '2009-02-17T20:52:11.662+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-124095222681864696
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2008/10/turning-off-wcf-security.html
+---
+
+Unlike ye goode ole ASMX web services, WCF comes by default with security <em>enabled</em>. That's a good thing: Microsoft now believes in security being integral part of the solution, so in stead of slapping it on later, it is turned on by default.
+
+This is fine of course in distributed production environments but may be a real PITA while testing or deploying in a simple point-to-point enviroment, especially when machines are not in the same domain. Fortunately, turning all these gizmos off is quite easy. The catch is that settings on server and client <em>must exactly match </em>
+You host the service like this (provided it is hosted in IIS)<pre>&lt;system.serviceModel&gt;
+  &lt;services&gt;
+    &lt;service name="MyService"&gt;
+      &lt;endpoint contract="IMyService" binding="wsHttpBinding" bindingConfiguration="wsHttpBindingConfiguration"/&gt;
+    &lt;/service&gt;
+  &lt;/services&gt;
+  &lt;bindings&gt;
+    &lt;wsHttpBinding&gt;
+      &lt;binding name="wsHttpBindingConfiguration"&gt;
+       <strong><em>&lt;security mode="None"&gt;
+          &lt;message clientCredentialType="None"/&gt;
+          &lt;transport clientCredentialType="None"/&gt;
+        &lt;/security&gt;</em></strong>
+      &lt;/binding&gt;
+    &lt;/wsHttpBinding&gt;
+  &lt;/bindings&gt;
+&lt;/system.serviceModel&gt;</pre> and you configure the client like this<pre>&lt;system.serviceModel&gt;
+  &lt;client&gt;
+    &lt;endpoint name="MyDataPortal"
+              address="http://someserver:2000/MyRoot/MyService.svc"
+              binding="wsHttpBinding"
+              contract="IMyService"
+              bindingConfiguration="MyBinding"/&gt;
+  &lt;/client&gt;
+
+  &lt;bindings&gt;
+    &lt;wsHttpBinding&gt;
+      &lt;binding name="MyBinding"&gt;
+        <strong><em>&lt;security mode="None"&gt;
+          &lt;message clientCredentialType="None"/&gt;
+          &lt;transport clientCredentialType="None"/&gt;
+        &lt;/security&gt;</em></strong>
+      &lt;/binding&gt;
+    &lt;/wsHttpBinding&gt;
+  &lt;/bindings&gt;
+&lt;/system.serviceModel&gt;</pre>I emphasized the important parts.
+
+Be advised: these settings should only be used in either development environments or enviroments that are inherently safe by themselves, i.e. closed networks.<em></em>

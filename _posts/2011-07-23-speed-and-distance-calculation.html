@@ -1,0 +1,82 @@
+---
+layout: post
+title: Speed and distance calculation extension methods for Windows Phone 7
+date: '2011-07-23T15:31:00.001+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- WP7
+modified_time: '2011-08-12T17:33:28.575+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6494776012143912591
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/07/speed-and-distance-calculation.html
+---
+
+<p>Upgrading stuff to from <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> to “Mango” is sometimes like cleaning your desk drawer before going on a holiday – you stumble upon stuff you forgot it was even there. For the ‘game engine’ I made for Catch’em Birds I created a few very handy extension methods for calculating speed and distance, which I would like to share with the rest of the community:</p>  <pre>using System;
+#if WINDOWS_PHONE
+using System.Windows;
+#else
+using System.Drawing;
+using System.Windows;
+#endif
+
+
+namespace Wp7nl.Utilities
+{
+  public static class PointExtensions
+  {
+    /// &lt;summary&gt;
+    /// Distances from point 1 to point 2
+    /// &lt;/summary&gt;
+    /// &lt;param name=&quot;p1&quot;&gt;The first point.&lt;/param&gt;
+    /// &lt;param name=&quot;p2&quot;&gt;The second point.&lt;/param&gt;
+    /// &lt;returns&gt;&lt;/returns&gt;
+    public static double DistanceFrom(this Point p1, Point p2)
+    {
+      var dX = p2.X - p1.X;
+      var dY = p2.Y - p1.Y;
+      return Math.Sqrt(dX * dX + dY * dY);
+    }
+
+    /// &lt;summary&gt;
+    /// Calculates the speed in pixels per second
+    /// &lt;/summary&gt;
+    /// &lt;param name=&quot;p1&quot;&gt;The first point.&lt;/param&gt;
+    /// &lt;param name=&quot;p2&quot;&gt;The second point.&lt;/param&gt;
+    /// &lt;param name=&quot;duration&quot;&gt;The duration&lt;/param&gt;
+    /// &lt;returns&gt;Speed in pixels per second&lt;/returns&gt;
+    public static double CalculateSpeed(this Point p1, Point p2, Duration duration)
+    {
+      return p1.DistanceFrom(p2) / duration.TimeSpan.TotalSeconds;
+    }
+
+    /// &lt;summary&gt;
+    /// Calculates the duration given a distance and a speed.
+    /// &lt;/summary&gt;
+    /// &lt;param name=&quot;p1&quot;&gt;The first point.&lt;/param&gt;
+    /// &lt;param name=&quot;p2&quot;&gt;The second point.&lt;/param&gt;
+    /// &lt;param name=&quot;speed&quot;&gt;The speed in pixels per second.&lt;/param&gt;
+    /// &lt;returns&gt;Time it takes to get from p1 to p2&lt;/returns&gt;
+    public static Duration CalculateDuration(this Point p1, Point p2, double speed)
+    {
+      return new Duration(TimeSpan.FromSeconds(p1.DistanceFrom(p2) / speed));
+    }
+  }
+}</pre>
+
+<p>I will discuss these in a not quite logical order:</p>
+
+<ul>
+  <li>The first method is of course good ole' Pythagoras caught in an extension method, basically there as a helper method for the other two. </li>
+
+  <li>The third method is the one I used most: given that my object needs to move from p1 to p2 with a given speed in pixels per second, what’s the Duration I need to apply to my Storyboard? </li>
+
+  <li>The second one is the inverse – given the fact that on object was moving from p1 to p2 in duration “duration”, calculate its speed in pixels per second. </li>
+</ul>
+
+<p>As you can see at the #if on top it also work on System.Drawing.Points under full .NET 4.0. Maybe these methods are useful there as well, I put that only there to facilitate some unit tests.</p>
+
+<p>All these methods are part of the <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl CodePlex library</a> – or at least the will so at the upcoming Mango release.</p>
+
+<p><em>Update: thanks to <a href="http://twitter.com/#!/rschu" target="_blank">Rene Schulte</a> for pointing out to me that my original DistanceFrom method using Math.Pow is very slow compared to simple multiplications. Rene is a Silverlight MVP from Dresden, Germany and has <a href="http://kodierer.blogspot.com/2010/08/rect-and-point-extension-methods.html" target="_blank">some very nice Point extension methods on his blog “Kodierer”</a> as well - in English, don’t worry ;-)</em></p>  

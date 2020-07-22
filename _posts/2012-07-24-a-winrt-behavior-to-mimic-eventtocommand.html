@@ -1,0 +1,162 @@
+---
+layout: post
+title: A WinRT behavior to mimic EventToCommand
+date: '2012-07-24T20:31:00.001+02:00'
+author: Joost van Schaik
+tags:
+- WinRt
+- behavior
+- MVVM Light
+- Win8nl
+modified_time: '2013-10-29T09:59:41.263+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3984278513163586817
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/07/a-winrt-behavior-to-mimic-eventtocommand.html
+---
+
+<b>This is deprecated. Please use the official behaviors SDK now. <a href="http://dotnetbyexample.blogspot.nl/2013/10/introducing-win8nl-for-windows.html">See here for a simple migration guide</a></b>
+<br/><br/>
+<b>Updated September 2 2012 with two sample applications
+</b><p>Whoever used the <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> framework by <a href="http://www.twitter.com/lbugnion" target="_blank">Laurent Bugnion</a> is familiar with EventToCommand, especially those who used it on <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> before the advent of 7.5 (or SDK version 7.1.1). This utility enables triggers to fire commands on the viewmodel</p> <p>Unfortunately, in <a href="http://msdn.microsoft.com/en-us/library/windows/apps/br211377.aspx?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">WinRT</a> there is no such thing as a trigger, so this method cannot be used, and MVVMLight for WinRT therefore does not include EventToCommand. This morning I got a DM from <a href="http://twitter.com/rjorna" target="_blank">AESIR Consultancy</a> asking me if I had a solution for that, because he had some trouble porting a Windows Phone app to Windows 8. I did not have it then, but I had the feeling it could be done quite easily. In the afternoon, in the time between I came home and my wife came home from work I wrote this behavior that basically does the same as EventToCommand.</p> <p>And indeed, WinRT does not support behaviors either, but that has been solved already. In order for this to work, you will need to download the NuGet WinRtBehaviors package</p> <p>Anyway – the behavior. You start out with a project with references to <a href="http://winrtbehaviors.codeplex.com/" target="_blank">WinRtBehaviors</a> and the Reactive extensions – <a href="ReSharper 7 EAP" target="_blank">ReSharper 7 EAP</a> found them readily and automatically attached references to my projects which now has the following references to reactive stuff: </p> <ul> <li>System.Reactive.Core  <li>System.Reactive.Interfaces  <li>System.Reactive.Linq  <li>System.Reactive.PlatformServices</li></ul> <p>So we start out with the class definition and some boring Dependency property definitions:</p><pre>using System;
+using System.Reactive.Linq;
+using System.Reflection;
+using System.Windows.Input;
+using WinRtBehaviors;
+using Windows.UI.Xaml;
+
+namespace Win8nl.Behaviors
+{
+  /// &lt;summary&gt;
+  /// A behavior to imitate an EventToCommand trigger
+  /// &lt;/summary&gt;
+  public class EventToCommandBehavior : Behavior&lt;FrameworkElement&gt;
+  {
+
+    #region Event
+
+    /// &lt;summary&gt;
+    /// Event Property name
+    /// &lt;/summary&gt;
+    public const string EventPropertyName = "Event";
+
+    public string Event
+    {
+      get { return (string)GetValue(EventProperty); }
+      set { SetValue(EventProperty, value); }
+    }
+
+    /// &lt;summary&gt;
+    /// Event Property definition
+    /// &lt;/summary&gt;
+    public static readonly DependencyProperty 
+      EventProperty = DependencyProperty.Register(
+        EventPropertyName,
+        typeof(string),
+        typeof(EventToCommandBehavior),
+        new PropertyMetadata(default(string)));
+
+    #endregion
+
+    #region Command
+
+    /// &lt;summary&gt;
+    /// Command Property name
+    /// &lt;/summary&gt;
+    public const string CommandPropertyName = "Command";
+
+    public string Command
+    {
+      get { return (string)GetValue(CommandProperty); }
+      set { SetValue(CommandProperty, value); }
+    }
+
+    /// &lt;summary&gt;
+    /// Command Property definition
+    /// &lt;/summary&gt;
+    public static readonly DependencyProperty 
+      CommandProperty = DependencyProperty.Register(
+        CommandPropertyName,
+        typeof(string),
+        typeof(EventToCommandBehavior),
+        new PropertyMetadata(default(string)));
+
+    #endregion
+
+    #region CommandParameter
+
+    /// &lt;summary&gt;
+    /// CommandParameter Property name
+    /// &lt;/summary&gt;
+    public const string CommandParameterPropertyName = "CommandParameter";
+
+    public object CommandParameter
+    {
+      get { return (object)GetValue(CommandParameterProperty); }
+      set { SetValue(CommandParameterProperty, value); }
+    }
+
+    /// &lt;summary&gt;
+    /// CommandParameter Property definition
+    /// &lt;/summary&gt;
+    public static readonly DependencyProperty 
+        CommandParameterProperty = DependencyProperty.Register(
+        CommandParameterPropertyName,
+        typeof(object),
+        typeof(EventToCommandBehavior),
+        new PropertyMetadata(default(object)));
+
+    #endregion
+  }
+}</pre>
+<p>All very boring, all very standard. Now, for dynamically adding a listener to the event: I’ve been down this road before, say hello to our friend Observable.FromEventPattern, <a href="http://dotnetbyexample.blogspot.nl/2012/06/reflection-in-winrt-use-x-extensions.html" target="_blank">which takes away all the boring details about the differences between ordinary and WinRT events</a>.</p><pre>protected override void OnAttached()
+{
+  var evt = AssociatedObject.GetType().GetRuntimeEvent(Event);
+  if (evt != null)
+  {
+    Observable.FromEventPattern&lt;RoutedEventArgs&gt;(AssociatedObject, Event)
+      .Subscribe(se =&gt; FireCommand());
+  }
+  base.OnAttached();
+}</pre>
+<p>Nothing special. Try to find an event with the same name as the contents of the “Event” property and add a listener to it. And the final piece of the puzzle is the actual implementation of FireCommand. Of course, I could have implemented this inline but I like to make this a separate method, if only for readability:</p><pre>private void FireCommand()
+{
+  var dataContext = AssociatedObject.DataContext;
+  if (dataContext != null)
+  {
+    var dcType = dataContext.GetType();
+    var commandGetter = dcType.GetRuntimeMethod("get_" + Command, new Type[0]);
+    if (commandGetter != null)
+    {
+      var command = commandGetter.Invoke(dataContext, null) as ICommand;
+      if (command != null)
+      {
+        command.Execute(CommandParameter);
+      }
+    }
+  }
+}</pre>
+<p>As always, when you know how to do it, it’s very simple. This method gets the AssociatedObject’s data context, the tries to find the getter of the Command property on this data context. As you might remember, a command in MVVMLight is defined like this:</p><pre>public ICommand DoSomethingCommand
+{
+  get
+  {
+    return new RelayCommand&lt;string&gt;((p) =&gt;
+        {
+          System.Diagnostics.Debug.WriteLine("Hi there {0}", p);
+        });
+  }
+}</pre>
+<p>so I am not looking for a command <em>method</em>, but for a getter <em>returning</em> a command. If the code finds that, it tries to Invoke the getter as an ICommand. If it gets that it has the actual command, and it executes it. And that’s all!</p>
+<p>So if you want to use this behavior, attach it to a Page’s main grid, for instance:</p><pre>&lt;Grid Style="{StaticResource LayoutRootStyle}" x:Name="TopView" x:Uid="TopGrid"&gt;
+   &lt;WinRtBehaviors:Interaction.Behaviors&gt;
+    &lt;Win8nl_Behavior:EventToCommandBehavior Event="Tapped"<br>        Command="DoSomethingCommand" <br>        CommandParameter="John doe"/&gt;
+  &lt;/WinRtBehaviors:Interaction.Behaviors&gt;
+  &lt;!--- stuff in here --&gt;
+&lt;/Grid&gt;</pre>
+<p>The top of your page needs to include this name space definitions:</p><pre>xmlns:WinRtBehaviors="using:WinRtBehaviors"
+xmlns:Win8nl_Behavior="using:Win8nl.Behaviors"</pre>
+<p>and then it will work. Tap on the main grid and you will see the text “Hi there John doe” in the Visual Studio output window. Of course you can make it do more useful things too ;-) and you can also <em>bind</em> things to the CommandParameter property using the normal binding syntax. To a certain extent.</p>
+<p>You can <a href="http://www.schaikweb.net/dotnetbyexample/EventToCommandBehavior.zip" target="_blank">download the behavior’s code here</a>, but it's actually a lot easier to just use the <a href="https://nuget.org/packages/Win8nl" target="_blank">NuGet Package</a>. The behavior is there, along with some more nice stuff, and it takes care of downloading <a href="http://winrtbehaviors.codeplex.com/"target="_blank">WinRtBehaviors </a>and Reactive Extensions for WinRT as well</p>
+<p>By special request I've also created sample code - not one but two solutions. The first one, <a href="http://www.schaikweb.net/dotnetbyexample/TestWin8nl.zip">TestWin8nl</a>, is a very simple application that allows you to tap a TextBlock - this will trigger a command in the ViewModel that uses Debug.WriteLine to print a property of the ViewModel in your output console windows, using the CommandParameter to transfer the bound object (the ViewModel itself) to the command. The seconds sample, <a href="http://www.schaikweb.net/dotnetbyexample/EventToCommandListDemo.zip">EventToCommandListDemo</a>, will show you how to handle a SelectionChanged event of a ListBox, although frankly I'd rather just bind SelectedItem and act on it's property setter. But the audience asks, the audiences gets ;-). It appears tough as if Element name binding does not work properly in WinRtBehaviors, so I had to use a ViewModel property to store the selected item in anyway. Both are some contrived examples, but I hope the will do the trick of helping you out understanding how things are working and are supposed to be used.</p>
+
+Update: I have also blogged (and published in win8nl) <a href="http://dotnetbyexample.blogspot.nl/2012/11/a-winrt-behavior-to-mimic.html" target='_blank'>a variant of the behavior that takes a bound command</a> in stead of a command <i>name</i>. I personally now think this is a better solution as it adheres more to the way regular behaviors work, and is much more flexible
+
+Update 2: both this behavior and it's the bound-command-behavior are in the <a href="http://nuget.org/packages/Win8nl/" target="_blank">win8nl nuget package</a>. Don't type, be lazy, use Nuget ;-)

@@ -1,0 +1,20 @@
+---
+layout: post
+title: Detecting your Windows 8 app is running in the background
+date: '2012-06-06T15:45:00.001+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- Windows 8
+- Win8nl
+modified_time: '2012-06-06T15:45:39.825+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3328793986557125124
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/06/detecting-your-windows-8-app-is-running.html
+---
+
+<p>In <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> life was so simple: when the user put your app in the background, as of version 7.5 the OS effectively froze all threads, timers and whatnot completely automatically. And it was automatically restarted too, if you used fast application switching. That kind of freeloading appeals to my natural programmer’s laziness so I put that to good use. That is, by doing nothing and letting the OS taking care of things.</p> <p>Enter <a href="http://windows.microsoft.com/en-US/windows-8/consumer-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a>: that has a even more sophisticated multi tasking system that allows things to <em>actually keep running</em> in the background. Excellent for most scenarios, but not if you are writing a game. I am currently porting <a href="http://www.windowsphone.com/en-US/apps/48fd8097-f07e-e011-986b-78e7d1fa76f8?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Catch’em Birds</a> to Windows 8 and observed that although the game music (thankfully) shuts up when the game is put in the background, the birds keep on flying and the timer keeps on running.</p> <p>Now in App.Xaml.cs there is an OnSuspending method, but that is only called when the application is <em>suspended –</em> i.e., pushed out of memory. This is comparable to the point where a Windows Phone application would tombstone itself. You need to trap another event: VisibilityChanged of the current window. </p> <p>In the OnLaunchedmethod of App.Xaml.cs, just above the Window.Current.Activate you can add </p><pre>Window.Current.VisibilityChanged += Current_VisibilityChanged;</pre>That gives a Windows.UI.Core.VisibilityChangedEventArgs which has a boolean Visible property that you can use like this: <pre>void Current_VisibilityChanged(object sender, 
+                               Windows.UI.Core.VisibilityChangedEventArgs e)
+{
+  System.Diagnostics.Debug.WriteLine("Visibile: " + e.Visible);
+}</pre>
+<p>I am going to use this to send this event trough the MVVMLight messenger and adapt my game so that is reacts to this event – like in ‘stop the birds, or at least the timer. The OS being more capable actually requires me to do a wee bit more work. No more freeloading ;-)</p>  

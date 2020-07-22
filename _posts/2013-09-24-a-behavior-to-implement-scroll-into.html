@@ -1,0 +1,105 @@
+---
+layout: post
+title: A behavior to implement a scroll-into-view panel (for a Facebook-like GUI)
+  on Windows Phone
+date: '2013-09-24T20:36:00.001+02:00'
+author: Joost van Schaik
+tags:
+- wpnl
+- wpdev
+- dotnetmag
+- Windows Phone
+- behavior
+modified_time: '2013-09-25T14:57:03.844+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1488105726906596210
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/09/a-behavior-to-implement-scroll-into.html
+---
+
+<p>As promised, this post describes a behavior to scroll parts of a <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> GUI into view, after I first <a href="http://dotnetbyexample.blogspot.nl/2013/09/aligning-xaml-elements-outside-screen.html" target="_blank">described how you can create such panels by making creative use of scaling</a>. This can also bee seen as part 4 of my <a href="http://dotnetbyexample.blogspot.nl/2013/08/a-behavior-to-animate-folding-in-and.html" target="_blank">animation-trilogy</a> as it is based heavily on the groundwork laid there. Which goes to show creativity cannot me planned;-)</p> <p>This behavior is also a very versatile, in the sense that can be used to move any GUI element from any location to another, but I use it now to make a scroll-into-view panel. </p> <p><font size="4">Setup</font></p> <p><a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-move-parts-of-the-screen-i_11B62/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-move-parts-of-the-screen-i_11B62/image_thumb.png" width="193" align="right" height="244"></a>I started out with the final sample of my previous post. Then I changed a few minor things:</p> <ul> <li>I selected the MessagePanel1 and changed the Colum to 0 and the Columnspan to 2.  <li>I selected the Grid below MessagePanel and gave it a blue solid color background brush  <li>Set the width to 228 (it is now set to 228 (Auto), fill in a hard coded value).  <li>I selected the Textblock below the grid and changed the text “This is Panel 2” to “Settings” </li></ul> <p>Net result is displayed to the right.</p> <p><font size="4">First, a little refactoring</font></p> <p><a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-move-parts-of-the-screen-i_11B62/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; margin: 0px 8px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-move-parts-of-the-screen-i_11B62/image_thumb_3.png" width="365" align="right" height="260"></a>In the first part of my animation behavior series&nbsp; I created <a href="http://dotnetbyexample.blogspot.nl/2013/08/a-behavior-to-animate-folding-in-and.html" target="_blank">a base class called BaseScaleBehavior</a>. Turned out that was a great base for not only scaling animations, but also other kinds of animations – provided I got rid of a few things. So I created a new base class BaseAnimationBehavior – with basically all the data from BaseScaleBehavior, excluding the Direction, and made BaseScaleBehavior descend from that. Visual Studio (that is, if you have right version) generates this nice diagram for it:</p> <p>On top we see the new BaseAnimationbehavior, with it’s child class BaseScaleBehavior. This now inherits all properties from BaseAnimationbehavior so as far as the existing behaviors are concerned, nothing has changed. But on the right side there is now room for the new MoveObjectbehavior</p> <p><font size="4">The behavior itself</font></p> <p>BaseAnimationbehavior has only two properties left that you can set – <a href="http://msdn.microsoft.com/en-us/library/system.windows.duration.aspx" target="_blank">Duration</a> (the time the effect should take) and “Activate” –&nbsp; a boolean that indicates if the effect should be visible (true) or not. Any descending behavior should implement BuildTransform (to create the Transform for the current state) and BuildStoryBoard (to create a <a href="http://msdn.microsoft.com/en-us/library/system.windows.media.animation.storyboard(v=VS.95).aspx" target="_blank">StoryBoard</a> for a transition). </p> <p>The MirrorBehavior introduces two extra properties that you can set: ActivatedXValue and ActivatedYValue. They are both of type “double?” – that is, nullable double. After all, they need not to be set – if you, like me, want to move only in one direction (horizontal, that is) The behavior assumes at startup that wherever the object it attached to is on the screen <em>now</em>, that’s if default location (for Activated = false). So you need only to supply the new values – and it must me <em>relative </em>values. If you want the screen to move to the <em>left</em>, you should provide a <em>negative</em> value. –228, to be precise – exactly the width of the Settings panel. </p> <p>The behavior starts rather simple, as it <em>is</em> rather simple – most of the heavy lifting is done by already published code. </p><pre>using System;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using Wp7nl.Utilities;
+
+namespace Wp7nl.Behaviors
+{
+  public class MoveObjectBehavior : BaseAnimationBehavior
+  {
+    protected override void OnSetup()
+    {
+      originalTranslation = GetInitialTranslation();
+      base.OnSetup();
+    }
+
+    private Point originalTranslation;
+
+    private Point GetInitialTranslation()
+    {
+      return AssociatedObject.GetCompositeTransform() != null ? 
+        AssociatedObject.GetTranslatePoint() : new Point(0, 0);
+    }
+  }
+}</pre>
+<p>The behavior starts by checking if there’s a transformation defined and tries to get the translation point from that – in other words, is this object already moved from its place using a translation? If not, then assume a translation of 0.</p>
+<p>The BuildTransform of this behavior is pretty simple:</p><pre>protected override CompositeTransform BuildTransform()
+{
+  return new CompositeTransform
+  {
+    TranslateX = Activated &amp;&amp; ActivatedXValue != null ? 
+      ActivatedXValue.Value : originalTranslation.X,
+    TranslateY = Activated &amp;&amp; ActivatedYValue != null ? 
+      ActivatedYValue.Value : originalTranslation.Y
+  };
+}</pre>
+<p>It sets the X translation to the ActivatedX value if Activated is true and if there is and ActivatedX value defined (it was nullable, remember, so it’s entirely possible it is not – and in all other cases it just uses the original translation value. Repeat for Y.</p>
+<p>And the final part of this behavior is a matter of building the Storyboard using the <a href="http://dotnetbyexample.blogspot.nl/2011/03/simple-windows-phone-7-silverlight.html" target="_blank">age old AddTranslationAnimation and GetTranslatePoint extension methods that I already wrote back in March 2011</a></p><pre>protected override Storyboard BuildStoryBoard()
+{
+  var storyboard = new Storyboard { FillBehavior = FillBehavior.HoldEnd };
+  var transform = BuildTransform();
+  var duration = new Duration(TimeSpan.FromMilliseconds(Duration));
+  storyboard.AddTranslationAnimation(
+    AssociatedObject,
+    AssociatedObject.GetTranslatePoint(), <br>    new Point(transform.TranslateX, transform.TranslateY),
+    duration);
+  return storyboard;
+}</pre>
+<p><font size="4">The effect</font></p>
+<p>The effect, if I may say so myself in all modesty, is rather charming. And, by the way, in this little sample solution it’s also ViewModel Driven. </p>
+<div id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:fea145c8-5a5e-45b2-9828-33b562feb04f" class="wlWriterEditableSmartContent" style="float: none; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px"><div><object width="448" height="277"><param name="movie" value="http://www.youtube.com/v/3US1wRd15Iw?hl=en&amp;hd=1"></param><embed src="http://www.youtube.com/v/3US1wRd15Iw?hl=en&amp;hd=1" type="application/x-shockwave-flash" width="448" height="277"></embed></object></div><div style="width:448px;clear:both;font-size:.8em">MoveObjectBehavior in action</div></div>I used this übersimple viewmodel <pre>using System.Windows.Input;
+using GalaSoft.MvvmLight;
+using GalaSoft.MvvmLight.Command;
+
+namespace XamlScale
+{
+  public class DemoViewModel : ViewModelBase
+  {
+    private bool showSettings;
+    public bool ShowSettings
+    {
+      get { return showSettings; }
+      set
+      {
+        if (showSettings != value)
+        {
+          showSettings = value;
+          RaisePropertyChanged(() =&gt; ShowSettings);
+        }
+      }
+    }
+    public ICommand MyCommand
+    {
+      get
+      {
+        return new RelayCommand(
+            () =&gt;
+            {
+              ShowSettings = !ShowSettings;
+            });
+      }
+    }
+  }
+}
+</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-implement-a-scroll-into-vi_B333/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-implement-a-scroll-into-vi_B333/image_thumb.png" width="244" align="right" height="174"></a>To drive this behavior: simply bind the viewmodels’ MyCommand command to the button with Blend, and the ShowSettings property to the Activated property of the behavior. And then fill in –228 for “ActivatedX”</p>
+<p>And that’s all there is to it. <a href="http://www.schaikweb.net/dotnetbyexample/XamlScale2.zip" target="_blank">The demo solution</a> contains all code displayed in this sample, including the revised behaviors of my earlier series – but they are not really used in the sample. </p>
+<p>For the record – I wrote this behavior as part of the 1.1 update of <a href="http://www.windowsphone.com/s?appid=ed077cc6-21ce-4e99-8e19-c5b119646016" target="_blank">2 Phone Pong</a> during my holiday, my Surface Pro sitting on the garden table next to our vacation house in Schluchsee in the Schwarzwald (Black Forest), Baden-Wuttenberg, Germany, my wife on next to me reading a book, after a long mountain walk on a beautiful sunny day. While it got slowly dark, we rested from our day’s journey, tea was being consumed, and the typical non-committal carefree talk of a summer holiday evening was going on, this thingy was created.&nbsp; Fond memories. *sigh*.</p>  

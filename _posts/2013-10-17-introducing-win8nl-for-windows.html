@@ -1,0 +1,127 @@
+---
+layout: post
+title: Introducing Win8nl for Windows 8.1–kissing WinRtBehaviors goodbye
+date: '2013-10-17T21:12:00.001+02:00'
+author: Joost van Schaik
+tags:
+- wpdev
+- Windows 8
+- WinRt
+- XAML
+- behavior
+- Win8nl
+modified_time: '2013-11-09T08:44:37.901+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5987162406329771271
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/10/introducing-win8nl-for-windows.html
+---
+
+<strong>Updated November 11, 2013<br></strong>It was at my very first MVP Summit in February 2012 that I learned that <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> XAML was not to have any behaviors. I remember distinctly being very angry first, telling the presenter I would be “dead in the water”, then upon reflection, calming down, and deciding to find out if I could plug the hole myself. And so I did, with the help of (in order of appearance) <a href="http://twitter.com/geertvanhorrik" target="_blank">Geert van Horrik</a>, <a href="http://twitter.com/xyzzer" target="_blank">Filip Skakun</a>, and <a href="https://twitter.com/vbandi" target="_blank">András Velvárt</a>.<br><br><a href="http://winrtbehaviors.codeplex.com/" target="_blank">WinRtBehaviors</a> saw the light in Spring 2012, shortly after said Summit. With 4,634 downloads, it being used in well-known top apps like Shazam, and being specifically mentioned at the 2013 edition of TechDays in both Belgium and The Netherlands (much to the surprise of colleagues and friends visiting there, not to mention myself) – I think I quite made my mark in the Windows XAML stack.<br><br>I also learned the downsides of having such a successful library, i.e. a lot of support requests. But today <a href="http://www.microsoft.com/visualstudio/eng/downloads" target="_blank">Visual Studio 2013</a> was released, and along with it the final version of the Behaviors SDK, so I released a version of <a href="http://win8nl.codeplex.com/" target="_blank">Win8nl</a> – the library with ported <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> code that I built on top of WinRtBehaviors – and I made a yet-to-release version of <a href="http://apps.microsoft.com/windows/en-us/app/8417a0bf-e19d-4364-8116-e2dc79ffe39d" target="_blank">Catch’em Birds for Windows</a> on it, that totally works (since very recently) on that new version of Win8nl. So the days of the old WinRtBehaviors warhorse are over.<br><br>Win8nl 1.0.9 still supports Windows 8.0 and still downloads WinRtBehaviors, but if you target your app for Windows 8.1 you will see that there’s not longer a reference made to it when you download the Nuget Package. <br><br>Part of the library are the classes Behavior and Behavior&lt;T&gt;. These have the following implementations:<br><pre>using Windows.UI.Xaml;
+using Microsoft.Xaml.Interactivity;
+
+namespace Win8nl.Behaviors
+{
+  /// &lt;summary&gt;
+  /// A base class for behaviors, can be used in native environments too
+  /// &lt;/summary&gt;
+  /// &lt;typeparam name="T"&gt;&lt;/typeparam&gt;
+  public abstract class Behavior : DependencyObject, IBehavior
+  {
+    public DependencyObject AssociatedObject { get; set; }
+
+    public virtual void Attach(DependencyObject associatedObject)
+    {
+      AssociatedObject = associatedObject;
+    }
+
+    public virtual void Detach()
+    {
+    }
+  }
+}</pre>This is a base class for environments where generics cannot be used - and the implementation for C# behaviors is then simple:<br><pre>using Windows.UI.Xaml;
+
+namespace Win8nl.Behaviors
+{
+  /// &lt;summary&gt;
+  /// A base class for behaviors, to appear them to be identical to older frameworks
+  /// &lt;/summary&gt;
+  /// &lt;typeparam name="T"&gt;&lt;/typeparam&gt;
+  public abstract class Behavior&lt;T&gt; : Behavior where T: DependencyObject
+  {
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public new T AssociatedObject { get; set; }
+
+    public override void Attach(DependencyObject associatedObject)
+    {
+      base.Attach(associatedObject);
+      this.AssociatedObject = (T)associatedObject;
+      OnAttached();
+    }
+
+    public override  void Detach()
+    {
+      base.Detach();
+      OnDetaching();
+    }
+
+
+    protected virtual void OnAttached()
+    {
+    }
+
+    protected virtual void OnDetaching()
+    {
+    }
+
+  }
+}</pre>Based upon this class, you can port your existing behaviors from WinRtBehaviors (or from any other XAML framework, for what matters, virtually without any code change. I wrote this code in the early days of August 2013, but kind of sat on it as I wanted it to be part of the new Win8nl library. I sat a bit on it too long, <a href="http://www.reflectionit.nl/Blog/2013/windows-8-xaml-tips-creating-blend-behaviors" target="_blank">as Fons Sonnemans published a very similar solution in September</a>, so I can’t really claim prior art, but let just say it’s a logical thing to do and great minds apparently think alike. I took the EditorBrowsable thing from him, never thought of that.<br><br>What you will also notice is that the ‘hero’ behaviors <a href="http://dotnetbyexample.blogspot.nl/2012/07/a-winrt-behavior-to-mimic-eventtocommand.html" target="_blank">EventToCommandBehavior</a> and <a href="http://dotnetbyexample.blogspot.nl/2012/11/a-winrt-behavior-to-mimic.html" target="_blank">EventToBoundCommandBehavior</a>, although still present, are now marked as <em>Obsolete</em>.This is for a very simple reason: the framework now has a standard way of doing such things. Would you use something like this in Windows 8.0 XAML:<br><pre>&lt;WinRtBehaviors:Interaction.Behaviors&gt;
+  &lt;Win8nl_Behavior:EventToBoundCommandBehavior Event="Loaded" 
+    Command="{Binding StartGame}"/&gt;
+  &lt;Win8nl_Behavior:EventToBoundCommandBehavior Event="Unloaded" 
+    Command="{Binding SuspendGame}"/&gt;
+&lt;/WinRtBehaviors:Interaction.Behaviors&gt;</pre>Now you can achieve the same thing an EventTriggerBehavior combined with an InvokeCommandAction. <br><pre>&lt;interactivity:Interaction.Behaviors&gt;
+  &lt;Core:EventTriggerBehavior EventName="Loaded"&gt;
+    &lt;Core:InvokeCommandAction Command="{Binding StartGame}"/&gt;<br>  &lt;/Core:EventTriggerBehavior&gt; 
+<br><br>  &lt;Core:EventTriggerBehavior EventName="Unloaded"&gt;
+    &lt;Core:InvokeCommandAction Command="{Binding SuspendGame}"/&gt;
+  &lt;/Core:EventTriggerBehavior&gt;
+&lt;/interactivity:Interaction.Behaviors&gt;
+</pre>
+<p><strong>Update November 11, 2013<br></strong>InvokeCommandAction has a CommandParameter too that you can bind to and refer to in the usual way. An interesting and useful feature of InvokeCommandAction was pointed out to me by fellow MVP <a href="http://www.twitter.com/dotmorten" target="_blank">Morten Nielsen</a> – if don’t specify a CommandParameter, it defaults to passing the event arguments of the trapped event to the command. So if you have for instance this </p><pre>&lt;interactivity:Interaction.Behaviors&gt;
+  &lt;core:EventTriggerBehavior EventName="Tapped"&gt;
+    &lt;core:InvokeCommandAction Command="{Binding TappedCommand}"/&gt;
+  &lt;/core:EventTriggerBehavior&gt;
+&lt;/interactivity:Interaction.Behaviors&gt;</pre>
+<p>Then this is still a valid command to intercept it – you just ignore the arguments</p><pre>public ICommand TappedCommand
+{
+  get
+  {
+    return new RelayCommand(
+        () =&gt;
+        {
+          Debug.WriteLine ("Command tapped");
+        });
+  }
+}</pre>
+<p>But this as well!</p><pre>public ICommand TappedCommand
+{
+  get
+  {
+    return new RelayCommand&lt;TappedRoutedEventArgs&gt;(
+        (p) =&gt;
+        {
+          Debug.WriteLine ("Command tapped:" + p!=null);
+        });
+  }
+}</pre>
+<p>And thus you can do something with the event arguments. So with InvokeCommandAction you can do everything you wanted to do with EventToBoundCommandBehavior. <br><strong>(Update ends)<br></strong>I would urge you to the utmost to no longer using EventToCommandBehavior and/or EventToBoundCommandBehavior from this day forward. Any support requests will simply be directed to this blog post ;).<br><br>Something I have been sitting on for <em>very</em> long – part of Catch’em Birds for Windows was a <a href="http://msdn.microsoft.com/en-us/library/microsoft.expression.interactivity.core.datastatebehavior(v=Expression.40).aspx" target="_blank">DataStateBehavior</a>, which I basically cobbled together by reflecting into a Windows Phone 7 assembly, butchering stuff I didn’t need, understand or that did not compile, and finally arriving at something that kind of worked. For my goals. For obvious reasons I could not publish what was basically stolen and butchered Microsoft code and I am therefore very happy the Behavior SDK now has something to do the trick. If you now use DataStateBehavior in for instance a Windows Phone project like this: <br></p><pre>&lt;behaviors:Interaction.Behaviors&gt;
+  &lt;behaviors_ic:DataStateBehavior Binding="{Binding IsGameOver}" 
+     FalseState="GameNotOver" TrueState="GameOver" Value="true"/&gt;
+&lt;/behaviors:Interaction.Behaviors&gt;</pre>You can achieve the same effect by using this code: <br><pre>&lt;interactivity:Interaction.Behaviors&gt;
+  &lt;Core:DataTriggerBehavior Binding="{Binding IsGameOver}" Value="True"&gt;
+    &lt;Core:GoToStateAction StateName="GameOver"/&gt;
+  &lt;/Core:DataTriggerBehavior&gt;
+  &lt;Core:DataTriggerBehavior Binding="{Binding IsGameOver}" Value="False"&gt;
+    &lt;Core:GoToStateAction StateName="GameNotOver"/&gt;
+  &lt;/Core:DataTriggerBehavior&gt;
+&lt;/interactivity:Interaction.Behaviors&gt;</pre>Thus ends the story of WinRtBehaviors on October 17, 2013. I hope you have enjoyed it, and I also hope to have given you a clear migration path.<br><br>I wish the development team lots of luck with the support requests from especially my Belgian friends, who were quite ingenious in finding scenarios in which the EventToCommand behaviors did not work properly. The best one was something like “the behavior does not work if it’s in a data template from a resource file located in another assembly”. ;) 
+  

@@ -1,0 +1,119 @@
+---
+layout: post
+title: Windows Phone 8 navigation part 4–updating the tests, fixing the final issues
+date: '2013-05-13T18:01:00.000+02:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- Mapping
+- wpnl
+- wpdev
+- dotnetmag
+- Windows 8
+- Unit Test
+modified_time: '2013-07-04T12:50:27.585+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1978657347509252989
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/05/windows-phone-8-navigation-part_13.html
+---
+
+<p><font size="4">Last time: so close, yet so far:</font></p> <p>This series appears to have become a trilogy in four parts – at the end of the last episode everything worked, save for tombstoning, although we explicitly wrote test code for that. The app tombstoned, partially - two things were apparently missing:</p> <ul> <li>The route  <li>The locations to and from the route should run.</li></ul> <p><font size="4">Making the tests fail</font></p> <p>An important step when you have a bug in an app that passes all tests, is to make a test that <em>fails because of the bug</em>. In that case, you have reproduced the problem, and can start on fixing the bug. Logically, the bug is fixed when the test no longer fails – and should anyone start to mess around with your code an re-introduce the bug, the test will fail again, indicating something has gone wrong before you even ship. Your tests have become a smoke detector ;-)</p> <p>Anyway, we observe there is no selected location, nor routes or waypoints after tombstoning. When we look at the comprehensive test for RoutingViewModel written in the 2nd post of this series, we see the following Assert statement with regard to the retrieved viewmodel:</p><pre>Assert.IsTrue(vm.RouteCoordinates.Any());
+Assert.IsTrue(vm.Maneuvers.Any());
+Assert.IsTrue(retrievedVm.RouteCoordinates.Count == vm.RouteCoordinates.Count);
+Assert.IsTrue(retrievedVm.FromViewModel.SearchText == "Springerstraat Amersfoort Netherlands");
+Assert.IsTrue(retrievedVm.Maneuvers.Count == vm.Maneuvers.Count);</pre>
+<p>Shockingly, we learn two things:</p>
+<ul>
+<li>We indeed don’t test the presence of either SelectedLocation or either FromViewModel and ToViewModel. 
+<li>We<em> do</em> test the presence of both RouteCoordinates and Maneuvers. So our viewmodel works in that respect – so the error must have to do something with data binding.</li></ul>
+<p>First, we add test code for SelectedLocation</p><pre>Assert.IsNotNull(retrievedVm.FromViewModel.SelectedLocation);
+Assert.IsNotNull(retrievedVm.ToViewModel.SelectedLocation);</pre>
+<p>And sure enough:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Windows-Phone-8-navigation-part-3updatin_9032/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-Phone-8-navigation-part-3updatin_9032/image_thumb.png" width="376" height="165"></a></p>
+<p>Annoyingly, this does only say which test failed, but not what exactly failed in this test. You can of course follow the purist route and write a separate test method for every assert, or just be lazy like me and use the overload every Assert method has:</p><pre>Assert.IsNotNull(retrievedVm.FromViewModel.SelectedLocation, 
+  "No FromViewModel.SelectedLocation tombstoned");
+Assert.IsNotNull(retrievedVm.ToViewModel.SelectedLocation, 
+ "No ToViewModel.SelectedLocation tombstoned");</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Windows-Phone-8-navigation-part-3updatin_9032/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-Phone-8-navigation-part-3updatin_9032/image_thumb_3.png" width="373" height="164"></a></p>
+<p>And there we are. A clear error message. There is no SelectedLocation after tombstoning</p>
+<p><font size="4">Fixing the SelectedLocation bug aka serialization under the hood</font></p>
+<p>Let me introduce you to the wonderful world of serialization. Much as we move into the world of asynchronous and parallel programming, serialization is essentially a <em>sequential</em> process. First property A is written, then property B. When something is deserialized, things are also read from storage in a particular order, i.e. the order they are written.</p>
+<p>Let’s get back to the RoutingViewModel. I’ve abbreviated the property implementation a bit, apart from the Model. There we see the following code:</p><pre>public ManeuverViewModel SelectedManeuver
+
+public GeocodeViewModel ToViewModel
+
+public GeocodeViewModel FromViewModel
+
+public ObservableCollection&lt;RouteGeometryViewModel&gt; RouteCoordinates { get; set; }
+
+public ObservableCollection&lt;ManeuverViewModel&gt; Maneuvers { get; set; }
+
+private NavigationModel model;
+public NavigationModel Model
+{
+  get { return model; }
+  set
+  {
+    model = value;
+    if (model != null)
+    {
+      ToViewModel = new GeocodeViewModel(model.To) { Name = "To" };
+      FromViewModel = new GeocodeViewModel(model.From) { Name = "From" };
+    }
+  }
+}</pre>
+<p>Now let’s assume, for a moment, serialization simply reflects all public properties with both getter and setter, and writes them one by one to storage – and reads them in the same order. In no particular order – if this were a database that most probably means the order the in which records were put in. Could it be reflection works the same way? But then, deserializing would mean that first the SelectedManeuver would be deserialized, then ToViewModel and FromViewModeland, then the RouteCoordinates, then the Maneuvers, and finally the model. But smart Mr Me has implemented this clever method of initializing FromViewModel and ToViewModel upon calling of the setter. So whatever was deserialized into FromViewModel and ToViewModel&nbsp; gets overwritten after Model is deserialized!</p>
+<p>So let’s make the Model property the very first property of the viewmodel, right after the constructors, run the test and see what happens…</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Windows-Phone-8-navigation-part-3updatin_9032/image_4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-Phone-8-navigation-part-3updatin_9032/image_thumb_4.png" width="383" height="138"></a></p>
+<p>You can imagine with this kind of arcane stuff going on behind the curtains, (unit) test code can be a <em>really</em> great tool to track and fix this kind of obscure errors – and make sure they never, ever occur suddenly again, just because someone changed the order in the way things are implemented!</p>
+<p><font size="4">Fixing the MapShapeDrawBehavior bug</font></p>
+<p>This is a bit of odd one – apparently the developer that made the MapShapeDrawBehavior – a knucklehead who names himself “LocalJoost” ;-) -&nbsp; has made an error implementing data binding – while he implemented listening to all the collection events correctly, he never apparently anticipated the initial collection might have some values before data binding ensued. The advantage of open source is that we actually can see this. So, we either have to copy MapShapeDrawBehavior ‘s code and make a manual fix to make sure some event occurs that makes it go draw the stuff – or implement a band-aid that does not interfere with the existing code. </p>
+<p>I pulled out the band, aid, and made the following class:</p><pre>using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+
+namespace Wp7nl.Utilities
+{
+  public class ResettableObservableCollection&lt;T&gt; : ObservableCollection&lt;T&gt;
+  {
+    public ResettableObservableCollection()
+    {
+    }
+
+    public ResettableObservableCollection(List&lt;T&gt; list)
+      : base(list)
+    {
+    }
+
+    public ResettableObservableCollection(IEnumerable&lt;T&gt; list)
+      : base(list)
+    {
+    }
+
+    public void ForceReset()
+    {
+      OnCollectionChanged(
+       new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+    }
+  }
+}</pre>
+<p>I changed both RouteCoordinates and Maneuvers in RoutingViewmodel into ResettableObservableCollection, added the following command to RoutingViewmodel:</p><pre>[DoNotSerialize]
+public ICommand MapLoadedCommand
+{
+  get
+  {
+    return new RelayCommand( ()=&gt;
+        {
+          RouteCoordinates.ForceReset();
+          Maneuvers.ForceReset();
+        });
+  }
+}</pre>
+<p>and finally, the following piece of XAML to the map:</p><pre>&lt;i:Interaction.Triggers&gt;
+  &lt;i:EventTrigger  EventName="Loaded"&gt;
+    &lt;Command:EventToCommand Command="{Binding MapLoadedCommand}"/&gt;
+  &lt;/i:EventTrigger&gt;
+&lt;/i:Interaction.Triggers</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Windows-Phone-8-navigation-part-3updatin_9032/image_5.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/Windows-Phone-8-navigation-part-3updatin_9032/image_thumb_5.png" width="150" height="244"></a>This will fire the command directly after the map has loaded. Data binding has already occurred then. And sure enough, even after restarting the app, everything is reloaded from storage. The behavior is tricked into believing it should draw it’s stuff. Now I only need to publish my app, and inform this LocalJoost character that his library contains bugs and if he can fix them ASAP, thank you very much.</p>
+<p><font size="4">Concluding remarks</font></p>
+<p>This series did not only show you the basics of <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 8 navigation, but also how to develop geo-applications on Windows Phone 8 using unit/integration test to explore and test functionality, as well as using test as a way to hunt down and fix bugs. It also showed that if your test are incomplete, you might get bitten. And finally it showed you that, in the end, you still need to test manually to catch bugs that are caused by dunderheads making errors in their published code ;-)</p>
+<p>The final solution <a href="http://www.schaikweb.net/dotnetbyexample/NavigationDemo4.zip" target="_blank">can be found here</a>,</p>  

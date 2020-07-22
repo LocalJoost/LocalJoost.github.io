@@ -1,0 +1,37 @@
+---
+layout: post
+title: New binding possibilities in Mango
+date: '2011-08-12T17:18:00.000+02:00'
+author: Joost van Schaik
+tags:
+- DataBinding
+- Mango
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- XAML
+- behavior
+- MVVM Light
+- WP7
+modified_time: '2011-08-12T22:32:44.843+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7253678190577467646
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/08/new-binding-possibilities-in-mango.html
+---
+
+<p>Apart from all the goodness the new API’s in “Mango” bring us, there is that other great gift that it brings us: Silverlight 4. After spending so much time on <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> you would almost forget that there’s life after the ‘Silverlight 3+’ version that was the baseline up till now. This means for <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> fans like me:</p>  <ul>   <li>You can now directly bind a command to a button’s “Command” property. In fact, you can bind a command to <em>anything</em> that derives from ButtonBase. This includes HyperlinkButton, RadioButton, and CheckBox (and possibly more). If you bind commands to these user interface elements, you can now say goodbye to your good old friends EventTrigger and EventToCommand </li>    <li>If you want to use data from your model in a <em>behavior</em>, you can now bind directly bind data <em>to dependency properties defined in the behavior itself</em>, in stead of doing the attached dependency property dance, or resorting to the MVVMLight Messenger. </li> </ul>  <p>The first one saves a bucket load of XAML. Before Mango, you had to create something like this to fire a command by a button being clicked:</p>  <pre style="font-size: 12px">&lt;Button Content=&quot;Start game&quot;&gt;
+  &lt;Interactivity:Interaction.Triggers&gt;
+    &lt;Interactivity:EventTrigger EventName=&quot;Click&quot;&gt;
+      &lt;MvvmLight_Command:EventToCommand Command=&quot;{Binding StartNewGame, Mode=OneWay}&quot;/&gt;
+    &lt;/Interactivity:EventTrigger&gt;
+  &lt;/Interactivity:Interaction.Triggers&gt;
+&lt;/Button&gt;</pre>
+
+<p>Now you can write the same functionality like this:</p>
+
+<pre style="font-size: 12px">&lt;Button Content=&quot;Start game&quot; Command=&quot;{Binding StartNewGame, Mode=OneWay}&quot;/&gt;</pre>
+
+<p>By no means this means the end of EventToCommand. First of all, it needs to be there for backward compatibility (unless you particularly like rewriting working XAML) .Second, there are plenty of cases for user interface elements that generate particular events that you might want to route to a model via a command. For example, I routinely signal my model a page has completed loading by attaching a command to it’s “Loaded” event. That still requires the EventTrigger-EventToCommand route. </p>
+
+<p>For behaviors, the gain is a little bit less visible. But remember <a href="http://dotnetbyexample.blogspot.com/2011/03/simple-windows-phone-7-silverlight.html" target="_blank">my little Windows Phone Drag/Flick behavior</a>? That sports a dependency property BrakeSpeed that I could now bind to my ViewModel on all instances, thereby controlling all behaviors’ brake speed with one property. The same goes for my <a href="http://dotnetbyexample.blogspot.com/2011/04/preventing-objects-made-invisible-by.html" target="_blank">SetInitialOpacityBehavior</a>, where I explicitly state that you cannot bind to its OpacityAfterLoading property:&#160; “in Windows Phone 7 you cannot data bind it because it’s currently based on Silverlight 3 which only allow you to bind to classes that do descend from DependencyObject – which a behavior obviously does not ;-)”. Well, now you can, and this gives you a powerful and easy way to control behaviors from your ViewModel, and let behaviors push data back to it.</p>
+
+<p>All in all, the ‘Silverlight4+’ in Windows Phone 7 “Mango”&#160; gives us all the opportunities to make MVVMLight based applications even more easy and clean than they already were.</p>  

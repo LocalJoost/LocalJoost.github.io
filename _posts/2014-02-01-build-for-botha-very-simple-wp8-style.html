@@ -1,0 +1,150 @@
+---
+layout: post
+title: Build for both–a very simple wp8 style app bar hint control for Windows Store
+  apps
+date: '2014-02-01T20:47:00.001+01:00'
+author: Joost van Schaik
+tags:
+- windev
+- wpnl
+- wpdev
+- dotnetmag
+- Windows 8
+- XAML
+modified_time: '2014-02-01T20:47:16.755+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-821950203493288447
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/02/build-for-botha-very-simple-wp8-style.html
+---
+
+<p><a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> users are very familiar with the concept of an app bar at the bottom that, in collapsed state, gives a kind of indication that it’s available. In Windows Store apps app bars are just invisible, unless you specifically activate them by swiping in from the top or the bottom. There have been earlier attempts to solve this UI difference by my fellow Dutch MVP <a href="http://reflectionit.nl/Blog/2013/windows-8-xaml-tips-peeking-appbar" target="_blank">Fons Sonnemans who created the Peeking App Bar</a>. Microsoft itself has apparently become aware of the fact default invisible app bars may not always be ideal, and has created a kind of a hint of an app bar that very much looks like they had some inspiration from Windows Phone – which is now used in the Windows Mail app:</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Bu_FBBE/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Bu_FBBE/image_thumb.png" width="650" height="30"></a></p> <p>Now there are already solutions out there, <a href="http://code.msdn.microsoft.com/windowsapps/AppBar-Hint-control-17e23dbf" target="_blank">most notably this one by recently appointed MVP Dave Smits</a>. They work indeed. But I like to make things simple, so I made a very simple. So in a typical programmer fashion, I rolled my own :-)</p> <p>So I created my HintBar control, which is actually laughably simple. The XAML is only this, and most of it is declaration too:</p><pre>&lt;UserControl
+    x:Class="WpWinNl.Controls.HintBar"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    d:DesignHeight="14"
+    d:DesignWidth="400" x:Name="ControlRoot"&gt;
+
+  &lt;Grid x:Name="HintBarGrid" 
+        Background="{Binding Background, ElementName=ControlRoot}" 
+        Tapped="HintBarGridTapped"&gt;
+    &lt;TextBlock  x:Name="HintBarText" Text="&amp;#xE10C" 
+                FontFamily="Segoe UI Symbol" FontSize="21.333" 
+                HorizontalAlignment="Right"  RenderTransformOrigin="0.5,0.5" 
+                VerticalAlignment="Center" Margin="0,0,50,0"/&gt;
+  &lt;/Grid&gt;
+&lt;/UserControl&gt;
+
+</pre>
+<p>So it’s basically a simple grid that does something when the user taps on it. In the grid there’s only a TextBlock with one ‘glyph’ in it – using the special <a href="http://msdn.microsoft.com/en-us/library/windows/apps/jj841126.aspx" target="_blank">Segoe UI Symbol character set</a> that Microsoft uses to store all kinds of symbols in. &amp;#xE10C is simply the code for a symbol containing three dots.</p>
+<p>The code is not very complex either. It’s basically two attached dependency properties:</p>
+<ul>
+<li>AssociatedCommandBar, to which you can bind the CommandBar to open when the hint bar is tapped 
+<li>ForeGround, which you can use to change the color of the three dots</li></ul>
+<p>If you don’t understand what attached dependency properties are: they are basically the property equivalent of extension methods, and what’s more important – you can data bind to them.</p>
+<p>So the AssociatedCommandBar looks like this. It does nothing special</p><pre>#region Attached Dependency Property AssociatedCommandBar
+public static readonly DependencyProperty AssociatedCommandBarProperty =
+	 DependencyProperty.RegisterAttached("AssociatedCommandBar",
+	 typeof(CommandBar),
+	 typeof(HintBar),
+	 new PropertyMetadata(default(CommandBar)));
+
+// Called when Property is retrieved
+public static CommandBar GetAssociatedCommandBar(DependencyObject obj)
+{
+  return obj.GetValue(AssociatedCommandBarProperty) as CommandBar;
+}
+
+// Called when Property is set
+public static void SetAssociatedCommandBar(
+   DependencyObject obj,
+   CommandBar value)
+{
+  obj.SetValue(AssociatedCommandBarProperty, value);
+}
+#endregion</pre>
+<p>The other property is only a brush defining the text color, and the only thing it does is transferring its value to the text:</p><pre>#region Attached Dependency Property ForeGround
+public static readonly DependencyProperty ForeGroundProperty =
+	 DependencyProperty.RegisterAttached("ForeGround",
+	 typeof(Brush),
+	 typeof(HintBar),
+	 new PropertyMetadata(default(Brush), ForeGroundChanged));
+
+// Called when Property is retrieved
+public static Brush GetForeGround(DependencyObject obj)
+{
+  return obj.GetValue(ForeGroundProperty) as Brush;
+}
+
+// Called when Property is set
+public static void SetForeGround(
+   DependencyObject obj,
+   Brush value)
+{
+  obj.SetValue(ForeGroundProperty, value);
+}
+
+// Called when property is changed
+private static void ForeGroundChanged(
+ object sender,
+ DependencyPropertyChangedEventArgs args)
+{
+  var thisObject = sender as HintBar;
+  if (thisObject != null)
+  {
+    thisObject.HintBarText.Foreground = args.NewValue as Brush;
+  }
+}
+#endregion</pre>
+<p>And the rest of the ‘real code’ of the control is just this:</p><pre>using Windows.UI.Xaml;
+using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Input;
+using Windows.UI.Xaml.Media;
+
+namespace WpWinNl.Controls
+{
+  public sealed partial class HintBar : UserControl
+  {
+    public HintBar()
+    {
+      InitializeComponent();
+    }
+
+    private void HintBarGridTapped(object sender, 
+	                           TappedRoutedEventArgs e)
+    {
+      var commandBar = GetAssociatedCommandBar(this);
+      if (commandBar != null)
+      {
+        commandBar.IsOpen = true;
+      }
+    }
+  }
+}</pre>
+<p>Not exactly rocket science, right? You tap the grid, the command bar opens. :-)</p>
+<p>Using it is pretty simple too. You have a page with a command bar: </p><pre style="font-size: 12px">&lt;Page
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:WpWinNl.Controls"
+    x:Class="HintBarDemo.MainPage"
+    mc:Ignorable="d" VerticalAlignment="Bottom"&gt;
+
+  &lt;Page.BottomAppBar &gt;
+    &lt;CommandBar x:Name="BottomBar"  Background="Blue"&gt;
+    &lt;!-- Content omitted --&gt;
+    &lt;/CommandBar&gt;
+  &lt;/Page.BottomAppBar&gt;
+
+  &lt;Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"&gt;
+
+    &lt;controls:HintBar Background ="Blue" Height="14" VerticalAlignment="Bottom"
+     	   AssociatedCommandBar="{Binding ElementName=BottomBar}"/&gt;
+
+  &lt;/Grid&gt;
+&lt;/Page&gt;
+</pre>
+<p>Give the command bar a name and bind it to AssociatedCommandBar property of the control. Then it’s just a matter of setting it to the bottom of the page, setting it to the desired height, and choosing a color for your bar. That is all. Life is sometimes very easy.</p>
+<p>As always, <a href="http://www.schaikweb.net/dotnetbyexample/HintBarDemo.zip" target="_blank">the demo solution can be found here</a>.</p>  

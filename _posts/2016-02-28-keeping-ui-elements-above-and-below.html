@@ -1,0 +1,160 @@
+---
+layout: post
+title: Keeping UI elements above and below the Universal Windows Platform app bars
+date: '2016-02-28T20:50:00.000+01:00'
+author: Joost van Schaik
+tags:
+- UWP
+- Application Bar
+- XAML
+- behavior
+modified_time: '2016-03-02T21:43:42.881+01:00'
+thumbnail: https://lh3.googleusercontent.com/-RNhyQBcTrCU/VtNAGjTqFUI/AAAAAAAANhk/fb72L1Sm0r8/s72-c/screen1_thumb.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7610763379977595278
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/02/keeping-ui-elements-above-and-below.html
+---
+
+<strike></strike> <h2>A little history - or how I messed up </h2> <p><img style="float: right; display: inline" src="http://thehockeywriters.com/wp-content/uploads/2011/01/yikes.jpg" align="right">I initially created this behavior&nbsp; <a href="http://dotnetbyexample.blogspot.com/2014/12/a-behavior-to-deal-with-ui-consequences.html">for Windows Phone 8.1</a>, and then <a href="http://dotnetbyexample.blogspot.ca/2015/01/keeping-popups-above-bottom-app-bar-in.html">ported it to Windows 8.1 store apps</a>. I presume at one point during creating <a href="https://github.com/LocalJoost/WpWinNl" target="_blank">WpWinNl</a> for <a href="https://www.visualstudio.com/en-us/features/universal-windows-platform-vs.aspx" target="_blank">Universal Windows Platform</a> I found out that whatever I tried back then did not work anymore, and Microsoft seemed to be moving away from the app bar anyway… whatever, I can’t remember. Fact is, the KeepFromBottomBehavior fell by the wayside during the beta times of Windows 10 and I forgot about it. Time moved on, Windows SDKs finalized and the app bar stayed after all… and last week I got an email from <a href="https://ca.linkedin.com/in/craig-trought-117b7786">Craig Trought</a> who apparently had used this behavior in previous apps and had found out that it was not in the prerelease WpWinNl UWP package, which kind of was a bit unfortunate as he was now trying to make his app run on UWP. Can’t have people being stuck on UWP development because of me dropping a ball, so I took on the challenge to get the behavior to work again. And in the process I discovered that indeed my approach to this solution did not work <em>at all</em> anymore. Apparently the way Microsoft implemented the app bars had changed considerably.I also found out Craig is quite a persistent fellow, who found I had missed a few points in my first two attempts to port it to UWP.</p> <h2>Purpose of the behavior(s)</h2> <p>The idea behind the KeepFromBottomBehavior (and now it’s little brother, KeepFromTopBehavior) is to prevent (parts of) the UI being covered by the app bar, whether it’s in its closed state or being opened. It should also work when the ApplicationView’s DesiredBoundsMode is set to ApplicationViewBoundsMode.UseCoreWindow <em>and</em> take into account that most Windows 10 mobile devices now have a ‘soft keys navigation bar’, that is – there are no separate buttons – either physical or capacitive– on the device anymore, but just a button bar drawn on the&nbsp; of the screen. To make things more complicated, you can hide this button bar by swiping from bottom to top over it (making the same gesture brings it back, too) to let apps make full use of the screen real estate. Too make a little more clear what I mean, consider these three screen shots of the app in the mobile emulator:</p><a href="https://lh3.googleusercontent.com/-5BFiJ26MCqE/VtNAGNO_zMI/AAAAAAAANhg/YRqcK6pA2Jc/s1600-h/screen1%25255B2%25255D.png"><img title="screen1" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="screen1" src="https://lh3.googleusercontent.com/-RNhyQBcTrCU/VtNAGjTqFUI/AAAAAAAANhk/fb72L1Sm0r8/screen1_thumb.png?imgmax=800" width="139" height="244"></a><a href="https://lh3.googleusercontent.com/-XcIkrWF-tLw/VtNAG04XfhI/AAAAAAAANho/oB6qYj8LR1I/s1600-h/screen2%25255B2%25255D.png"><img title="screen2" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px 10px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="screen2" src="https://lh3.googleusercontent.com/-wZ9fWRsxVuU/VtNAHeI6rMI/AAAAAAAANhs/wBS6zt5_bkI/screen2_thumb.png?imgmax=800" width="139" height="244"></a><a href="https://lh3.googleusercontent.com/-wD2r8SFG8n4/VtNAHlygKOI/AAAAAAAANhw/7DKaoQ8P_Gc/s1600-h/screen3%25255B2%25255D.png"><img title="screen3" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="screen3" src="https://lh3.googleusercontent.com/-OEO9wW2x-sw/VtNAILhIAwI/AAAAAAAANh0/44jqWMuowNI/screen3_thumb.png?imgmax=800" width="139" height="244"></a>  <p>To the left, you see how the app looks with both app bars closed. In the middle, you see what happens when both app bars are opened – they cover part of the UI. Ugly. The rightmost screenshot shows what happens when the behaviors are applied – key parts of the UI are moved to stay into view. </p> <h2>ApplicationViewBoundsMode? What ApplicationViewBoundsMode?</h2> <p>Usually the&nbsp; ApplicationView’s DesiredBoundMode is set to&nbsp; ApplicationViewBoundsMode.UseVisible. In that case, Windows 10 only provides you with the space between the top app bar and the bottom app bar, if those exist – in their closed state. In Windows 10 mobile, if there is no top bar, the area covered by status bar – the thing on top that shows your battery status and stuff like that –&nbsp; is not available either.</p> <p>If you, on the other hand, specify ApplicationViewBoundsMode.UseCoreWindow you get <em>all</em> of the screen to draw on, and stuff appears behind app bars, navigation bars and status bars. This mode is best used in moderation, but can be useful if you for instance want to draw a screen filling map (as in my sample) but then it’s your own responsibility to make sure things don’t get covered up. This is one of the use cases of the behavior. The other is to make sure that whenever the app bars get opened, they still don’t cover op part of the UI. To make things extra complicated, it must also support programmatically made changes to the appbar size (from minimal to compact and back) and support navigating back with NavigationCacheMode.Required.</p> <p>To see how it looks like – more screenshots!</p> <p><a href="https://lh3.googleusercontent.com/-GnpPzJluxYg/VtNAIT4V39I/AAAAAAAANh4/M_5cwsM3CT8/s1600-h/screen4%25255B2%25255D.png"><img title="screen4" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="screen4" src="https://lh3.googleusercontent.com/-9ieK9wcsa7w/VtNAItVOuoI/AAAAAAAANh8/URJVLgJpsdE/screen4_thumb.png?imgmax=800" width="139" height="244"></a><a href="https://lh3.googleusercontent.com/-cfe0GOKCTbA/VtNAJMePOSI/AAAAAAAANiA/K-MAhHtotgg/s1600-h/screen5%25255B2%25255D.png"><img title="screen5" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px 10px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="screen5" src="https://lh3.googleusercontent.com/-ySN_K0L94nE/VtNAJQfFMAI/AAAAAAAANiE/HSpGkUY9DG4/screen5_thumb.png?imgmax=800" width="139" height="244"></a><a href="https://lh3.googleusercontent.com/-O8MWX4tmBts/VtNAJ3LU7YI/AAAAAAAANiI/bz0YrybqnhQ/s1600-h/screen6%25255B2%25255D.png"><img title="screen6" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="screen6" src="https://lh3.googleusercontent.com/-o6b-3x_C7H4/VtNAKExm4sI/AAAAAAAANiM/YfmKH958G2c/screen6_thumb.png?imgmax=800" width="139" height="244"></a><a href="https://lh3.googleusercontent.com/-f8olCzv70AY/VtNAKWThmWI/AAAAAAAANiQ/58pCAdEiRFo/s1600-h/screen7%25255B2%25255D.png"><img title="screen7" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px 0px 0px 10px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="screen7" src="https://lh3.googleusercontent.com/-Z1KRfb_Z3tk/VtNAK2NiDfI/AAAAAAAANiU/6sxy3REQn9s/screen7_thumb.png?imgmax=800" width="139" height="244"></a></p> <p>To the left you see the app with closed app bars, which I intentionally made translucent so you can see what is going on. Although the map nicely covers the whole screen, the rest of the UI looks pretty horrible. The 2nd to left screenshot shows the app with both app bars <em>opened, </em>and that is a complete mess. The 3rd to left shows closed app bars with the behaviors applied, and the rightmost shows both app bars open, also with the behaviors applied. The parts of the UI we want to not be covered by anything, are moved up- and downwards to stay into view. You are welcome ;)</p> <h2>So how does this work?</h2> <p><a href="https://lh3.googleusercontent.com/-UUEVnTYUjjw/VtNHCTyBTiI/AAAAAAAANik/oAX_SMhK4xU/s1600-h/image%25255B2%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; margin: 0px 10px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-lnFHKGjcYII/VtNHCpbAMhI/AAAAAAAANio/w4GAB78m3mM/image_thumb.png?imgmax=800" width="244" align="left" height="170"></a></p> <p>Very differently from the 8.1 era, I can tell you that. Using Microsoft’s new Live Visual Tree explorer (thanks tools team!) I found out something about the innards of the Windows 10 command bars – inside it there’s a popup that appears over the command par when you click the ellipses button. So if the app bar opens, we&nbsp; only need to move the stuff we want to keep into view a number of pixels equal to the height of the popup minus the height of the app bar’s closed height. That works fine for the ApplicationViewBoundsMode.UseVisible mode, but for the ApplicationViewBoundsMode.UseCoreWindow things are quite a bit more complicated. The base setup of KeepFromBottomBehavior is as follows:</p><pre style="font-size: 12px">public class KeepFromBottomBehavior : Behavior&lt;FrameworkElement&gt;
+{
+  protected override void OnAttached()
+  {
+    if (!Initialize())
+    {
+      AssociatedObject.Loaded += AssociatedObjectLoaded;
+    }
+    base.OnAttached();
+  }
+
+  private void AssociatedObjectLoaded(object sender, RoutedEventArgs e)
+  {
+    AssociatedObject.Loaded -= AssociatedObjectLoaded;
+    Initialize();
+  }
+
+  private bool Initialize()
+  {
+    var page = AssociatedObject.GetVisualAncestors().OfType&lt;Page&gt;().FirstOrDefault();
+    if (page != null)
+    {
+      AppBar = GetAppBar(page);
+      if (AppBar != null)
+      {
+        OriginalMargin = AssociatedObject.Margin;
+
+        AppBar.Opened += AppBarManipulated;
+        AppBar.Closed += AppBarManipulated;
+        AppBar.SizeChanged += AppBarSizeChanged;
+        UpdateMargin();
+        ApplicationView.GetForCurrentView().VisibleBoundsChanged += VisibleBoundsChanged;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  protected AppBar AppBar { get; private set; }
+
+  protected Thickness OriginalMargin { get; private set; }
+
+  protected virtual AppBar GetAppBar(Page page)
+  {
+    return page.BottomAppBar;
+  }
+}
+</pre>
+<p>In the AssociatedObjectLoaded I collect the things I am interested in:</p>
+<ul>
+<li>The current bottom margin of the object that needs to be kept in view 
+<li>The app bar that we are going to watch – if it’s being opened, closed, or changes size we need to act 
+<li>Whether the visible bounds of the current view have changed. This is especially interesting when a phone is being rotated or the navigation bar is being dismissed.</li></ul>
+<p>The fact that the app bar is being collected by and overrideable method is to make a child class for keeping stuff from the <em>top</em> more easy. There is more noteworthy stuff: I try to initialize from OnAttached first, then from OnLoading is that fails. This is because if you use NavigationCacheMode.Required, the first time you hit the page OnAttached is called, but the visual tree is not read, so I have to call from OnLoaded. If you move away, then navigate back, OnLoaded is <em>not</em> called, only OnAttached. Navigate away and back again, then both events are called. So it’s “you never know, just try both”. Note also, by the way, the use of <strong>GetVisualAncestors </strong>– that’s a WpWinNl extension method, not part of the standard UWP API. It finds the page on which this behavior is located, and from that, the app bar we are interested in. So if one of the events we subscribed to fire, we need to recalculate the bottom margin, which is exactly as you see in code:</p><pre style="font-size: 12px">private void AppBarSizeChanged(object sender, SizeChangedEventArgs e)
+{
+  UpdateMargin();
+}
+
+private void VisibleBoundsChanged(ApplicationView sender, object args)
+{
+  UpdateMargin();
+}
+
+void AppBarManipulated(object sender, object e)
+{
+  UpdateMargin();
+}
+
+private void UpdateMargin()
+{
+  AssociatedObject.Margin = GetNewMargin();
+}</pre>
+<p>And then we come to the heart of the matter. First we see the simple method GetDeltaMargin, that indeed calculates the difference in height between an opened and closed app bar:</p><pre style="font-size: 12px">protected double GetDeltaMargin()
+{
+  var popup = AppBar.GetVisualDescendents().OfType&lt;Popup&gt;().First();
+  return popup.ActualHeight - AppBar.ActualHeight;
+}</pre>
+<p>And then comes the real number trickery. </p><pre style="font-size: 12px">protected virtual Thickness GetNewMargin()
+{
+  var currentMargin = AssociatedObject.Margin;
+  var baseMargin = 0.0;
+  if (ApplicationView.GetForCurrentView().DesiredBoundsMode == 
+       ApplicationViewBoundsMode.UseCoreWindow)
+  {
+    var visibleBounds = ApplicationView.GetForCurrentView().VisibleBounds;
+    baseHeight = CoreApplication.GetCurrentView().CoreWindow.Bounds.Height - 
+                   visibleBounds.Height + AppBar.ActualHeight;
+
+    if(AnalyticsInfo.VersionInfo.DeviceFamily == "Windows.Mobile")
+    {
+      baseMargin -= visibleBounds.Top;
+    }
+  }
+
+  return new Thickness(currentMargin.Left, currentMargin.Top, currentMargin.Right,
+                          OriginalMargin.Bottom + 
+                            (AppBar.IsOpen ? GetDeltaMargin() + baseMargin : baseMargin));
+
+}</pre>
+<p>Right. If the simple flow is followed ( that is, for ApplicationViewBoundsMode.UseVisible), we simply need to add the difference in height of a closed and an opened app bar to the bottom margin. On the other hand, if ApplicationViewBoundsMode.UseCoreWindow was used, we need to calculate the <em>base margin</em> of the element we need to keep above the app bar, whether this bar is closed or not, for Windows doesn’t take care of that for us now. You wanted the whole window, you <em>get </em>the whole window. So the base margin is the whole height of the AppBar itself <em>plus</em> the difference between the windows height and the visible height -&nbsp; that is, the height of that portion of the windows that would be used if we were just letting Windows take care of things. In addition, if we are on Windows 10 <em>mobile</em>, we have to subtract the visible top to take care of the <em>status</em> bar.</p>
+<p>Also very important – the cleaning up if we leave the page! After all, we might return to a cached version of it! So all events are detached, and the original margin of the UI element handled by this behavior is restored.</p><pre style="font-size: 12px">protected override void OnDetaching()
+{
+  AppBar.Opened -= AppBarManipulated;
+  AppBar.Closed -= AppBarManipulated;
+  AppBar.SizeChanged -= AppBarSizeChanged;
+  ApplicationView.GetForCurrentView().VisibleBoundsChanged -= VisibleBoundsChanged;
+  ResetMargin();
+  base.OnDetaching();
+}
+
+private void ResetMargin()
+{
+  AssociatedObject.Margin = OriginalMargin;
+}
+</pre>
+<h2>KeepFromTopBehavior</h2>
+<p>Basically we only have to override GetAppBar, GetOrginalMargin and of course GetNewMargin. This is a tiny bit simpler than KeepFromBottomBehavior – as we are setting the top we can now directly relate to the <em>top</em> margin differences, and don’t need to worry about differences between Windows 10 and Windows 10 mobile:</p><pre style="font-size: 12px">public class KeepFromTopBehavior : KeepFromBottomBehavior
+{
+  protected override Thickness GetNewMargin()
+  {
+    var currentMargin = AssociatedObject.Margin;
+    var baseMargin = 0.0;
+    if (ApplicationView.GetForCurrentView().DesiredBoundsMode ==
+       ApplicationViewBoundsMode.UseCoreWindow)
+    {
+      var visibleBounds = ApplicationView.GetForCurrentView().VisibleBounds;
+      baseMargin = visibleBounds.Top - 
+        CoreApplication.GetCurrentView().CoreWindow.Bounds.Top + AppBar.ActualHeight;
+    }
+    return new Thickness(currentMargin.Left,
+      OriginalMargin.Top + 
+       (AppBar.IsOpen ? GetDeltaMargin() + baseMargin : baseMargin), 
+        currentMargin.Right, currentMargin.Bottom);
+  }
+
+  protected override AppBar GetAppBar(Page page)
+  {
+    return page.TopAppBar;
+  }
+}</pre>
+<h2>Concluding remarks</h2>
+<p>This is the first time I actually had to resort to checking for device family for UI purposes; the U in UWP makes application development so universal indeed that these kinds of things usually get abstracted pretty much away. As always, you can have a look at <a href="https://github.com/localjoost/softwarekeysdemo" target="_blank">the sample solution</a>, which is still the same as in the Windows 8.1 article, only I have added a UWP project. If you want to observe the difference between ApplicationViewBoundsMode.UseVisible and ApplicationViewBoundsMode.UseCoreWindows yourself, go to the App.Xaml.cs and uncomment the line that sets UseCoreWindow (line 68). </p>
+<p>Oh by the way, this all works on Windows 10 desktop of course as well but making screenshots for mobile is a bit easier. The code for this is also in WpWinNl on Github already (be sure to head for <a href="https://github.com/LocalJoost/WpWinNl/tree/uwp" target="_blank">the UWP branch</a>), but I am still dogfooding the rest of the package so that is still not released as a NuGet package.</p>
+<p>I want to thank Craig for being such a thorough tester – although he excused himself for being “such a pain” I would love to have more behaviors being put through the grinder like this, it really improves code quality.</p>

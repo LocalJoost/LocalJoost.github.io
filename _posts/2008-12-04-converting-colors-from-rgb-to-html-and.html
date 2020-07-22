@@ -1,0 +1,30 @@
+---
+layout: post
+title: Converting colors from RGB to HTML and back
+date: '2008-12-04T21:03:00.004+01:00'
+author: Joost van Schaik
+tags:
+- color conversion
+- rgb
+- C#
+- html
+modified_time: '2008-12-04T21:11:25.213+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2961404985251347724
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2008/12/converting-colors-from-rgb-to-html-and.html
+---
+
+A very short one this time: it turns out to be pretty easy to convert a RGB color to a HTML color and back. This may come handy when (like me) you are using configuration files in which colors for map features are specified in RGB.
+Add a reference to System.Drawing.dll and a "using System.Drawing" to your class and you can use the following code:<pre>Color rgbColor = Color.FromArgb(255, 0, 0);
+string HTMLColor = ColorTranslator.ToHtml(rgbColor);
+Color rgbColor2 = ColorTranslator.FromHtml(HTMLColor);
+Color rgbColor3 = ColorTranslator.FromHtml("Fuchsia");
+
+ Console.WriteLine(HTMLColor);
+ Console.WriteLine(string.Format("{0},{1},{2}",
+     rgbColor2.R, rgbColor2.G, rgbColor2.B));
+ Console.WriteLine(string.Format("{0},{1},{2}",
+     rgbColor3.R, rgbColor3.G, rgbColor3.B));</pre>this wil output the following:
+<strong>#FF0000
+255,0,0
+255,0,255</strong>
+I translated RGB red to HTML red, and back. For an encore, I demonstrated the fact that named colors are translated into RGB as well.

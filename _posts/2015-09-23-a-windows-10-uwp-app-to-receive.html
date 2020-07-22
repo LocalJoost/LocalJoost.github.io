@@ -1,0 +1,419 @@
+---
+layout: post
+title: A Windows 10 UWP app to receive temperature data from a Raspberry PI2 and control
+  a fan using the Azure Service Bus
+date: '2015-09-23T19:06:00.000+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- Azure
+- IoT
+- Raspberry PI2
+- Windows 10
+modified_time: '2015-09-23T21:01:47.904+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-42940446761909438
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/09/a-windows-10-uwp-app-to-receive.html
+---
+
+<h4><font size="2">Part 5 of Reading temperatures &amp; controlling a fan with a RP2, Azure Service Bus and a Microsoft Band</font></h4> <p><a href="http://www.schaikweb.net/dotnetbyexample/A-Windows-10-UWP-to-receive-temperature-_A0B0/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-Windows-10-UWP-to-receive-temperature-_A0B0/image_thumb.png" width="157" align="right" height="244"></a><font size="4">Intro</font><br>You cannot deploy apps to a Microsoft Band directly, so there is always a kind of app running on the device to which it is paired on which the code is actually running. Typically this is a phone, but there since this is a Universal <a href="http://www.windows.com" target="_blank">Windows</a> App, there is no reason why it could not run on a PC, like this screenshot shows :). Yet, I have found out that although you can pair a Band to a PC, it will insist on connecting to the app before showing a UI, so you cannot actually <em>use</em> it with a PC. So for the time being, you should use a phone.</p> <p>This blog post will talk about the setup of the app itself, actually excluding most of the stuff related to the Band - and concentrate on how to setup a reasonably componentized app.</p> <p>This app also uses dependency injection, as discussed in my post <a href="http://dotnetbyexample.blogspot.com/2015/09/measuring-temperatures-using-uwp-on.html" target="_blank">about the app on the Raspberry PI2,</a> but this one makes full use of the MVVM pattern - to be more specific, <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a>, by my fellow MVP (although I can barely stand in his shade)&nbsp; <a href="http://www.twitter.com/lbugnion" target="_blank">Laurent Bugnion</a>. I make use of his ViewModelBase and Messenger, as well as SimpleIoC for some inversion of control, and DispatcherHelper to get help me solve potential issues with background processes having effects on the UI.</p> <p><font size="4">Basic app setup</font><br>The app starts (of course) in App.xaml.cs, of which I show a little excerpt:</p><pre>public App()
+{
+  SimpleIoc.Default.Register&lt;IMessageDisplayer, Toaster&gt;();
+  SimpleIoc.Default.Register&lt;IErrorLogger, ErrorLogger&gt;();
+  InitializeComponent();
+  Suspending += OnSuspending;
+  UnhandledException += SimpleIoc.Default.
+    GetInstance&lt;IErrorLogger&gt;().LogUnhandledException;
+  UnhandledException += App_UnhandledException;
+  Resuming += App_Resuming;
+}
+
+private void App_Resuming(object sender, object e)
+{
+  Messenger.Default.Send(new ResumeMessage());
+}
+
+private void App_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+{
+  SimpleIoc.Default.GetInstance&lt;IMessageDisplayer&gt;().
+    ShowMessage ($"Crashed: {e.Message}");
+}
+
+protected override void OnLaunched(LaunchActivatedEventArgs e)
+{
+  DispatcherHelper.Initialize();
+  MainViewModel.Instance.Init();
+  // stuff omitted
+}</pre>
+<p>The first two lines mean that whenever something requests something implementing an IMessageDisplayer, send him a Toaster. A similar thing goes for IErrorLogger. Retrieving something is a easy as using GetInstance - see App_UnhandledException. Toaster is a simple class to show a toast message, ErrorLogger is something I wrote for logging errors in local storage - for long running processes. Notice also the use of the Messenger in the App_Resuming. This is all part of making the viewmodel aware of things it needs to know, which ever making a direct dependency </p>
+<p>If you use MVVMLight's DispatcherHelper, don't forget to initialize it (I always do for some reason, fortunately the error message is clear enough) and then I initialize my main viewmodel. Which, since this is a simple app, is the only viewmodel as well ;)</p>
+<p><font size="4">Bootstrapping the viewmodel</font><br>The part of the viewmodel that handles startup and initializing is this:</p><pre>using System;
+using System.Globalization;
+using System.Threading.Tasks;
+using Windows.ApplicationModel.ExtendedExecution;
+using Windows.Devices.Geolocation;
+using GalaSoft.MvvmLight;
+using GalaSoft.MvvmLight.Ioc;
+using GalaSoft.MvvmLight.Messaging;
+using GalaSoft.MvvmLight.Threading;
+using TemperatureReader.ClientApp.Helpers;
+using TemperatureReader.ClientApp.Messages;
+using TemperatureReader.ClientApp.Models;
+using TemperatureReader.ServiceBus;
+
+namespace TemperatureReader.ClientApp.ViewModels
+{
+  public class MainViewModel : ViewModelBase
+  {
+    private readonly ITemperatureListener _listener;
+    private readonly IBandOperator _bandOperator;
+    private readonly IMessageDisplayer _messageDisplayer;
+    private readonly IErrorLogger _errorLogger;
+
+    public MainViewModel(ITemperatureListener listener, 
+      IBandOperator bandOperator, 
+      IMessageDisplayer messageDisplayer, 
+      IErrorLogger errorLogger)
+    {
+      _listener = listener;
+      _bandOperator = bandOperator;
+      _messageDisplayer = messageDisplayer;
+      _errorLogger = errorLogger;
+    }
+
+    public void Init()
+    {
+      Messenger.Default.Register&lt;ResumeMessage&gt;(this, 
+        async msg =&gt; await OnResume());
+    }
+    
+    // lots omitted
+
+    private static MainViewModel _instance;
+
+    public static MainViewModel Instance
+    {
+      get { return _instance ?? (_instance = CreateNew()); }
+      set { _instance = value; }
+    }
+
+    public static MainViewModel CreateNew()
+    {
+      var fanStatusPoster = new FanSwitchQueueClient(QueueMode.Send);
+      fanStatusPoster.Start();
+      var listener = new TemperatureListener();
+      var errorLogger = SimpleIoc.Default.GetInstance&lt;IErrorLogger&gt;();
+      var messageDisplayer = SimpleIoc.Default.GetInstance&lt;IMessageDisplayer&gt;();
+      var bandOperator = new BandOperator(fanStatusPoster);
+      return (new MainViewModel(
+        listener, bandOperator, 
+        messageDisplayer, errorLogger));
+    }
+  }
+}</pre>And here you see once again creation of a number of independent objects that will only be loosely connected. I could have gone further and let these also be created by having them registered in SimpleIoC, but the constructor will also allow me to 'inject' these objects into the viewmodel. Anyway, we see being created: 
+<ul>
+<li>a FanSwitchQueueClient, that will transport the command to switch the fan on or off to the Raspberry PI2 via the Azure Service bus. It's details <a href="http://dotnetbyexample.blogspot.com/2015/09/using-azure-service-bus-queue-for-two.html" target="_blank">were explained in the 2nd post</a> of this series. It's now in Send mode, as opposed to the app on the Raspberry PI2. 
+<li>TemperatureListener listens to temperature data coming from the Raspberry PI2. It's a thin wrapper around TemperatureQueueClient (also explained in <a href="http://dotnetbyexample.blogspot.com/2015/09/using-azure-service-bus-queue-for-two.html" target="_blank">in the 2nd post</a> of this series) 
+<li>An ErrorLogger, which I will describe in a future blog post 
+<li>A MessageDisplayer - it's implementation being something that shows a toast, as already mentioned 
+<li>A BandOperator - a class that handles all interactions with the Microsoft Band as far as this app is concerned. This will be handled in detail in the next blog post. Notice it takes a FanSwitchQueueClient as a parameter - the BandOperator itself will handle the posting of the fan switch command (and defer the actual execution to the FanSwitchQueueClient).</li></ul>
+<p>For now, it's good enough to know the BandOperator has a very limited public interface, that looks like this:</p><pre>public interface IBandOperator
+{
+  Task&lt;bool&gt; Start(bool forceFreshClient = false);
+  Task SendVibrate();
+  Task Stop ();
+  Task RemoveTile();
+  void HandleNewTemperature(object sender, TemperatureData data);
+  bool IsRunning { get; }
+}</pre>
+<p><font size="4">TemperatureListener<br></font>This is basically a very thin wrapper around the TemperatureQueueClient, that only adds 'remembering' the queue's status to the basic functionality:</p><pre>public class TemperatureListener : ITemperatureListener
+{
+  private readonly TemperatureQueueClient _client;
+  public TemperatureListener()
+  {
+    _client = new TemperatureQueueClient(QueueMode.Listen);
+    _client.OnDataReceived += ProcessTemperatureData;
+ }
+
+  private void ProcessTemperatureData(object sender, 
+    TemperatureData temperatureData)
+  {
+    OnTemperatureDataReceived?.Invoke(this, temperatureData);
+  }
+
+  public async Task Start()
+  {
+    await _client.Start();
+    IsRunning = true;
+  }
+
+  public bool IsRunning { get; private set; }
+
+  public void Stop()
+  {
+    _client.Stop();
+    IsRunning = false;
+  }
+
+  public event EventHandler&lt;TemperatureData&gt; OnTemperatureDataReceived;
+}
+</pre>Note that it puts the TemperatureQueueClient in Listen mode - this is again exactly the mirror image from what is happening on the Raspberry PI2 
+<p><font size="3"><font size="4">The view model's public interface - aka what is used for data binding</font><br></font>These 5 properties - and the one method - are the only things that are available to the 'outside world' as far as the main view model is concerned: </p><pre>public async Task RemoveTile()
+{
+  IsBusy = true;
+  await Task.Delay(1);
+  await _bandOperator.RemoveTile();
+  IsBusy = false;
+}
+
+public bool IsListening
+{
+  get
+  {
+    return _listener?.IsRunning ?? false;
+  }
+  set
+  {
+    if (_listener != null)
+    {
+      if (value != _listener.IsRunning)
+      {
+        Toggle();
+      }
+    }
+  }
+}
+
+private string _temperature = "--.-";
+public string Temperature
+{
+  get { return _temperature; }
+  set { Set(() =&gt; Temperature, ref _temperature, value); }
+}
+
+private string _lastDateTimeReceived = "--:--:--   ----------";
+public string LastDateTimeReceived
+{
+  get { return _lastDateTimeReceived; }
+  set { Set(() =&gt; LastDateTimeReceived, ref _lastDateTimeReceived, value); }
+}
+
+private string _fanStatus = "???";
+public string FanStatus
+{
+  get { return _fanStatus; }
+  set { Set(() =&gt; FanStatus, ref _fanStatus, value); }
+}
+
+private bool _isBusy;
+public bool IsBusy
+{
+  get { return _isBusy; }
+  set { Set(() =&gt; IsBusy, ref _isBusy, value); }
+}</pre>
+<p>The method "RemoveTile" is called to remove the custom tile from the Band and is bound to the button labeled as such. IsListening is bound to the toggle switch, IsBusy is bound to the progress ring and the semi-transparent overlay that will appear while you switch the toggle, and the rest of the properties are just display properties.</p>
+<p>There is a single call to the BandOperator - later we will see more. The public interface for a BandOperator is very limited, as are the interface for all the classes in this project:</p><pre>public interface IBandOperator
+{
+  Task&lt;bool&gt; Start(bool forceFreshClient = false);
+  Task SendVibrate();
+  Task Stop ();
+  Task RemoveTile();
+  void HandleNewTemperature(object sender, TemperatureData data);
+  bool IsRunning { get; }
+}</pre>
+<p>And that is all you need to know from the BandOperator for this blog post.</p>
+<p>MVVMLight aficionados like me might notice that our good friend RelayCommand is MIA. This is because in the XAML I use the new x:Bind syntax, as you might have seen in this StackPanel in MainPage.xaml that show most of the text being displayed: </p><pre>&lt;StackPanel Grid.Row="2" Margin="0,0,0,16" Orientation="Vertical"&gt;
+  &lt;TextBlock  HorizontalAlignment="Center" FontSize="30" Margin="0"  &gt;
+    &lt;Run Text="{<strong>x:Bind</strong> ViewModel.Temperature, FallbackValue=--.-, Mode=OneWay}" /&gt;
+    &lt;Run Text="°C" /&gt;
+  &lt;/TextBlock&gt;
+  &lt;TextBlock  HorizontalAlignment="Center" FontSize="15" Margin="0"  &gt;
+    &lt;Run Text="Fan is" /&gt;
+    &lt;Run Text="{<strong>x:Bind</strong> ViewModel.FanStatus, FallbackValue=--.-, Mode=OneWay}" /&gt;
+  &lt;/TextBlock&gt;
+  &lt;TextBlock Text="{<strong>x:Bind</strong> ViewModel.LastDateTimeReceived, 
+           FallbackValue=--:--:--   ----------, Mode=OneWay}" 
+           FontSize="10" HorizontalAlignment="Center"&gt;&lt;/TextBlock&gt;
+&lt;/StackPanel&gt;
+</pre>This new way of binding allows to directly binding public viewmodel methods to events happening in the user interfaced, so we don't need a command anymore:<pre>&lt;Button Grid.Row="5" <strong>Click="{x:Bind ViewModel.RemoveTile}</strong>"  
+  Content="Remove tile from Band" HorizontalAlignment="Center"/&gt;</pre>
+<p>Detailed information on how to bind events directly to events <a href="https://msdn.microsoft.com/en-us/library/windows/apps/mt204783.aspx" target="_blank">can be found here</a>. In order to be able to use x:Bind, the object to bind to <em>needs to be a public property of the code behind class</em>. This you can see in MainPage.xaml.cs:<br></p><pre>public MainViewModel ViewModel
+{
+  get { return MainViewModel.Instance; }
+}</pre>
+<p><font size="4">Starting and stopping</font><br>As you can see from IsListening, there should be a Toggle method that is kicked off when the IsListening property is set. There is one indeed, and it - and it's friends - are implemented like this:<pre>private async Task Toggle()
+{
+  if (_listener.IsRunning)
+  {
+    await Stop();
+  }
+  else
+  {
+    await Start();
+  }
+  RaisePropertyChanged(() =&gt; IsListening);
+}
+
+private async Task Start()
+{
+  IsBusy = true;
+  await Task.Delay(1);
+  _listener.OnTemperatureDataReceived += Listener_OnTemperatureDataReceived;
+  _listener.OnTemperatureDataReceived += _bandOperator.HandleNewTemperature;
+  await _listener.Start();
+  await StartBackgroundSession();
+  await _bandOperator.Start();
+  await _bandOperator.SendVibrate();
+  IsBusy = false;
+}
+
+private async Task Stop()
+{
+  IsBusy = true;
+  await Task.Delay(1);
+  _listener.OnTemperatureDataReceived -= Listener_OnTemperatureDataReceived;
+  _listener.OnTemperatureDataReceived -= _bandOperator.HandleNewTemperature;
+  _listener.Stop();
+  await _bandOperator.Stop();
+  _session.Dispose();
+  _session = null;
+  IsBusy = false;
+}
+
+private void Listener_OnTemperatureDataReceived(object sender, 
+  Shared.TemperatureData e)
+{
+  if (e.IsValid)
+  {
+    DispatcherHelper.CheckBeginInvokeOnUI(() =&gt;
+    {
+      Messenger.Default.Send(new DataReceivedMessage());
+      Temperature = e.Temperature.ToString(CultureInfo.InvariantCulture);
+      LastDateTimeReceived = 
+        e.Timestamp.ToLocalTime().ToString("HH:mm:ss   dd-MM-yyyy");
+      FanStatus = e.FanStatus == Shared.FanStatus.On ? "on" : "off";
+    });
+  }
+}
+</pre>
+<p><strong>Start</strong> basically kicks the whole thing off. I have found out that unless you specifiy the Task.Delay(1), setting IsBusy does not have any effect on the UI. Once, and I am literally talking the previous century here, I used DoEvents() in Visual Basic (6, yes) that had exactly the same effect ;) - now you get to see the progress ring and the overlay on the rest of the UI. Both this viewmodel and the bandoperator are made to listen to incoming temperature events on the TemperatureListener, and that TemperatureListener is started then. The bandoperator can do with it whatever it wants. Then we start a 'background session' to keep the app alive as long as possible. Then the band operator is started - this will in effect create a tile and a user interface on the connected Band, if that is not already there, and the Band will be made to vibrate. The application is running now.</p>
+<p>Finally, in the viewmodel's Listener_OnTemperatureDataReceived method the data is put on the phone's screen and then passed around in a message to interested parties</p>
+<p><strong>Stop</strong>, of course, neatly disconnects all events again and stops all the components.</p>
+<p><font size="4">Flow of events<br></font>Summarizing: temperature data flows like this:<br>TemperatureQueueClient.OnDataReceived -&gt; TemperatureListener.OnTemperatureDataReceived -&gt;<br>MainViewModel.Listener_OnTemperatureDataReceived + Messenger + BandOperator.HandleNewTemperature</p>
+<p>And commands to switch of the fan flow like this:<br>BandOperator -&gt; FanSwitchQueueClient.PostData</p>
+<p>And the rest is done via data binding. How the BandOperator exactly works merits a separate blog post, that will end this series.</p>
+<p><font size="4">Keeping the app alive</font><br>If you hit the ToggleSwitch that is labeled "Get temperature data" you will notice Windows 10 mobile asks you to allow the app to track your <em>location</em>. This is in essence a trick to keep the app alive as long as possible - as I said before, the code to make the Band UI work runs on your <em>phone</em> but only does so to as long as the app is running ( and not suspended). I use ExtendedExecutionSession to trick your phone to think this app is tracking location in the background and should be kept alive as long as possible. </p><pre>private ExtendedExecutionSession _session;
+private async Task&lt;bool&gt; StartBackgroundSession()
+{
+  if (_session != null)
+  {
+    try
+    {
+      _session.Dispose();
+    }
+    catch (Exception){}
+  }
+  _session = null;
+  {
+    _session = new ExtendedExecutionSession
+    {
+      Description = "Temperature tracking",
+      Reason = ExtendedExecutionReason.LocationTracking
+    };
+    StartFakeGeoLocator();
+
+    _session.Revoked += async (p, q) =&gt; { await OnRevoke(); };
+
+    var result = await _session.RequestExtensionAsync();
+    return result != ExtendedExecutionResult.Denied;
+  }
+  return false;
+}
+
+private async Task OnRevoke()
+{
+  await StartBackgroundSession();
+}</pre>
+<p>I think using ExtendedExecutionSession was first described by my fellow MVP <a href="http://www.twitter.com/dotmorten" target="_blank">Morten Nielsen</a> in <a href="http://www.sharpgis.net/post/2015/03/29/Using-Windows-10s-Extended-Execution" target="_blank">this article</a>. I also got some usage guidance on this from my friend <a href="http://twitter.com/qmatteoq">Matteo Pagani</a>. In this demo I am clearly misusing ExtendedExecutionSession, yet it kind of does the trick - the app is not suspended right away (as happens with a lot of normal apps) but is more or less kept alive, until the phone needs the CPU and/or memory and suspends it after all. So this trick only delays the inevitable, but for demo purposes it is good enough. A probably better way is described in <a href="http://jamescroft.co.uk/blog/iot/developing-for-microsoft-band-with-winrt-indefinite-background-execution/" target="_blank">this article by James Croft</a>, which uses a DeviceUseTrigger. </p>
+<p>The StartFakeGeolocator does nothing special but creating a Geolocator that listens to location changes but does nothing with it. Have a look at the sources in the <a href="https://github.com/LocalJoost/TemperatureReaderDemo">demo solution</a> if you are interested.</p>
+<p><font size="4">Suspend and resume<br></font>If the suspend request then finally comes, I neatly shut down the BandOperator for if I don't, all kinds of errors regarding accessing of already disposed native objects pop up. But it also shows a message (that is, a toast) that, when tapped, can be used to easily restart the app again and then OnResume kicks in.</p><pre>public async Task OnSuspend()
+{
+  if (_bandOperator != null &amp;&amp; _bandOperator.IsRunning)
+  {
+    await _bandOperator.Stop();
+    await _messageDisplayer.ShowMessage("Suspended");
+  }
+}
+
+public async Task OnResume()
+{
+  if ( IsListening &amp;&amp; _bandOperator != null)
+  {
+    try
+    {
+      IsBusy = true;
+      await Task.Delay(1);
+      await StartBackgroundSession();
+      await _bandOperator.Start(true);
+      await _bandOperator.SendVibrate();
+      IsBusy = false;
+
+    }
+    catch (Exception ex)
+    {
+      await _errorLogger.LogException(ex);
+      await _messageDisplayer.ShowMessage($"Error restarting Band {ex.Message}");
+    }
+  }
+}</pre>
+<p>Upon resuming , I only need to restart BandOperator again (and a fake Geolocator for good measure).</p>
+<p><font size="4">BlinkBehavior</font><br>As I already showed, TemperatureData is also broadcasted on the MVVMLight Messenger when it is received. This is for good reasons - I want the circle in the middle blink up in accent color when data is received. That is accomplished by a behavior listening to that very message:</p><pre>using System.Threading.Tasks;
+using Windows.UI.Xaml;
+using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Shapes;
+using GalaSoft.MvvmLight.Messaging;
+using Microsoft.Xaml.Interactivity;
+using TemperatureReader.ClientApp.Messages;
+
+namespace TemperatureReader.ClientApp.Behaviors
+{
+  public class BlinkBehavior : DependencyObject, IBehavior
+  {
+    private Shape _shape;
+    private Brush _originalFillBrush;
+    private readonly Brush _blinkBrush = 
+      Application.Current.Resources["SystemControlHighlightAccentBrush"] as SolidColorBrush;
+
+    public void Attach(DependencyObject associatedObject)
+    {
+      AssociatedObject = associatedObject;
+      _shape = associatedObject as Shape;
+      if (_shape != null)
+      {
+        _originalFillBrush = _shape.Fill;
+        Messenger.Default.Register&lt;DataReceivedMessage&gt;(this, OnDateReceivedMessage);
+      }
+    }
+
+    private async void OnDateReceivedMessage(DataReceivedMessage mes)
+    {
+      _shape.Fill = _blinkBrush;
+
+      await Task.Delay(500);
+      _shape.Fill = _originalFillBrush;
+    }
+
+    public void Detach()
+    {
+      Messenger.Default.Unregister(this);
+      if (_shape != null)
+      {
+        _shape.Fill = _originalFillBrush;
+      }
+    }
+
+    public DependencyObject AssociatedObject { get; private set; }
+  }
+}
+</pre>
+<p>It is not quite rocket science: listen to the DataReceivedMessage, and if one is received, set the color of the attached Shape (a circle in this case) to the accent color, then return it to it's original color. The effect can be seen in the video in the first post of this series.</p>
+<p><font size="4">Conclusion</font><br>Quite a lot going on in this app, and then we haven't even seen what is going on with the Band. Yet, but using MVVMLight and neatly seperated components, you can easily wire together complex actions using simple patterns using interfaces and events. In the final episode of the series I will show you in detail how the Band interface is made and operated. In the mean time, have a look at the <a href="https://github.com/LocalJoost/TemperatureReaderDemo">demo solution</a></p>  

@@ -1,0 +1,21 @@
+---
+layout: post
+title: Starting an external program in the same directory
+date: '2008-03-03T19:44:00.009+01:00'
+author: Joost van Schaik
+tags:
+- same directory
+- C#
+- external program
+modified_time: '2008-03-04T08:25:25.319+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2463994274737747414
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2008/03/starting-external-program-in-same.html
+---
+
+Especially in development/demo scenario's you sometimes need to start an external program. In my case, it was a simple batch file that more or less terminated and restarted a Map Server service in a rather ungraceful way. But sometimes you want to go for simple.
+
+First, you have to find out in which directory your external program is. This is the same directory as where your program runs:<pre>string assemblyBasePath =
+Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);</pre>then, you have to create the full path to your executable, for instance<pre>string exec = Path.Combine(assemblyBasePath, "yourbatchfile.bat");</pre>and finally, you have to launch the process:<pre>ProcessStartInfo psi = new ProcessStartInfo(exec);
+psi.WindowStyle = ProcessWindowStyle.Hidden;
+Process proc = Process.Start(psi);
+proc.WaitForExit();</pre>and that's all there is to it. The call to proc.WaitForExit() makes sure that your own program waits for the batch file "yourbatchfile.bat" to complete, while ProcessWindowStyle.Hidden prevents a console window popping up. If you do want to see the console window, for debugging purposes for example, use ProcessWindowStyle.Normal instead

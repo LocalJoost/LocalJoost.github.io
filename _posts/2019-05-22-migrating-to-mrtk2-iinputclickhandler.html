@@ -1,0 +1,74 @@
+---
+layout: post
+title: Migrating to MRTK2 - IInputClickHandler and SetGlobalListener are gone. How
+  do we tap now?
+date: '2019-05-22T20:57:00.000+02:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Unity
+- Windows Mixed Reality
+- MRTK2
+- HoloLens2
+modified_time: '2019-05-22T21:03:12.605+02:00'
+thumbnail: https://i.ytimg.com/vi/1Ss7fqD_eCw/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3494747767610605430
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2019/05/migrating-to-mrtk2-iinputclickhandler.html
+---
+
+<h2>Intro</h2><p>Making something 'clickable' (or actually more 'air tappable') was pretty easy in the <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality Toolkit</a> 1. You just added the IInputClickHandler interface like this:</p><pre style="font-size: 12px;">using HoloToolkit.Unity.InputModule;
+using UnityEngine;
+
+public class ClickableThingy: MonoBehaviour, IInputClickHandler
+{
+    public void OnInputClicked(InputClickedEventData eventData)
+    {
+        // Do something
+    }
+}
+
+</pre><p>You dragged this behaviour on top of any game object you want to act on being air tapped and OnInputClicked was being activated as soon as you air tapped. But IInputClickHandler does no longer exist in MRTK2. How does that work now? </p><h2>Tap – just another interface</h2><p>To support the air tap in MRTK2, it's simply a matter of switching out one interface for another:</p><pre style="font-size: 12px;">using Microsoft.MixedReality.Toolkit.Input;
+using UnityEngine;
+
+public class ClickableThingy : MonoBehaviour, IMixedRealityInputHandler
+{
+    public void OnInputUp(InputEventData eventData)
+    {
+        //Do something else
+    }
+
+    public void OnInputDown(InputEventData eventData)
+    {
+        //Do something
+    }
+}
+</pre><p>I don't have <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> 2, but if you put whatever was in OnInputClicked in <strong>OnInputDown </strong>it's being executed on a HoloLens 1 when you do an air tap and the object is selected by a the gaze cursor.. So I guess that's a safe bet if you want to make something that runs on both HoloLens 1 and 2.</p><h2>‘Global tap’ – add a base class</h2><p>In the MRTK 1 days, when you wanted to do a ‘global tap’, you could simply add a SetGlobalListener behaviour to the game object that contained your IInputClickHandler implementing behaviour:</p><p><img width="400" height="152" style="border: 0px currentcolor; border-image: none; background-image: none;" src="http://schaikweb.net/blog/20190522/GlobalMRTK.png" border="0"></p><p>Adding this object meant that any airtap would be routed to this IImputClicked object - even <em>without </em>the gaze cursor touching the game it, or touching anything anything at all, for what matters. This could be very useful in situations where you for instance were placing objects on the spatial map and some gesture is needed to stop the movement. Or some general confirmation gesture in a situation where some kind of UI was not feasible because it would get in the way. But the SetGlobalListener behaviour is gone as well, so how do get that behavior now?</p><p>Well, basically you make your ClickableThingy not only implement IMixedRealityInputHandler, but also be a child class of BaseInputHandler. </p><pre>using Microsoft.MixedReality.Toolkit.Input;
+using UnityEngine;
+
+public class ClickableThingyGlobal : BaseInputHandler, IMixedRealityInputHandler
+{
+    public void OnInputUp(InputEventData eventData)
+    {
+        // Do something else
+    }
+
+    public void OnInputDown(InputEventData eventData)
+    {
+        // Do something
+    }
+}</pre><p>This has a property isFocusRequired that you can set to false in the editor:</p><p><img width="400" height="219" style="border: 0px currentcolor; border-image: none; background-image: none;" src="http://schaikweb.net/blog/20190522/GlobalMRTK2.png" border="0"></p><p>And then your ClickableThingy will get every tap. Smart people will notice it makes sense to <em>always</em> make a child class of BaseInputHandler as the IsFocusRequired property is default true – so the default behavior ClickableThingyGlobal is to act exactly the same as ClickableThingy, but you can configure it’s behavior in the editor, which makes your behavior applicable to more situations. Whatever you can make configurable saves code. So I'd always go for a BaseInputHandler for anything that handles a tap.</p><h2>Proof of the pudding</h2><p>This is exactly what <a href="https://github.com/LocalJoost/MRTK2Tap.git" target="_blank">the demo project</a> shows: a cube that responds to a tap regardless whether there is a gaze or hand cursor on it, and a sphere that only responds to a tap when there <em>is</em> a hand or gaze cursor on it. Both use the ClickableThingyGlobal: the cube has the IsFocusRequired check box unselected, on the sphere it is selected. To this end I have adapted the ClickableThingyGlobal to actually do something usable:</p><pre>using Microsoft.MixedReality.Toolkit.Input;
+using UnityEngine;
+
+public class ClickableThingyGlobal : BaseInputHandler, IMixedRealityInputHandler
+{
+    public void OnInputUp(InputEventData eventData)
+    {
+        GetComponent&lt;MeshRenderer&gt;().material.color = Color.white;
+    }
+
+    public void OnInputDown(InputEventData eventData)
+    {
+        GetComponent&lt;MeshRenderer&gt;().material.color = Color.red;
+    }
+}</pre>
+<p>or at least something <em>visible</em>, which is to change the color of the elements from white to red on a tap (and back again).</p><p>In an HoloLens 1 it looks like this. </p><iframe width="650" height="365" src="https://www.youtube.com/embed/1Ss7fqD_eCw" frameborder="0" allowfullscreen="" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"></iframe><p>The cube will always flash red, the sphere only when there is some cursor pointing to it. In the HoloLens 2 emulator it looks like this:</p><iframe width="650" height="365" src="https://www.youtube.com/embed/HAYw1sF_Zns" frameborder="0" allowfullscreen="" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"></iframe><p>The fun thing now is that you can act on both InputUp and InputDown, which I use to revert the color setting. To mimic the behavior of the old OnInputClicked, adding code in OnInputDown and leaving OnInputUp is sufficient I feel.</p><h2>Conclusion</h2><p>Yet another part of moved cheese, although not dramatically so. Demo code is very limited, but can still be found <a href="https://github.com/LocalJoost/MRTK2Tap.git" target="_blank">here</a>. I hope me documenting finding my way around <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank"><a href="https://github.com/Microsoft/MixedRealityToolkit-Unity" target="_blank">Mixed Reality Toolkit</a> 2</a> helps you. If you have questions about specific pieces of your HoloLens cheese having been moved and you can't find them, feel free to ask me. In any case I intend to write lots more of these posts.</p>

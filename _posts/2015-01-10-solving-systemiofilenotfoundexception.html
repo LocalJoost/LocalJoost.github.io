@@ -1,0 +1,64 @@
+---
+layout: post
+title: "“System.IO.FileNotFoundException” using controls from another assembly in
+  Xamarin Forms on iOS."
+date: '2015-01-10T22:53:00.001+01:00'
+author: Joost van Schaik
+tags:
+- iOS
+- PCL
+- Xamarin Forms
+- Xamarin
+- XAML
+modified_time: '2015-01-11T09:04:42.753+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7011598967455147428
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/01/solving-systemiofilenotfoundexception.html
+---
+
+<p>Disclaimer: I am at the early stages of learning <a href="http://xamarin.com/" target="_blank">Xamarin</a> and may be just writing some stupid and obvious things. That’s just the way it is. This blog is as much a source of information as a it is a record of my learning process. I am a Windows Phone developer trying to make my code usable on other platforms.</p> <p>I was building a solution as follows</p> <ul> <li>I created a Xamarin solution XamarinPclControlBug for <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a>, Android and iOS using the “Blank App (Xamarin.Forms portable)” template.  <li>I created a separate extra PCL PclControl that would hold some controls I was creating.  <li>I then upgraded the whole solution to Forms 1.3.0 <a href="http://developer.xamarin.com/guides/cross-platform/macios/updating-xamarin-forms-apps/" target="_blank">using this step-by-step procedure</a>  <li>I added references to PclControl in all four other projects of XamarinPclControlBug  <li>I created a StartPage.xaml and made sure that was the start page in XamarinPclControlBug (portable) by setting MainPage to new StartPage() in de App constructor  <li>I placed my custom control (and only that custom control) on StartPage.xaml  <li>I deployed on Android and Windows Phone, and all was rosy.  <li>I deployed on iOS, and I got:<br><strong>System.IO.FileNotFoundException: Could not load file or assembly 'PclControl' or one of its dependencies. The system cannot find the file specified.</strong></li></ul> <p>You can check your references and deployment settings all you want, my friends, it turns out there’s probably a bug in Xamarin Forms’ iOS implementation. If you use controls <em>and only controls</em> from a PCL or dll that does not contain other code that is called from the app, apparently Xamarin on iOS ‘forgets’ to load/deploy the assembly (or something like that). But there is a work around.</p> <p>In my <a href="https://github.com/LocalJoost/XamarinPclControlBug" target="_blank">sample solution</a> I made a trivial control MyButton which is simply a child class of Button that does nothing special. The PCL PclControl contains this only this code:</p><pre>using Xamarin.Forms;
+
+namespace PclControl
+{
+  public class MyButton :  Button
+  {
+  }
+}</pre>Which allows me to use it in Xamarin Forms Xaml like this: <pre>&lt;?xml version="1.0" encoding="utf-8" ?&gt;
+&lt;ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+  xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+  xmlns:pclControl="clr-namespace:PclControl;assembly=PclControl"
+  x:Class="XamarinPclControlBug.StartPage"&gt;
+  &lt;pclControl:MyButton Text="Click me" /&gt;
+&lt;/ContentPage&gt;</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Solving-the-System.IO.FileNotFoundExcep_138EB/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Solving-the-System.IO.FileNotFoundExcep_138EB/image_thumb.png" width="149" align="right" height="244"></a><a href="http://www.schaikweb.net/dotnetbyexample/Solving-the-System.IO.FileNotFoundExcep_138EB/wp_ss_20150110_0001.png"><img title="wp_ss_20150110_0001" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="wp_ss_20150110_0001" src="http://www.schaikweb.net/dotnetbyexample/Solving-the-System.IO.FileNotFoundExcep_138EB/wp_ss_20150110_0001_thumb.png" width="139" align="right" height="244"></a>If you deploy this to Android, it looks good (albeit ugly), likewise in Windows Phone. It’s nothing special – just a button. But is you try to deploy this on iOS, this does not work at all, you get the System.IO.FileNotFoundException</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>The work around is as simple as it is weird. You go the iOS app’s AppDelegate class, and you add the code in that I displayed in red and underlined</p><pre>using MonoTouch.Foundation;
+using MonoTouch.UIKit;
+<font color="#ff0000"><u>using PclControl;</u></font>
+using Xamarin.Forms;
+using Xamarin.Forms.Platform.iOS;
+
+namespace XamarinPclControlBug.iOS
+{
+  [Register("AppDelegate")]
+  public partial class AppDelegate :
+      FormsApplicationDelegate 
+  {
+    public override bool FinishedLaunching(UIApplication app, NSDictionary options)
+    {
+      <u><font color="#ff0000">var b = new MyButton();</font></u>
+      Forms.Init();
+
+      LoadApplication(new App()); 
+
+      return base.FinishedLaunching(app, options);
+    }
+  }
+}</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Solving-the-System.IO.FileNotFoundExcep_138EB/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Solving-the-System.IO.FileNotFoundExcep_138EB/image_thumb_3.png" width="136" align="right" height="244"></a>Indeed – you make a manual fire-an-forget instance of the control that you want to use, and lo and behold on the right:</p>
+<p>If you comment out the <strong><font color="#000000">var b = new MyButton();</font></strong> in <a href="https://github.com/LocalJoost/XamarinPclControlBug" target="_blank">the sample solution</a> it will not work – if you do uncomment it, it will. Make sure you clean the solution before attempting re-deploy – I have noticed that sometimes making a little change like this is not enough to properly redeploy.</p>
+<p>I think this is a bug, and one that took me quite some time to track and work around. Creating the control in code was just the result of testing whether the code could be compiled if I created a control from code – and then suddenly it worked, after hours of checking all kinds of settings. Living on the bleeding edge has it’s price.</p>
+<p><strong>UPDATE January 11, 2015</strong></p>
+<p>It has been brought to my attention that this is not caused by a bug but due to the behavior of the iOS linker. My brilliant Italian friend and fellow MVP <a href="https://twitter.com/corcav" target="_blank">Corrado Cavalli</a> has run into the same or at least very similar problem earlier and <a href="http://codeworks.it/blog/?p=242" target="_blank">has blogged about it as early as October</a>, and recently <a href="http://blog.xamarin.com/extending-xamarin.forms-with-control-plugins/" target="_blank">this article</a> from December by <a href="http://twitter.com/JamesMontemagno" target="_blank">James Montemagno</a> describes the same problem – and solution. Well, I can only hope my blog makes this issue (and the solution) easier to find, because I could not ;)</p>  

@@ -1,0 +1,124 @@
+---
+layout: post
+title: Building a floating audio player in Mixed Reality
+date: '2018-02-07T12:59:00.001+01:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Windows Mixed Reality
+- Unity3D
+modified_time: '2018-02-07T15:27:35.801+01:00'
+thumbnail: https://lh3.googleusercontent.com/-ONYixA3AqaY/Wnc6PUl4gFI/AAAAAAAAPk4/OMVtUy3YznUJGz9ZCJZXzPolvPAXT_FywCHMYCw/s72-c/image_thumb%255B5%255D?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1699414656190133914
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2018/02/building-floating-audio-player-in-mixed.html
+---
+
+<h2>Intro</h2><p><a href="https://lh3.googleusercontent.com/-zyx1cxdRr60/Wnc6O68HXsI/AAAAAAAAPk0/d4aRAbBomYEMCpSVLEfAmuoPN_xXG1T5gCHMYCw/s1600-h/image%255B9%255D"><img width="188" height="138" title="image" align="right" style="margin: 0px 5px 0px 0px; border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-ONYixA3AqaY/Wnc6PUl4gFI/AAAAAAAAPk4/OMVtUy3YznUJGz9ZCJZXzPolvPAXT_FywCHMYCw/image_thumb%255B5%255D?imgmax=800" border="0"></a>As I promised in my <a href="http://dotnetbyexample.blogspot.com/2018/02/downloading-audio-files-from-azure-blob.html" target="_blank">previous blog post</a>, I would write about how I created the floating audio player designed to easily demonstrate how to download and play audio files in <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality</a> (or actually, just Unity, because the code is not MR specific). I kind of skipped over the UI side. In this post I am going to talk a little more about the floating audio player itself. This code is using the Mixed Reality Toolkit and so actually <em>is</em> Mixed Reality specific.</p><h2>Dissecting the AudioPlayer prefab</h2><h3>The main game object</h3><p><a href="https://lh3.googleusercontent.com/-DLlAVT_TEOA/WnsM0d2HE7I/AAAAAAAAPmI/4quIPpFrzuU7FkDU0VovP-XeTZ8W261aQCHMYCw/s1600-h/image%255B3%255D"><img width="240" height="215" title="image" align="right" style="margin: 0px 9px 0px 5px; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-FFr6xOFsPZ0/WnsM0vEsiyI/AAAAAAAAPmM/VZG9R354c84f3cCPrDIffec7-FWVFmsVQCHMYCw/image_thumb%255B1%255D?imgmax=800" border="0"></a>The AudioPlayer consists out of two other prefabs, a SquareButton and a Slider. I have <a href="http://dotnetbyexample.blogspot.com/2018/01/push-buttons-in-mixed-reality.html" target="_blank">talked about this button before,</a> so I won’t go over that one in detail again. The main game object of the AudioPlayer has an AudioSource and two extra scripts. The simple version of the Sound Playback Controller was already described in the <a href="http://dotnetbyexample.blogspot.com/2018/02/downloading-audio-files-from-azure-blob.html" target="_blank">previous blog post</a>, and will be handled in great detail here. The other script is a standard Billboard script from the <a href="https://github.com/Microsoft/MixedRealityToolkit-Unity" target="_blank">Mixed Reality toolkit</a>. It essentially keeps the object rotated towards the camera, so you will never see it from the side of the backside where it’s hard to read and operate. Note I have restricted pivot axis to Y, so it only rotates over a vertical axis. </p><h2>The button</h2><p><a href="https://lh3.googleusercontent.com/-m33gQyb9tuk/WnsM1CtQwXI/AAAAAAAAPmQ/B2A50pEGiegOaTl_BKrtIBhVHvrkblFogCHMYCw/s1600-h/image%255B8%255D"><img width="158" height="70" title="image" align="right" style="margin: 0px 0px 0px 5px; border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-bhAPMPVMyJY/WnsM1qtCocI/AAAAAAAAPmU/WmdazmpaG2MX4-M6wx6KQRjW-2IZ1BcVwCHMYCw/image_thumb%255B4%255D?imgmax=800" border="0"></a>It’s a fairly standard SquareButton, and I have set the text and icon <a href="http://dotnetbyexample.blogspot.com/2018/01/push-buttons-in-mixed-reality.html" target="_blank">as I described here</a>. Now that button only shows in the editor, the runtime text <em>and</em> the icon are set by a simple script that toggles icon and text, so that the button cycles between being a “Play” and a “Pause” button. That script is pretty easy:</p><pre style="font-size: 12px;">using HoloToolkit.Unity.InputModule;
+using UnityEngine;
+
+public class IconToggler : MonoBehaviour, IInputClickHandler
+{
+    public Texture2D Icon1;
+
+    public Texture2D Icon2;
+
+    public string Text1;
+
+    public string Text2;
+
+    private TextMesh _textMesh;
+
+    private GameObject _buttonFace;
+
+    void Awake ()
+    {
+        _buttonFace = gameObject.transform.
+           Find("UIButtonSquare/UIButtonSquareIcon").gameObject;
+        var text = gameObject.transform.Find("UIButtonSquare/Text").gameObject;
+        _textMesh = text.GetComponent&lt;TextMesh&gt;();
+        SetBaseState();
+    }
+
+    public void SetBaseState()
+    {
+       _textMesh.text = Text1;
+       _buttonFace.GetComponent&lt;Renderer&gt;().sharedMaterial.mainTexture = Icon1;
+    }
+
+    private float _lastClick;
+
+    public void OnInputClicked(InputClickedEventData eventData)
+    {
+        if (Time.time - _lastClick &gt; 0.1)
+        {
+            _lastClick = Time.time;
+            Toggle();
+        }
+    }
+
+    public void Toggle()
+    {
+        var material = _buttonFace.GetComponent&lt;Renderer&gt;().sharedMaterial;
+        material.mainTexture = material.mainTexture == Icon1 ? Icon2 : Icon1;
+       _textMesh.text = _textMesh.text == Text1 ? Text2 : Text1;
+    }
+}
+</pre><p>It has four public properties, as already is visible in the image: Image1 and Text1 for the default image and text (“Play”), Image 2 and Text 2 for the alternate image and text (“Pause”). The Awake method grabs some objects within the button itself, then sets the base state – which is, the default icon and text. </p><p>It also implements IInputClickHandler, so the user can tap it. In OnInputClicked it calls the Toggle method. That then toggles both text and image. Notice there’s simple time based guard OnInputClicked. This is to prevent the button from sending a burst of click events. In the Unity editor, I mostly get two clicks every time I press the XBox controller A button, and then nothing happens. Annoying, but easily mitigated this way.</p><h2>The Slider</h2><p>I can be short about that one. I did not create that, but simply nicked it from the Mixed Reality Toolkit Examples. It sits in HoloToolkit-Examples\UX\Prefabs. I like making stuff, but I like <strike>stealing</strike> reusing stuff even better.</p><h2>The extended Sound Playback Controller</h2><p>Let’s start at Start ;). Note: the BaseMediaLoader was handled in the <a href="http://dotnetbyexample.blogspot.com/2018/02/downloading-audio-files-from-azure-blob.html" target="_blank">previous blog post</a>,</p><pre style="font-size: 12px;">public class SoundPlaybackController : BaseMediaLoader
+{
+    public AudioSource Audio;
+
+    public GameObject Slider;
+
+    public GameObject Button;
+
+    private SliderGestureControl _sliderControl;
+
+    private IconToggler _iconToggler;
+
+    public AudioType TypeAudio = AudioType.OGGVORBIS;
+
+    void Start()
+    {
+        _sliderControl = Slider.GetComponent&lt;SliderGestureControl&gt;();
+        _sliderControl.OnUpdateEvent.AddListener(ValueUpdated);
+        Slider.SetActive(false);
+        Button.SetActive(false);
+        _iconToggler = Button.GetComponent&lt;IconToggler&gt;();
+    }
+}</pre><p>In the Start method, we first grab a bunch of stuff. Note the fact that we not only turn off the slider control but also actually attach an event handler to that. </p><p>We continue with StartLoadMedia and LoadMediaFromUrl</p><pre style="font-size: 12px;">protected override IEnumerator StartLoadMedia()
+{
+    Slider.SetActive(false);
+    Button.SetActive(false);
+    yield return LoadMediaFromUrl(MediaUrl);
+}<br>
+private IEnumerator LoadMediaFromUrl(string url)
+{
+    var handler = new DownloadHandlerAudioClip(url, TypeAudio);
+    yield return ExecuteRequest(url, handler);
+    if (handler.audioClip.length &gt; 0)
+    {
+        Audio.clip = handler.audioClip;
+        _sliderControl.SetSpan(0, Audio.clip.length);
+        Slider.SetActive(true);
+        Button.SetActive(true);
+        _iconToggler.SetBaseState();
+    }
+}</pre><p>The override from StartLoadMedia in this version turns off the whole UI while we are actually loading data, and turns it on when we are done loading. Since that fails when we load MP3, the MP3 player in <a href="https://github.com/LocalJoost/FloatingAudioPlayer.git" target="_blank">the demo project</a> disappears and on startup. The others one disappear too, in fact, but immediately appear again since we are loading small clips. This goes so fast you can’t even see it.</p><p>LoadMediaFromUrl not only executes the request and sets the downloaded clip to the Audio Souce, as we saw before, but we also set the <em>span</em> of the Slider Control between 0 and the length of the AudioClip in seconds. Easy, right?</p><p>Now the Update method, which as you know is called 60 times per second, is the trick to keeping the slider equal to the the current time of the clips that’s now playing:</p><pre style="font-size: 12px;">protected override void Update()
+{
+    base.Update();
+    if (Audio.isPlaying)
+    {
+        _sliderControl.SetSliderValue(Audio.time);
+    }
+    if (Mathf.Abs(Audio.time - _sliderControl.MaxSliderValue) &lt; 0.1f)
+    {
+        Audio.Stop();
+        Audio.time = 0;
+        _iconToggler.SetBaseState();
+        _sliderControl.SetSliderValue(0);
+    }
+}
+</pre><p>Thus if the audio clip plays, the slider moves along. It’s not quite rocket science. If the clip has <em>nearly</em> finished playing, it is stopped and everything is set to the base state: the icon, the time of the audio clip, and the slider is set to 0 again.</p><p>And finally – remember that event handler we added to the OnValueUpdated event of the slider? Guess what:</p><pre style="font-size: 12px;">private void ValueUpdated()
+{
+    Audio.time = _sliderControl.SliderValue;
+}</pre><p>It’s the opposite of the third line of Update – now we set the Audio time to the Slider value. </p><h2>Conclusion</h2><p>And that’s it. You can simply use some out-of-the-box components in the Mixed Reality Toolkit and/or it’s examples to build a simple but effective control to play audio. You can grab the demo project (it’s still the same) from <a href="https://github.com/LocalJoost/FloatingAudioPlayer.git" target="_blank">here</a>. </p>

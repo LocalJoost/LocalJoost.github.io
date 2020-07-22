@@ -1,0 +1,188 @@
+---
+layout: post
+title: A simple Unity helper for making class decoupling easier
+date: '2009-11-18T17:37:00.003+01:00'
+author: Joost van Schaik
+tags:
+- Unity
+- dotnetmag
+- Enterprise Library
+- Unit Test
+- Mockup
+modified_time: '2010-04-06T11:17:29.861+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7903658973453968733
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/11/simple-unity-helper-for-making-class.html
+---
+
+<a href="http://msdn.microsoft.com/en-us/library/dd203101.aspx">Unity</a>, a part of the <a href="http://www.codeplex.com/entlib">Enterprise Library</a>, is a great way of decoupling interfaces and implementation, and for opening a road into unit testing with mock objects. Unfortunately, using it can be a bit cumbersome. You have to create a container, configure it from code or from configuration, and have to decide when to do what. I thought it could do with some help, so I created some helper classes. I must admit this inspired by <a href="http://initializecomponent.blogspot.com/2008/10/common-service-locator.html">The Common Service Locator</a> and some code for that I got from <a href="http://bloggingabout.net/blogs/dennis/">Dennis van der Stelt</a>, but it is a little simpler to use. And it works only with Unity ;-) The idea is to define a factory and a resolver, that know of each other only trough an interface:   <pre>namespace LocalJoost.Utilities.Unity
+{
+  public interface IUnityResolver
+  {
+    Resolve&lt;T&gt;();
+  }
+}</pre>
+Then, I define a UnityResolver, which is basically a wrapping around a UnityContainer class: 
+
+<pre>using System;
+using System.Configuration;
+using Microsoft.Practices.Unity;
+using Microsoft.Practices.Unity.Configuration;
+
+namespace LocalJoost.Utilities.Unity
+{
+  /// &lt;summary&gt;
+  /// Base class for unity resolvers
+  /// &lt;/summary&gt;
+  [Serializable]
+  public class UnityResolver : IUnityResolver
+  {
+    protected static string _defaultContainer = &quot;Default&quot;;
+    protected IUnityContainer Container{get; set;}
+
+    /// &lt;summary&gt;
+    /// Initializes a new instance of the UnityResolver
+    /// Override this constructor if you want to write your own default<br />    ///  behaviour.
+    /// Register in code by adding lines like:
+    /// Container.RegisterType(Type.GetType(&quot;NameSpace.IMyClass&quot;,true),
+    ///  Type.GetType(&quot;NameSpace.MyClass&quot;,true)); 
+    /// &lt;/summary&gt;
+    public UnityResolver()
+      : this(_defaultContainer)
+    {
+    }
+
+    /// &lt;summary&gt;
+    /// Initializes a new instance of the UnityResolver class.
+    /// &lt;/summary&gt;
+    /// &lt;param name=&quot;containerName&quot;&gt;Name of the container.&lt;/param&gt;
+    public UnityResolver(string containerName)
+    {
+      Container = new UnityContainer();
+
+      var section = ConfigurationManager.GetSection(&quot;unity&quot;) 
+	    as UnityConfigurationSection;
+      if (section != null)
+      {
+        var containerConfiguration = section.Containers[containerName];
+        if (containerConfiguration != null)
+        {
+          section.Containers[containerName].Configure(Container);
+        }
+      }
+    }
+
+    /// &lt;summary&gt;
+    /// Resolves an instance of T
+    /// &lt;/summary&gt;
+    /// &lt;typeparam name=&quot;T&quot;&gt;&lt;/typeparam&gt;
+    /// &lt;returns&gt;&lt;/returns&gt;
+    public T Resolve&lt;T&gt;()
+    {
+      return Container.Resolve&lt;T&gt;();
+    }
+  }
+}</pre>
+<p>You can use this class directly, by calling new UnityResolver(“MyContainer”).Resolve&lt;IMyType&gt;(). The UnityResolver looks for a Unity container named “Default” in your configuration file. If that is not present, it creates an empty container. Use of the latter feature is described below. </p>
+<p>This is not very efficient when all your classes are sitting into one and the same container, and you may want to have some consistent behavior of your classes during unit testing with mockups. So I created the UnityFactory class that can accept a resolver and hold it:</p>
+<pre>using System;
+using System.Configuration;
+using System.Reflection;
+using System.Web;
+
+namespace LocalJoost.Utilities.Unity
+{
+  /// &lt;summary&gt;
+  /// Static helper class for shortcutting Unity instantiated 
+  /// classes
+  /// &lt;/summary&gt;
+  public class UnityFactory
+  {
+    /// &lt;summary&gt;
+    /// Method to set the resolver manually - use this for unit testing
+    /// &lt;/summary&gt;
+    /// &lt;param name=&quot;resolver&quot;&gt;The resolver.&lt;/param&gt;
+    public static void SetResolver( IUnityResolver resolver)
+    {
+      Resolver = resolver;
+    }
+
+    /// &lt;summary&gt;
+    /// Gets a resolver from configuration.
+    /// &lt;/summary&gt;
+    /// &lt;returns&gt;&lt;/returns&gt;
+    private static IUnityResolver GetResolverFromConfiguration()
+    {
+      var configuredDefaultResolver = 
+	    ConfigurationManager.AppSettings[&quot;UnityResolver&quot;];
+      if (!string.IsNullOrEmpty(configuredDefaultResolver))
+      {
+        var specParts = configuredDefaultResolver.Split(',');
+        var ass = Assembly.Load(specParts[1]);
+        var objType = ass.GetType(specParts[0]);
+        return Activator.CreateInstance(objType) as IUnityResolver;
+      }
+      return null;
+    }
+
+    /// &lt;summary&gt;
+    /// Gets the instance of an object via an interface
+    /// &lt;/summary&gt;
+    /// &lt;typeparam name=&quot;T&quot;&gt;&lt;/typeparam&gt;
+    /// &lt;returns&gt;&lt;/returns&gt;
+    public static T GetInstance&lt;T&gt;()
+    {
+      // First, make sure there is a resolver. 
+      // If none is defined, try to load one from configuration
+      // If that fails too, use the default resolver
+      if (Resolver == null)
+      {
+        Resolver = GetResolverFromConfiguration() ?? new UnityResolver();
+      }
+
+      // Then, resolve the interface to an object instance
+      return Resolver.Resolve&lt;T&gt;();
+    }
+
+    #region Properties
+    /// &lt;summary&gt;
+    /// Gets or sets the resolver. Uses Http context or static variable
+    /// to store a created resolver
+    /// &lt;/summary&gt;
+    /// &lt;value&gt;The resolver.&lt;/value&gt;
+    private static IUnityResolver Resolver
+    {
+      get
+      {
+        if (HttpContext.Current == null)
+        {
+          return _resolver;
+        }
+        return HttpContext.Current.Application[&quot;__UnityResolver&quot;]
+          as IUnityResolver;
+      }
+
+      set
+      {
+        if (HttpContext.Current == null)
+        {
+          _resolver = value;
+        }
+        else
+        {
+          HttpContext.Current.Application[&quot;__UnityResolver&quot;] = value;
+        }
+      }
+    }
+
+    private static IUnityResolver _resolver;
+    #endregion
+  }
+}</pre>
+<p>Usage of this class is UnityFactory.Resolve&lt;IMyType&gt;(). And presto, you have got a reference to your implementation class. That’s all there is. Except for some configuration, of course ;-).</p>
+<p>Another feature of this class is that it looks for a config setting “UnityResolver”. If that is present, it tries to load that class for a resolver in stead of the default UnityResolver. For instance, you can subclass UnityResolver, override the default constructor and define your interface-to-implementation mapping <em>in code.</em> Now this may look strange, because what is the point of decoupling classes and then make the mappings in code again? Well, for a scenario in which you want to use Unity for unit testing with mockups, this makes sense – when you want to deliver your production application without the necessity for a (possible very large) unity mapping section in your configuration file. If you want to register objects from code, you can do it for instance like this in the constructor of your UnityResolver override:</p>
+<pre>Container.RegisterType(
+ Type.GetType(&quot;SomeNamespace.IMyInterface,SomeNamespace&quot;, true),
+ Type.GetType(&quot;SomeOtherNamespace.MyImplementation,SomeOtherNamespace&quot;, true));</pre>
+<p>where &quot;SomeNamespace&quot; and &quot;SomeOtherNamespace&quot; after the comma are assembly names. If you use this construct, because it looks nice in NDepend and you don't have to make references, make sure your set the second parameter of Type.GetType, throwOnError, to true or it will fail silently and you might spend an uncomfortable long time debugging (I am talking from experience here). Personally I would go for typeof in stead of using Type.GetType but that is a matter of taste.</p>
+<p>As a last feature, in unit testing scenarios, you can make another subclass of UnityResolver, call UnityFactory.SetResolver(myResolver) and the UnityFactory will store your resolver in a static variable (or the application context). Subsequently, all your classes will use the mapping logic defined in your own resolver, which makes a great starting point for mockup testing. </p>
+<p>I hope this little sample will make decoupling, unit testing and mockup objects using Unity a bit more accessible. </p>  

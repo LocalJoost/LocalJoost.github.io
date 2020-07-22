@@ -1,0 +1,113 @@
+---
+layout: post
+title: A WinRT behavior to start a storyboard on an event
+date: '2012-10-03T14:36:00.001+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- Windows 8
+- WinRt
+- XAML
+- behavior
+- Win8nl
+modified_time: '2012-10-04T11:00:55.392+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7987039987612823727
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/10/a-winrt-behavior-to-start-storyboard-on.html
+---
+
+<p>Sometimes I get a bit distracted. In <a href="http://dotnetbyexample.blogspot.nl/2012/06/reflection-in-winrt-use-x-extensions.html" target="_blank">this article</a> I mention a behavior that I wrote which starts a storyboard on an event, I even put in in the <a href="http://win8nl.codeplex.com/" target="_blank">win8nl</a> library – and then totally forget to blog about it, or even to announce it. So anyway, when <a href="http://twitter.com/Goofys_Friend" target="_blank">Danny van Neyghem</a> asked me about a problem that was almost solved by my behavior, I kinda remembered it, and that I totally forgot about it - and decided a) to improve it and b) to talk about it (well, write).</p> <p>World, meet StartStoryboardBehavior. It’s a very simple behavior that has the following properties:</p> <table cellspacing="0" cellpadding="2" width="660" border="0"> <tbody> <tr> <td valign="top" width="138">Storyboard</td> <td valign="top" width="520">The name of the Storyboard to start. Mandatory.</td></tr> <tr> <td valign="top" width="138">StartImmediately </td> <td valign="top" width="520">true = don’t wait for an event to start, just start the storyboard when the behavior is loaded. Optional; default is false</td></tr> <tr> <td valign="top" width="138">EventName</td> <td valign="top" width="520">The event of the AttachedObject that will initiate the start of the storyboard (e.g. ‘Click’ on a button). Ignored when StartImmediately&nbsp; == true, mandatory otherwise </td></tr> <tr> <td valign="top" width="138">SearchTopDown</td> <td valign="top" width="520">Optional, default is true. If true, the behavior will start to search for your storyboard from the top of the visual tree. This is the scenario in which for instance clicking a button will initiate a storyboard that sits somewhere in the top of the page. If this value is set to false, the behavior will search from the attached object up. Choose this setting when you use the behavior to start a storyboard that’s sitting inside a template.</td></tr></tbody></table> <p>“SearchTopDown” was added just yet, and I hope it solves Danny’s problem. For those who just want to use the behavior: <a href="http://nuget.org/packages/Win8nl" target="_blank">Nuget Win8nl</a> and you have the behavior armed and ready. I’ve updated the package with the improved behavior already. For those who want to learn – well, it’s not rocket science but read on.</p> <p>The first part is not so very interesting – just your basic setting up of the behavior, the wiring up and a wiring down of the events. The only interesting things happen in AssociatedObjectLoaded:</p><pre>using System;
+using System.Linq;
+using Windows.UI.Xaml;
+using WinRtBehaviors;
+using System.Reflection;
+using Win8nl.External;
+using Windows.UI.Xaml.Media.Animation;
+using System.Reactive.Linq;
+
+namespace Win8nl.Behaviors
+{
+  public class StartStoryboardBehavior : Behavior&lt;FrameworkElement&gt;
+  {
+    protected override void OnAttached()
+    {
+      base.OnAttached();
+      AssociatedObject.Loaded += AssociatedObjectLoaded;
+    }
+    
+    protected override void OnDetaching()
+    {
+      AssociatedObject.Loaded -= AssociatedObjectLoaded;
+      base.OnDetaching();
+    }
+
+    private void AssociatedObjectLoaded(object sender, RoutedEventArgs e)
+    {
+      if (StartImmediately)
+      {
+        StartStoryboard();
+      }
+
+      if (!string.IsNullOrWhiteSpace(EventName))
+      {
+        var evt = AssociatedObject.GetType().GetRuntimeEvent(EventName);
+        if (evt != null)
+        {
+          Observable.FromEventPattern&lt;RoutedEventArgs&gt;(AssociatedObject, EventName)
+            .Subscribe(se =&gt; StartStoryboard());
+        }
+      }
+    }
+  }
+}</pre>
+<p>If StartImmediately is true, the storyboard is fired immediately. If not, the behavior tries to find an event with the name supplied in the EventName property and tries to attach a dynamic handler to it using Rx. Nothing new here, <a href="http://dotnetbyexample.blogspot.nl/2012/06/reflection-in-winrt-use-x-extensions.html" target="_blank">I already described this technique earlier</a> - in the article where I announced this forgotten behavior :-) </p>
+<p>More interesting is this funny little method, that’s basically one big Linq statement:</p><pre style="font-size: 12px">private Storyboard GetStoryBoardInVisualDescendents(FrameworkElement f)
+{
+  return f.GetVisualDescendents()
+    .Where(p =&gt; p.Resources.ContainsKey(Storyboard) &amp;&amp; p.Resources[Storyboard] is Storyboard)
+    .Select(p =&gt; p.Resources[Storyboard] as Storyboard).FirstOrDefault();
+}</pre>
+<p>It checks in all visual children’s resources for a storyboard with the name supplied in “Storyboard”, and if so, it selects it. It uses the extension method GetVisualDescendents to generate a list of all the children – all the way to the bottom of the visual tree from the element in “f”.</p>
+<p>As for the behavior’s default behavior (meh), it searches top-down for the storyboard, using this method:</p><pre>private void StartStoryboardTopDown()
+{
+  var root = AssociatedObject.GetVisualAncestors().Last() ?? AssociatedObject;
+
+  var storyboard = GetStoryBoardInVisualDescendents(root);
+  if (storyboard != null)
+  {
+    storyboard.Begin();
+  }
+}</pre>
+<p>In a nutshell: find the very last top object in the visual tree – that is the root. If that’s null, apparently the current associated object already is the root. Then it starts to search downward for the storyboard and if it finds it, it will fire it.</p>
+<p>For the bottom-up strategy, another method is employed, with a very original name: </p><pre>private void StartStoryboardBottomUp()
+{
+  var root = AssociatedObject;
+  Storyboard storyboard;
+  do
+  {
+    storyboard = GetStoryBoardInVisualDescendents(root);
+    if (storyboard == null)
+    {
+      root = root.GetVisualParent();
+    }
+  } while (root != null &amp;&amp; storyboard == null);
+
+  if (storyboard != null)
+  {
+    storyboard.Begin();
+  }
+}</pre>
+<p>This method starts by trying to find the storyboard in the visual tree below the current associated object. If it doesn’t find it, in moves one level up and tries again. And another one. Till it a) finds the storyboard or b) runs out of levels. If a storyboard is found, then it fires it. Okay, so that’s a little inefficient, but it only happens upon firing the event.</p>
+<p>The final pieces of the puzzle is StartStoryboard, which simply selects the method based upon the SearchTopDown value.</p><pre>private void StartStoryboard()
+{
+  if( SearchTopDown)
+  {
+    StartStoryboardTopDown();
+  }
+  else
+  {
+    StartStoryboardBottomUp();
+  }
+}</pre>
+<p>And that’s all there is to it. I’ve omitted the declaration of the four (attached dependency) properties as that only bulks up this post with no actual value, and the complete listing can be found <a href="http://win8nl.codeplex.com/SourceControl/changeset/view/19620#349522" target="_blank">here on CodePlex</a> if that helps you to get overview. </p>
+<p><a href="http://www.schaikweb.net/blog/bff069ed72ce_BCF1/Screenshot8.png"><img title="Screenshot8" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="Screenshot8" align="right" src="http://www.schaikweb.net/blog/bff069ed72ce_BCF1/Screenshot8_thumb.png" width="336" height="192"></a>For those who love to see the behavior in action I created <a href="http://www.schaikweb.net/dotnetbyexample/StoryBoardDemo.zip" target="_blank">a little sample app</a>, which shows a few items in a ListBox. At the end of each row there’s a button, and if you click that the color of three texts to the left is animated from black to red in about a second. That’s a storyboard being fired by the behavior. Very exiting ;-) - but it proves the point.</p>
+<p>Enjoy! I hope this helps you with your <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> development! Global Availability is coming, get cracking to get your stuff in the store!</p>  

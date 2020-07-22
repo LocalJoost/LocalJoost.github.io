@@ -1,0 +1,203 @@
+---
+layout: post
+title: Porting the DragFlickBehavior from Windows Phone 7 to Windows 8 Metro Style
+date: '2012-04-01T14:52:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Metro
+- dotnetmag
+- Windows 8
+- XAML
+- behavior
+- Win8nl
+modified_time: '2012-04-05T08:31:18.750+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5323651930795046595
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/04/porting-dragflickbehavior-from-windows.html
+---
+
+<p><font size="4">Preface</font></p> <p>A little over a year ago I made <a title="DragFlickBehavior" href="http://dotnetbyexample.blogspot.com/2011/03/simple-windows-phone-7-silverlight.html">DragFlickBehavior</a>, a behavior for <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> that makes essentially <em>anything</em> draggable and ‘flickable’, that is, you can drag a GUI element along with your finger and it seems to have a little inertia when you let it go. In <a href="http://dotnetbyexample.blogspot.com/2012/03/attached-behaviors-for-windows-8-metro.html" target="_blank">my previous post</a>, I described the basics of how to make a behavior at all for <a href="http://windows.microsoft.com/en-US/windows-8/consumer-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> Metro style. The testing of this was done using a ported version of the DragFlickBehavior. I’ve retraced my steps to how I got it to work, and will describe the process of porting an existing behavior here.</p> <p>For the DragFlickBehavior to work, some groundwork needed to be layed first. For Windows Phone, I made a couple of extension methods for both FrameworkElement and StoryBoard first. To make matters worse, one of those extension methods in FrameworkElementExtensions used yet <em>another </em>extension method – GetVisualParent in VisualTreeHelperExtensions from Phone7.Fx… Nil desperandum… I’ll start at the beginning</p> <p><font size="4">Porting&nbsp; VisualTreeHelperExtensions</font></p> <p>I created a class library Win8nl.External, copied VisualTreeHelperExtensions.cs from <a href="http://phone7.codeplex.com/SourceControl/changeset/view/71274#1257675" target="_blank">it’s codeplex location</a>, and opened the it the editor. And then the process was pretty simple:</p> <ul> <li>The namespace System.Windows.Media is gone. So I deleted it’s using.  <li>I basically clicked every red line, hit Control-.&nbsp; (that’s Control-dot) and in most cases the editor would suggest a name space to add</li></ul> <p>In the end I seemed to have added <pre>using Windows.UI.Xaml;
+using Windows.UI.Xaml.Media;</pre>
+<p>And then there was this slight matter of 2 places where the author calls VisualStateManager.GetVisualStateGroups and expects the result to be an IList. Now it’s an IEnumerable. Anyway, I solved this by changing the </p><pre>IList groups = VisualStateManager.GetVisualStateGroups(root);</pre>
+<p>into</p><pre>var groups = VisualStateManager.GetVisualStateGroups(root);</pre>
+<p>on both occasions. One file done. I won’t even pretend I understand what all those methods in this file are actually doing. I just ported them. </p>
+<p><font size="4">Porting FrameworkElementExtensions</font></p>
+<p>I then created a library Win8nl, added references to Win8nl.External and <a href="http://winrtbehaviors.codeplex.com" target="_blank">WinRtBehaviors</a>, and started on the FrameworkElementExtensions . This proved to be a pretty trivial matter. I needed to remove </p><pre>using System.Windows.Controls;
+using System.Windows.Media;
+using System.Linq;<br>using Phone7.Fx;</pre>
+<p>And add after Control-dotting trough the errors I found I had added </p><pre>using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml;
+using Windows.Foundation
+using Windows.UI.Xaml.Controls</pre>
+<p>Two files done!</p>
+<p><font size="4">Porting StoryboardExtensions</font></p>
+<p>Routine starts to settle in. Remove</p><pre>using System.Windows.Media;
+using System.Windows.Media.Animation;</pre>Control-dot around, and you will see you've added <pre>using Windows.Foundation;
+using Windows.UI.Xaml;
+using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Media.Animation;</pre>
+<p>But then we hit our first snag. Two methods use a parameter of type IEasingFunction, that does no longer exist. But that can be fixed, by changing it into <em>EasingFunctionBase</em>.</p>
+<p>Then I found out that Storyboard.SetTargetProperty apparently no longer wants to have a PropertyPath – which can be made from a DependencyProperty object – but a <em>string</em>. So method </p><pre style="font-size: 11px">public static void AddAnimation(this Storyboard storyboard,
+ DependencyObject item, Timeline t, <font color="#ff0000">DependencyProperty p</font>)
+{
+  if (p == null) throw new ArgumentNullException("p");
+  Storyboard.SetTarget(t, item);
+  Storyboard.SetTargetProperty(t, new PropertyPath(p));
+  storyboard.Children.Add(t);
+}</pre>Need to be changed to<pre style="font-size: 11px"> public static void AddAnimation(this Storyboard storyboard,
+ DependencyObject item, Timeline t, <font color="#ff0000">string property</font>)
+{
+  if (string.IsNullOrWhiteSpace(property)) throw new ArgumentNullException("property");
+  Storyboard.SetTarget(t, item);
+  Storyboard.SetTargetProperty(t, property);
+  storyboard.Children.Add(t);
+}</pre>This is bad news, since it breaks the public interface. And it breaks even more, namely <em>another</em> public extension method<pre style="font-size: 11px">public static void AddTranslationAnimation(this Storyboard storyboard,
+   FrameworkElement fe, Point from, Point to, Duration duration,
+   EasingFunctionBase easingFunction)
+{
+  storyboard.AddAnimation(
+      fe.RenderTransform,
+      storyboard.CreateDoubleAnimation(duration, from.X, to.X, easingFunction),
+                                       <font color="#ff0000">CompositeTransform.TranslateXProperty</font>);
+  storyboard.AddAnimation(fe.RenderTransform,
+       storyboard.CreateDoubleAnimation(duration, from.Y, to.Y, easingFunction),
+                                        <font color="#ff0000">CompositeTransform.TranslateYProperty</font>);
+}</pre>Needs to be changed to <pre style="font-size: 11px">public static void AddTranslationAnimation(this Storyboard storyboard,
+  FrameworkElement fe, Point from, Point to, Duration duration,
+  EasingFunctionBase easingFunction)
+{
+  storyboard.AddAnimation(fe.RenderTransform,
+  storyboard.CreateDoubleAnimation(duration, from.X, to.X, easingFunction),
+                                   <font color="#ff0000">"TranslateX"</font>);
+  storyboard.AddAnimation(fe.RenderTransform,
+  storyboard.CreateDoubleAnimation(duration, from.Y, to.Y, easingFunction),
+                                   <font color="#ff0000">"TranslateY"</font>);
+}</pre>
+<p>I must honestly say I find the apparent need to specify storyboard target properties verbatim, as in strings, quite peculiar, but apparently this is the way it needs to be done. I am only the messenger here.</p>
+<p><font size="4">Porting DragFlickBehavior</font></p>Here we go again. Delete<pre>using System.Windows.Interactivity;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using Wp7nl.Utilities;</pre>And Control-dotting learns you the following needs to be added:<pre>using Win8nl.Utilities;
+using Windows.Foundation;
+using Windows.UI.Xaml;
+using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Media.Animation;
+using WinRtBehaviors;</pre>Soon after that, you'll learn that the second parameter of a ManipulationDelta event is no longer of type ManipulationDeltaEventArgs but of ManipulationDelta<strong>Routed</strong>EventArgs, and that it does no longer have a “DeltaManipulation” property but a plain “Delta” property. So the AssociatedObjectManipulationDelta method capturing the event was this: <pre style="font-size: 12px">void AssociatedObjectManipulationDelta(object sender, Manipulation<font color="#ff0000">Delta</font>EventArgs e)
+{
+  var dx = e.<font color="#ff0000">DeltaManipulation</font>.Translation.X;
+  var dy = e.<font color="#ff0000">DeltaManipulation</font>.Translation.Y;
+  var currentPosition = elementToAnimate.GetTranslatePoint();
+  elementToAnimate.SetTranslatePoint(currentPosition.X + dx, currentPosition.Y + dy);
+}</pre>and now needs to be this<pre style="font-size: 12px">void AssociatedObjectManipulationDelta(object sender, Manipulation<font color="#ff0000">DeltaRouted</font>EventArgs e)
+{
+  var dx = e.<font color="#ff0000">Delta</font>.Translation.X;
+  var dy = e.<font color="#ff0000">Delta</font>.Translation.Y;
+  var currentPosition = elementToAnimate.GetTranslatePoint();
+  elementToAnimate.SetTranslatePoint(currentPosition.X + dx, currentPosition.Y + dy);
+}</pre>
+<p>No rocket science in there, right? And almost identical set of rework needs to be done to the method capturing ManipulationCompleted. Its second parameter was of type ManipulationCompletedEventArgs and is now – you’ve probably guessed it – ManipulationCompleted<strong>Routed</strong>EventArgs. And that does no longer have a property e.FinalVelocities.LinearVelocity.X and Y but is <em>does</em> have a Velocities.Linear.X and Y.</p>
+<p>For some reason though, those properties return values that are somewhere between 0 and 1, or at least it seems so. So I made a rule-of-thumb conversion multiplying them by 1000. Wrapping that up: AssociatedObjectManipulationCompleted used to be</p><pre style="font-size: 12px">private void AssociatedObjectManipulationCompleted(object sender,
+                                                    Manipulation<font color="#ff0000">Completed</font>EventArgs e)
+{
+  // Create a storyboard that will emulate a 'flick'
+  var currentPosition = elementToAnimate.GetTranslatePoint();
+  <font color="#ff0000">var velocity = e.FinalVelocities.LinearVelocity;</font>
+  var storyboard = new Storyboard { FillBehavior = FillBehavior.HoldEnd };
+
+  var to = new Point(currentPosition.X + (<font color="#ff0000">velocity.X</font> / BrakeSpeed),
+                     currentPosition.Y + (<font color="#ff0000">velocity.Y</font> / BrakeSpeed));
+  storyboard.AddTranslationAnimation(elementToAnimate, currentPosition, to, 
+    new Duration(TimeSpan.FromMilliseconds(500)), 
+    new CubicEase {EasingMode = EasingMode.EaseOut});
+  storyboard.Begin();
+}</pre>and it now is<pre style="font-size: 12px">private void AssociatedObjectManipulationCompleted(object sender,
+                                                   Manipulation<font color="#ff0000">CompletedRouted</font>EventArgs e)
+{
+  // Create a storyboard that will emulate a 'flick'
+  var currentPosition = elementToAnimate.GetTranslatePoint();
+<font color="#ff0000">  var xVelocity = e.Velocities.Linear.X * 1000;
+  var yVelocity = e.Velocities.Linear.Y * 1000;</font>
+  var storyboard = new Storyboard { FillBehavior = FillBehavior.HoldEnd };
+  var to = new Point(currentPosition.X + (<font color="#ff0000">xVelocity</font> / BrakeSpeed),
+                     currentPosition.Y + (<font color="#ff0000">yVelocity</font> / BrakeSpeed));
+  storyboard.AddTranslationAnimation(elementToAnimate, currentPosition, to,
+      new Duration(TimeSpan.FromMilliseconds(500)),
+   new CubicEase { EasingMode = EasingMode.EaseOut });
+  storyboard.Begin();
+}</pre>
+<p>The final thing you will need to take into consideration when you port behaviors is the fact that you used to have an OnAttached and Loaded event. You still have those, but by the very nature I implemented behaviors everything that happened in OnAttached <em>and</em> OnLoaded needs to be in OnAttached. Same goes for Unloaded and OnDetaching – the last one is fired by the first one. So follow the pattern I set out: initialize in OnAttached only, and only clean up in OnDetached<em>.</em></p>
+<p>So, the behavior used to have a setup like this:</p><pre style="font-size: 12px">protected override void OnAttached()
+{
+  base.OnAttached();
+  AssociatedObject.Loaded += AssociatedObjectLoaded;
+  AssociatedObject.ManipulationDelta += AssociatedObjectManipulationDelta;
+  AssociatedObject.ManipulationCompleted += AssociatedObjectManipulationCompleted;
+}
+
+void AssociatedObjectLoaded(object sender, RoutedEventArgs e)
+{
+  elementToAnimate = AssociatedObject.GetElementToAnimate();
+  if (!(elementToAnimate.RenderTransform is CompositeTransform))
+  {
+    elementToAnimate.RenderTransform = new CompositeTransform();
+    elementToAnimate.RenderTransformOrigin = new Point(0.5, 0.5);
+  }
+}</pre>And that should now be&nbsp; <pre style="font-size: 12px">protected override void OnAttached()
+{
+  elementToAnimate = AssociatedObject.GetElementToAnimate();
+  if (!(elementToAnimate.RenderTransform is CompositeTransform))
+  {
+    elementToAnimate.RenderTransform = new CompositeTransform();
+    elementToAnimate.RenderTransformOrigin = new Point(0.5, 0.5);
+  }
+  AssociatedObject.ManipulationDelta += AssociatedObjectManipulationDelta;
+  AssociatedObject.ManipulationCompleted += AssociatedObjectManipulationCompleted;
+  AssociatedObject.ManipulationMode = 
+    ManipulationModes.TranslateX | ManipulationModes.TranslateY;
+  base.OnAttached();
+}</pre>Notice a couple of interesting things: 
+<ul>
+<li>The capture of “Loaded” is gone. We don’t need that any longer 
+<li>There is an extra last line, setting the “ManipulationMode”. Apparently you need to set that up to make ManipulationDelta and ManipulationCompleted happen at all. It accidently stumbled upon that</li></ul>
+<p>Finally, the last part: OnDetaching. It used to be</p><pre style="font-size: 12px">protected override void OnDetaching()
+{
+  AssociatedObject.Loaded -= AssociatedObjectLoaded;
+  AssociatedObject.ManipulationCompleted -= AssociatedObjectManipulationCompleted;
+  AssociatedObject.ManipulationDelta -= AssociatedObjectManipulationDelta;
+
+  base.OnDetaching();
+}</pre>And the only thing that needs to be changed to use <em>that </em>is the removal of the first line: AssociatedObject.Loaded -= AssociatedObjectLoaded;; 
+<p>And then we’re done. If you add this behavior to any object on the screen, like I showed in the previous post:</p><pre style="font-size: 12px">&lt;Page
+  x:Class="Catchit8.BlankPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:Catchit8"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:Win8nl_Behaviors="using:Win8nl.Behaviors"
+  xmlns:WinRtBehaviors="using:WinRtBehaviors"
+  mc:Ignorable="d"&gt;
+
+  &lt;Grid Background="{StaticResource ApplicationPageBackgroundBrush}"&gt;
+    &lt;TextBlock HorizontalAlignment="Left" Margin="503,213,0,0" TextWrapping="Wrap" 
+   VerticalAlignment="Top" FontSize="18" Text="Drag me"&gt;
+<font color="#ff0000">      &lt;WinRtBehaviors:Interaction.Behaviors&gt;
+         &lt;Win8nl_Behaviors:DragFlickBehavior BrakeSpeed ="5"/&gt;
+      &lt;/WinRtBehaviors:Interaction.Behaviors&gt;</font>
+    &lt;/TextBlock&gt;
+    &lt;Button Content="Drag me too!" HorizontalAlignment="Left" Margin="315,269,0,0" 
+   VerticalAlignment="Top" &gt;
+<font color="#ff0000">      &lt;WinRtBehaviors:Interaction.Behaviors&gt;
+          &lt;Win8nl_Behaviors:DragFlickBehavior BrakeSpeed ="5"/&gt;
+      &lt;/WinRtBehaviors:Interaction.Behaviors&gt;</font>
+     &lt;/Button&gt;
+
+  &lt;/Grid&gt;
+&lt;/Page&gt;
+</pre>
+<p>You will get an effect like this (I added a slider just for kicks)</p>
+<div style="padding-bottom: 0px; margin: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: none; padding-top: 0px" id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:4f5f1ab0-4af7-4f3f-8ab9-ea705c9f652f" class="wlWriterEditableSmartContent"><div id="1937f4a1-7ee3-4344-8ad3-80673fcae714" style="margin: 0px; padding: 0px; display: inline;"><div><a href="http://www.youtube.com/watch?v=Vybp1Lhg7uc" target="_new"><img src="http://lh6.ggpht.com/-wTmMgMGb5Kg/T3xqfR5g45I/AAAAAAAAITo/lrp7Dh3lXlQ/videoa7fb93a2ca42%25255B5%25255D.jpg?imgmax=800" style="border-style: none" galleryimg="no" onload="var downlevelDiv = document.getElementById('1937f4a1-7ee3-4344-8ad3-80673fcae714'); downlevelDiv.innerHTML = &quot;&lt;div&gt;&lt;object width=\&quot;448\&quot; height=\&quot;252\&quot;&gt;&lt;param name=\&quot;movie\&quot; value=\&quot;http://www.youtube.com/v/Vybp1Lhg7uc?hl=en&amp;hd=1\&quot;&gt;&lt;\/param&gt;&lt;embed src=\&quot;http://www.youtube.com/v/Vybp1Lhg7uc?hl=en&amp;hd=1\&quot; type=\&quot;application/x-shockwave-flash\&quot; width=\&quot;448\&quot; height=\&quot;252\&quot;&gt;&lt;\/embed&gt;&lt;\/object&gt;&lt;\/div&gt;&quot;;" alt=""></a></div></div><div style="width:448px;clear:both;font-size:.8em">DragFlickBehavior on Windows 8 demonstrated</div></div>
+<p><font size="4">Conclusion</font></p>
+<p>At first glance, Windows 8 development does not seem to differ that much from Windows Phone development. After I made my behavior framework, porting a fairly complex behavior like this was pretty easy, so I’d say that holds true at second glance as well. Sure, some things are different – mostly namespaces and some property names. The XAML is a wee bit different as well. As to why Microsoft have decided to change namespaces, rename properties or methods or even let return values be a bit different – I don’t know. What I <em>do</em> know is that bitching about it will probably raise your blood pressure but it won’t help you very much as a developer. Just think of this: Microsoft sold 450 <em>million</em> copies of Windows 7. I don’t think those will <em>all</em> be Windows 8 next year, but I think the 100 million mark will be hit pretty soon. The choice is yours – either you are spending time and energy on getting angry that Microsoft moved your cheese (or actually, only some of it) or you can go out and find new and probably <em>a bloody lot of </em>cheese. </p>
+<p>Well, I’ve made my choice</p>
+<div style="padding-bottom: 0px; margin: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: none; padding-top: 0px" id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:0e061d25-5228-4507-a73f-393ae7a0bb90" class="wlWriterEditableSmartContent"><div id="a1911377-f647-4c3e-9545-bd38de4988cc" style="margin: 0px; padding: 0px; display: inline;"><div><a href="http://www.youtube.com/watch?v=zOvyRjVQLjE" target="_new"><img src="http://lh5.ggpht.com/-tA-iYuGAsgA/T3hPot0qrPI/AAAAAAAAITs/_ZHqYssEFPA/video71e0dae2cac9%25255B5%25255D.jpg?imgmax=800" style="border-style: none" galleryimg="no" onload="var downlevelDiv = document.getElementById('a1911377-f647-4c3e-9545-bd38de4988cc'); downlevelDiv.innerHTML = &quot;&lt;div&gt;&lt;object width=\&quot;448\&quot; height=\&quot;252\&quot;&gt;&lt;param name=\&quot;movie\&quot; value=\&quot;http://www.youtube.com/v/zOvyRjVQLjE?hl=en&amp;hd=1\&quot;&gt;&lt;\/param&gt;&lt;embed src=\&quot;http://www.youtube.com/v/zOvyRjVQLjE?hl=en&amp;hd=1\&quot; type=\&quot;application/x-shockwave-flash\&quot; width=\&quot;448\&quot; height=\&quot;252\&quot;&gt;&lt;\/embed&gt;&lt;\/object&gt;&lt;\/div&gt;&quot;;" alt=""></a></div></div></div>
+<p>As usual, a complete demo solution for those who, like me, are too lazy to do all the typing themselves, can be found <a href="http://www.schaikweb.net/dotnetbyexample/win8nl-1.zip" target="_blank">here</a>. So you can get started even faster. ¡Arriba! ¡Andale! ;-)</p>

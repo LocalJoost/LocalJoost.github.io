@@ -1,0 +1,227 @@
+---
+layout: post
+title: WIX configurable search & replace custom action for text files
+date: '2010-11-13T19:39:00.002+01:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- WIX
+- C#
+- Custom Taks
+modified_time: '2013-04-26T19:27:36.774+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6686178423430786206
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/11/wix-configurable-search-replace-custom.html
+---
+
+<p>Recently I had my first encounter with actually writing setups myself using <a href="http://wix.sourceforge.net/" target="_blank">WIX</a>. This is a powerful albeit a bit complex technology that allows you to build MSI setups using XML files. It includes all kinds of tasks to modify files after installation, and thus you can for instance change the settings in configuration files based upon user input. Unfortunately good examples are few and far between, and I hope to save some poor sod a lot of time with this article</p>  <p>Trouble is that the standard tasks only know how to modify <em>XML </em>files. Now this is usually enough, but if you want to change plain text files files then you are basically on your own. WIX supports the idea of custom actions that you can write in C#, So I set out to write such a search &amp; replace custom action that was to be configured by a <em><a href="http://wix.sourceforge.net/manual-wix2/wix_xsd_customtable.htm" target="_blank">custom table</a>.</em> </p>  <p>That turned out less straightforward than I thought. Under Windows 7 and Vista, with UAC enabled, part of the installation sequence is run with elevated rights, part is not, and your custom actions are running <em>not</em> with elevated rights unless they are ‘deferred’ but <em>then</em> you don’t have access to the custom table anymore. I spent quite some time figuring out why my configuration files were virtualized by the installer but those in the program directory themselves never got changed. Finally solved that catch-22 by following what appeared to be a beaten track: split the task into two task. The first task runs immediate, reads the table, and dumps its contents in a file, the second runs deferred.</p>  <p>The actual code consist out of two methods and a property. The class declaration with the property looks like this:</p>  <pre>using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using Microsoft.Deployment.WindowsInstaller;
+
+namespace LocalJoost.Wix
+{
+  public class CustomActions
+  {
+    /// &lt;summary&gt;
+    /// Gets the search and replace data file location. 
+ /// This is stored in the user's temp directory
+    /// and used by the installer.
+    /// &lt;/summary&gt;
+    /// &lt;value&gt;The search and replace data file.&lt;/value&gt;
+    private static string SearchAndReplaceDataFile
+    {
+      get
+      {
+       return Environment.GetEnvironmentVariable(&quot;TEMP&quot;) + 
+            Path.DirectorySeparatorChar + 
+           &quot;SearchAndReplace.xml&quot;;
+      }
+    }
+  }
+}</pre>
+
+<p>This defines a hard coded XML file in the installer user's temp directory. Then, the first method that actually gathers the information and writes it into said XML file:</p>
+
+<pre>/// &lt;summary&gt;
+/// This method should be declared with Execute=&quot;immediate&quot; 
+/// and called with Before=&quot;InstallFinalize&quot;
+/// Use in conjunction with SearchAndReplaceExec
+/// &lt;/summary&gt;
+/// &lt;param name=&quot;session&quot;&gt;The session.&lt;/param&gt;
+/// &lt;returns&gt;&lt;/returns&gt;
+[CustomAction]
+public static ActionResult SearchAndReplaceInit(Session session)
+{
+  session.Log(&quot;Begin SearchAndReplaceInit&quot;);
+  File.Delete(SearchAndReplaceDataFile);
+  if (session.Database.Tables.Contains(&quot;SearchAndReplace&quot;))
+  {
+     var lstSearchAndReplace = new List&lt;SearchAndReplaceData&gt;();
+     using (var propertyView = 
+      session.Database.OpenView(&quot;SELECT * FROM `SearchAndReplace`&quot;))
+     {
+       propertyView.Execute();
+       foreach (var record in propertyView)
+       {
+         var token = new SearchAndReplaceData
+         {
+           File = session.Format(record[&quot;File&quot;].ToString()),
+           Search = session.Format(record[&quot;Search&quot;].ToString()),
+           Replace = session.Format(record[&quot;Replace&quot;].ToString())
+         };
+         lstSearchAndReplace.Add(token);
+       }
+     }
+     var serializer = new TypedXmlSerializer&lt;List&lt;SearchAndReplaceData&gt;&gt;();
+     serializer.Serialize(SearchAndReplaceDataFile, lstSearchAndReplace);
+  }
+  else
+  {
+    session.Log(&quot;No SearchAndReplace custom table found&quot;);
+  }
+  session.Log(&quot;End SearchAndReplaceInit&quot;);
+  return ActionResult.Success;
+}</pre>
+and finally the method that reads the XML file and actually executes the search and replace actions 
+
+<pre>/// &lt;summary&gt;
+/// This method should be decleared with Execute=&quot;deferred&quot; 
+/// and called with Before=&quot;InstallFinalize&quot;
+/// Use in conjunction with SearchAndReplaceInit
+/// &lt;/summary&gt;
+/// &lt;param name=&quot;session&quot;&gt;The session.&lt;/param&gt;
+/// &lt;returns&gt;&lt;/returns&gt;
+[CustomAction]
+public static ActionResult SearchAndReplaceExec(Session session)
+{
+  session.Log(&quot;Begin SearchAndReplaceExec&quot;);
+  if (File.Exists(SearchAndReplaceDataFile))
+  {
+    var serializer = new TypedXmlSerializer&lt;List&lt;SearchAndReplaceData&gt;&gt;();
+    var tokens = serializer.Deserialize(SearchAndReplaceDataFile);
+    tokens.ForEach(token =&gt;
+    {
+      try
+      {
+        string fileContents;
+   
+        var file = new FileInfo(token.File);
+        {
+          if (file.Exists)
+          {
+            using (var reader = new StreamReader(file.OpenRead()))
+            {
+              fileContents = reader.ReadToEnd();
+              reader.Close();
+            }
+            fileContents = fileContents.Replace(token.Search, token.Replace);
+         
+            using (var writer = new StreamWriter(file.OpenWrite()))
+            {
+              writer.Write(fileContents);
+              writer.Flush();
+              writer.Close();
+            }
+          }
+        }
+      }
+      catch (Exception)
+      {
+        session.Log(&quot;Could not process file &quot; + token.File);
+      }
+    });
+    File.Delete(SearchAndReplaceDataFile);
+  }
+  session.Log(&quot;End SearchAndReplaceExec&quot;);
+  return ActionResult.Success;
+}</pre>
+Attentive readers will have noticed this code actually uses two companion classes: SearchAndReplaceData: 
+
+<pre>namespace LocalJoost.Wix
+{
+  public class SearchAndReplaceData
+  {
+    public string File { get; set; }
+    public string Search { get; set; }
+    public string Replace { get; set; }
+  }
+}</pre>
+and TypedXmlSerializer:
+
+<pre>using System.Collections;
+using System.IO;
+using System.Xml.Serialization;
+
+namespace LocalJoost.Wix
+{
+  public class TypedXmlSerializer&lt;T&gt; 
+  {
+    public void Serialize(string path, T toSerialize)
+    {
+      var serializer = new XmlSerializer(typeof(T));
+      using (var fileStream = 
+      new FileStream(path, FileMode.Create))
+      {
+        serializer.Serialize(fileStream, toSerialize);
+        fileStream.Close();
+      }
+    }
+
+    public T Deserialize(string path)
+    {
+      var serializer = new XmlSerializer(typeof(T));
+      T persistedObject;
+      using (var reader = new StreamReader(path))
+      {
+        persistedObject = (T)serializer.Deserialize(reader);
+        reader.Close();
+      }
+      return persistedObject;
+    }
+  }
+}</pre>
+If you got this all up and running, actually <em>using</em> it means taking three steps. First you have to <em>declare</em> them in right into the top Product tag like this: 
+
+<pre>&lt;CustomAction Id=&quot;SearchAndReplaceInit&quot;
+    BinaryKey=&quot;LJWix&quot;
+    DllEntry=&quot;SearchAndReplaceInit&quot;
+    Execute=&quot;immediate&quot;/&gt;
+
+&lt;CustomAction Id=&quot;SearchAndReplaceExec&quot;
+    BinaryKey=&quot;LJWix&quot;
+    DllEntry=&quot;SearchAndReplaceExec&quot;
+    Execute=&quot;deferred&quot; Impersonate=&quot;no&quot;/&gt;
+ 
+&lt;Binary Id=&quot;LJWix&quot; SourceFile=&quot;LocalJoost.Wix.CA.dll&quot; /&gt;</pre>
+This assumes that your WIX custom actions projects was called &quot;LocalJoost.Wix&quot; and your resulting dll is called “LocalJoost.Wix.CA.dll”. Here you see the use of &quot;immediate&quot; for the information gathering task and the &quot;deferred&quot; for the actual executing task. The second step is embedding the custom actions into the install execution sequence: 
+
+<pre>&lt;InstallExecuteSequence&gt;
+  &lt;Custom Action=&quot;SearchAndReplaceInit&quot; Before=&quot;InstallFinalize&quot;/&gt;
+
+  &lt;Custom Action=&quot;SearchAndReplaceExec&quot; Before=&quot;InstallFinalize&quot;/&gt;
+&lt;/InstallExecuteSequence&gt;</pre>
+If you have looked closely at the SearchAndReplaceInit task, you see it's trying to read a custom SearchAndReplace table, so the third and final step is to define and actually fill that table: 
+
+<pre>&lt;CustomTable Id=&quot;SearchAndReplace&quot;&gt;
+  &lt;Column Id=&quot;Id&quot; Type=&quot;string&quot; Category=&quot;Identifier&quot; PrimaryKey=&quot;yes&quot;/&gt;
+  &lt;Column Id=&quot;File&quot; Type=&quot;string&quot;/&gt;
+  &lt;Column Id=&quot;Search&quot; Type=&quot;string&quot;/&gt;
+  &lt;Column Id=&quot;Replace&quot; Type=&quot;string&quot;/&gt;
+  &lt;Row&gt;
+    &lt;Data Column=&quot;Id&quot;&gt;id1&lt;/Data&gt;
+    &lt;Data Column=&quot;File&quot; &gt;[INSTALLLOCATION]Somedirectory\Somefile.txt&lt;/Data&gt;
+    &lt;Data Column=&quot;Search&quot;&gt;Text to search for&lt;/Data&gt;
+    &lt;Data Column=&quot;Replace&quot;&gt;Text to replace this by&lt;/Data&gt;
+  &lt;/Row&gt;
+  &lt;Row&gt;
+    &lt;Data Column=&quot;Id&quot;&gt;id2&lt;/Data&gt;
+    &lt;Data Column=&quot;File&quot; &gt;[INSTALLLOCATION]Somedirectory\Someotherfile.txt&lt;/Data&gt;
+    &lt;Data Column=&quot;Search&quot;&gt;Some other text to search for&lt;/Data&gt;
+    &lt;Data Column=&quot;Replace&quot;&gt;Some other text to replace this by&lt;/Data&gt;
+  &lt;/Row&gt;
+&lt;/CustomTable&gt;</pre>
+
+<p>Custom tables are also declared in the Product tag. The Id tag in the table is there because there seems to be an Id necessary, and the rest in pretty obvious: in the File tag you put the file you want to process, in Search what you want to search for, and in Replace what you want to replace it by. Duh :-) . And that’s pretty much what it there to it.</p>
+
+<p>Now I would love to take credit for this, but the ideas behind it – not to mention significant parts of the code – were supplied by <a href="http://www.kevindarty.net/" target="_blank">Kevin Darty</a> who kindly assisted me by using <a href="http://twitter.com/#!/kdarty" target="_blank">his Twitter account</a> when I was struggling with this. In the end I changed a lot of this code, but the samples he sent me saved me a lot of time. And true to the spirit of this blog and my promise to Kevin, I give back to the .NET community what it gave to me.</p>

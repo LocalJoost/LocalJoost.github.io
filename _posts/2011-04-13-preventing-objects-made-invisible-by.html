@@ -1,0 +1,83 @@
+---
+layout: post
+title: Preventing objects made invisible by data binding to show up initially
+date: '2011-04-13T09:30:00.001+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- Silverlight
+- XAML
+- behavior
+- WP7
+modified_time: '2011-04-20T11:34:57.078+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2559017126561122540
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/04/preventing-objects-made-invisible-by.html
+---
+
+<p>Currently I am in the process of writing a small <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> game . It sports a ‘game over’ panel with a ‘play again’ button and it’s visibility is controlled by a boolean value ‘IsGameOver’ in the ViewModel. My <a href="http://dotnetbyexample.blogspot.com/2010/11/converter-for-showinghiding-silverlight.html" target="_blank">VisibilityConverter</a> converts the true and false to Visiblity.Visible and Visibility.Collapsed.</p>  <p>Although this works well, data binding apparently takes place only <em>after</em> the complete GUI is loaded, for when the game starts, you see the panel for about half a second before it disappears again. Ugh. </p>  <p>I did not actually solve this problem, but found a workaround in the following little behavior:</p>  <pre>using System.Windows;
+using System.Windows.Interactivity;
+
+namespace Wp7nl.Behaviors
+{
+  public class SetInitialOpacityBehavior : Behavior&lt;FrameworkElement&gt;
+  {
+    protected override void OnAttached()
+    {
+      AssociatedObject.Loaded += AssociatedObjectLoaded;
+      base.OnAttached();
+      AssociatedObject.Opacity = InitialOpacity;
+    }
+
+    void AssociatedObjectLoaded(object sender, RoutedEventArgs e)
+    {
+      AssociatedObject.Loaded -= AssociatedObjectLoaded;
+      AssociatedObject.Opacity = OpacityAfterLoading;
+    }
+
+    #region InitialOpacity
+    public const string InitialOpacityPropertyName = "InitialOpacity";
+
+    public int InitialOpacity
+    {
+      get { return (int)GetValue(InitialOpacityProperty); }
+      set { SetValue(InitialOpacityProperty, value); }
+    }
+
+    public static readonly DependencyProperty InitialOpacityProperty = 
+	  DependencyProperty.Register(
+        InitialOpacityPropertyName,
+        typeof(int),
+        typeof(SetInitialOpacityBehavior),
+        new PropertyMetadata(0));
+    #endregion
+
+    #region OpacityAfterLoading
+    public const string OpacityAfterLoadingPropertyName = "OpacityAfterLoading";
+
+    public int OpacityAfterLoading
+    {
+      get { return (int)GetValue(OpacityAfterLoadingProperty); }
+      set { SetValue(OpacityAfterLoadingProperty, value); }
+    }
+
+    public static readonly DependencyProperty OpacityAfterLoadingProperty = 
+	DependencyProperty.Register(
+      OpacityAfterLoadingPropertyName,
+      typeof(int),
+      typeof(SetInitialOpacityBehavior),
+      new PropertyMetadata(1));
+    
+    #endregion
+  }
+}
+</pre>
+
+<p>It basically sets the opacity to 0 when the behavior is attached to the FrameworkElement (which apparently takes place before the element is actually displayed), thereby making the element invisible. After the Loading event has fired, it sets the opacity to the value of the dependency property OpacityAfterLoading - which is default 1. Apparently <em>this</em> takes place after data binding. Whatever – my ‘game over’ panel does not show up at the start anymore, but only after the game ends. Like it should.</p>
+
+<p>So if you notice an element showing up initially while it should not, just fire up Blend, drag this behavior on top of it and be done with it.</p>
+
+<p>This behavior is by no means Windows Phone 7 specific – it would work perfectly in Silverlight and probably WPF too. Be aware, however, that although OpacityAfterLoading is a dependency property, in Windows Phone 7 you cannot data bind it, because it’s currently based on Silverlight 3 which only allow you to bind to classes that do descend from <a href="http://msdn.microsoft.com/en-us/library/system.windows.dependencyobject.aspx" target="_blank">DependencyObject</a> – which a behavior obviously does not ;-) </p>
+
+<p>One final concluding note – although this behavior is in the Wp7nl namespace, it currently not in the <a href="http://wp7nl.codeplex.com/" target="_blank">Wp7nl library</a> nor the <a href="http://nuget.org/List/Packages/wp7nl" target="_blank">NuGet</a> package. But it will be in the next ;-)</p>  

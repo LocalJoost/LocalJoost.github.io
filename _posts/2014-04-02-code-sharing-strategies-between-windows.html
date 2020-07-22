@@ -1,0 +1,126 @@
+---
+layout: post
+title: Code sharing strategies between Windows Phone 8.1 and Windows 8.1 with the
+  new Universal Windows apps
+date: '2014-04-02T20:14:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Windows phone 8.1
+- windev
+- wpnl
+- wpdev
+- dotnetmag
+- Windows Phone
+- Windows 8
+- XAML
+- Universal App
+modified_time: '2014-04-02T20:14:47.846+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4709287481929577262
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/04/code-sharing-strategies-between-windows.html
+---
+
+<p>With the announcement of the new SDK for <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> Microsoft now really starts to stress the companionship of Windows and Windows Phone, and makes it a lot easier to build apps that run on both platforms. Windows Phone apps now reside under ‘Store Apps’ and although you can still write Windows Phone only apps, it’s pretty clear to me what the preferred way to go for new Windows Phone apps is </p> <p><a href="http://www.schaikweb.net/dotnetbyexample/4bc4a25148de_71C7/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/4bc4a25148de_71C7/image_thumb.png" width="644" height="185"></a></p> <p><font size="3">Two new kinds of Windows Phone apps</font></p> <p>Let me make one thing clear: no-one is going to push you. Windows Phone 8.1, like it’s predecessor, will run 8.0 apps fine. You can go on re-using the skillset you have acquired, still using the XAML style you are used to. In fact, Microsoft stresses this point even more by including Windows Phone Silverlight 8.1 apps, which are a bit of a halfway station: your XAML largely stays the same, but it gives you access to the new APIs. Yet I feel the crown jewel of the new SDK is the new Universal Windows app and, in it’s slipstream, the enhanced PCL capabilities. But once again – no-one is forcing you this way. Microsoft are very much about going forward, but also about protecting your existing skills and assets.</p> <p><font size="3">One solution, two apps</font></p> <p>One thing up front: ‘one app that runs everywhere’ is a station that we still have not reached. You are still making two apps – one for Windows Phone, one for Windows. In this sense, it’s basically the same approach as before where you used code sharing with linked files. That was quite a hassle, and now Visual Studio supports a formal way to share files between projects. This makes maintaining oversight dramatically easier, and it gets rid of the confounded “This document is opened by another project’ dialog too. Plus – and that’s a very big plus – the code you can use on both platforms has become a lot more similar.</p> <p><font size="3">Going universal</font></p> <p><a href="http://www.schaikweb.net/dotnetbyexample/4bc4a25148de_71C7/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/4bc4a25148de_71C7/image_thumb_3.png" width="172" align="right" height="244"></a>One warning in advance – if you going for the Universal Windows app, you’re going all the way. It means that for your Windows Phone app in most cases you are basically writing a Windows 8 app - using XAML and APIs that are familiar for Windows Store apps programmers, but not necessarily for Windows Phone developers. If you already have some experience writing Windows Store this won’t be a problem. If you have never done that before, some things may look a bit different.</p> <p>So, I have created a new blank Universal Windows app and it shows like displayed on the right:</p> <p>Initially, it only shows the App.Xaml.cs as shared. This has one great advantage already – you can go in and disable the frame rate counter for both apps in one stroke :-):</p><pre>        protected override void OnLaunched(LaunchActivatedEventArgs e)
+        {
+#if DEBUG
+            if (System.Diagnostics.Debugger.IsAttached)
+            {
+                //this.DebugSettings.EnableFrameRateCounter = true;
+            }
+#endif</pre>
+<p><font size="3">Switching contexts</font></p>
+<p>If you go through the shared App.Xaml.cs you will notice a few more things: at several places in the file it says #if WINDOWS_PHONE_APP, and I also want to point out this little thing on top, the context switcher.</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/4bc4a25148de_71C7/image_4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/4bc4a25148de_71C7/image_thumb_4.png" width="644" height="186"></a></p>
+<p>You can set the context switcher to ‘MyNewApp.Windows and you will see the Windows app code greyed out. This way, you can very quickly see which code is executed in which version and which not</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/4bc4a25148de_71C7/image_5.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/4bc4a25148de_71C7/image_thumb_5.png" width="644" height="179"></a></p>
+<p><font size="3">Sharing code – sharing XAML</font></p>
+<p>So I went to the Windows Store app, opened Blend, added some text and two tool bar buttons:</p><pre>&lt;Page
+    x:Class="MyNewApp.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:MyNewApp"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"&gt;
+  &lt;Page.BottomAppBar&gt;
+    &lt;CommandBar&gt;
+      &lt;AppBarButton Icon="Accept" Label="AppBarButton" Click="AppBarButton_Click"/&gt;
+      &lt;AppBarButton Icon="Cancel" Label="AppBarButton"/&gt;
+    &lt;/CommandBar&gt;
+  &lt;/Page.BottomAppBar&gt;
+
+    &lt;Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"&gt;
+      &lt;TextBlock HorizontalAlignment="Left" 
+                 Height="37" Margin="90,53,0,0" TextWrapping="Wrap" 
+                 Text="Hello World" 
+                 VerticalAlignment="Top" Width="383" FontSize="29.333"/&gt;
+
+    &lt;/Grid&gt;
+&lt;/Page&gt;
+</pre>
+<p>And added some code behind. </p><pre>private async void AppBarButton_Click(object sender, RoutedEventArgs e)
+{
+  var m = new MessageDialog("Hello world");
+  await m.ShowAsync();
+}</pre>
+<p>Now this won’t make for a spectacular app. If you run it, it will basically show:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/4bc4a25148de_71C7/image_6.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/4bc4a25148de_71C7/image_thumb_6.png" width="304" height="189"></a><a href="http://www.schaikweb.net/dotnetbyexample/4bc4a25148de_71C7/image_7.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/4bc4a25148de_71C7/image_thumb_7.png" width="304" height="189"></a></p>
+<p>It amaaaaazing, right ;-)? But then I went a bit overboard – I <a href="http://www.schaikweb.net/dotnetbyexample/4bc4a25148de_71C7/image_8.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; margin: 0px 8px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/4bc4a25148de_71C7/image_thumb_8.png" width="149" align="left" height="244"></a>moved MainPage.xaml and <a href="http://www.schaikweb.net/dotnetbyexample/4bc4a25148de_71C7/image_9.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; margin: 0px 10px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/4bc4a25148de_71C7/image_thumb_9.png" width="149" align="left" height="244"></a>MainPage.xaml.cs to the Shared project, and removed it from the Windows Phone 8.1 project. Run the Windows Store App again – still works. Run the Windows Phone 8.1 app, and sure enough…</p>
+<p>Now this may seem pretty cool – and in fact it is - but it would not be something I would recommend using just like that. Windows Phone is a different beast, the way people use a phone app differs from how they use a Store app on a tablet, and usually you have to think different about how the layout works on a tablet. Case in point – the app bar. Windows Phone has only room for four buttons. The Secondary Commands show up as menu items, not as buttons. The Top bar does not show up <em>at all</em>. So blindly copying a UI from Windows Phone to Windows Store and back is not a smart thing to do. But the fact that it works, is in itself pretty cool.</p>
+<p><font size="3">Sharing code – in a more practical way</font></p>
+<p>In practice, I have found you almost never share whole pages between phone apps and store apps, for a number of reasons:</p>
+<ul>
+<li>Phone design does not always translate easily to tablet design and vice versa (as pointed out above). 
+<li>For phone, space is a premium, and you don’t want to drag along all kinds of stuff that’s only used on a tablet - think super-high-res stuff, or all kinds of elaborate XAML constructions to accommodate that 
+<li>If you use controls on one platform that simply are not present on the other, or if you use native controls (for example, maps)</li></ul>
+<p>To maximize code sharing, you can for instance use partial classes. That works like this: in your code behind MainPage.Xaml.cs you declare the class “partial”. </p><pre>namespace MyNewApp
+{
+  /// &lt;summary&gt;
+  /// An empty page that can be used on its own or navigated to within a Frame.
+  /// &lt;/summary&gt;
+  public sealed <font color="#ff0000">partial</font> class MainPage : Page
+  {
+    public MainPage()
+    {
+      this.InitializeComponent();
+    }
+  }
+}</pre>And then in the shared project you create a new file MainPage.Xaml.cs (or MainPage.cs), with just this: <pre>namespace MyNewApp
+{
+  /// &lt;summary&gt;
+  /// An empty page that can be used on its own or navigated to within a Frame.
+  /// &lt;/summary&gt;
+  public sealed partial class MainPage : Page
+  {
+    public MainPage()
+    {
+      this.InitializeComponent();
+    }
+  }
+}</pre>
+<p>And this still gives the same result. Partial classes in shared projects can be pretty powerful. From the partial class in shared code you can call for instance back to methods in the non-shared portion, provided that those called methods are present in <em>both</em> the non-shared portions of the class (so both the MainPage.Xaml.cs). You can even call methods in referenced PCLs. Just keep in mind that in the background it just works like shared files and you can do a lot to minimize duplication.</p>
+<p><font size="3">More ways of sharing</font></p>
+<p>Another way of sharing code is putting most of it in the shared portion – even stuff that’s not present on both platforms – but then using the #ifdef WINDOWS_PHONE_APP and #ifdef WINDOWS_APP directives. This is largely a matter of preference. For smaller classes with little differences I tend to choose this route, for larger classes or code behind files I tend to go for partial classes.When I am working on stuff that is particularly phone-related, I don’t want my code cluttered by Windows code, and vice versa.</p>
+<p>A third way of sharing pieces of UI would be creating <em>user controls</em> in shared code. They can be reused within pages that are in itself not shared.</p>
+<p>Finally – don’t forget that <em>everything</em> can be shared in the shared images. Apart from XAML and code this includes, for instance:</p>
+<ul>
+<li>Images 
+<li>Resource files (styles, templates, localization, etc) 
+<li>Data files</li></ul>
+<p><font size="3">And PCL?</font></p>
+<p>In the past, I have never been a fan of PCL, because of their limitations. This has been greatly improved by the new model and I actually start to like it. If you make a PCL for use in Windows 8.1 and Windows Phone 8.1 you can put almost everything in it that can be stuffed in a shared project, <em>including user controls</em> – although of course you can’t do elaborate partial classes callback tricks into non-shared code. This is because a PCL needs to stand on itself. So only everything that is available in both platforms fits in, so for instance almost everything map-related is out (with a few notable and very important exceptions: Geolocation (GPS tracking) and Geofencing (that is now available on Windows Phone too!).</p>
+<p>Still – PCL is only useful if you are building stuff that</p>
+<ul>
+<li>Needs to be reusable over multiple <em>different</em> apps 
+<li>Needs to be usable on <em>both</em> Windows Phone and Windows Store</li></ul>
+<p>With this respect, there is not much difference in building platform-specific libraries and distributing them vi NuGet. This is more for the advanced programmer who is starting to build his own toolkit. This means <em>you</em>, by the time you are working on your third app :-)</p>
+<p><font size="3">Code sharing recap</font></p>
+<ul>
+<li>Code, XAML or assets that can be shared within one app for both platform can go into a shared project. For code that does not fit entirely you can use 
+<ul>
+<li>Partial classes 
+<li>#ifdef directives</li></ul>
+<li>Code, XAML or assets that can be shared over <em>multiple</em> apps for both platform can go into a PCL</li></ul>
+<p><font size="3">Conclusion</font></p>
+<p>Build for Both has become a lot easier. You still have to deliver two apps, but making them as one has become a lot easier. Making clever use of the of partial classes and #ifdef makes it easier too, although this requires some thinking. Still, you have to take into account how both platforms behave differently. </p>
+<p>A new exiting story for Windows Phone and Windows developers has begun.</p>
+<p>The ‘demo solution’, which is hardly worth it’s name in this case, <a href="http://www.schaikweb.net/dotnetbyexample/mynewapp.zip" target="_blank">can be downloaded here</a>.</p>  

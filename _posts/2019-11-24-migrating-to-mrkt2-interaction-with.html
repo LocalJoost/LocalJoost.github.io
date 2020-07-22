@@ -1,0 +1,55 @@
+---
+layout: post
+title: Migrating to MRKT2 - Interaction with irregular or complex objects
+date: '2019-11-24T16:17:00.000+01:00'
+author: Joost van Schaik
+tags:
+- Unity
+- Windows Mixed Reality
+- MRTK2
+- HoloLens2
+modified_time: '2019-11-24T16:19:06.151+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-9219931848800298383
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2019/11/migrating-to-mrkt2-interaction-with.html
+---
+
+<h2>Intro</h2><p>Interaction with objects that are not simple shapes like cubes, spheres, capsules etc. poses some challenges. The <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank"><a href="https://github.com/Microsoft/MixedRealityToolkit-Unity" target="_blank">Mixed Reality Toolkit</a> 2 offers some great components, but they all require a top level collider. Now consider this helicopter:</p><p><img style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20191106/1_heli.png" border="0"></p><p><img width="108" height="400" align="left" style="margin: 0px 6px 0px 0px; border: 0px currentcolor; border-image: none; float: left; display: inline; background-image: none;" src="https://www.schaikweb.net/blog/20191106/2_heliobject.png" border="0">It consists of a <em>lot</em> of small objects. Default it does not even <em>have</em> a collider. You cannot add a Near Interaction Touchable on top of the object because it simply cannot find a collider. Now you can generate those on import, but that makes the object kind of heavy with regards to required processing power, and hooking all those colliders up up to their own Interaction Touchable is a lot of work. </p><p>There is a simpler way of doing that, fortunately. Actually, there are two variants of this, but I am going to show the one I think works the best (and is the most beautiful).</p><h2><br></h2><h2><br></h2><h2><br></h2><h2><br></h2><h2><br></h2><h2><br></h2><h2><br></h2><h2>Adding a colliding 'catcher' to rule them all</h2><p>First of all, we are going to add a surrounding object inside the model itself. I took a capsule, as this gives IMHO the most beautiful result</p><p><img width="500" height="224" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20191106/3_capsuledef.png" border="0"></p><p>The result now is the helicopter is now almost completely covered in what looks like a giant suppository, which is definitely not what you want. </p><p><img width="500" height="306" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20191106/4_capsule.png" border="0"></p><p>So by fiddling around I created this material. Note: it actual color is fully transparent black - basically 0,0,0,0. so that we can see the helicopter again.</p><p><img width="400" height="340" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20191106/5_material1.png" border="0"></p><p>But more importantly, it has a hover light override color of green with a light intensity of 0.4.</p><p><img width="400" height="386" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20191106/6_material2.png" border="0"></p><p> And now, if a cursor strikes the object, you get this what I think is rather pretty ghostly glow indicating this is your focused object.</p><p><img width="640" height="281" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20191106/7_visualcue.png" border="0"></p><h2>Making it interactable</h2><p>Making it actually interact with events is now pretty simple. Assuming your actual 'controller' behaviour needs to control the whole game object, it needs to sit on top - so it can do more things than just interaction (like <em>moving</em> the helicopter, for instance - which it does not do now). It looks like this:</p><pre style="font-size: 12px;">using System;
+using TMPro;
+using UnityEngine;
+
+public class InteractionResponder : MonoBehaviour
+{
+    [SerializeField]
+    private TextMeshPro _text;
+
+    private int _timesClicked;
+
+    private int _timesTouched;
+
+    private int _timesFocus;
+
+    public void Click()
+    {
+        _timesClicked++;
+        UpdateText();
+    }
+    
+    public void TouchStart()
+    {
+        _timesTouched++;
+        UpdateText();
+    }
+
+    public void OnFocus()
+    {
+        _timesFocus++;
+        UpdateText();
+    }
+
+    private void UpdateText()
+    {
+        _text.text = string.Format("Clicked: {0}{1}Touched: {2}{1}Focused: {3}", 
+            _timesClicked, Environment.NewLine, _timesTouched, _timesFocus);
+    }
+}
+</pre><p>Super simple, basically only three event response methods that can be called - and it tries to display the text in a TextMeshPro object, that also sits in the HologramCollection, just like the Helicopter it self. As I said, the InteractionResponder behaviour will be sitting on the helicopter object itself:</p><p><img width="582" height="164" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20191106/8_responder2.png" border="0"></p><p>Now we need go back to the SurroundingCapsule and add an Interactable and a Near Interaction Touchable <em>Volume</em> script to that. The latter is apparently new or something I missed: where an ordinary Near Interaction Touchable only takes a rectangular collider, the Volume script also takes a capsule:</p><p><img width="400" height="75" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20191106/81_nearintouchvol.png" border="0"></p><p>Then, you will need to select "Select" for Input Actions, then drag the helicopter in the little box under OnClick like you usually do in this kind of event hookup, and select ÏnteractionResponder.Click.</p><p><img width="582" height="480" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20191106/9_eventhookup1.png" border="0"></p><p>Then you click "Add Event", select "InteractableOnTouchReceiver" and hook the On Touch event up to the InteractionResponder.TouchStart method (we will ignore the On Touch End event in this sample).</p><p><img width="400" height="211" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20191106/10_eventhookup2.png" border="0"></p><p>In a similar fashion, you will add another event, select "InteractableOnFocusReceiver" and hook that to the InteractionResponder.OnFocus event.</p><p><img width="400" height="208" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20191106/11_eventhookup3.png" border="0"></p><p>And if you have done everything right, and hit the play button in the editor, you will see this happening when you click, touch or focus:</p><p><img style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20191106/12_finalresult.png" border="0"></p><h2>Conclusion</h2><p>With very little code and one extra component you can make an irregular and complex object like a helicopter have an easy to touch/focus/click target that also gives some subtle but very clear visual feedback about what is happening. And this is only a start - we might as well have it respond to touch by showing some direct feedback, or show that it knows it's focused, even without a cursor hitting it (eye gaze!). Life is going to get interesting and <em>much</em> more immersive once <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> 2 comes around!</p><p>Demo project can be found <a href="https://github.com/LocalJoost/TopLevelCollider.git" target="_blank">here</a>.</p>

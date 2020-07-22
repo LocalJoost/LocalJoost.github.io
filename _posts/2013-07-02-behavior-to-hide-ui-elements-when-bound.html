@@ -1,0 +1,108 @@
+---
+layout: post
+title: Behavior to hide UI elements when a bound collection is empty
+date: '2013-07-02T20:34:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- wpnl
+- wpdev
+- dotnetmag
+- XAML
+- behavior
+modified_time: '2013-07-03T13:33:43.446+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8781974001200179918
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/07/behavior-to-hide-ui-elements-when-bound.html
+---
+
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Behavior-to-hide-UI-elements-when-a-boun_10C30/screenshot1.png"><img title="screenshot1" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="screenshot1" align="right" src="http://www.schaikweb.net/dotnetbyexample/Behavior-to-hide-UI-elements-when-a-boun_10C30/screenshot1_thumb.png" width="148" height="244"></a>This is a fun little thingy I wrote when dealing with error lists. Suppose, you want the user to be able to see there are errors, but not directly fly them the whole detailed error list in his face. So there is, for instance a button “Show errors”, like in the application showed to the right. </p> <p>But, it’s ugly “Show errors” is always visible, even if there are no errors to display. I actually only want to have this button appear when there are errors indeed, so that it acts as an error indicator, and then the user can decide if she wants to see them or not. Of course you can fix that in your viewmodel – subscribe to the events of an ObservableCollection of errors, and turn visibility on or off when trapping those events, every time you need to do this. Perfectly viable solution. But an even better solution is to encapsulate that behavior – the word just says it – in a simple piece of reusable code.</p> <p>Meet HideWhenCollectionEmptyBehavior. It sports an INotifyCollectionChanged Collection to which you can bind, and the rest of it is actually so simple I am going to show it in one go:</p><pre style="font-size: 12px">using System.Collections;
+using System.Collections.Specialized;
+using System.Windows;
+
+namespace Wp7nl.Behaviors
+{
+  public class HideWhenCollectionEmptyBehavior : SafeBehavior&lt;FrameworkElement&gt;
+  {
+    protected override void OnSetup()
+    {
+      base.OnSetup();
+      SetVisibility();
+    }
+
+    protected override void OnCleanup()
+    {
+      base.OnCleanup();
+      if (Collection != null)
+      {
+        Collection.CollectionChanged -= OnCollectionChanged;
+      }
+    }
+
+    private void OnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+    {
+      SetVisibility();
+    }
+
+    private void SetVisibility()
+    {
+      var collection = Collection as ICollection;
+      AssociatedObject.Visibility = 
+        collection != null &amp;&amp; collection.Count &gt; 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+  }
+ }</pre>
+<p>The behavior is implemented as a <a href="http://dotnetbyexample.blogspot.com/2011/11/safe-event-detachment-base-class-for.html" target="_blank">SafeBehavior</a> with an attached dependency property “Collection” of type INotifyPropertyChanged to which you can bind the collection that needs to be monitored. The core of the whole behavior is simply the SetVisibility method, which casts the collection to ICollection and checks if it’s null or empty – in that case the Visibility of the object to which this behavior is attached is set to Collapsed – if not, it’s set to Visible.</p>
+<p>The attached dependency property is fairly standard, apart from the last part:</p><pre style="font-size: 12px">#region Collection
+
+public const string CollectionPropertyName = "Collection";
+
+public INotifyCollectionChanged Collection
+{
+  get { return (INotifyCollectionChanged)GetValue(CollectionProperty); }
+  set { SetValue(CollectionProperty, value); }
+}
+
+public static readonly DependencyProperty CollectionProperty = DependencyProperty.Register(
+    CollectionPropertyName,
+    typeof(INotifyCollectionChanged),
+    typeof(HideWhenCollectionEmptyBehavior),
+    new PropertyMetadata(default(INotifyCollectionChanged), OnCollectionChanged));
+
+public static void OnCollectionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+{
+  var behavior = d as HideWhenCollectionEmptyBehavior;
+  var newValue = (INotifyCollectionChanged)e.NewValue;
+  var oldValue = (INotifyCollectionChanged)e.OldValue;
+  if (behavior != null)
+  {
+    if (oldValue != null)
+    {
+      oldValue.CollectionChanged -= behavior.OnCollectionChanged;
+    }
+    if (newValue != null)
+    {
+      newValue.CollectionChanged += behavior.OnCollectionChanged;
+    }
+
+    behavior.SetVisibility();
+  }
+}
+
+#endregion</pre>
+<p>There’s a lot of plumbing going on ‘just to be on the safe side’ – if the bound collection is replaced, the CollectionChanged event is detached from the old collection and attached to the new collection. Everything to prevent memory leaks:-) - but in reality I think only the newValue will ever be set.But anyway, by making the property of type INotifyCollectionChanged, I am sure to have the lowest common denominator and still have a CollectionChanged that I can trap. </p>
+<p>By dragging the behavior on top of the “Show Errors”&nbsp; button and binding to the collections of errors, my app initially looks like displayed on the left. Only when I click “add errors” the “show errors” button appears (courtesy of HideWhenCollectionEmptyBehavior) and then when I click it, I get to see the actual errors. </p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Behavior-to-hide-UI-elements-when-a-boun_10C30/screenshot3.png"><img title="screenshot3" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; float: left; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="screenshot3" align="left" src="http://www.schaikweb.net/dotnetbyexample/Behavior-to-hide-UI-elements-when-a-boun_10C30/screenshot3_thumb.png" width="148" height="244"></a></p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Behavior-to-hide-UI-elements-when-a-boun_10C30/screenshot1_3.png"><img title="screenshot1" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; float: left; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="screenshot1" align="left" src="http://www.schaikweb.net/dotnetbyexample/Behavior-to-hide-UI-elements-when-a-boun_10C30/screenshot1_thumb_3.png" width="148" height="244"></a></p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Behavior-to-hide-UI-elements-when-a-boun_10C30/screenshot2.png"><img title="screenshot2" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; float: left; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="screenshot2" align="left" src="http://www.schaikweb.net/dotnetbyexample/Behavior-to-hide-UI-elements-when-a-boun_10C30/screenshot2_thumb.png" width="148" height="244"></a></p>
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>Now of course this is a pretty contrived example, but it is a real-word use case. Like I wrote, I actually <em>use</em> it for indicating that there are errors, but I can think of a lot of other scenarios, for instance an UI element that is displayed when an object has child objects (say, an order has order lines) without actually displaying them – only indicating they are present.</p>
+<p>I wrote this behavior to act in a <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> application but the code is so generic it will work in other XAML platforms as well, including Windows 8.</p>
+<p>The code of the behavior, together with my beautiful *cough* sample app <a href="http://www.schaikweb.net/dotnetbyexample/HideCollectionEmptyDemo.zip" target="_blank">can be found here</a></p>
+<p>For those who’d like me to use “Any()” in stead of “Count &gt; 0 “ I would like to point out that ICollection is just ICollection, not ICollection&lt;T&gt; and that does not seem to support “Any()”</p>  

@@ -1,0 +1,270 @@
+---
+layout: post
+title: An MVVM friendly tap+send and Bluetooth connection helper for Windows Phone
+  8
+date: '2013-10-27T03:00:00.000+01:00'
+author: Joost van Schaik
+tags:
+- Bluetooth
+- Windows Phone 8
+- wpnl
+- wpdev
+- dotnetmag
+- MVVM
+- MVVM Light
+modified_time: '2013-11-09T08:47:33.091+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-68714093828816273
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/10/an-mvvm-friendly-tapsend-and-bluetooth.html
+---
+
+<span style="font-size: 14pt">Why?</span><br>Early this year I blogged about <a href="http://dotnetbyexample.blogspot.nl/2013/01/am-mvvm-friendly-tap-to-connect-nfc.html" target="_blank">TtcSocketHelper</a>, an MVVM friendly helper object that allowed you connect two <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 8 devices to each other using a socket.I made two games with it– <a href="http://windowsphone.com/s?appid=4aaf1cc1-4393-4d81-98b7-d438d7e83fac&amp;ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Pull the Rope</a> and <a href="http://www.windowsphone.com/s?appid=ed077cc6-21ce-4e99-8e19-c5b119646016" target="_blank">2 Phone Pong</a>, head-to-head style games that are played over two phones, exchanging JSON data to keep things in sync. A lot of things happened the last 10 months: super cheap devices entered the market – most notably the <a href="http://www.nokia.com/global/products/phone/lumia520/" target="_blank">Nokia Lumia 520</a>. It is a full fledged Windows Phone 8, but it’s super cheap and as a consequence it does not support NFC (and thus no tap+send). That apparently is of no concern to buyers, as according to <a href="http://blog.adduplex.com/2013/10/adduplex-windows-phone-statistics.html" target="_blank">AdDuplex</a> stats, it took off like a bat out of hell. In just six months it grabbed what is now almost 33% of the Windows Phone 8 market. In other words, by limiting my app to NFC enabled phones I cut myself off from a significant – and growing – part of the market.<br><br><span style="font-size: 14pt">PhonePairConnectionHelper – supporting Bluetooth browsing</span><br>So I rewrote TtcSocketHelper into PhonePairConnectionHelper – basically the same class, but it now supports connecting phones using tap+send as well as by using the tried and tested way of Bluetooth pairing. Since October 21st <a href="http://www.windowsphone.com/s?appid=ed077cc6-21ce-4e99-8e19-c5b119646016" target="_blank">2 Phone Pong&nbsp; 1.3.0</a> is in the store, proudly powered by this component, now enabling my game to be played by 50% more people!<br>In this article I am going to concentrate on connecting via Bluetooth, as connecting via tap+send is already described in my article from January 2013.<br>The start of the object is simple enough again, and actually looks a lot like the previous incarnation:<br><pre>using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading.Tasks;
+using GalaSoft.MvvmLight.Messaging;
+using Windows.Foundation;
+using Windows.Networking.Proximity;
+using Windows.Networking.Sockets;
+using Windows.Storage.Streams;
+
+namespace Wp7nl.Devices
+{
+  public class PhonePairConnectionHelper
+  {
+    private ConnectMethod connectMode;
+
+    public PhonePairConnectionHelper()
+    {
+      Messenger.Default.Register&lt;NavigationMessage&gt;(this, ProcessNavigationMessage);
+      PeerFinder.TriggeredConnectionStateChanged +=
+        PeerFinderTriggeredConnectionStateChanged;
+      PeerFinder.ConnectionRequested += PeerFinderConnectionRequested;
+    }
+  
+    private void ProcessNavigationMessage(NavigationMessage message)
+    {
+      Debug.WriteLine("PhonePairConnectionHelper.ProcessNavigationMessage " + 
+                       message.NavigationEvent.Uri);
+
+      if (message.IsStartedByNfcRequest)
+      {
+        Start();
+      }
+    }
+  }
+}</pre>The most notable is now that the setup is being done in the constructor. The class still listens to the NavigationMessage and if so, it still calls the start method (this is for the tap+send route, that still works). The PeerFinder is set up to listen to TriggeredConnecState events (i.e. events that happen after a tap+send) but <em>also </em>-&nbsp; and this is important – to plain ole Bluetooth requests (ConnectionRequested event). The start method now, is pretty much changed:<br><pre>public void Start(ConnectMethod connectMethod = ConnectMethod.Tap, 
+  string displayAdvertiseName = null)
+{
+  PeerFinder.Stop();
+  connectMode = connectMethod;
+  if (!string.IsNullOrEmpty(displayAdvertiseName))
+  {
+    PeerFinder.DisplayName = displayAdvertiseName;
+  }
+  PeerFinder.AllowBluetooth = true;
+  PeerFinder.Start();
+
+  // Enable browse
+  if (connectMode == ConnectMethod.Browse)
+  {
+    PeerFinder.FindAllPeersAsync().AsTask().
+      ContinueWith(p =&gt; FirePeersFound(p.Result));
+  }
+}</pre>The ConnectMethod enumeration, as you can already see from the code, enables you to indicate which method you want to use:<br><pre>namespace Wp7nl.Devices
+{
+  public enum ConnectMethod
+  {
+    Tap,
+    Browse
+  }
+}
+</pre>The Start method has an optional parameter that gives you the ability to choose a connection method, and if necessary add a display name. The display name only applicable for the Bluetooth method. The interesting thing is – if you <em>don’t</em> provide a name, like I did in the sample, it will just use the phone’s name as you have provided it (by giving it a name via Explorer if you connect if via a USB cable to your computer)&nbsp; - abbreviated to 15 characters. Why this is only 15 characters – your guess is as good as mine. <br>If you call this method without any parameters, it uses default values and will try to connect using tap+send, just like before. <br>Before selecting a method, you might want to check what connection methods the device support by using the two helper properties in the object:<br><pre>public bool SupportsTap
+{
+  get
+  {
+    return (PeerFinder.SupportedDiscoveryTypes &amp;
+       PeerDiscoveryTypes.Triggered) == PeerDiscoveryTypes.Triggered;
+  }
+}
+
+public bool SupportsBrowse
+{
+  get
+  {
+    return (PeerFinder.SupportedDiscoveryTypes &amp;
+      PeerDiscoveryTypes.Browse) == PeerDiscoveryTypes.Browse;
+  }
+}</pre>Mind you – the helper is not so intelligent that it refuses to connect in a non-supported mode. And I don’t check for it in the sample app either. That is up to your app. But anyway – back up a little. If you try to connect via Bluetooth, the component tries to find all peers – that is, other phones running the same app, using FindAllPeersAsync, and fires the PeersFound event when it is done:<br><pre>private void FirePeersFound(IEnumerable&lt;PeerInformation&gt; args)
+{
+  if (PeersFound != null)
+  {
+    PeersFound(this, args);
+  }
+}
+
+public event TypedEventHandler&lt;object, IEnumerable&lt;PeerInformation&gt;&gt; PeersFound;</pre>Your app has to subscribe to this event, and it then gets a list of “PeerInformation” objects. And PeerEvent has a number of properties, but the only one you will need to concern yourself is the “DisplayName” property. You display that in a list, a dropdown or whatever in your app, and after the user has made a selection, you call the Connect method:<br><pre>public void Connect(PeerInformation peerInformation)
+{
+  DoConnect(peerInformation);
+}
+
+private void DoConnect(PeerInformation peerInformation)
+{
+  PeerFinder.ConnectAsync(peerInformation).AsTask().ContinueWith(p =&gt;
+  {
+    socket = p.Result;
+    StartListeningForMessages();
+    PeerFinder.Stop();
+    FireConnectionStatusChanged(TriggeredConnectState.Completed);
+  });
+}</pre>And boom. You have a connection to the phone you have selected. The only thing that’s now missing is that the phone you have connected to, <em>does not have a connection to you yet</em>. But as you made the connection, the PeerFinder fired the ConnectionRequested event. Remember we set up a listener “PeerFinderConnectionRequested” to that in the constructor? Well guess what, part of the payload of the arguments of that event method gets <em>is a PeerInformation object as well</em>, containing the information to connect <em>back </em>to the phone that just connected to you :-). Which makes connecting back pretty easy:<br><pre>private void PeerFinderConnectionRequested(object sender, 
+                                           ConnectionRequestedEventArgs args)
+{
+  if (connectMode == ConnectMethod.Browse)
+  {
+    DoConnect(args.PeerInformation);
+  }
+}</pre>And done. We know have a two-way socket connection using Bluetooth and we can call the SendMessage method just like before, and listen to result by subscribing to MessageReceived event. The only thing I did break in this helpers’ interface with regard to it predecessor is the ConnectionStatusChanged event type. This used to be <br><br><pre>public event TypedEventHandler&lt;object, 
+             TriggeredConnectionStateChangedEventArgs&gt;
+             ConnectionStatusChanged; </pre>and now is <br><pre>public event TypedEventHandler&lt;object, TriggeredConnectState&gt;
+             ConnectionStatusChanged;</pre>So if you subscribe to this event, you don’t have to check for args.State, but just for args itself. This was necessary to be able to fire connect events from DoConnect.<br>The rest of the class is nearly identical to the old TtcSocketHelper, and I won’t repeat myself here.<br><br><span style="font-size: 14pt">To use this class</span><br><br>First, decide if you are going to for for the tap+send route or the Bluetooth route. My apps check the SupportsTap and SupportsBrowse properties. If NFC (thus tap+send) is supported, I offer both options and give the users a choice to select a connect method. If is not supported, I offer only Bluetooth.<br>For the NFC route, the way to go still is:<br>
+<ul>
+<li>Make sure you app does <a href="http://dotnetbyexample.blogspot.be/2012/12/handling-windows-phone-8-nfc-startup.html">fire a NavigationMessage as described here</a> 
+<li>Make a new PhonePairConnectionHelper . 
+<li>Subscribe to its ConnectionStatusChanged event 
+<li>Subscribe to its MessageReceived event 
+<li>Call Start 
+<li>Wait until a TriggeredConnectState.Completed comes by 
+<li>Call SendMessage – and see them appear in the method subscribed to MessageReceived on the other phone. </li></ul>The way to go for Bluetooth is:<br>
+<ul>
+<li>Make a new PhonePairConnectionHelper . 
+<li>Subscribe to its ConnectionStatusChanged event 
+<li>Subscribe to its MessageReceived event 
+<li><em>Subscribe to its PeersFoundevent</em> 
+<li>Call Start <em>with ConnectMethod.Browse and a display name </em>
+<li><em>Wait until a PeersFound event comes by</em> 
+<li><em>Select a peer to connect to in your app</em> 
+<li><em>Call the Connect method with the selected peer</em> 
+<li>Wait until a TriggeredConnectState.Completed comes by 
+<li>Call SendMessage – and see them appear in the method subscribed to MessageReceived on the other phone. </li></ul>
+<p>So basically, there isn’t that much difference ;-)<br><br><span style="font-size: 14pt">Changes in original sample</span><br>The fun thing is, you don’t even have to change that much to the existing <a href="http://www.schaikweb.net/dotnetbyexample/TtcDemoWithBT.zip" target="_blank">demo solution</a>. I added to the viewmodel the following code:<br></p><pre>#region Bluetooth stuff
+
+private bool useBlueTooth;
+public bool UseBlueTooth
+{
+  get { return useBlueTooth; }
+  set
+  {
+    if (useBlueTooth != value)
+    {
+      useBlueTooth = value;
+      RaisePropertyChanged(() =&gt; UseBlueTooth);
+    }
+  }
+}
+
+private PeerInformation selectedPeer;
+
+public PeerInformation SelectedPeer
+{
+  get { return selectedPeer; }
+  set
+  {
+    if (selectedPeer != value)
+    {
+      selectedPeer = value;
+      RaisePropertyChanged(() =&gt; SelectedPeer);
+    }
+  }
+}
+
+public ObservableCollection&lt;PeerInformation&gt; Peers { get; private set; }
+
+private void PeersFound(object sender, IEnumerable&lt;PeerInformation&gt; args)
+{
+  Deployment.Current.Dispatcher.BeginInvoke(() =&gt;
+  {
+    Peers.Clear();
+    args.ForEach(Peers.Add);
+    if (Peers.Count &gt; 0)
+    {
+      SelectedPeer = Peers.First();
+    }
+    else
+    {
+      ConnectMessages.Add("No contacts found");
+    }
+  });
+}
+
+public ICommand ConnectBluetoothContactCommand
+{
+  get
+  {
+    return new RelayCommand(() =&gt;
+    {
+      connectHelper.Connect(SelectedPeer);
+      Peers.Clear();
+
+    });
+  }
+}
+
+#endregion</pre>Basically:<br>
+<ul>
+<li>A property to determine whether you are using Bluetooth or not (not = tap+send) 
+<li>A property holding the selected Peer 
+<li>A list of available peers 
+<li>The callback for the helper’s PeersFound event. Not that everything here happens within a Dispatcher. As the PeersFound event comes back from a background thread, it has no access to the UI – but since it updates several bound properties, it needs that access – hence the Dispatcher. 
+<li>and a command to allow the user to select a certain peer. Notice the Peers.Clear after the Peer is selected. That is because I use my <a href="http://dotnetbyexample.blogspot.nl/2013/07/behavior-to-hide-ui-elements-when-bound.html" target="_blank">HideWhenCollectionEmptyBehavior</a> to display the UI for showing and selecting peers. This behavior is in the sample solution as code as I kind of forgot to add this to the last edition of my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a>.*ahem* </li></ul>Two minor additions to the rest of the viewmodel: in the Init method, where I set up all the connectHelper, it now says:<br><pre>connectHelper = new PhonePairConnectionHelper();
+connectHelper.ConnectionStatusChanged += ConnectionStatusChanged;
+connectHelper.MessageReceived += TtsHelperMessageReceived;
+<u><span style="color: red">connectHelper.PeersFound += PeersFound;  // Added for Bluetooth support</span></u></pre>And there’s also a little change in the StartCommand to accommodate the fact that if the user selects Bluetooth, the connectHelper should be called in a slightly different way.<br><pre>public ICommand StartCommmand
+{
+  get
+  {
+    return new RelayCommand(
+        () =&gt;
+        {
+          ConnectMessages.Add("Connect started...");
+          CanSend = false;
+          CanInitiateConnect = false;
+          <span style="color: red"><u>// Changed for Bluetooth.</u>
+          <u>if(UseBlueTooth)</u>
+          <u>{</u>
+            <em>connectHelper.Start(ConnectMethod.Browse);</em>
+          <u>}</u>
+          <u>else</u>
+          <u>{</u>
+            <u>connectHelper.Start();</u>
+          <u>}</u></span>
+        });
+  }
+}
+</pre>
+<div><a href="http://www.schaikweb.net/dotnetbyexample/79300e561318_1280E/wp_ss_20131027_0001.png"><img title="wp_ss_20131027_0001" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="wp_ss_20131027_0001" src="http://www.schaikweb.net/dotnetbyexample/79300e561318_1280E/wp_ss_20131027_0001_thumb.png" width="148" align="left" height="244"></a>To enable the user to actually select a connection method, the start screen has changed a little and now sports two radio buttons. Bluetooth is selected by default.</div><pre style="font-size: 12px; clear: both">&lt;RadioButton Content="tap+send" 
+IsChecked="{Binding UseBlueTooth, Converter={StaticResource BooleanInvertConvertor}, Mode=TwoWay}"  
+  IsEnabled="{Binding CanInitiateConnect, Mode=OneWay}" /&gt;
+&lt;RadioButton Content="bluetooth" IsChecked="{Binding UseBlueTooth, Mode=TwoWay}" 
+  HorizontalAlignment="Right" Margin="0" 
+  IsEnabled="{Binding CanInitiateConnect, Mode=OneWay}" /&gt;</pre>which is not quite rocket science, and some more code to give a user a simple UI to view and select found peers:<br><pre style="font-size: 12px">&lt;Grid x:Name="bluetoothconnectgrid" VerticalAlignment="Bottom"&gt;
+  &lt;Grid.RowDefinitions&gt;
+    &lt;RowDefinition Height="Auto"/&gt;
+    &lt;RowDefinition Height="Auto"/&gt;
+  &lt;/Grid.RowDefinitions&gt;
+  &lt;i:Interaction.Behaviors&gt;
+    <span style="color: red"><u>&lt;behaviors:HideWhenCollectionEmptyBehavior Collection="{Binding Peers}"/&gt;</u></span>
+  &lt;/i:Interaction.Behaviors&gt;
+  &lt;toolkit:ListPicker x:Name="OpponentsListPicker" Margin="12,0" VerticalAlignment="Top" 
+      ExpansionMode="FullScreenOnly" 
+      ItemsSource="{Binding Peers}" SelectedItem="{Binding SelectedPeer, Mode=TwoWay}" /&gt;
+  &lt;Button Content="select contact" Height="72" Grid.Row="1" 
+      Command="{Binding ConnectBluetoothContactCommand, Mode=OneWay}"/&gt;
+&lt;/Grid&gt;</pre><a href="http://www.schaikweb.net/dotnetbyexample/79300e561318_1280E/wp_ss_20131027_0002.png"><img title="wp_ss_20131027_0002" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="wp_ss_20131027_0002" src="http://www.schaikweb.net/dotnetbyexample/79300e561318_1280E/wp_ss_20131027_0002_thumb.png" width="148" align="right" height="244"></a>Also not very complicated – a listpicker displays the peers and selects a peer, and the button fires the command to do the actual connecting. I rather like the use of HideWhenCollectionEmptyBehavior here – this automatically shows this piece of UI as there are peers in the list, and hides it when they are not. It’s rather elegant, if I may say so myself. On the picture right you can see it shows the name of my 920 – abbreviated to 15 characters.<br>After the connection has been made – either by Bluetooth or by tap+send – you can use this app to chat just like the previous version.<br><br><span style="font-size: 14pt">Important things to know</span><br>
+<ul>
+<li>If you are a developer who wants protect your customers from disappointments, you have checked the “NFC” as requirement in the WMAppManifest.xml when you built an app on top of my previous TtcSocketHelper. <em>Remove that checkmark now</em>. Or else your app still won’t be available for phones like the 520 that don’t have NFC. And that quite defies the point of this whole new class. 
+<li>I have found out Bluetooth browsing on Windows Phone 8 has some peculiar things to take into account 
+<ul>
+<li>You still have to be quite close together – somewhere within the meter range – to find peers. Once the connection is made, you can move further apart 
+<li>The first phone to start searching for a peer, usually finds nothing. The second one finds one opponent, the third one two. The search process usually doesn’t last very long – in most cases just a few seconds – before the PeerFinder either gives up or comes back with a peer. It’s advisable not to call Connect automatically if you find only one peer – that might not be the one the user was looking for. Always keep the user in control. </li></ul>
+<li>If you connect via tap+send, you will only need to start the app on <em>one</em> of the phones and press the connect button – the other phone will automatically fire up the app (or even download it if it is not there) when the devices are tapped together. 
+<li>For the <em>Bluetooth</em> route, the app needs to be started on <em>both</em> phones and on <em>both</em> phones you will need to press the connect button. </li></ul><span style="font-size: 14pt"><br>Conclusion</span><br>The app market is always in flux, that’s true for all platforms but that sure goes for Windows Phone. It’s important to stay in touch with those developments. There’s a lot of growth in the Windows Phone market – especially on the low end of the phones. Walking the extra mile for those groups is important – cater for as much users as you can. I hope I helped you a little with that, both by general example and actual code. Demo solution, as always, <a href="http://www.schaikweb.net/dotnetbyexample/TtcDemoWithBT.zip" target="_blank">can be downloaded here</a>.  

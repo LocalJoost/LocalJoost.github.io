@@ -1,0 +1,37 @@
+---
+layout: post
+title: Getting a quick Mixed Reality log file from someone else's computer or HoloLens
+date: '2018-09-05T21:11:00.001+02:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Windows Mixed Reality
+modified_time: '2018-09-05T21:12:18.083+02:00'
+thumbnail: https://lh3.googleusercontent.com/-VFbmYRnZcf4/W5AqOhfdYbI/AAAAAAAAQE4/CbSo-rzVyrETQULXc2zaejNtNUgSwPDaQCHMYCw/s72-c/image_thumb%255B7%255D?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-9187049761407968549
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2018/09/getting-quick-mixed-reality-log-from.html
+---
+
+<h2>When the **** hits the fan</h2><p>A quick tip this time, born from necessity. I guess we've all been here - you make a perfectly working <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality</a> app for Immersive Headsets and/or the <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a>,, you test the hell out of it, you submit it to the store, you get approved, and you sit back and relax to wait for download numbers to go up and five star reviews to roll in...</p><p>... except they don't. Between the five stars a few one stars appear. "Does not work". "Crashes immediately on my system". Especially on Immersive Headsets things like this can happen, for the simple reason there are like 8 different headsets out there, connected to Finagle knows how many differently configurated PCs. I've had this happen to me last year, on systems that were configured with gtx1080i-based systems and/or the Samsung Odyssey headset - those things were so bloody fast my app ran into timing issues. But I didn't have either so I could not reproduce. What to do?</p><h2>Getting the log file from a PC</h2><p>Turns out you can actually get a Unity Player logfile from someone's system pretty easily. If your user is using an Immersive Headset, simply ask them to open go to the desktop of the PC the headset is connected to, open the File Explorer and go to the following folder:</p><p><strong>%USERPROFILE%AppData\Local\Packages</strong></p><p>In that folder there are a number of app-specific folders, usually quite a lot. Suppose there's a problem with my app AMS HoloATC. In the folder, your user needs to find the folder that is specific for AMS HoloATC</p><p><a href="https://lh3.googleusercontent.com/-d1sclk563Vg/W5AqNgqCW_I/AAAAAAAAQE0/YUvWnotbTz4FONnNbiuexjD6K7Ogpri3wCHMYCw/s1600-h/image%255B11%255D"><img width="400" height="129" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-VFbmYRnZcf4/W5AqOhfdYbI/AAAAAAAAQE4/CbSo-rzVyrETQULXc2zaejNtNUgSwPDaQCHMYCw/image_thumb%255B7%255D?imgmax=800" border="0"></a></p><p> So you user needs to look into 17852LocalJoost.AMSHoloATC_rt0w0x8frck66</p><p>In that folder there's a folder TempState, which contains your coveted UnityPlayer.log:</p><p><a href="https://lh3.googleusercontent.com/-FZyA6ZMe0fw/W5AqQNCMZ7I/AAAAAAAAQE8/7EzHocVgbssZqnlwnEEUW1PbNJXuT__PwCHMYCw/s1600-h/image%255B12%255D"><img width="400" height="85" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-k_uIXznnqkI/W5AqRLOAVsI/AAAAAAAAQFA/XLIsYQNRF-km_gPbRB6UM3Fx0bWFbD_DgCHMYCw/image_thumb%255B8%255D?imgmax=800" border="0"></a></p><p>In that file there's a lot of stuff - basically everything you see passing by in your Visual Studio Output window if you are running the app <em>from</em> Visual Studio:</p><pre style="font-size: 10px;">Direct3D:
+    Version:  Direct3D 11.0 [level 11.1]
+    Renderer: Intel(R) HD Graphics 630 (ID=0x591b)
+    Vendor:   (null)
+    VRAM:     2111 MB
+Initialize engine version: 2018.1.0f2 (d4d99f31acba)
+WARNING: Shader Unsupported: 'MixedRealityToolkit/InvisibleShader' - Pass '' has no vertex shader
+UnloadTime: 1.484216 ms
+TryGetGeometry always returns false.
+ 
+(Filename: C:\buildslave\unity\build\Runtime/Export/Debug.bindings.h Line: 43)
+
+Display is Opaque
+ 
+(Filename: C:\buildslave\unity\build\Runtime/Export/Debug.bindings.h Line: 43)
+
+NullReferenceException: Object reference not set to an instance of an object.
+   at OpaqueDetector.get_IsOpaque()
+   at InitialPlaceByTap.Start()
+   at InitialPlaceByTap.$Invoke2(Int64 instance, Int64* args)
+   at UnityEngine.Internal.$MethodUtility.InvokeMethod(Int64 instance, Int64* args, IntPtr method) 
+(Filename: &lt;Unknown&gt; Line: 0)
+</pre><p>And lo and behold - apparently my OpaqueDetector class is playing havoc on the user's machine. Now at least I know <em>where</em> my app is going wrong.</p><h2>Getting the log file from a HoloLens </h2><p>You can do the same thing on a HoloLens, but there are a few caveats there:</p><ul><li>You can only do this for <em>sideloaded</em> apps, not apps installed from the Store</li><li>Your user will need to use the file explorer in the <em>device portal</em>. </li></ul><p><a href="https://lh3.googleusercontent.com/-hdZDQ7vM1mM/W5AqSPbDKwI/AAAAAAAAQFE/jpDacnOjGOwAQKLgIa_gS8mh_29xVn6EQCHMYCw/s1600-h/image%255B17%255D"><img width="604" height="234" title="image" style="display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-M64kH4Wo-cE/W5AqTdTLCQI/AAAAAAAAQFI/tLYuUqVYkKItyMC8ZqpXmozsWY8s5vIeQCHMYCw/image_thumb%255B11%255D?imgmax=800" border="0"></a></p><p>In User Folders \ LocalAppData \ 17852LocalJoost.AMSHoloATC_2.1.9.0_x86__rt0w0x8frck66 \ TempState \ you will find the log file. But you will need to send the user experiencing the problem an Appx package first. Since HoloLenses are basically all the same, this scenario is not very likely to happen, but it can be useful if you are making a sideloaded business app and someone hits upon an unforeseen scenario making the app behave in an unforeseen way - this may help a quick diagnosis.</p><h2>Important notes</h2><ul><li>The log file is overwritten <em>every session</em>. So if the user starts the app again after aforesaid unexpected behavior, the data is <em>gone</em>. So make sure people using or testing the app <em>know</em> this.</li><li>Make sure you only write none-sensitive stuff to the log stuff: API keys, cookie values, decoded stuff and other information you don't want to tell the word - don't write that in your log file.</li><li>This is not a replacement for instrumentation. But it can (and has been to me) a life saver if someone from the <a href="http://holodevelopers.slack.com/" target="_blank">HoloDevelopers Slack</a> community can repro the problem, can quickly send you some log files, you can send a fixed Appx back for them to test, and in a few rounds you can squash the bug and submit a fixed version - even if you don't have access to the system playing havoc.</li></ul><p>Credits and thanks</p><p>Special thanks to freshly (finally!) minted MVP <a href="https://twitter.com/jbmcculloch" target="_blank">Jesse McCulloch</a>, both for making me aware of this file and where to find it - as well as being that invaluable repro/tester for me when <a href="https://www.microsoft.com/store/productid/9P6SVQQCP2SQ" target="_blank">Walk the World</a> for Immersive Headsets suddenly started to crash on certain configurations - including, fortunately, his&nbsp; </p>

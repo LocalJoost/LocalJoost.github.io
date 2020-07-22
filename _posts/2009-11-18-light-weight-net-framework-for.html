@@ -1,0 +1,285 @@
+---
+layout: post
+title: A light-weight .NET framework for publishing Layar layers using WCF and Unity
+  (C#)
+date: '2009-11-18T20:05:00.004+01:00'
+author: Joost van Schaik
+tags:
+- Unity
+- dotnetmag
+- C#
+- WCF
+modified_time: '2010-11-29T09:01:11.639+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2016016623520472701
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/11/light-weight-net-framework-for.html
+---
+
+<p>Thus speaks Wikipedia: </p> <blockquote>   <p>Augmented reality (AR) is a term for a live direct or indirect view of a physical real-world environment whose elements are merged with (or augmented by) virtual computer-generated imagery - creating a mixed reality.</p> </blockquote> <p>Amen. Fact is that AR is currently as hot a nuclear reactor core making its way to China, and that everyone and his aunt are scrambling to get a piece of the action. So why not me ;-)</p> <p>On November 9th this year, my colleague <a href="http://www.vicrea.nl/nl-NL/sitecore/content/Campagnes/Beurs/Overheid%20en%20ict/Medewerkers/Jeroen%20Prins.aspx">Jeroen Prins</a>, who did some prototyping with <a href="http://layar.com/">Layar</a>, pushed a HTC Hero in my hands with the words “see if you can do something nice with it”. So in a few evenings I created a little framework for making Layar layers in an easier and consistent way. It is based upon some of Jeroen’s prototype, but since he insisted on not having credits for this I won’t give him any ;-). The framework uses the Enterprise Library, most notably Unity, and I assume you are familiar with it.</p> <p>Since WCF can be bent in almost every direction as far as generating content is concerned, I decided to use it for my solution. I started, as you always start, with the data contract. The object model is pretty simple: a Layer object has Point-Of-Interest (Poi) objects, a Poi has Action objects. If you study the Layar <a href="http://layar.pbworks.com/GetPointsOfInterest">GetPointsOfInterest</a> page for a few minutes you will see the implementation is WCF 101. Maybe 102 ;-). Contrary to my habits, I forego on the comments – those are all on the GetPointsOfInterest page. First, the Action object:</p> <pre>using System.Runtime.Serialization;
+
+namespace LocalJoost.Layar
+{
+  [DataContract(Name = &quot;Action&quot;)]
+  public class Action
+  {
+    [DataMember(Name = &quot;uri&quot;)]
+    public string Uri { get; set; }
+
+    [DataMember(Name = &quot;label&quot;)]
+    public string Label { get; set; }
+  }
+}</pre>
+<p>The member name is “Uri” (following the .NET coding guidelines) but with adding “Name=uri” in the DataMember attribute I tell WCF to serialize the member as “uri”, without the capital “U”, thus following exactly the Layer API description. This is standard WCF stuff. Then, the Poi class: </p>
+<pre>using System;
+using System.Collections.Generic;
+using System.Runtime.Serialization;
+
+namespace LocalJoost.Layar
+{
+  [DataContract (Name=&quot;POI&quot;)]
+  public class Poi
+  {
+    public Poi()
+    {
+      Actions = new List<action>();
+    }
+    [DataMember(Name = &quot;actions&quot;)]
+    public List<action> Actions { get; set; }
+
+    [DataMember(Name = &quot;attribution&quot;)]
+    public String Attribution { get; set; }
+
+    [DataMember(Name = &quot;distance&quot;)]
+    public double Distance { get; set; }
+
+    [DataMember(Name = &quot;id&quot;)]
+    public string Id { get; set; }
+
+    [DataMember(Name = &quot;imageURL&quot;)]
+    public string ImageUrl { get; set; }
+
+    [DataMember(Name = &quot;lat&quot;)]
+    public int Latitude { get; set; }
+
+    [DataMember(Name = &quot;lon&quot;)]
+    public int Longitude { get; set; }
+
+    [DataMember(Name = &quot;line2&quot;)]
+    public string Line2 { get; set; }
+
+    [DataMember(Name = &quot;line3&quot;)]
+    public string Line3 { get; set; }
+
+    [DataMember(Name = &quot;line4&quot;)]
+    public string Line4 { get; set; }
+
+    [DataMember(Name = &quot;title&quot;)]
+    public string Title { get; set; }
+
+    [DataMember(Name = &quot;type&quot;)]
+    public int Type { get; set; }
+  }
+}</pre>
+<p>and finally, the Layer object itself:</p>
+<pre>using System.Collections.Generic;
+using System.Runtime.Serialization;
+
+namespace LocalJoost.Layar
+{
+  [DataContract]
+  public class Layer
+  {
+    public Layer()
+    {
+      Hotspots = new List<poi>();
+    }
+
+    [DataMember(Name = &quot;nextPageKey&quot;)]
+    public string NextPageKey { get; set; }
+
+    [DataMember(Name = &quot;morePages&quot;)]
+    public bool MorePages { get; set; }
+
+    [DataMember(Name = &quot;hotspots&quot;)]
+    public List<poi> Hotspots { get; set; }
+
+    [DataMember(Name = &quot;layer&quot;)]
+    public string LayerName { get; set; }
+
+    [DataMember(Name = &quot;errorCode&quot;)]
+    public int ErrorCode { get; set; }
+
+    [DataMember(Name = &quot;errorString&quot;)]
+    public string ErrorString { get; set; }
+  }
+}</pre>
+<p>I move on to the whopping complex service contract:</p>
+<pre>using System.ServiceModel;
+using System.ServiceModel.Web;
+
+namespace LocalJoost.Layar
+{
+  [ServiceContract(Namespace = &quot;www.yournamespacehere.nl/layar&quot;)]
+  public interface ILayarService
+  {
+    [OperationContract]
+    [WebGet(UriTemplate = &quot;Layar/{layerName}/*&quot;, 
+      ResponseFormat=WebMessageFormat.Json)]
+    Layer GetLayerData(string layerName);
+  }
+}</pre>
+<p>which defines the output for this as being JSON, and a custom URI matching pattern which allows us to put the actual layer name in the URL. The * at the end means &quot;and the rest is also accepted&quot;. Now the title of this posting says I was doing something with Unity, and here it comes: I define an equally complex interface for a Layar &quot;provider&quot; which will be used by the service implementation:</p>
+<pre>using System.Collections.Generic;
+
+namespace LocalJoost.Layar
+{
+  public interface ILayarProvider
+  {
+    Layer Get(double? lat, double? lon, 
+      int? radius, int? accuracy, 
+      IDictionary<string  ,STRING> requestParameters);
+  }
+}</pre>
+<p>The final piece of real code is the implementation of the ILayarService service contract, with apologies for the crappy layout, but some WCF class names are a wee bit long:</p>
+<pre>using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Globalization;
+using System.ServiceModel.Web;
+using Microsoft.Practices.EnterpriseLibrary.Logging;
+using LocalJoost.Utilities.Unity;
+
+namespace LocalJoost.Layar
+{
+  /// &lt;summary&gt;
+  /// Layar service implementation
+  /// &lt;/summary&gt;
+  public class LayarService : ILayarService
+  {
+    /// &lt;summary&gt;
+    /// Request parameters
+    /// &lt;/summary&gt;
+    private static NameValueCollection RequestParams
+    {
+      get
+      {
+        return WebOperationContext.Current != null ?          WebOperationContext.Current.IncomingRequest.UriTemplateMatch.QueryParameters
+: null;
+      }
+    }
+
+    private static readonly List&lt;string&gt; KeyWordsProcessed = 
+      new List&lt;string&gt; { &quot;lat&quot;, &quot;lon&quot;, &quot;radius&quot;, &quot;accuracy&quot; };
+
+    /// &lt;summary&gt;
+    /// Gets the layer data.
+    /// &lt;/summary&gt;
+    /// &lt;param name=&quot;layerName&quot;&gt;Name of the layer.&lt;/param&gt;
+    /// &lt;returns&gt;&lt;/returns&gt;
+    public Layer GetLayerData(string layerName)
+    {
+      try
+      {
+        if (WebOperationContext.Current != null )
+        {
+          Logger.Write(&quot;Layar call: &quot; +             WebOperationContext.Current.IncomingRequest.UriTemplateMatch.RequestUri);
+        }
+        // Note: layername is lowercase
+        var provider =
+          new UnityResolver(
+             layerName.ToLowerInvariant()).Resolve&lt;ILayarProvider&gt;();
+
+        // Collect the other parameters
+        var reqParms = new Dictionary&lt;string, string&gt;();
+        foreach( var key in RequestParams.Keys)
+        {
+          var keyS = key.ToString();
+          if (!KeyWordsProcessed.Contains(keyS))
+            reqParms.Add(keyS, RequestParams[keyS]);
+        };
+        
+        return provider.Get(
+          GetRequestDouble(&quot;lat&quot;), GetRequestDouble(&quot;lon&quot;),
+          GetRequestInt(&quot;radius&quot;), GetRequestInt(&quot;accuracy&quot;),
+          reqParms);
+      }
+      catch( Exception ex)
+      {
+        Logger.Write(ex,&quot;Exceptions&quot;);
+        return null;
+      }
+    }
+
+    #region Utility methods
+    private double GetRequestDouble(String keyname)
+    {
+      if (!(RequestParams == null || 
+         string.IsNullOrEmpty(RequestParams[keyname])))
+      {
+        return Convert.ToDouble(RequestParams[keyname], 
+         CultureInfo.InvariantCulture);
+      }
+      return -1;
+    }
+
+    private int GetRequestInt(String keyname)
+    {
+      if (!(RequestParams == null || 
+         string.IsNullOrEmpty(RequestParams[keyname])))
+      {
+        return Convert.ToInt32(RequestParams[keyname],
+          CultureInfo.InvariantCulture);
+      }
+      return -1;
+    }
+    #endregion
+  }
+}</pre>
+<p>Here comes my little <a href="http://dotnetbyexample.blogspot.com/2009/11/simple-unity-helper-for-making-class.html">UnityResolver</a> into play, which was described earlier in this blog. What this LayarService basically does is accept a layer name, burp the call into a log file, get the lat, lon, radius, and accuracy from the query string, dump the rest of the query string parameters into a dictionary, use Unity to determine which ILayerProvider implementation is to be loaded, call it’s Get method with the collected data, and return the result.</p>
+<p>Now there are only six steps to make this actually work. First, you define a web application project. You reference the LocalJoost.Layar project, System.ServiceModel.dll, System.Runtime.Serialization, every file in the Enterprise Library that starts with &quot;Microsoft.Practices.Unity&quot; (I have 5), and Microsoft.Practices.EnterpriseLibrary.Logging.dll.</p>
+<p>The second step is: add a text file to the web application, for instance &quot;LayarService.txt&quot;. You enter the following text in it:</p>
+<pre>&lt;%@ ServiceHost Language=&quot;C#&quot; 
+    Debug=&quot;true&quot; Service=&quot;LocalJoost.Layar.LayarService&quot; %&gt;</pre>
+<p>and rename this the file to &quot;LayerService.svc&quot;. The third step is some WCF configuration in the web.config of your web application to host the service as a webHttpBinding, thus making it accept calls via http get:</p>
+<pre>&lt;services&gt;
+  &lt;service name=&quot;LocalJoost.Layar.LayarService&quot;&gt;
+    &lt;endpoint address=&quot;&quot; binding=&quot;webHttpBinding&quot;
+ behaviorConfiguration=&quot;WebHttpBehavior&quot;
+ contract=&quot;LocalJoost.Layar.ILayarService&quot; 
+ bindingNamespace=&quot;http://whatever/layar&quot;&gt;
+    &lt;/endpoint&gt;
+   &lt;/service&gt;
+&lt;/services&gt;
+&lt;behaviors&gt;
+  &lt;endpointBehaviors&gt;
+    &lt;behavior name=&quot;WebHttpBehavior&quot;&gt;
+      &lt;webHttp/&gt;
+    &lt;/behavior&gt;
+  &lt;/endpointBehaviors&gt;
+&lt;/behaviors&gt;</pre>
+<p>The fourth step is to map your implementations of ILayarProvider to your layers. The LayerService class works in such a way that a layer maps directly to a Unity container, so a configuration might look like this:</p>
+<pre>&lt;unity&gt;
+  &lt;typeAliases&gt;
+   &lt;typeAlias alias=&quot;ILayarProvider&quot; 
+        type=&quot;LocalJoost.ILayarProvider,LocalJoost.Layar&quot;/&gt;
+   &lt;typeAlias alias=&quot;SampleProvider&quot; 
+        type=&quot;SomeAssembly.SampleProvider,SomeAssembly&quot;/&gt;
+   &lt;typeAlias alias=&quot;AnotherProvider&quot;
+         type=&quot;SomeotherAssembly.AnotherProvider, SomeotherAssembly&quot;/&gt;
+  &lt;/typeAliases&gt;
+  &lt;containers&gt;
+   &lt;container name=&quot;mylayer&quot;&gt;
+    &lt;types&gt;
+     &lt;type type=&quot;ILayarProvider&quot; 
+     mapTo=&quot;SampleProvider&quot;/&gt;
+    &lt;/types&gt;
+   &lt;/container&gt;
+   &lt;container name=&quot;someotherlayer&quot;&gt;
+    &lt;types&gt;
+     &lt;type type=&quot;ILayarProvider&quot;
+        mapTo=&quot;AnotherProvider&quot;/&gt;
+    &lt;/types&gt;
+   &lt;/container&gt;
+  &lt;/containers&gt;
+&lt;/unity&gt;</pre>
+<p>Here I have defined two sample containers, thus layers. If, for instance, your service is hosted as “http://mydomain.com/LayarServer/LayerService.svc” you can register your Layer with the Layar developer portal (which is, incidentally, the fifth step) as “http://mydomain.com/LayarServer/LayerService.svc/Layar/mylayer/” (mind the trailing slash!) and the framework will do the rest.</p>
+<p>Now the sixth and final step is the real hard part: writing actual implementations of the ILayarProvider. This depends or what you are actually wanting to show. And this it where my help ends ;-).</p>

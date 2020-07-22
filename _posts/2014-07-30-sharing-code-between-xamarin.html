@@ -1,0 +1,276 @@
+---
+layout: post
+title: Sharing code between a Xamarin Forms/MVVMLight app and EF-code first backend
+  using Shared Reference Project Manager
+date: '2014-07-30T13:54:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Shared Code
+- wpdev
+- Windows Phone
+- Xamarin
+- MVVM Light
+modified_time: '2014-08-06T11:43:39.106+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4425960267658887734
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/07/sharing-code-between-xamarin.html
+---
+
+<h2>Disclaimer</h2> <p>I am in the very early early stages of toying with <a href="http://xamarin.com/" target="_blank">Xamarin</a> and it may well be that whatever I am doing here, is not the smartest thing in the world. This is a much as a report of my learning (may ‘struggle’ is a better word) as how-to. But what I describe here works – more or less – although it was a mighty hassle to actually get it working.</p> <h2>The objective</h2> <p>While I was having my first trials with Xamarin stuff, I turned to Entity Framework Code First because, well, when setting up a backend I am lazy. Without much thinking I made the models, using data annotations, and soon found out I had painted myself into a corner with a model that (very simplified) looks like this </p><pre>using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace DemoShared.Models
+{
+   [Table("Pictures")]
+    public class Photo
+    {
+      public long ID { get; set; }
+      
+     [Required]
+      public string Name { get; set; }
+    }
+}
+</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_thumb.png" width="244" align="right" height="121"></a>Guess what - data annotations don't work in PCL. Now what? Make a shadow class library for use on the client? That kind of went against my principles. So I decided to use the Shared Reference Project Manager.&nbsp; This is a Visual Studio extension that can make basically any project shared, in stead of only between <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> 8.1 and <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a>.1 <a href="http://visualstudiogallery.msdn.microsoft.com/315c13a7-2787-4f57-bdf7-adae6ed54450" target="_blank">You can get it here</a>.</p>
+<h2>Setting up the initial application</h2>
+<p><a href="http://blog.galasoft.ch/posts/2014/07/" target="_blank"><a href="http://blog.galasoft.ch/posts/2014/07/using-xamarin-forms-with-mvvmlight/">Using this tutorial</a> by <a href="http://www.twitter.com/lbugnion" target="_blank">Laurent Bugnion</a>&nbsp;</a>I did set up my first Xamarin MVVM application. I created an app "DemoShared" and used the tutorial it up to the point where he starts making a new new xaml page (“Creating a new XAML page”).</p>
+<p>Try to build the project. If the Windows Phone project fails with “The 'ProductID' attribute is invalid.. “ (etc), manually open it’s Properties/WMAppManifest.xml, for instance with NotePad, find “ProductID and “PubisherID” and place the generate GUIDs between accolades. This is a bug the Xamarin project template that I already reported.<a href="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_5.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; margin: 26px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_thumb_5.png" width="244" align="right" height="183"></a></p>
+<h2>Basic setup of the backend</h2>
+<ul>
+<li>File/New Project/Web/ASP.Net Web application (it’s the only choice you have) 
+<li>Choose a name (I chose DemoShared.Backend) and hit OK 
+<li>Choose “Web Api” and UNSELECT “Host in the cloud” 
+<li>Go to the NuGet Package manager and update all the packages, because a lot of them will be horribly outdated. Hit “accept” or “yes” on any questions 
+<li>Delete the all folders except “App_Data”, “App_Start” and “Controllers” because we don’t need them 
+<li>Delete BundleConfig.cs from App_Start, and remove the reference to it from Global.asax.cs as well 
+<li>Add a (.NET) class library DemoShared.DataAccess 
+<li>Install NuGet Package “EntityFrameWork” in DemoShared.Backend and DemoShared.DataAccess 
+<li>Create a project DemoShared.Models of type Shared Project (Empty) of type Visual C#:</li></ul>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_6.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_thumb_6.png" width="644" height="364"></a></p>
+<ul>
+<li>Right-click the DemoShared (Portable) project, select Add, then “Add Shared Project reference”, then select “DemoShared.Models 
+<li>Repeat this procedure for DemoShared.DataAccess. 
+<li>Also add a reference to System.ComponentModel.DataAnnotations to DemoShared.DataAccess. 
+<li>Add DemoShared.DataAccess as a reference to DemoShared.Backend</li></ul>
+<h2>Re-defining the models</h2>
+<p>The key point of this whole exercise is to re-use models. For one model class this is <em>quite</em> some overkill, but if you have a large collection of models, things becomes quite different. So anyway. I redefined the model class as follows:</p><pre>#if NET45
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+#endif
+
+namespace DemoShared.Models
+{
+#if NET45
+   [Table("Pictures")]
+#endif
+
+  public class Photo
+  {
+    public long ID { get; set; }
+
+#if NET45     
+     [Required]
+#endif
+    public string Name { get; set; }
+  }
+}</pre>
+<p>Now in order to make this compile work the way it is intended on server, you will need to add the conditional compilation symbol “NET45” to all configurations of DemoShared.DataAccess</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_7.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_thumb_7.png" width="644" height="285"></a></p>
+<p>And then it compiles both into PCL and into the DataAccess project – without the attributes in the first, but with the attributes the second. Remember, this is just a really nifty formalized way of ye olde way of file linking.</p>
+<h2>Kick starting the Entity Framework </h2>
+<p>Following <a href="http://www.asp.net/mvc/tutorials/getting-started-with-ef-using-mvc/creating-an-entity-framework-data-model-for-an-asp-net-mvc-application" target="_blank">this tutorial</a> – more or less, I added the following class to the DataAccess project:</p><pre>using System.Data.Entity;
+using DemoShared.Models;
+
+namespace DemoShared.DataAccess
+{
+  public class DemoContext : DbContext
+  {
+    public DemoContext()
+      : base("DemoContext")
+        {
+        }
+
+    public DbSet&lt;Photo&gt; Photos { get; set; }
+  }
+}
+</pre>
+<p>And then to the web.config I added this rather hopeless long connection string: </p><pre>&lt;connectionStrings&gt;
+  &lt;add name="DemoContext" connectionString="Data Source=(localdb)\v11.0;AttachDbFilename=|DataDirectory|DemoDb.mdf;Initial Catalog=DemoDb;Integrated Security=True;MultipleActiveResultSets=True" providerName="System.Data.SqlClient" /&gt;
+&lt;/connectionStrings&gt;</pre>
+<p>Rebuild the project. Now go to the Backend Controller folder, right click Add/Controller, select “Web API 2 Controller with actions, using Entity Framework” and in the following dialog, select the Model and Data Context class as displayed to the right</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_8.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_thumb_8.png" width="312" height="153"></a><a href="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_9.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px 0px 1px 10px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_thumb_9.png" width="312" height="126"></a></p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_10.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_thumb_10.png" width="244" align="right" height="96"></a>Now if you set “DemoShared.Backend” as start-up project, set it’s startup URL to “api/photos” and start the project, you will automatically get a database “DemoDb” in “App_Data”.Is EF code first cool or what? And my data annotations are used correctly – the Photo type is stored in the “Pictures” table, just as I wanted.</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_11.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_thumb_11.png" width="244" height="124"></a></p>
+<p>Now I manually entered some data in the tables to get something to show, but of course you can also write an initializer like the <a href="http://www.asp.net/mvc/tutorials/getting-started-with-ef-using-mvc/creating-an-entity-framework-data-model-for-an-asp-net-mvc-application" target="_blank">EF tutorial describes</a>, or write a separate project that prefills the the database. This is what I usually do, and that’s why I have put the DemoContext in a separate assembly and not in the web project – to be able to reference it form another project.</p>
+<p><font size="3"><em>And now finally, to the Xamarin app</em></font></p>
+<h2>Adding the view model</h2>
+<p>First of all – start the NuGet package manager and add Newtonsoft Json.NET to DemoShared (Portable).</p>
+<p>Then, add a “ViewModels” folder to DemoShared (Portable) to hold this class:</p><pre style="font-size: 11px">using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Net;
+using DemoShared.Models;
+using GalaSoft.MvvmLight;
+using GalaSoft.MvvmLight.Command;
+using Newtonsoft.Json;
+
+namespace DemoShared.ViewModels
+{
+  public class MainViewModel : ViewModelBase
+  {
+    public MainViewModel()
+    {
+      Photos = new ObservableCollection&lt;Photo&gt;();
+    }
+
+    public string DataUrl
+    {
+      get { return "http://169.254.80.80:28552/api/Photos"; }
+    }
+
+    public ObservableCollection&lt;Photo&gt; Photos { get; set; }
+
+    private RelayCommand loadCommand;
+
+    public RelayCommand LoadCommand
+    {
+      get
+      {
+        return loadCommand ?? (loadCommand = new RelayCommand(
+            () =&gt;
+            {
+              var httpReq = (HttpWebRequest)WebRequest.Create(new Uri(DataUrl));
+              httpReq.BeginGetResponse((ar) =&gt;
+              {
+                var request = (HttpWebRequest)ar.AsyncState;
+                using (var response = (HttpWebResponse)request.EndGetResponse(ar))
+                {
+                  if (response.StatusCode == HttpStatusCode.OK)
+                  {
+                    using (var reader = new StreamReader(response.GetResponseStream()))
+                    {
+                      string content = reader.ReadToEnd();
+                      if (!string.IsNullOrWhiteSpace(content))
+                      {
+                        var result = JsonConvert.DeserializeObject&lt;List&lt;Photo&gt;&gt;(content);
+                        foreach (var g in result)
+                        {
+                          Photos.Add(g);
+                        }
+                      }
+                    }
+                  }
+                }
+              }, httpReq);
+            }));
+      }
+    }
+
+    private static MainViewModel instance;
+    public static MainViewModel Instance
+    {
+      get
+      {
+        CreateNew();
+        return instance;
+      }
+      set { instance = value; }
+    }
+
+    public static MainViewModel CreateNew()
+    {
+      if (instance == null)
+      {
+        instance = new MainViewModel();
+      }
+      return instance;
+    }
+  }
+}
+</pre>
+<p>A rather standard MVVMLight viewmodel I might say, with the usual singleton pattern I use (I am not a big fan of "Locators"). When the command is fired, data is loaded from the WebApi url, deserialized to the same model code as was used to create it on the server, and loaded into the ObservableCollection. Nothing much special here.</p>
+<p>There's one fishy detail - in stead of a computer name or “localhost”, there is this hard coded IP adress. We will get to that later.</p>
+<h2>Adding the Forms XAML page</h2>
+<p>Add a new Forms XAML page like this</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_12.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_thumb_12.png" width="644" height="359"></a></p>
+<p>Be aware that you have to enter the name manually, that’s a bug in the Xamarin tools, like <a href="http://blog.galasoft.ch/posts/2014/07/using-xamarin-forms-with-mvvmlight/">Laurent Bugnion already described in his tutorial</a></p>
+<p>Now, go to the DemoPage.Xaml.cs and set up the data context by adding one line of code to the constructor of the page:</p><pre>public DemoPage()
+{
+  InitializeComponent();
+  <u><font color="#ff0000">BindingContext = MainViewModel.Instance;</font></u>
+}</pre>
+<p>This will of course require a “using DemoShared.ViewModels;” at the top. Then we add our “XAML” to start page</p><pre>&lt;?xml version="1.0" encoding="utf-8" ?&gt;
+&lt;ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+		xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+		x:Class="DemoShared.DemoPage"&gt;
+  &lt;StackLayout Orientation="Vertical" Spacing="0"&gt;
+    &lt;Button Text="Click here" Command="{Binding LoadCommand}" 
+            VerticalOptions="Start" HorizontalOptions="Center"  /&gt;
+    &lt;ListView ItemsSource="{Binding Photos}"
+           RowHeight="50"&gt;
+      &lt;ListView.ItemTemplate&gt;
+        &lt;DataTemplate&gt;
+          &lt;ViewCell&gt;
+            &lt;ViewCell.View&gt;
+              &lt;StackLayout Padding="5, 5, 0, 5"
+                           Orientation="Vertical"
+                           Spacing="2"&gt;
+                &lt;Label Text="{Binding ID}" Font="Bold, Large" 
+                       TextColor="Red"/&gt;
+              &lt;/StackLayout&gt;
+            &lt;/ViewCell.View&gt;
+          &lt;/ViewCell&gt;
+        &lt;/DataTemplate&gt;
+      &lt;/ListView.ItemTemplate&gt;
+    &lt;/ListView&gt;
+  &lt;/StackLayout&gt;
+&lt;/ContentPage&gt;</pre>
+<p>Now this looks kind of familiar, but also kind of - not really. Binding looks kind of you would expect, some controls have weird options, as some... well, have you ever seen a ViewCell before? Working with this stuff <em>really</em> makes you appreciate things like IntelliSense and Blend, for you have none of the above. Good old handcrafted XML. But - it does carry the magic of Xamarin Forms.</p>
+<p>Finally, we make our start page the start page of the app. Go to App.cs in DemoShared (Portable) and change the GetMainPage method to: </p><pre>public static Page GetMainPage()
+{
+  return new DemoPage();
+}</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_13.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_thumb_13.png" width="124" align="right" height="204"></a><a href="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_14.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; margin: 0px 3px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_thumb_14.png" width="244" align="left" height="155"></a>Then I set a multiple startup project, setting both the Windows Phone project as well as the backend project as startup.</p>
+<p>And sure enough, there’s the Windows Phone startup screen with one button. And if I click it…</p>
+<p>&nbsp;</p>
+<p>I get an error. </p>
+<h2>And now for the fishy detail</h2>
+<p>So your backend is a website - running under IISExpress. By default, that’s not accessible by anything else <em>but </em>localhost, and not by IP adress. What you have to do is <a href="http://johan.driessen.se/posts/Accessing-an-IIS-Express-site-from-a-remote-computer">explained mostly here</a>. First, find your applicationhost.config. It’s usually in </p>
+<ul>
+<li>C:\Users\%USERNAME%\Documents\IISExpress\config or 
+<li>D:\Users\%USERNAME%\Documents\IISExpress\config</li></ul>
+<p>In my case it’s the second one. Now before you start messing around in it, you might want to make a backup. Then open the file, and search for the text "<strong>*:28552</strong>”. This should yield you the following line:</p>
+<p><font face="Courier New">&lt;binding protocol="http" bindingInformation="*:28552:localhost" /&gt;</font></p>
+<p>Make a copy of this line, directly below it. Replace localhost by the IP adress you found earlier using "<font face="Courier New">ping -t –4 &lt;hostname&gt;</font>". Net result, in my case:</p>
+<p><font face="Courier New">&lt;binding protocol="http" bindingInformation="*:28552:localhost" /&gt;<br>&lt;binding protocol="http" bindingInformation="*:28552:169.254.80.80" /&gt;</font></p>
+<p>Then – very important – close Visual Studio <em>and restart as Administrator</em>. For then and only then IISExpress will be allowed to bind to something else than localhost. That crucial bit of information is unfortunately hard to find.</p>
+<p>And then, sure enough: </p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_15.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_thumb_15.png" width="273" height="484"></a><a href="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_16.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px 0px 0px 9px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_thumb_16.png" width="303" height="484"></a></p>
+<p>It runs on Windows Phone <em>and</em> Android. And I am sure, on Apple stuff too but lacking Apple hardware and developer account I could not test it.</p>
+<p>BTW – and alternative to messing around with IIS Express settings is of course host the website in IIS. But that requires apparently the database being hosted in SQL*Server Express, so it can’t be in App_Data like this. Or something like that. I found this made a quick test easier. </p>
+<h2>One more thing</h2>
+<p>If you want to test this from outside your computer, on a phone, you might want to open the port for TCP traffic:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_17.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Re-using-model-classes-in-front-and-back_9D43/image_thumb_17.png" width="644" height="443"></a></p>
+<h2>Conclusion</h2>
+<p>Using Xamarin allowed us to shared code over multiple platform, but the Shared Reference Project Manager we could also share with the server. And the ease with which you can get a database powered backend up and running using EF code first was also quite impressive to me. Now tiny details, like security and upgrades, I leave as exercise to the reader.</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/DemoSharedXamarin.zip">Code can be found here.</a></p>
+<h2>Post scriptum</h2>
+<p><a href="http://twitter.com/corcav" target="_blank">My fellow MVP Corrado Cavelli</a> pointed out to me that the LoadCommand method in the MainViewModel can be made considerably less complex by using the <a href="https://www.nuget.org/packages/Microsoft.AspNet.WebApi.Client/">Microsoft ASP.NET Web API 2.2 Client NuGet Package</a>. He turns out to be quite right. When you add this to the portable class library you can rewrite the command to a relatively simple</p><pre>public RelayCommand LoadCommand
+{
+  get
+  {
+    return loadCommand ?? (loadCommand = new RelayCommand(
+        async () =&gt;
+              {
+                var client = new HttpClient { 
+                   BaseAddress = new Uri("http://169.254.80.80:28552") };
+                var response = await client.GetAsync("api/Photos");
+                var result = await response.Content.ReadAsAsync&lt;List&lt;Group&gt;&gt;();
+                foreach (var g in result)
+                {
+                  Groups.Add(g);
+                }
+              }));
+  }
+}</pre>This requires "using System.Net.Http;" and "using System.Threading.Tasks;" to be added to the file, but it's a lot less cluttered than my original - copied somewhere from the interwebz - code. Thanks Corrado! 
+  

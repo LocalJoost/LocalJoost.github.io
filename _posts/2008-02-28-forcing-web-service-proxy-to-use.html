@@ -1,0 +1,36 @@
+---
+layout: post
+title: Forcing a web service proxy to use a specific http version
+date: '2008-02-28T21:51:00.005+01:00'
+author: Joost van Schaik
+tags:
+- ASP.NET
+- HTTP version
+- Proxy
+- C#
+- HTTP
+- Web Services
+modified_time: '2008-03-04T10:43:12.937+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1217099758309491759
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2008/02/forcing-web-service-proxy-to-use.html
+---
+
+A short one this time, and a rare one too, but taken from real life. Sometimes a web service is implemented in such a way that it only understands http 1.1 or 1.0 but the proxy class that Visual Studio.NET generated does not know that (because the service is badly implemented, or for some other reason). If you cannot change the service implementation, you will have to change your client implementation.
+
+Say, you added a web reference to a web service and called the generated proxy class "MyService".
+
+The only thing you need to do is:<pre>using System;
+using System.Net;
+
+namespace MyApplication
+{
+  public class MyFixedHTTPService : MyService
+  {
+    protected override WebRequest GetWebRequest(Uri uri)
+    {
+      HttpWebRequest w = base.GetWebRequest(uri) as HttpWebRequest;
+      w.ProtocolVersion = HttpVersion.Version10;
+      return w;
+    }
+  }
+}</pre>and then use this class to call your service. This forces the proxy to use HTTP 1.0. The best thing about the subclassing approach is that you can simply regenerate the proxy class if you need to, while still retaining your modifications

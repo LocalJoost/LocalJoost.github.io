@@ -1,0 +1,38 @@
+---
+layout: post
+title: Getting Signal/R clients to work on Windows 10 UWP apps
+date: '2015-05-16T10:34:00.001+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- IoT
+- Windows 10
+- Signal/R
+modified_time: '2015-05-19T12:41:05.695+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3504268169757045627
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/05/getting-signalr-clients-to-work-on.html
+---
+
+<p>Very recently <a href="https://dev.windows.com/en-US/iot" target="_blank">Windows 10 IoT Core</a> became available – just one of the very exiting technologies Microsoft are cranking out like crazy now. This will enable even the humblest of devices to run Universal Windows Platform apps&nbsp; Especially in the IoT space technologies like <a href="http://signalr.net/" target="_blank">Signal/R</a> are key – to enable devices to quickly exchange and distribute data. Unfortunately, if you add the Microsoft.AspNet.SignalR.Client NuGet package to an UWP and try to connect to a hub, using this code:</p><pre>var hubConnection = new HubConnection("http://www.microsoft.com");
+await hubConnection.Start();
+</pre>
+<p>You will run into this error:</p>
+<p><strong>An exception of type 'System.IO.FileNotFoundException' occurred in Microsoft.AspNet.SignalR.Client.dll but was not handled in user code</strong></p>
+<p><strong>Additional information: Could not load file or assembly 'System.Net, Version=2.0.5.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e, Retargetable=Yes' or one of its dependencies. The system cannot find the file specified.</strong></p>
+<p>And I was not the first one, as can be seen on the <a href="https://github.com/SignalR/SignalR/issues/3483" target="_blank">Github issues page</a> and <a href="http://stackoverflow.com/questions/29992221/universal-windows-platform-and-signalr-could-not-load-file-or-assembly-system" target="_blank">this Stackoverflow page</a>.This has nothing to do with Silverlight 5, as is suggested in the comments. Apparently there is some NuGet target mismatch. I don’t quite understand the finer points, but I have found a workaround.</p>
+<ul>
+<li>I cloned the <a href="https://github.com/SignalR/SignalR" target="_blank">SignalR repository from Github.</a> 
+<li>When that was done, I opened the Microsoft.AspNet.SignalR.sln using Visual Studio 2015RC. 
+<li>I found the project “Microsoft.AspNet.SignalR.Client.WinRT”. This needed retargeting to Windows 8.1 
+<li>In the configuration manager, I looked for the same project again, and changed the platform from x86 to AnyCPU. For some reason that takes quite some time to complete.</li></ul>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/25b44cd1814e_7EE9/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/25b44cd1814e_7EE9/image_thumb.png" width="644" height="472"></a></p>
+<ul>
+<li>Then I built just the Microsoft.AspNet.SignalR.Client.WinRT project – nothing else 
+<li>In the folder &lt;your-root-here&gt;\SignalR\src\Microsoft.AspNet.SignalR.Client.WinRT\bin\Release you will now find a Microsoft.AspNet.SignalR.Client.dll. Copy this file into for instance in a Binaries solution folder in the solution containing the app in which you want to use Signal/R 
+<li>In the app that gave you the “File not found” error, locate the two SignalR references and delete these</li></ul>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/25b44cd1814e_7EE9/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/25b44cd1814e_7EE9/image_thumb_3.png" width="359" height="325"></a></p>
+<ul>
+<li>Now make a reference to the one “Microsoft.AspNet.SignalR.Client.dll” you copied into the Binaries folder 
+<li>Start the app again 
+<li>You will still get an error :), but that’s because there’s no actual Signal/R hub running on www.microsoft.com. If you point this code to a real Signal/R hub, it will work. I have tried on a PC, a Windows 10 mobile phone, and a Raspberry PI2. </li></ul>
+<p>Demo solution with both the working (‘”Working”) and non-working app (“Kaputt”)&nbsp; <a href="https://github.com/LocalJoost/SignalRFix" target="_blank">can be found here</a>. If you don’t feel like repeating all my steps and just want to grab the assembly you need, <a href="https://github.com/LocalJoost/SignalRFix/blob/master/Binairies/Microsoft.AspNet.SignalR.Client.dll?raw=true" target="_blank">get it directly from github here</a>.</p>  

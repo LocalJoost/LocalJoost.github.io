@@ -1,0 +1,93 @@
+---
+layout: post
+title: Behavior to make Bing Maps view area bindable
+date: '2012-06-14T12:58:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Mapping
+- dotnetmag
+- MVVM
+- WP7NL
+- Windows Phone 7
+- Bing Map Control
+- WP7
+modified_time: '2012-06-14T13:01:18.476+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6248167874565878669
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/06/behavior-to-make-bing-maps-view-area.html
+---
+
+<p>The Bing Maps control in <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone 7</a> is pretty versatile but does not always play along very well with data binding. You can bind ZoomLevel and MapCenter, which is all very well, but if you want to know what area is actually shown within the map – for instance, for making a GIS application that loads only visible data, and not stuff that’s outside the view area anyway, things get a lit complicated.</p> <p>Not so if you uses this little behavior. It builds upon the <a href="http://dotnetbyexample.blogspot.com/2011/11/safe-event-detachment-base-class-for.html" target="_blank">SafeBehavior</a> that is already in my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a>. It sports two GeoCoordinate depencency propertise, NorthEast and SouthWest</p><pre>using System.Device.Location;
+using System.Windows;
+using Microsoft.Phone.Controls.Maps;
+
+namespace Wp7nl.Behaviors
+{
+  public class ViewportAreaBehavior
+  {
+    /// &lt;summary&gt;
+    /// A behavior to make southwest and northeast bindable
+    /// &lt;/summary&gt;
+    public class ViewportwatcherBehavior : SafeBehavior&lt;Map&gt;
+    {
+      #region NorthWest
+      public const string NorthWestPropertyName = "NorthWest";
+
+      public GeoCoordinate NorthWest
+      {
+        get { return (GeoCoordinate)GetValue(NorthWestProperty); }
+        set { SetValue(NorthWestProperty, value); }
+      }
+
+      public static readonly DependencyProperty NorthWestProperty = 
+	DependencyProperty.Register(
+          NorthWestPropertyName,
+          typeof(GeoCoordinate),
+          typeof(ViewportwatcherBehavior),
+          new PropertyMetadata(null));
+
+      #endregion
+
+      #region SouthEast
+      public const string SouthEastPropertyName = "SouthEast";
+
+      public GeoCoordinate SouthEast
+      {
+        get { return (GeoCoordinate)GetValue(SouthEastProperty); }
+        set { SetValue(SouthEastProperty, value); }
+      }
+
+      public static readonly DependencyProperty SouthEastProperty = 
+	DependencyProperty.Register(
+          SouthEastPropertyName,
+          typeof(GeoCoordinate),
+          typeof(ViewportwatcherBehavior),
+          new PropertyMetadata(null));
+
+      #endregion
+    }
+  }
+}</pre>
+<p>All pretty standard stuff. Next comes the setup/cleanup stuff, </p><pre>protected override void OnSetup()
+{
+  AssociatedObject.ViewChangeEnd += AssociatedObjectViewChangeEnd;
+  CalcRectangle();
+}
+
+protected override void OnCleanup()
+{
+  AssociatedObject.ViewChangeEnd -= AssociatedObjectViewChangeEnd;
+}</pre>
+<p>in which you can see I intercept the ViewChangeEnd event. I don’t do anything special there: I just call the method CalcRectangle, just as on startup.</p><pre>void AssociatedObjectViewChangeEnd(object sender, MapEventArgs e)
+{
+  CalcRectangle();
+}</pre>
+<p>The final missing piece of the puzzle is then of course CalcRectangle itself:</p><pre>private void CalcRectangle()
+{
+  NorthWest = AssociatedObject.ViewportPointToLocation(new Point(0, 0));
+  SouthEast = AssociatedObject.ViewportPointToLocation(
+    new Point(AssociatedObject.ViewportSize.Width, 
+              AssociatedObject.ViewportSize.Height));
+}</pre>
+<p>So I basically take the point left top (0,0) and and use ViewportPointToLocation to convert it to a coordinate, and do the same think with the point that left bottom. And that’s all.</p>
+<p>Now you can bind to the NorthWest and SouthEast property of the behavior and you get the view area in your view model. Be aware this works one way. It gets the view area to the ViewModel, not the other way around. </p>
+<p>Contrary to my custom there’s no solution with the code in it, mostly because it’s already in the wp7nl library since yesterday. You can download the code from the library itself <a href="http://wp7nl.codeplex.com/SourceControl/changeset/view/17019#278447" target="_blank">here</a>, if you want.</p>  

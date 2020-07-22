@@ -1,0 +1,131 @@
+---
+layout: post
+title: UWP Map data binding with WpWinNlMaps explained
+date: '2015-12-12T21:04:00.000+01:00'
+author: Joost van Schaik
+tags: 
+modified_time: '2015-12-21T20:44:51.332+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6726973771554325203
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/12/uwp-map-data-binding-with-wpwinnlmaps.html
+---
+
+<h2>Intro</h2>Recently I released <span id="goog_1229172787"></span><a href="https://github.com/LocalJoost/WpWinNl/tree/uwp/uap10.0" target="_blank">WpWinlMaps for the Universal Windows Platform</a><span id="goog_1229172788"></span>, a NuGet package that allows you to data bind map shapes to the awesome new map control for Windows 10. This map control got recently even more awesome with SDK 10586, when <a href="http://dotnetbyexample.blogspot.com/2015/11/drawing-polygons-with-hole-donuts-on.html" target="_blank">multipolygons, aka polygons with holes, aka donuts</a> where added to it. For those who have read this blog before, this binding code should not come as a surprise - I basically did this already in <a href="http://dotnetbyexample.blogspot.com/2012/09/data-binding-shapes-to-winrt-bing-maps.html" target="_blank">2012 for the Bing Maps control for Windows</a>, and there are incarnations of this for <a href="http://dotnetbyexample.blogspot.com/2012/10/data-binding-shapes-to-new-windows.html">Windows Phone 8</a> and the <a href="http://dotnetbyexample.blogspot.com/2015/01/binding-shapes-to-windows-phone-81-here.html">Here Maps control for Windows Phone 8.1</a>. The UWP binding - of course built as a behavior - is an evolution of the Windows Phone 8.1 behavior. It's most important new features are:<br> <ul> <li>It's built on top of the <a href="http://www.nuget.org/packages/Microsoft.Xaml.Behaviors.Uwp.Managed/">new UWP Behaviors NuGet Package</a>  <li>MapShapeDrawBehavior can now also draw multi polygons (with holes)  <li>The geometry type used to support Geopath only (even if you wanted to draw just a MapIcon). Now you can use a BasicGeoposition for MapIcon, a Geopath for MapPolyline or a 'normal' MapPolygon, and an IList&lt;Geopath&gt; to create the new type of polygons-with-holes that I mentioned earlier.  <li>MapShapeDrawBehavior supports the new MapElementClick event for selecting objects on the map (and still supports the old MapTapped event, as well as Tapped, although the last one is still not recommended for use)  <li>The EventToCommandMapper is renamed to EventToHandlerMapper; now it can not only call a command, but also directly a method of the view model. This is to align with the way x:Bind introduces calling direct events as well.  <li>Speaking of - x:Bind to the MapShapeDrawBehavior's ItemSource is fully supported, although that's 99% thanks to the platform and 1% to my coding. </li></ul> <h2>Getting started </h2>Create a project, add the WpWinNl NuGet package to it. This will pull in the WpWinNlBasic package as well, as well as - of course Microsoft.Xaml.Behaviors.Uwp.Managed, and Rx-Linq because I use that to dynamically react on events.<br><br>Then, of course, you will need some MVVM framework, be it something that you make yourself or something that is made by someone else. In my sample I opted for pulling in <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a>, this being more or less an industry standard now. I also pulled in WpWinNl full, because I use some more features from it in my sample code. And that automatically pulls in MVVMLight too, so that saves you the trouble of doing that yourself ;) <br> <h2>Concepts</h2>These are basically still the same, but I will repeat them here for your convenience. <br>Typically, maps are divided into <em>layers</em>. You can think of this as logical units representing one class of real-world objects (or ‘features’ as they tend to be called in the geospatial word). For instance, “houses”, “gas stations”, “roads”. In WpWinNlMaps, a layer translates to one behavior attached to the map. <br><br>A MapShapeDrawBehavior contains the following properties <br> <ul> <li><b>ItemsSource</b> – this is where you bind your business objects/view models to.  <li><b>PathPropertyName</b> – the name of the property in a bound object that contains the BasicGeoposition, the Geopath or the IList&lt;Geopath&gt;&nbsp; describing the object’s location  <li><b>LayerName</b> – the name of the layer. Make sure this is unique within the map  <li><b>ShapeDrawer</b> – the name of the class that actually determines how the shape in PathPropertyName is actually displayed  <li><b>EventToCommandMappers</b> – contains a collection of events <em>of the map</em> that need to be trapped, mapped to a command or a method <em>of the bound object </em>that needs to be called when the map receives this event. Presently, the only events that make sense are "MapClicked", “MapTapped” and “Tapped”. </li></ul> <h2>Sample</h2>As always, a sample says more than a 1000 words. Our view model has a property <br><pre>MultiPolygons = new ObservableCollection&lt;MultiPathList&gt;();</pre>And a MultiPathList indeed as a<br><pre>public List&lt;Geopath&gt; Paths { get; set; }</pre>Drawing a set of polygons with holes in it, is as easy as<br><pre>&lt;maps:MapControl x:Name="MyMap" Grid.Row="0"&gt;
+  &lt;interactivity:Interaction.Behaviors&gt;
+    &lt;mapbinding:MapShapeDrawBehavior LayerName="MultiShapes" 
+        ItemsSource="{x:Bind ViewModel.MultiPolygons,
+          Converter={StaticResource MapObjectsListConverter}}" 
+        PathPropertyName="Paths"&gt;
+      &lt;mapbinding:MapShapeDrawBehavior.EventToHandlerMappers&gt;
+        &lt;mapbinding:EventToHandlerMapper EventName="MapElementClick" 
+                                         MethodName="Select"/&gt;
+      &lt;/mapbinding:MapShapeDrawBehavior.EventToHandlerMappers&gt;
+      &lt;mapbinding:MapShapeDrawBehavior.ShapeDrawer&gt;
+        &lt;mapbinding:MapMultiPolygonDrawer 
+          Color="OrangeRed" StrokeColor="Crimson" 
+          Width="2" StrokeDashed="True"/&gt;
+      &lt;/mapbinding:MapShapeDrawBehavior.ShapeDrawer&gt;
+    &lt;/mapbinding:MapShapeDrawBehavior&gt;
+  &lt;/interactivity:Interaction.Behaviors&gt;
+&lt;/maps:MapControl&gt;</pre>So what we have here is a MapShapeDrawBehavior that binds to ViewModel.MultiPolygon, using a converter. Unfortunately, due to the nature of x:Bind, you will always need to use this converter. If you don't, you will run into this error:<strong> "XamlCompiler error WMC1110: Invalid binding path 'ViewModel.MultiPolygons' : Cannot bind type 'System.Collections.ObjectModel.ObservableCollection(WpWinNl.MapBindingDemo.Models.MultiPathList)' to 'System.Collections.Generic.IEnumerable(System.Object)' without a converter"</strong>. So I give it a converter to make it happy, although the convert method of the MapObjectsListConverter in fact only is this<br><pre>public override object Convert(object value, Type targetType, 
+                               object parameter, CultureInfo culture)
+{
+  return value;
+}</pre>If you have been working as a career developer for 23 you learn it's best just not get wound up about these kinds of things and just happily accept a feasible work-around :)<br>
+<h2>Event handling</h2>Next up is the EventToHandlerMapper; in its EventName you can put the following event names: <br>
+<ul>
+<li>MapElementClick 
+<li>MapTapped 
+<li>Tapped </li></ul>And I recommend you use MapElementClick as that provides the least overhead and is the preferred new event. The other two will work too. Any other events, how valid they might be, are ignored.<br>The EventToHandlerMapper has two other properties: MethodName and CommandName. The first one is checked first, so if you are a smartypants who defines them both, only MethodName is used. Once again - this is a method or a command on the <em>bound object</em>, not the view model that hosts the ItemSource. The method or command should take a MapSelectionParameters object as a parameter. In the sample code you will see a class GeometryProvider that actually implements both, utilizing standard MVVMLight code:<br><pre>public class GeometryProvider : ViewModelBase
+{
+  public string Name { get; set; }
+
+  public ICommand SelectCommand =&gt; new RelayCommand&lt;MapSelectionParameters&gt;(Select);
+
+  public void Select(MapSelectionParameters parameters)
+  {
+    DispatcherHelper.CheckBeginInvokeOnUI(
+      () =&gt; Messenger.Default.Send(
+         new MessageDialogMessage(Name, "Selected object", "Ok", "Cancel")));
+  }
+}</pre>I use this as a base class for all types that I bind to the MapShapeDrawBehavior to provide an easy base for event handling.<br>
+<h2>Shape drawers</h2>These are classes that for actually converting the geometry into an actual shape, that is, a MapIcon, a MapPolyline, or a MapPolygon. Out of the box, there are four drawers with the following properties: <br>
+<ul>
+<li>MapIconDrawer 
+<ul>
+<li>AnchorX - sets the <a href="https://msdn.microsoft.com/en-Us/library/windows/apps/windows.ui.xaml.controls.maps.mapicon.normalizedanchorpoint.aspx" target="_blank">NormalizedAnchorPoint</a>.X 
+<li>AnchorY - set the <a href="https://msdn.microsoft.com/en-Us/library/windows/apps/windows.ui.xaml.controls.maps.mapicon.normalizedanchorpoint.aspx" target="_blank">NormalizedAnchorPoint</a>.Y 
+<li>CollisionBehaviorDesired - the <a href="https://msdn.microsoft.com/en-us/library/windows/apps/windows.ui.xaml.controls.maps.mapicon.collisionbehaviordesiredproperty.aspx" target="_blank">CollisionBehaviorDesired</a> of a MapIcon. <a href="http://dotnetbyexample.blogspot.com/2015/04/windows-10-build-10061-fixes-mapicon.html" target="_blank">See also here</a>. 
+<li>Title - the optional MapIcon <a href="https://msdn.microsoft.com/en-us/library/windows/apps/windows.ui.xaml.controls.maps.mapicon.title.aspx" target="_blank">Title</a> 
+<li>ImageUri - the optional MapIcon <a href="https://msdn.microsoft.com/en-us/library/windows/apps/windows.ui.xaml.controls.maps.mapicon.image.aspx" target="_blank">Image</a> </li></ul>
+<li>MapPolylineDrawer 
+<ul>
+<li>Color - line color 
+<li>StrokeDashed - dashed or solid line 
+<li>Width - line width </li></ul>
+<li>MapPolygonDrawer 
+<ul>
+<li>Color - shape fill color 
+<li>StrokeDashed - dashed or solid shape outline 
+<li>StrokeColor - shape outline color 
+<li>Width - shape outline width </li></ul>
+<li>MapPolylineDrawer 
+<ul>
+<li>Same as MapPolygonDrawer </li></ul></li></ul>In addition, all drawers support a Z-index property. <br>
+<h2>Thematic maps - making your own shape drawers</h2><em>I wish to stress that is does not end with the four default drawers</em>. If you want map elements to change color or other properties based upon values in object that you bind to - there is nothing that keeps you from doing that. You can do this by making by sub classing an existing drawer (or make a completely new one). Suppose you have this business object: <br><pre>public class CustomObject
+{
+  public string Name { get; set; }
+  public BasicGeoposition Point { get; set; }
+
+  public int SomeValue { get; set; }
+}</pre>And you want to have the color of the line to change based on the SomeValue property, you can achieve this by writing something like this:<br><pre>public class MyLineDrawer : MapPolylineDrawer
+{
+  public override MapElement CreateShape(object viewModel, Geopath path)
+  {
+    var shape = (MapPolyline)base.CreateShape(viewModel, path);
+    var myObject = (CustomObject)viewModel;
+    switch (myObject.SomeValue)
+    {
+      case 0:
+        {
+          shape.StrokeColor = Colors.Black;
+          break;
+        }
+      case 1:
+        {
+          shape.StrokeColor = Colors.Red;
+          break;
+        }
+
+      //etc
+    }
+    return shape;
+  }
+}</pre>
+<h2>Drawer class hierarchy</h2>The class drawers are built according to the following class hierarchy<br>
+<div><a style="margin-bottom: 1em; float: left; clear: left; margin-right: 1em" href="http://www.schaikweb.net/dotnetbyexample/classhierarchymapbinding.png" imageanchor="1"><img border="0" src="http://www.schaikweb.net/dotnetbyexample/classhierarchymapbinding.png" width="660"></a></div>
+<div>I'd recommend overriding only the concrete classes when creating custom drawers. Be aware there are three virtual methods in MapShapeDrawer that you can override:</div><pre>public abstract class MapShapeDrawer
+{
+  public virtual MapElement CreateShape(object viewModel, BasicGeoposition postion)
+  {
+    return null;
+  }
+
+  public virtual MapElement CreateShape(object viewModel, Geopath path)
+  {
+    return null;
+  }
+
+  public virtual MapElement CreateShape(object viewModel, IList&lt;Geopath&gt; paths)
+  {
+    return null;
+  }
+
+  public int ZIndex { get; set; }
+}</pre>Make sure you override the right method for the right goal:<br>
+<ul>
+<li>CreateShape(object viewModel, BasicGeoposition postion) when you are dealing with icons 
+<li>CreateShape(object viewModel, Geopath path) when you are dealing with lines or polygons 
+<li>CreateShape(object viewModel, IList&lt;Geopath&gt; paths) when are are dealing with multipolygons </li></ul>
+<h2>Limitations </h2>Be aware this binding method respond to changes in the <em>list</em> of bound objects - that is, if you add or remove an object to or from the bound list, it will be drawn of the map or removed from it. If you change properties <em>within</em> the individual objects after binding and drawing, for instance the color, those will not reflect on the map - you will have to replace the object in the list. <br>
+<h2>Sample solutions</h2>This article comes not with one but <em>two</em> samples - it's amazing Mike! ;). The first one is actually in the code on GitHub and you can find it <a href="https://github.com/LocalJoost/WpWinNl/tree/uwp/uap10.0/WpWinNl.MapBindingDemo" target="_blank">here</a>. The drawback of that sample it that it actually requires you to compile the whole library as it uses the sources directly - it was my own test code. So for your convenience I made more or less the same solution, but then using the NuGet packages. You can find that <a href="http://www.schaikweb.net/dotnetbyexample/WpWinNl.MapBindingDemo.zip" target="_blank">here</a> - it's an old skool downloadable ZIP file as I don't want to confuse people on GitHub. Both solutions work the same and show the same data as <a href="http://dotnetbyexample.blogspot.com/2015/11/drawing-polygons-with-holes-donuts-on.html" target="_blank">in an earlier post where I described the multipolygon feature first</a>.<br><br><a href="http://www.schaikweb.net/dotnetbyexample/UWP-Map-data-binding-with-WpWinNlMaps-ex_12243/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/UWP-Map-data-binding-with-WpWinNlMaps-ex_12243/image_thumb.png" width="244" align="right" height="165"></a>A little word of guidance – after your start either demo app, first go to the ellipses on the right, tap those and hit “show area”. That will bring you to the right location to show all the features that this app can draw. 
+<h2>Conclusion</h2>I hope that this little library is as useful as its earlier incarnations proved to be. I have actually utilized the wp8.1 version in one of my own apps, I know there is a good chance of more apps are using it, and also that some Microsofties are actually recommending it ;). I hope it's useful for you. Let me know what you think about this. In the mean time, happy mapping! 

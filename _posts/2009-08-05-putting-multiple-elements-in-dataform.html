@@ -1,0 +1,219 @@
+---
+layout: post
+title: Putting multiple elements in a Silverlight 3 DataForm DataField while retaining
+  auto Label and Description generation
+date: '2009-08-05T20:54:00.039+02:00'
+author: Joost van Schaik
+tags:
+- Silverlight 3.0
+- dotnetmag
+- Silverlight
+- DataForm
+- DataField
+modified_time: '2010-04-06T11:17:29.874+02:00'
+thumbnail: http://1.bp.blogspot.com/_QXPoKuE9q6k/Snnd5fM4gWI/AAAAAAAAEt8/hM8lj4Kh8AQ/s72-c/screen1.png
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3716287165005697852
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/08/putting-multiple-elements-in-dataform.html
+---
+
+Summary: if you want to use a DataForm, want to put multiple controls in one DataField, and <em>still</em> want Silverlight 3 to generate Label and Description from the attributes applied to the properties you bind, you need to<ul>
+<li>Name your DataField</li>
+<li>Add an <strong>ItemsControl</strong> as wrapping element inside the DataField</li>
+<li>Bind the property to the ItemsControl</li>
+<li>Bind the property of your controls inside the ItemsControl to the ItemsControls' <em>DataContext</em></li>
+</ul>Bear with me: I started out with the <a href="http://silverlight.net/learn/learnvideo.aspx?video=187317">Mike Taulty video</a> and made a nice little business class like this:<pre>using System;
+using System.ComponentModel.DataAnnotations;
+
+namespace DataFormDemo
+{
+  public class Coordinate
+  {   
+    private double _xmin;
+    public double XMin { get { return _xmin; } }
+
+    private double _ymin;
+    public double YMin { get { return _ymin; } }
+
+    private double _xmax;
+    public double XMax { get { return _xmax; } }
+
+    private double _ymax;
+    public double YMax { get { return _ymax; } }
+
+    public Coordinate(double x, double y,
+                      double xLow, double yLow,
+                      double xHigh, double yHigh)
+    {
+      _x = x;
+      _y = y;
+      _xmax =  xHigh;
+      _ymax =  yHigh;
+      _xmin =  xLow;
+      _ymin =  yLow;
+    }
+
+    private double _x;
+    <span style="color:red">[Display(Name = "X Coordinate:",
+      Description = "The X coordinate of the point")]</span>
+    public double X
+    {
+      get
+      {
+        return _x;
+      }
+      set
+      {
+        ValidateValue(value, XMin, XMax);
+        _x = value;
+      }
+    }
+
+    private double _y;
+    <span style="color:red">[Display(Name = "Y Coordinate:",
+      Description = "The Y coordinate of the point")]</span>
+    public double Y
+    {
+      get
+      {
+        return _y;
+      }
+      set
+      {
+        ValidateValue(value, YMin, YMax);
+        _y = value;
+      }
+    }
+   
+    private void ValidateValue(double value, 
+     double minValue, double maxValue)
+    {
+      if (value < minValue || value > maxValue)
+      {
+        throw new ArgumentException(
+            string.Format("Valid value {0} - {1}", minValue,maxValue));
+      }
+    }
+  }
+}</pre> and just like Mike did, I added some labels and descriptions (in <span style="color:red">red</span>) to get a nicer looking form. The purpose of this class is that a user can enter an X and Y value that fall in a range, which is validated. All parameters are set by the constructor.
+
+Then I made some minimal XAML<pre>&lt;UserControl x:Class="DataFormDemo.MainPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:dataFormToolkit="clr-namespace:System.Windows.Controls;assembly=System.Windows.Controls.Data.DataForm.Toolkit"
+  mc:Ignorable="d" d:DesignWidth="640" d:DesignHeight="480"&gt;
+ &lt;Grid x:Name="LayoutRoot"&gt;
+    &lt;dataFormToolkit:DataForm x:Name="MyForm"
+    HorizontalAlignment="Center" VerticalAlignment="Top"&gt;
+    &lt;/dataFormToolkit:DataForm&gt;
+  &lt;/Grid&gt;
+&lt;/UserControl&gt;</pre>Then I bound a Coordinate in the constructor<pre>public MainPage()
+{
+  InitializeComponent();
+  MyForm.CurrentItem = new Coordinate(
+      150000, 450000, 
+      0, 300000, 
+      300000, 600000);
+}</pre><a href="http://1.bp.blogspot.com/_QXPoKuE9q6k/Snnd5fM4gWI/AAAAAAAAEt8/hM8lj4Kh8AQ/s1600-h/screen1.png"><img style="float:left; margin:0 10px 10px 0;cursor:pointer; cursor:hand;width: 183px; height: 207px;" src="http://1.bp.blogspot.com/_QXPoKuE9q6k/Snnd5fM4gWI/AAAAAAAAEt8/hM8lj4Kh8AQ/s320/screen1.png" border="0" alt=""id="BLOGGER_PHOTO_ID_5366564410686472546" /></a>and got the screen left, with a wee bit more than I bargained for. I was planning to customize the default dataform layout anyway, so I changed the DataForm to:<p>&nbsp;</p>&nbsp;<p>&nbsp;</p><p>&nbsp;</p><pre>&lt;dataFormToolkit:DataForm x:Name="MyForm" 
+  HorizontalAlignment="Center" VerticalAlignment="Top"&gt;
+  &lt;dataFormToolkit:DataForm.EditTemplate&gt;
+    &lt;DataTemplate&gt;
+      &lt;StackPanel&gt;
+        &lt;dataFormToolkit:DataField &gt;
+          &lt;TextBox Text="{Binding X,Mode=TwoWay}"/&gt;
+        &lt;/dataFormToolkit:DataField&gt;
+        &lt;dataFormToolkit:DataField &gt;
+          &lt;TextBox Text="{Binding Y,Mode=TwoWay}"/&gt;
+        &lt;/dataFormToolkit:DataField&gt;
+      &lt;/StackPanel&gt;
+    &lt;/DataTemplate&gt;
+  &lt;/dataFormToolkit:DataForm.EditTemplate&gt;
+&lt;/dataFormToolkit:DataForm&gt;</pre><p><a href="http://3.bp.blogspot.com/_QXPoKuE9q6k/Snr8Bz7PmSI/AAAAAAAAEuE/TGnuQjW5EDM/s1600-h/screen2.png"><img style="float:left; margin:0 10px 10px 0;cursor:pointer; cursor:hand;width: 181px; height: 86px;" src="http://3.bp.blogspot.com/_QXPoKuE9q6k/Snr8Bz7PmSI/AAAAAAAAEuE/TGnuQjW5EDM/s320/screen2.png" border="0" alt=""id="BLOGGER_PHOTO_ID_5366879014014130466" /></a>That worked out nicely, but wanting to make this a little more slickey and user friendly I introduced a slider connected to the text box with the new Silverlight 3 component-to-component binding:<p>&nbsp;</p>
+<pre>&lt;dataFormToolkit:DataForm x:Name="MyForm" 
+  HorizontalAlignment="Center" VerticalAlignment="Top"&gt;
+  &lt;dataFormToolkit:DataForm.EditTemplate&gt;
+    &lt;DataTemplate&gt;
+      &lt;StackPanel&gt;
+        &lt;dataFormToolkit:DataField &gt;
+          &lt;StackPanel&gt;
+            &lt;TextBox x:Name="tbX" Text="{Binding X, Mode=TwoWay}"/&gt;
+            &lt;Slider Maximum="{Binding XMax}" Minimum="{Binding XMin}"
+              Value="{Binding Text, ElementName=tbX, Mode=TwoWay}"/&gt;
+          &lt;/StackPanel&gt;
+        &lt;/dataFormToolkit:DataField&gt;
+        &lt;dataFormToolkit:DataField &gt;
+          &lt;StackPanel&gt;
+            &lt;TextBox x:Name="tbY" Text="{Binding Y, Mode=TwoWay}"/&gt;
+            &lt;Slider Maximum="{Binding YMax}" Minimum="{Binding YMin}"
+              Value="{Binding Text, ElementName=tbY, Mode=TwoWay}"/&gt;
+          &lt;/StackPanel&gt;
+        &lt;/dataFormToolkit:DataField&gt;
+      &lt;/StackPanel&gt;
+    &lt;/DataTemplate&gt;
+  &lt;/dataFormToolkit:DataForm.EditTemplate&gt;
+&lt;/dataFormToolkit:DataForm&gt;</pre><a href="http://1.bp.blogspot.com/_QXPoKuE9q6k/Snr_BUnrHTI/AAAAAAAAEuM/y4nXZiaAzLQ/s1600-h/screen3.png"><img style="float:right; margin:0 0 10px 10px;cursor:pointer; cursor:hand;width: 89px; height: 122px;" src="http://1.bp.blogspot.com/_QXPoKuE9q6k/Snr_BUnrHTI/AAAAAAAAEuM/y4nXZiaAzLQ/s320/screen3.png" border="0" alt=""id="BLOGGER_PHOTO_ID_5366882304145431858" /></a>That works swell, but where are my label and my description? Turns out that the  Silverlight 3 DataForm shows label and description if and only if there is <em>one</em> element inside that DataField <em>to which the property is bound</em>. You use a StackPanel or something, and the DataForm seems to loose track of where to put which label and which description, so it does not show them at all. After some experimenting around, I found the following work around using the <strong>ItemsControl</strong>:<pre>&lt;dataFormToolkit:DataForm x:Name="MyForm" 
+  HorizontalAlignment="Center" VerticalAlignment="Top"&gt;
+  &lt;dataFormToolkit:DataForm.EditTemplate&gt;
+    &lt;DataTemplate&gt;
+      &lt;StackPanel&gt;
+        &lt;dataFormToolkit:DataField&gt;
+          <span style="color:red">&lt;ItemsControl x:Name="icX" DataContext="{Binding X,Mode=TwoWay}"&gt;</span>
+            &lt;StackPanel&gt;
+              &lt;TextBox x:Name="tbX" 
+               <span style="color:red">Text="{Binding DataContext, ElementName=icX, Mode=TwoWay}"</span>/&gt;
+              &lt;Slider Maximum="{Binding XMax}" Minimum="{Binding XMin}"
+               Value="{Binding Text, ElementName=tbX, Mode=TwoWay}"/&gt;
+            &lt;/StackPanel&gt;
+          <span style="color:red">&lt;/ItemsControl&gt;</span>
+        &lt;/dataFormToolkit:DataField&gt;
+        &lt;dataFormToolkit:DataField &gt;
+          <span style="color:red">&lt;ItemsControl x:Name="icY" DataContext="{Binding Y,Mode=TwoWay}"&gt;</span>
+            &lt;StackPanel&gt;
+              &lt;TextBox x:Name="tbY" 
+               <span style="color:red">Text="{Binding DataContext, ElementName=icY, Mode=TwoWay}"/&gt;</span>
+              &lt;Slider Maximum="{Binding YMax}" Minimum="{Binding YMin}"
+                Value="{Binding Text, ElementName=tbY, Mode=TwoWay}"/&gt;
+            &lt;/StackPanel&gt;
+          <span style="color:red">&lt;/ItemsControl&gt;</span>
+        &lt;/dataFormToolkit:DataField&gt;
+      &lt;/StackPanel&gt;
+    &lt;/DataTemplate&gt;
+  &lt;/dataFormToolkit:DataForm.EditTemplate&gt;
+&lt;/dataFormToolkit:DataForm&gt;</pre>But now my sliders do not work anymore: they are locked in the right position. This is logical, because the DataContext of anything <em>inside</em> the ItemsControl is now no longer the <em>Coordinate</em> object, but <em>its X or Y property</em>. So XMin, XMax, YMin and YMax are now unknown (and thus zero). This, too, can be solved by naming your DataFields, using the Path binding syntax and then once again using control-to-control binding:<pre>&lt;dataFormToolkit:DataForm x:Name="MyForm" 
+  HorizontalAlignment="Center" VerticalAlignment="Top"&gt;
+  &lt;dataFormToolkit:DataForm.EditTemplate&gt;
+    &lt;DataTemplate&gt;
+      &lt;StackPanel&gt;
+        &lt;dataFormToolkit:DataField <span style="color:red">x:Name="dfX"</span>&gt;
+          &lt;ItemsControl x:Name="icX" DataContext="{Binding X,Mode=TwoWay}"&gt;
+            &lt;StackPanel&gt;
+              &lt;TextBox x:Name="tbX" 
+               Text="{Binding DataContext, ElementName=icX, Mode=TwoWay}"/&gt;
+              &lt;Slider 
+               Maximum=<span style="color:red">"{Binding Path=DataContext.XMax,ElementName=dfX}</span>" 
+               Minimum=<span style="color:red">"{Binding Path=DataContext.XMin,ElementName=dfX}"</span>
+               Value="{Binding Text, ElementName=tbX, Mode=TwoWay}"/&gt;
+            &lt;/StackPanel&gt;
+          &lt;/ItemsControl&gt;
+        &lt;/dataFormToolkit:DataField&gt;
+        &lt;dataFormToolkit:DataField <span style="color:red">x:Name="dfY"</span>&gt;
+          &lt;ItemsControl x:Name="icY" DataContext="{Binding Y,Mode=TwoWay}"&gt;
+            &lt;StackPanel&gt;
+              &lt;TextBox x:Name="tbY" 
+               Text=<span style="color:red">"{Binding DataContext, ElementName=icY, Mode=TwoWay}"</span>/&gt;
+             &lt;Slider 
+               Maximum=<span style="color:red">"{Binding Path=DataContext.YMax,ElementName=dfY}"</span>
+               Minimum="<span style="color:red">{Binding Path=DataContext.YMin,ElementName=dfY}"</span>
+               Value="{Binding Text, ElementName=tbY, Mode=TwoWay}"/&gt;
+             &lt;/StackPanel&gt;
+          &lt;/ItemsControl&gt;
+        &lt;/dataFormToolkit:DataField&gt;
+      &lt;/StackPanel&gt;
+    &lt;/DataTemplate&gt;
+  &lt;/dataFormToolkit:DataForm.EditTemplate&gt;
+&lt;/dataFormToolkit:DataForm&gt;</pre><a href="http://1.bp.blogspot.com/_QXPoKuE9q6k/SnsCThA1YMI/AAAAAAAAEuU/FcbshTbZLjc/s1600-h/screen4.png"><img style="float:right; margin:0 0 10px 10px;cursor:pointer; cursor:hand;width: 181px; height: 122px;" src="http://1.bp.blogspot.com/_QXPoKuE9q6k/SnsCThA1YMI/AAAAAAAAEuU/FcbshTbZLjc/s320/screen4.png" border="0" alt=""id="BLOGGER_PHOTO_ID_5366885915244716226" /></a>Which gives the resulting - and fully functional - screen to the right. A prime example of something that started out so simple, and then became just a <em>teeny</em> bit more complex ;-)
+
+So, using the ItemsControl and control-to-control binding makes the DataForm retain its ability to generate Labels and Descriptions automatically. Which shows that Silverlight 3 databinding is about as flexible as a rubber band.
+
+One note of caution: when binding Maximum, Minimum and Value to a slider, this must be done in exactly the right order, as shown here. <a href="http://dotnetbyexample.blogspot.com/2009/08/bind-silverlight-3-slider-value-minimum.html">I blogged about this</a> earlier this week.

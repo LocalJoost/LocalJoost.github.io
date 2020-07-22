@@ -1,0 +1,43 @@
+---
+layout: post
+title: "[Serializable] does not inherit (aka RTFM)"
+date: '2008-12-16T15:25:00.007+01:00'
+author: Joost van Schaik
+tags:
+- CSLA
+- dotnetmag
+- inheritance
+- C#
+- Serializable
+modified_time: '2010-04-06T11:17:29.900+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-829717965134813309
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2008/12/serializable-does-not-inherit-aka-rtfm.html
+---
+
+Of course, <em>everybody</em> knows that if you want to serialize an object, you need to decorate the class with the [Serializable] attribute. Right?
+
+Well, yes, and so do I, but I ran into a snag today: it is an <em>attribute</em>, not a <em>property</em> so <strong>it does not inherit</strong>.
+
+If you consider the following code<pre>using System;
+
+namespace demo
+{
+    [Serializable]
+    public class BaseClass
+    {
+        public string AProperty { get; set; }
+    }
+
+    public class ChildClass : BaseClass
+    {
+        public string AnotherProperty { get; set; }
+    }
+}</pre> you will find that <em>Childclass</em> will not serialize with BinaryFormatter, although its base class will. This is of course quite evident, but a more interesting gotcha occurs when you add a third class:<pre>    [Serializable]
+    public class ChildClass2 : ChildClass
+    {
+        public string FinalProperty { get; set; }
+    }</pre>This won't serialize either, because halfway up it's class hierarchy there's a non-serializable class.
+
+In plain vanilla .NET this will generate an "Failed to serialize. Reason: Type 'demo.ChildClass' in Assembly 'bla bla bla' is not marked as serializable", precisely pinpointing the problem. If it happens (as in my case) deep down inside a CSLA dataportal, all you get is an error message like<pre>System.ServiceModel.CommunicationException: The underlying connection was closed: The connection was closed unexpectedly. ---> System.Net.WebException: The underlying connection was closed: The connection was closed unexpectedly.</pre>And you might spend quite some time finding out it is caused by a non-serializable class somewhere in your class hierarchy.
+
+So, check your attributes, folkes ;-) Or run FxCop (and read the warnings)

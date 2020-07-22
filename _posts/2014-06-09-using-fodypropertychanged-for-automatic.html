@@ -1,0 +1,320 @@
+---
+layout: post
+title: Using Fody.PropertyChanged for automatic PropertyChangedEvents and model-to-viewmodel
+  communication
+date: '2014-06-09T10:40:00.000+02:00'
+author: Joost van Schaik
+tags:
+- MVVM
+- Windows Phone
+- Architecture
+- Fody
+- MVVM Light
+modified_time: '2014-06-09T12:49:35.503+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2089647755202433666
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/06/using-fodypropertychanged-for-automatic.html
+---
+
+<p>When you are working with MVVM, you are faced with a couple of interesting challenges. Usually you have something like this:</p> <p>You see a lot of properties with a lot of repetitive code. Of course, you can use snippets to make that easier, but still. It looks cluttered. </p><pre>using GalaSoft.MvvmLight;
+
+namespace MyApp.Logic.ViewModels
+{
+  public class DummyViewModel : ViewModelBase
+  {
+    private string myProperty;
+    public string MyProperty
+    {
+      get { return myProperty; }
+      set
+      {
+        if (myProperty != value)
+        {
+          myProperty = value;
+          RaisePropertyChanged(() =&gt; MyProperty);
+        }
+      }
+    }
+
+    private string yourProperty;
+    public string YourProperty
+    {
+      get { return yourProperty; }
+      set
+      {
+        if (yourProperty != value)
+        {
+          yourProperty = value;
+          RaisePropertyChanged(() =&gt; YourProperty);
+        }
+      }
+    }
+
+    public void DoSomething()
+    {}
+  }
+}
+</pre>
+<p>And it usually gets more cluttered, as people tend to put what amounts to business logic into the viewmodel. I used to make a viewmodel as a wrapper around a model, like this.</p><pre>namespace MyApp.Logic.Models
+{
+  public class DummyModel
+  {
+    public string YourProperty { get; set; }
+    public string MyProperty { get; set; }
+
+    public void DoSomeBusinessThing()
+    { }
+  }
+}</pre>and then something like this, also created via snippets <pre>using GalaSoft.MvvmLight;
+using MyApp.Logic.Models
+
+namespace MyApp.Logic.ViewModels
+{
+  public class DummyViewModel : ViewModelBase
+  {
+    public DummyViewModel()
+    {
+    }
+
+    public DummyViewModel(DummyModel model)
+    {
+      Model = model;
+    }
+    public DummyModel Model { get; set; }
+
+    public string MyProperty
+    {
+      get { return Model.MyProperty; }
+      set
+      {
+        if (Model.MyProperty != value)
+        {
+          Model.MyProperty = value;
+          RaisePropertyChanged(() =&gt; MyProperty);
+        }
+      }
+    }
+
+    public string YourProperty
+    {
+      get { return Model.YourProperty; }
+      set
+      {
+        if (Model.YourProperty != value)
+        {
+          Model.YourProperty = value;
+          RaisePropertyChanged(() =&gt; YourProperty);
+        }
+      }
+    }
+  }
+}</pre>Nice. But now you have a different problem. I you call DoSomeBusinessThing and that affects "MyProperty" or "YourProperty" on the model in some way, how is the <em>viewmodel</em> supposed to know and fire a PropertyChanged? 
+<p>Enter <a href="https://github.com/Fody/Fody/" target="_blank">Fody</a> - a great toolkit. It is basically an extensible toolkit for “weaving” .NET assemblies. It accepts plugins to decide what is actually injected. The most useful for our problem is the <a href="https://github.com/Fody/PropertyChanged" target="_blank">PropertyChanged.Fody</a>.Which is also available <a href="https://www.nuget.org/packages/PropertyChanged.Fody/" target="_blank">as a Nuget package</a> that you can easily add to your project. You then take your good old DummyObject and add the attribute <strong>ImplementPropertyChanged </strong>to it. </p><pre>using PropertyChanged;
+
+namespace Travalyzer.Logic.ViewModels
+{
+  [ImplementPropertyChanged]
+  public class DummyModel
+  {
+    public string YourProperty { get; set; }
+    public string MyProperty { get; set; }
+
+    public void DoSomeBusinessThing()
+    { }
+  }
+}</pre>
+<p>and boom. If something affects a property, the property will fire PropertyChanged. PropertyChanged.Fody <a href="https://github.com/Fody/PropertyChanged" target="_blank">will add all kinds of smart logic to your model, as described here</a>. Ain't that cool, you don't even have to make a viewmodel anymore. </p>
+<p>Well, sorry to rain on your parade, but if you now start to add <em>commands</em> to your enhanced model and properties or methods that are only used for display (for instance, a formatted date) you are basically polluting your business layer. It’s like adding business logic to your viewmodel, but coming from the opposite direction. Yes, you can now bind directly to model properties and they <em>will</em> fire a PropertyChanged, but business logic is business logic and thou shalt not pollute that with methods indented to deliver data for display and UI interaction. That is what viewmodels are for. And your viewmodel may still need to do something so it still may need to be notified. After some puzzling I came up with the following. First, I define a base class for my models with minimal baggage: </p><pre>using System.ComponentModel;
+using GalaSoft.MvvmLight.Threading;
+using PropertyChanged;
+
+namespace WpWinNl.MvvmLight
+{
+  [ImplementPropertyChanged]
+  public class BaseNotifyingModel : INotifyPropertyChanged
+  {
+    public event PropertyChangedEventHandler PropertyChanged;
+
+    protected virtual void OnPropertyChanged(string propertyName = null)
+    {
+      if (PropertyChanged != null)
+      {
+        DispatcherHelper.CheckBeginInvokeOnUI(() =&gt; 
+            PropertyChanged(this, new PropertyChangedEventArgs(propertyName)));
+      }
+    }
+  }
+}</pre>
+<p>I don’t even use <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a>’s ViewmodelBase, but a very simple INotifyPropertyChanged implementation. PropertyChanged.Fody is apparently smart enough to leave that part of the class alone if it’s already implemented. But of course I do use other smart things by <a href="http://www.twitter.com/lbugnion" target="_blank">Laurent Bugnion</a> – the DispatcherHelper. Mind you, this requires it being initialized in App.Xaml.cs. The most important thing is that the PropertyChanged event can be used by the viewmodel to track possible changes in the <em>model</em>. I use this in the following base view model, which <em>is</em> used on MVVMLight ViewModelBase:</p><pre>using System.ComponentModel;
+using GalaSoft.MvvmLight;
+using PropertyChanged;
+
+namespace WpWinNl.MvvmLight
+{
+  [ImplementPropertyChanged]
+  public class TypedViewModelBase&lt;T&gt; : ViewModelBase where T : BaseNotifyingModel 
+  {
+    private T model;
+
+    public TypedViewModelBase()
+    {
+    }
+
+    public TypedViewModelBase(T model)
+    {
+      Model = model;
+    }
+
+    public T Model
+    {
+      get { return model; }
+      set
+      {
+        if (value != model)
+        {
+          if (model != null)
+          {
+            model.PropertyChanged -= ModelPropertyChanged;
+          }
+          model = value;
+          if (model != null)
+          {
+            model.PropertyChanged += ModelPropertyChanged;
+          }
+        }
+      }
+    }
+
+    protected virtual void ModelPropertyChanged(object sender, 
+       PropertyChangedEventArgs e)
+    {
+    }
+  }
+}</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Usi.PropertyChanged-for-automatic-Proper_11D80/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Usi.PropertyChanged-for-automatic-Proper_11D80/image_thumb.png" width="214" align="right" height="354"></a>If you derive your models from BaseNotifyingModel and your viewmodels from TypedViewModelBase you will have a model that automatically fires INotifyPropertyChanged on <em>any </em>property that is changed – so it can be used in data binding – and you will have viewmodels that will automatically be notified of any change in their <em>model</em> – and by overriding ModelPropertyChanged you can act on that.</p>
+<p>Now of course this is all very nice and very architecty, but how would this ever be useful? Suppose you have a list of business object containing a location. When the user selects it, you want to display it’s street address. You can get that using the MapLocationFinder API. If you have a few 100 points, and you want to get all the addresses – this can take quite some time. So you want to do this on-demand, as displayed <a href="http://www.schaikweb.net/dotnetbyexample/FodyDemo.zip" target="_blank">in the Windows Phone demo solution</a>.</p>
+<p>&nbsp;</p>
+<p>So I created this model:</p><pre>using System;
+using System.Linq;
+using Windows.Devices.Geolocation;
+using Windows.Services.Maps;
+using WpWinNl.MvvmLight;
+
+namespace FodyDemo.Models
+{
+  public class LocationData : BaseNotifyingModel
+  {
+    public LocationData()
+    {
+      TimeStamp = DateTime.Now;
+    }
+
+    public int Id { get; set; }
+
+    public bool HasLocation { get; set; }
+
+    public Geopoint Position { get; set; }
+
+    public DateTimeOffset TimeStamp { get; set; }
+
+    private MapLocation locationInfo;
+
+    public MapLocation LocationInfo
+    {
+      get
+      {
+        if (locationInfo == null)
+        {
+          lock (this)
+          {
+            MapLocationFinder.FindLocationsAtAsync(Position).<br>             AsTask().ContinueWith(p =&gt;
+            {
+              var firstLocationData = p.Result.Locations;
+              if (firstLocationData != null)
+              {
+                LocationInfo = firstLocationData.FirstOrDefault();
+                HasLocation = true;
+              }
+            });
+          }
+        }
+        return locationInfo;
+
+      }
+      set { locationInfo = value; }
+    }
+  }
+}</pre>
+<p>Basically, only if the LocationInfo property is accessed it is actually retrieved. In real life, I would probably implement this using a “LoadLocation” method or something, but whatever – this works as well. If the location is found, not only the LocationInfo is set, but also the HasLocation property, which makes the checkbox light up. In the list, the following properties are bound like this:&nbsp; </p><pre>&lt;TextBlock Text="{Binding Model.Id}" FontSize="15"<br> VerticalAlignment="Center"&gt;&lt;/TextBlock&gt;
+&lt;TextBlock Text="{Binding DateAndTime}" Grid.Column="1" FontSize="15"  <br> VerticalAlignment="Center"&gt;&lt;/TextBlock&gt;
+&lt;CheckBox IsChecked="{Binding Model.HasLocation}" IsEnabled="False" <br>   Grid.Column="2" &gt;&lt;/CheckBox</pre>
+<p>You can see HasLocation is bound directly to the Model, still it gets a PropertyChanged event fired courtesy of Fody. The DataAndTime property apparently coming from the ViewModel, but Location Property is left alone. for now. The panel at the bottom, where the selected object is displayed, is like this<br></p><pre>&lt;TextBlock Text="{Binding Model.Id}" FontSize="15" &gt;&lt;/TextBlock&gt;
+&lt;TextBlock Text="{Binding DateAndTime}" Grid.Row="1" FontSize="15"&gt;&lt;/TextBlock&gt;
+&lt;TextBlock Text="{Binding LocationName}" Grid.Row="2"<br> FontSize="15"&gt;&lt;/TextBlock&gt;</pre>
+<p>In the the viewmodel it looks like this:</p><pre>using System.ComponentModel;
+using System.Globalization;
+using System.Windows.Input;
+using Windows.Services.Maps;
+using FodyDemo.Messages;
+using FodyDemo.Models;
+using GalaSoft.MvvmLight.Command;
+using GalaSoft.MvvmLight.Messaging;
+using WpWinNl.MvvmLight;
+
+namespace FodyDemo.ViewModels
+{
+  public class LocationViewModel : TypedViewModelBase&lt;LocationData&gt;
+  {
+
+    public LocationViewModel()
+    {
+    }
+
+    public LocationViewModel(LocationData ld) : base(ld)
+    {
+    }
+
+    public string DateAndTime
+    {
+      get
+      {
+        return Model != null ? 
+          Model.TimeStamp.ToString("dd-MM-yyyy hh:mm:ss", 
+            CultureInfo.InvariantCulture) : string.Empty;
+      }
+    }
+
+    public string LocationName
+    {
+      get {
+        return Model != null &amp;&amp; Model.LocationInfo != null ? 
+        GetFormattedAdress(Model.LocationInfo.Address) : string.Empty; }
+    }
+
+    private string GetFormattedAdress(MapAddress a)
+    {
+      return string.Format("{0} {1} {2} {3}", a.Street, a.StreetNumber,<br>                           a.Town, a.Country);
+    }
+
+    public ICommand SelectCommand
+    {
+      get
+      {
+        return new RelayCommand(
+          () =&gt; Messenger.Default.Send(new SelectedObjectMessage(this)));
+      }
+    }
+
+    protected override void ModelPropertyChanged(object sender,<br>                                                 PropertyChangedEventArgs e)
+    {
+      if (e.PropertyName == "LocationInfo")
+      {
+        RaisePropertyChanged(() =&gt; LocationName);
+      }
+    }
+  }
+}</pre>
+<p>You can see the LocatioName property shows a neatly formatted address – and gets a manual RaisePropertyChanged when the ModelPropertyChanged is fired from the model (once again courtesy of Fody) – it checks if that is indeed the “LocationInfo” property and boom – the UI knows it must update because a property from the model is changed, even tough that property is not directly bound to the property.</p>
+<p>Thus you can use the viewmodel as it is intended – a place to bind model and view together, a converter on steroids as Josh Smith put is so aptly as early as 2008. A simple base class will add some minimal extra functionality to your business class to make it play within MVVM – but it will still keep it clean.</p>
+<p>Important detail – <u>if you use the MVVMLight DispatcherHelper, you <em>must</em> initialize it first.</u> I usually do this in the App.xaml.cs.</p>
+<p>The demo solution, which contains some more code, can be found <a href="http://www.schaikweb.net/dotnetbyexample/FodyDemo.zip" target="_blank">here.</a> Credits go to the equally smart as sarcastic-in-a-fun-way <a href="https://twitter.com/scottisafool" target="_blank">Scott Lovegrove</a>, who first put me on track with Fody quite some time ago, but only recently I was smart enough to actually take his advice and try it out. My base class for models was based <a href="https://github.com/Fody/PropertyChanged/wiki/MVVMLightBroadcast" target="_blank">on this Fody sample</a> – but of course I thought I was smarter that that and opted for events rather than MVVMLight messages, it being a more lightweight solution. I like to reserve the Messenger for inter-viewmodel communication.</p>
+<p>If you did indeed read all the way through here – congratulations. This is a very architect’s article, not some fun thing to make a cool new user control. But once in a while I start pondering about things like this, to keep my code cleaner, and make things better. If I haven’t bored you to death with it, you might be one of the very rare species that has some architectural genes hidden in your DNA too. I like to think I have, although I am more of a micro-architect, not one that only draws enormous complex diagrams for a living ;)</p>  

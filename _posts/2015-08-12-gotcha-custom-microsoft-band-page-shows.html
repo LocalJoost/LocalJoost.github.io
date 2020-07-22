@@ -1,0 +1,83 @@
+---
+layout: post
+title: 'Gotcha: custom Microsoft Band page shows only data in last added UI element'
+date: '2015-08-12T12:08:00.001+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- wpdev
+- Microsoft Band
+modified_time: '2015-08-12T12:10:57.863+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8026575855881348489
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/08/gotcha-custom-microsoft-band-page-shows.html
+---
+
+<p>Today I finally nailed a very odd issue in the <a href="http://developer.microsoftband.com/bandSDK" target="_blank">Microsoft Band SDK</a> - or actually, my understanding thereof. For my current research project, I am building a custom UI on my Microsoft Band. I should contain two panels: one with a text, an icon and a button, and a second panel containing two texts. Details of how to setup up something like this, can be found in the <a href="http://developer.microsoftband.com/Content/download/Microsoft%20Band%20SDK%20and%20Samples%20for%20Windows.zip" target="_blank">band samples</a>.</p> <p>Building a Band UI is not for the faint hearted, it includes building the UI from code without any kind of designer. Filling those UI elements with a value then is a separate step, which contains quite a big gotcha that you cannot derive from the samples.</p> <p>My Band UI <em>creation</em> code is like this:</p><pre style="font-size: 12px">private IEnumerable&lt;PageLayout&gt; BuildTileUi()
+{
+  var bandUi = new List&lt;PageLayout&gt;();
+  var page1Elements = new List&lt;PageElement&gt;
+  {
+	new Icon {ElementId = IconId, Rect = new PageRect(60,10,24,24)},
+	new TextBlock  {ElementId = TextTemperatureId, Rect = new PageRect(90, 10, 50, 40)},
+	new TextButton {ElementId = ButtonToggleFanId, Rect = new PageRect(10, 50, 220, 40), 
+	    HorizontalAlignment = HorizontalAlignment.Center}
+  };
+  var firstPanel = new FilledPanel(page1Elements) { Rect = new PageRect(0, 0, 240, 150) };
+
+  var page2Elements = new List&lt;PageElement&gt;
+  {
+	new TextBlock {ElementId = TextTimeId, Rect = new PageRect(10, 10, 220, 40)},
+	new TextBlock {ElementId = TextDateId, Rect = new PageRect(10, 58, 220, 40)}
+  };
+  var secondPanel = new FilledPanel(page2Elements) { Rect = new PageRect(0, 0, 240, 150) };
+
+  bandUi.Add(new PageLayout(firstPanel));
+  bandUi.Add(new PageLayout(secondPanel));
+
+  return bandUi;
+}</pre>
+<p>That is quite a handful, right? Then for setting <em>values</em> to those UI element, I had this little piece of code:</p><pre style="font-size: 12px">private List&lt;PageData&gt; BuildTileData1(string timeText,
+                                      string dateText,
+                                      string temperature,
+                                      string buttonText)
+{
+  var result = new List&lt;PageData&gt;
+  {
+    new PageData(Page2Id, 1,
+      new TextBlockData(TextTimeId, timeText)),
+    new PageData(Page2Id, 1,
+      new TextBlockData(TextDateId, dateText)),
+    new PageData(Page1Id, 0, new IconData(IconId, 1)),
+    new PageData(Page1Id, 0,
+      new TextBlockData(TextTemperatureId, temperature)),
+    new PageData(Page1Id, 0, new TextButtonData(ButtonToggleFanId, buttonText))
+  };
+
+  return result;
+}</pre>
+<p>And this is set to my tile using bandClient.TileManager.SetPagesAsync. Which gave me a quite puzzling result: <em>only the last element on each page actually had a value. </em>So that means only the datetext and the button actually showed text. As the sample in the Band SDK samples only uses one UI element, I was like, repeat adding PageData elements, right?</p>
+<p><em><strong>Wrong!</strong></em></p>
+<p>It turns out you can only add values to a PageData element <em>once per SetPagesAsync call.</em> So what you need to do, actually, is:</p><pre style="font-size: 12px">private List&lt;PageData&gt; BuildTileData(string timeText, 
+                                     string dateText, 
+                                     string temperature, 
+                                     string buttonText)
+{
+  var result = new List&lt;PageData&gt;
+  {
+    new PageData(Page2Id, 1,
+      new TextBlockData(TextTimeId, timeText),
+      new TextBlockData(TextDateId, dateText)),
+    new PageData(Page1Id, 0, 
+      new IconData(IconId, 1), 
+      new TextButtonData(ButtonToggleFanId, buttonText), 
+      new TextBlockData(TextTemperatureId, temperature)),
+  };
+
+  return result;
+}</pre>
+<p>See the difference? Only add <em>2 PageData</em> elements, one for every <em>Page</em>, not one for every <em>page element data object</em>. Maybe elementary, but I overlooked it. For quite some time. The constructors of PageData give a bit of a hint:</p><pre style="font-size: 12px">public PageData(Guid pageId, int pageLayoutIndex, <font color="#ff0000"><strong>IEnumerable&lt;PageElementData</strong>&gt;</font> values);
+public PageData(Guid pageId, int pageLayoutIndex, <strong><font color="#ff0000">params PageElementData[]</font></strong> values);</pre>
+<p>as the third parameter is not a page element data object but a list of it. The thing is, I created the UI on demand (when I tapped the tile) and then it worked as expected - but not the seconds time around.</p>
+<p>It took me quite some time to figure this one out, so I thought it best to blog about it right away. Maybe I am giving help here, maybe I am just documenting my own stupidity, but nevertheless ;)</p>
+<p>I skip the demo sample this time - if you run into this problem, you are quite far with the Band UI already, and the demo I am working on contains this code anyway and will - hopefully - arrive online soon anyway. Attentive readers will have some inkling of what that demo exactly comprises.</p>
+<p>Happy Band coding!</p>  

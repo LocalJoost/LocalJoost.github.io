@@ -1,0 +1,130 @@
+---
+layout: post
+title: Cross-platform behavior for making screenshots in Windows (Phone) 8.1
+date: '2014-07-16T10:35:00.000+02:00'
+author: Joost van Schaik
+tags:
+- Windows phone 8.1
+- windev
+- wpdev
+- Windows 8
+- MVVM Light
+modified_time: '2014-07-16T10:35:58.361+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4956288655125107657
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/07/cross-platform-behavior-for-making.html
+---
+
+<p>Currently I am developing an app that should be able to share or save whatever is on the screen. I came upon <a href="http://loekvandenouweland.com/index.php/2013/12/save-xaml-as-png-in-a-windows-store-app/" target="_blank">this article</a> by <a href="https://twitter.com/madeinouweland" target="_blank">Loek van den Ouweland</a> about RenderTargetBitmap and wondered if I could a) make this more generally (re)usable and b) make it play nice with MVVM.</p> <p>The answer was – you guessed it – a behavior. The fun thing is, you can drag it onto any UI element, and it will create a screenshot of <em>whatever what’s inside that element</em> ( and that’s not necessary the whole screen!) and save it to storage. Two dependency properties, Target and Prefix, determine what message the behavior listens to, and what the file prefix is.</p> <p>The main code of the functionality – which still looks a lot like Loek’s original sample – is in the behavior itself. To invoke it from the viewmodel, I call in the help of the <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> messenger. So I start with the message that the viewmodel and the behavior use to communicate:</p><pre>using GalaSoft.MvvmLight.Messaging;
+
+namespace WpWinNl.Behaviors
+{
+  public class ScreenshotMessage : MessageBase
+  {
+    public ScreenshotMessage(object sender = null, object target = null, 
+      ScreenshotCallback callback = null) : base(sender, target)
+    {
+      Callback = callback;
+    }
+
+    public ScreenshotCallback Callback { get; set; }
+  }
+
+  public delegate void ScreenshotCallback(string fileName);
+}</pre>
+<p>This is a standard MVVMLight message, with the added extra that it can carry an optional payload of a callback. The behavior I created saves the file to a KnownFolder, but it can send the name of the file that’s been created back to the calling object by calling said callback. </p>
+<p>The basics of the behavior – implemented once again as a <a href="http://dotnetbyexample.blogspot.com/2011/11/safe-event-detachment-base-class-for.html" target="_blank">SafeBehavior</a> – is actually pretty simple:</p><pre>using System;
+using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
+using Windows.Graphics.Imaging;
+using Windows.Storage;
+using Windows.UI.Xaml;
+using Windows.UI.Xaml.Media.Imaging;
+using GalaSoft.MvvmLight.Messaging;
+
+namespace WpWinNl.Behaviors
+{
+  public class ScreenshotBehavior : SafeBehavior&lt;FrameworkElement&gt;
+  {
+    protected override void OnSetup()
+    {
+      Messenger.Default.Register&lt;ScreenshotMessage&gt;(this, ProcessMessage );
+      base.OnSetup();
+    }
+
+    protected override void OnCleanup()
+    {
+      Messenger.Default.Unregister(this);
+      base.OnCleanup();
+    }
+
+    private async void ProcessMessage(ScreenshotMessage m)
+    {
+      if (m.Target != null &amp;&amp; Target != null)
+      {
+        if (m.Target.Equals(Target))
+        {
+          await DoRender(m.Callback);
+        }
+      }
+      else
+      {
+        await DoRender(m.Callback);       
+      }
+    }
+  }
+}</pre>
+<p>So it listens to a ScreenshotMessage coming by. When Target (a dependency property in this behavior) is equal to the target specified in the message, the rendering is done. Think of Target as a shared key – this enables a viewmodel to fire a specific behavior using – usually - a string. This I show in <a href="http://www.schaikweb.net/dotnetbyexample/DemoScreenshot.zip" target="_blank">the sample solution</a>. If both the behavior’s target <em>and</em> the message’s target are null, it fires as well. You can use this if you only have one behavior and one call. If, however, the behavior is used on multiple places I strongly recommend specifying Target, or else you might get very interesting race conditions.</p>
+<p>The actual rendering method is nearly all Loek’s code with some little adaptions:</p><pre>private async Task DoRender(ScreenshotCallback callback)
+{
+  var renderTargetBitmap = new RenderTargetBitmap();
+  await renderTargetBitmap.RenderAsync(AssociatedObject);
+  var pixelBuffer = await renderTargetBitmap.GetPixelsAsync();
+
+  var storageFile = 
+    await KnownFolders.SavedPictures.CreateFileAsync(
+      string.Concat(Prefix, ".png"),
+      CreationCollisionOption.GenerateUniqueName);
+  using (var stream = await storageFile.OpenAsync(FileAccessMode.ReadWrite))
+  {
+    var encoder = <br>       await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
+    encoder.SetPixelData(
+      BitmapPixelFormat.Bgra8,
+      BitmapAlphaMode.Ignore,
+      (uint) renderTargetBitmap.PixelWidth,
+      (uint) renderTargetBitmap.PixelHeight, 96d, 96d,
+      pixelBuffer.ToArray());
+
+    await encoder.FlushAsync();
+    if (callback != null)
+    {
+      callback(storageFile.Name);
+    }
+  }
+}</pre>
+<p>It creates an unique file based on the Prefix dependency property in the “SavedPictures” known folder, renders the screen as a png file, saves it, and if so desired calls a callback transmitting the name back to that callback – most likely a method of the viewmodel, which can then act on it.</p>
+<p>The rest of the behavior are the two dependency properties that I leave out for brevity's sake.You don’t need to use them at all – if you don’t set Prefix, it will use “Screenshot” </p>
+<p>To use it: as stated earlier, drag it on top of the UI element you want to make screenshots of, then add for instance the following code to your viewmodel:</p><pre>public ICommand ScreenshotCommand
+{
+  get
+  {
+    return new RelayCommand(() =&gt;
+    {
+      var m = new ScreenshotMessage(this, 
+        "screenshot", MyCallback);
+      Messenger.Default.Send((m));
+    });
+  }
+}
+
+private void MyCallback(string name)
+{
+  Debug.WriteLine(name);
+}</pre>In the message I have set the target to "screenshot", so in the XAML it should now says <pre>&lt;Behaviors:ScreenshotBehavior <font color="#ff0000"><font color="#ff0000">Target="screenshot"</font></font><strong></strong><u></u> Prefix="MyScreenshot"/&gt;</pre>
+<p>or else the behavior won’t respond to the message. When it’s done, it writes the name of the created file to the console – not very useful in production scenario’s, but it shows it’s working. In this callback you can for instance inform the user the file has been saved, activate a share contract or whatever you feel is neccesary.</p>
+<p>The fun thing is, of course, that in this awesome world we live today <a href="http://dotnetbyexample.blogspot.com/2014/05/writing-behaviors-in-pcl-for-windows.html" target="_blank">behaviors can actually be cross-platform and be defined in a PCL</a> and run both on <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> 8.1 as on “big Windows” 8.1 :). </p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/302bb5361d2c_FBF4/MyScreenshot.png"><img title="MyScreenshot" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="MyScreenshot" src="http://www.schaikweb.net/dotnetbyexample/302bb5361d2c_FBF4/MyScreenshot_thumb.png" width="153" height="244"></a><a href="http://www.schaikweb.net/dotnetbyexample/302bb5361d2c_FBF4/MyScreenshot-2.png"><img title="MyScreenshot (2)" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px 0px 0px 13px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="MyScreenshot (2)" src="http://www.schaikweb.net/dotnetbyexample/302bb5361d2c_FBF4/MyScreenshot-2_thumb.png" width="431" height="244"></a></p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/DemoScreenshot.zip" target="_blank">In the demo solution</a>, that contains both a Windows Phone App, a Windows App, and a shared project you will see I have once again dragged the Main.Xaml to the shared project just for the fun of it. Don’t forget to set access to the pictures library in <em>both</em> the app manifests. I <em>always</em> forget that.</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/302bb5361d2c_FBF4/MyScreenshot_3.png"><img title="MyScreenshot" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; margin: 0px 7px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="MyScreenshot" src="http://www.schaikweb.net/dotnetbyexample/302bb5361d2c_FBF4/MyScreenshot_thumb_3.png" width="244" align="left" height="204"></a>For Windows, the pictures end up in my “USERPROFILE%\Picures” folder, in Windows Phone they end up in “Pictures\Saved Pictures”.</p>
+<p>Interesting detail – I have set the application’s root grid background to gray. If I <em>don’t</em> set a color, the background of the picture on Windows is not black, but cropped to 1297x1080 in stead of 1920x1080 as is my native resolution. I have not been able to determine yet why this is.</p>
+<p>I built this behavior on top of my <a href="http://wpwinnl.codeplex.com/" target="_blank">WpWinNl</a> 2.0.3 package, but you can easily adapt it to get it to work as a normal behavior just <a href="http://dotnetbyexample.blogspot.com/2014/05/writing-behaviors-in-pcl-for-windows.html" target="_blank">using the procedure I described here</a>.</p>
+<p>Oh and the picture? It’s just an old picture of my wife’s Mercedes truck back in 2004, when she and a colleague joined a <a href="http://www.rtl.nl/automotor/rtltransportwereld/tvarchief/03_12_vtl.xml" target="_blank">Guinness Book of records attempt to create the longest truck convoy ever</a><em></em>. This is a short stop at dyke road shoulder before the actual 9.5 km long convoy was assembled. Interesting detail: <em>all 416 drivers were women</em>. The convoy drove 22 km without any problems, and as my wife so aptly said – it was the first time she joined a traffic jam for fun.</p>  

@@ -1,0 +1,348 @@
+---
+layout: post
+title: An animated swipe-enabled title control for Windows Phone 7
+date: '2010-09-10T21:20:00.001+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- MVVM
+- UX
+- WP7NL
+- Windows Phone 7
+- Silverlight
+- WP7
+modified_time: '2010-12-03T22:39:34.321+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1278917695952776231
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/09/animated-swipe-enabled-title-control.html
+---
+
+<p><em>Updated for the RTM tools, included <a href="http://www.schaikweb.net/dotnetbyexample/SwipeSample.zip" target="_blank">sample application</a> to show how it’s used.</em></p>  <p>For my ongoing ‘research project’ on making the user experience for my <a href="http://dotnetbyexample.blogspot.com/2010/07/using-mvvm-light-to-drive-windows-phone.html" target="_blank">MVVM-driven map viewer for Windows Phone 7</a> a bit better I wanted to make some changes to the header. Initially you could swipe the header which showed which map you show, but it gave no indication that you actually <em>could</em> make the swipe, or that other maps were available. I set out to create a behaviour, and ended up building a control. In my map viewer, it currently looks and works like this:</p>  <div style="padding-bottom: 0px; margin: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: none; padding-top: 0px" id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:1647c840-c48b-425e-9a6b-1589b7350968" class="wlWriterEditableSmartContent"><div id="c3212975-384f-47da-863d-716509ed5923" style="margin: 0px; padding: 0px; display: inline;"><div><a href="http://www.youtube.com/watch?v=YF6hb1iUbEE&amp;feature=youtube_gdata_player" target="_new"><img src="http://lh3.ggpht.com/_QXPoKuE9q6k/TJelFE3LP5I/AAAAAAAAF1Q/Wj0oXMxLKxo/videoe42ea2d1ee5b%5B2%5D.jpg?imgmax=800" style="border-style: none" galleryimg="no" onload="var downlevelDiv = document.getElementById('c3212975-384f-47da-863d-716509ed5923'); downlevelDiv.innerHTML = &quot;&lt;div&gt;&lt;object width=\&quot;425\&quot; height=\&quot;355\&quot;&gt;&lt;param name=\&quot;movie\&quot; value=\&quot;http://www.youtube.com/v/YF6hb1iUbEE&amp;hl=en\&quot;&gt;&lt;\/param&gt;&lt;embed src=\&quot;http://www.youtube.com/v/YF6hb1iUbEE&amp;hl=en\&quot; type=\&quot;application/x-shockwave-flash\&quot; width=\&quot;425\&quot; height=\&quot;355\&quot;&gt;&lt;\/embed&gt;&lt;\/object&gt;&lt;\/div&gt;&quot;;" alt=""></a></div></div></div>  <p>And, of course, it needed to play along nicely with MVVM. And therefore it has three bindable properties:</p>  <ul>   <li>Items: an IList of basically anything </li>    <li>SelectedItem: the currently selected item in Items </li>    <li>DisplayText: (optional): the name property of the objects in Items which value should be used in de SwipeTitle. If skipped, the ToString() value of the objects is used as a display value. </li> </ul>  <p>It does not sport item or data templates (yet) – it’s just meant to be plug and play. For now. </p>  <p><span style="font-size: 130%">Usage</span></p>  <p>You only have to do six things to use this thing:</p>  <ul>   <li>Create an empty Windows Phone 7 application </li>    <li>Add the LocalJoost.Controls project included in the <a href="http://www.schaikweb.net/dotnetbyexample/SwipeSample.zip" target="_blank">demo solution</a> to your project. </li>    <li>Create some kind of model with a property containing a list of objects and a property containing a selected object and bind it to the layout root</li>    <li>Drag the SwipeTitle control on the design surface at the place of the TextBox called “PageTitle” (and remove PageTitle)</li>    <li>Bind property Items, SelectedItem and DisplayText as needed</li>    <li>Make sure the Width property of the StackPanel “TitlePanel” is some large width, e.g. 2000. </li> </ul>  <p>Below is a short walkthrough of the source. Those who just want to use it, can <a href="http://www.schaikweb.net/dotnetbyexample/SwipeTitle.zip" target="_blank">just grab the source</a>. If you want a simple sample application showing the usage of the control, just <a href="http://www.schaikweb.net/dotnetbyexample/SwipeSample.zip" target="_blank">grab this solution</a> and see how it works. I sincerely apologize for the sheer silliness of the demo solution, it was all I could think of on short notice.</p>  <p><span style="font-size: 130%">Walkthrough</span></p>  <p>The XAML is pretty simple: three TextBlocks in a horizontal StackPanel:</p>  <pre style="font-size: 8.5pt">&lt;UserControl x:Class=&quot;WP7Viewer.SwipeTitle&quot;
+  xmlns=&quot;http://schemas.microsoft.com/winfx/2006/xaml/presentation&quot;
+  xmlns:x=&quot;http://schemas.microsoft.com/winfx/2006/xaml&quot;
+  xmlns:d=&quot;http://schemas.microsoft.com/expression/blend/2008&quot;
+  xmlns:mc=&quot;http://schemas.openxmlformats.org/markup-compatibility/2006&quot;
+  mc:Ignorable=&quot;d&quot;
+  FontFamily=&quot;{StaticResource PhoneFontFamilyNormal}&quot;
+  FontSize=&quot;{StaticResource PhoneFontSizeNormal}&quot;
+  Foreground=&quot;{StaticResource PhoneForegroundBrush}&quot;
+  d:DesignHeight=&quot;480&quot; d:DesignWidth=&quot;480&quot;&gt;
+    &lt;StackPanel Grid.Row=&quot;1&quot; Orientation=&quot;Horizontal&quot; x:Name=&quot;pnlSwipe&quot;&gt;
+      &lt;TextBlock x:Name=&quot;tbPrevious&quot;
+          Foreground=&quot;Gray&quot;
+           Text=&quot;Previous&quot; 
+           Margin=&quot;0,0,0,0&quot;
+           Style=&quot;{StaticResource PhoneTextTitle1Style}&quot;&gt;
+      &lt;/TextBlock&gt;
+    &lt;TextBlock x:Name=&quot;tbCurrent&quot;
+           Text=&quot;Current&quot; 
+           Margin=&quot;20,0,0,0&quot;
+           Style=&quot;{StaticResource PhoneTextTitle1Style}&quot;&gt;
+       &lt;/TextBlock&gt;
+    &lt;TextBlock x:Name=&quot;tbNext&quot;
+          Foreground=&quot;Gray&quot;
+           Text=&quot;Next&quot; 
+           Margin=&quot;20,0,0,0&quot;
+           Style=&quot;{StaticResource PhoneTextTitle1Style}&quot;&gt;
+      &lt;/TextBlock&gt;
+    &lt;/StackPanel&gt;
+&lt;/UserControl&gt;</pre>
+
+<p>You can swipe endlessly left or right, when it comes to the end or the start of the list it just adds the items from the start or the end again. The middle text is the selected object, and is always shown (in white). When you swipe the text to the left, it animates the swipe to completion: the text previously on the <em>right</em>, which you swiped into view, is now displayed in the middle TextBlock. The text that used to be in the middle block, is now in the left, and in the right TextBlock a new text from Items is displayed, as shown in the video. </p>
+
+<p>Now how does this work? If you know how to do it, it is – as everything – pretty simple. First, some boring stuff, the class definition with some members and dependency properties:</p>
+
+<pre style="font-size: 8.5pt">using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+
+namespace WP7Viewer
+{
+    public partial class SwipeTitle
+    {
+       /// &lt;summary&gt;
+       /// An internal linked list to make searching easier
+       /// &lt;/summary&gt;
+       private LinkedList&lt;object&gt; _displayItems;
+       private TranslateTransform _transform;
+       private int _currentDisplayItem = 1; 
+     
+      #region Items
+      /// &lt;summary&gt;
+      /// Dependency property holding the items selectable in this control
+      /// &lt;/summary&gt;
+      public static readonly DependencyProperty ItemsProperty =
+         DependencyProperty.Register(&quot;Items&quot;, typeof(IList),
+         typeof(SwipeTitle), new PropertyMetadata(ItemsChanged));
+
+      private static void ItemsChanged(object sender, 
+        DependencyPropertyChangedEventArgs args)
+      {
+        var c = sender as SwipeTitle;
+        if (c != null) {  c.ProcessItemsChanged(); }
+      }
+
+      public IList Items
+      {
+        get { return (IList)GetValue(ItemsProperty); }
+        set { SetValue(ItemsProperty, value); }
+      }
+
+      public void ProcessItemsChanged()
+      {
+        _displayItems = new LinkedList&lt;object&gt;();
+        foreach (var obj in Items) _displayItems.AddLast(obj);
+        SelectedItem = Items[0];
+      }
+      #endregion
+
+      #region SelectedItem
+      /// &lt;summary&gt;
+      /// Dependency property holding the currently selected object
+      /// &lt;/summary&gt;
+      public static readonly DependencyProperty SelectedItemProperty =
+         DependencyProperty.Register(&quot;SelectedItem&quot;, typeof(object),
+         typeof(SwipeTitle), new PropertyMetadata(SelectedItemChanged));
+
+      private static void SelectedItemChanged(object sender, 
+        DependencyPropertyChangedEventArgs args)
+      {
+        var c = sender as SwipeTitle;
+        if (c != null) { c.ProcessSelectedItemChanged(); }
+      }
+
+      // .NET Property wrapper
+      public object SelectedItem
+      {
+        get { return (object)GetValue(SelectedItemProperty); }
+        set { SetValue(SelectedItemProperty, value); }
+      }
+
+      public void ProcessSelectedItemChanged()
+      {
+        UpdateDisplayTexts();
+        ScrollToDisplayItem(1, false);
+      }
+      #endregion
+      
+      #region DisplayField
+      public string DisplayField
+      {
+        get { return (string)GetValue(DisplayFieldProperty); }
+        set { SetValue(DisplayFieldProperty, value); }
+      }
+
+      public static readonly DependencyProperty DisplayFieldProperty =
+        DependencyProperty.Register(&quot;DisplayField&quot;, typeof(string), 
+          typeof(SwipeTitle), null);
+      #endregion
+    }
+  }
+}</pre>
+
+<p>The transformation is used in the animation and to make sure the middle TextBlock is displayed when idle. I tend to tuck dependency properties in regions to keep stuff a bit organized, but feel free to do otherwise. Note, however, that the objects in Items are immediately copied in a LinkedList _displayItems – I use this list to make it easier to find previous and next objects.</p>
+
+<p>Then we need a little method to get the display text from the objects according to the value of “DisplayField”:</p>
+
+<pre style="font-size: 8.5pt">/// &lt;summary&gt;
+/// Retrieve the display value of an object
+/// &lt;/summary&gt;
+/// &lt;param name=&quot;displayObject&quot;&gt;&lt;/param&gt;
+/// &lt;returns&gt;&lt;/returns&gt;
+private string GetDisplayValue( object displayObject)
+{
+  if (DisplayField != null)
+  {
+    var pinfo = displayObject.GetType().GetProperty(DisplayField);
+    if (pinfo != null)
+    {
+      return pinfo.GetValue(displayObject, null).ToString();
+    }
+  }
+  return displayObject.ToString();
+}</pre>
+To show or update the displayed texts, according the object that is selected (in SelectedItem), the UpdateDisplayTexts method is needed. This is fired when Items or SelectedItem is changed. It finds SelectedItem and puts it in the middle TextBlock, and finds the texts that need to be before and after it, using the LinkedList _displayItems. 
+
+<pre style="font-size: 8.5pt">/// &lt;summary&gt;
+/// Shows (possible) new texts in the three text boxes
+/// &lt;/summary&gt;
+private void UpdateDisplayTexts()
+{
+  if (_displayItems == null) return;
+  if (SelectedItem == null)
+  {
+    SelectedItem = _displayItems.First.Value;
+  }
+  tbCurrent.Text = GetDisplayValue(SelectedItem);
+  var currentNode = _displayItems.Find(SelectedItem);
+  if (currentNode == null) return;
+  tbNext.Text =
+    GetDisplayValue(currentNode.Next != null ? 
+     currentNode.Next.Value : _displayItems.First.Value);
+  tbPrevious.Text =
+    GetDisplayValue(currentNode.Previous != null ? 
+     currentNode.Previous.Value : _displayItems.Last.Value);
+}</pre>
+
+<p>Now I need to set up and implement some events in the control:</p>
+
+<ul>
+  <li>The items must be initially displayed, after the control is loaded </li>
+
+  <li>When the user swipes the title, it must follow his finger </li>
+
+  <li>When the user stops swiping, it must decide whether the user has swiped far enough to select the next item (and if not, revert the swipe), and if the swipe was far enough, select the next item </li>
+
+  <li>When the next item is selected, show the new selected text in the middle again. </li>
+</ul>
+
+<pre style="font-size: 8.5pt">public SwipeTitle()
+{
+    InitializeComponent();
+    _transform = new TranslateTransform();
+
+    pnlSwipe.Loaded += (sender, args) =&gt; ProcessSelectedItemChanged();
+    pnlSwipe.ManipulationDelta += pnlSwipe_ManipulationDelta;
+    pnlSwipe.ManipulationCompleted += pnlSwipe_ManipulationCompleted;
+    pnlSwipe.RenderTransform = _transform;
+    tbPrevious.SizeChanged += tbPrevious_SizeChanged;
+}
+
+void pnlSwipe_ManipulationDelta(object sender, ManipulationDeltaEventArgs e)
+{
+    _transform.X += e.DeltaManipulation.Translation.X;
+}
+
+/// &lt;summary&gt;
+/// Caculates the screen width
+/// &lt;/summary&gt;
+private static double ScreenWidth
+{
+    get
+    {
+        var appFrame = Application.Current.RootVisual as Frame;
+        return null == appFrame ? 0.0 : appFrame.RenderSize.Width;
+    }
+}
+
+/// &lt;summary&gt;
+/// Fired after manipulation is completed. When the title has been moved over 25% of the
+/// screen, the next or previous item is selected
+/// &lt;/summary&gt;
+/// &lt;param name=&quot;sender&quot;&gt;&lt;/param&gt;
+/// &lt;param name=&quot;e&quot;&gt;&lt;/param&gt;
+void pnlSwipe_ManipulationCompleted(object sender, ManipulationCompletedEventArgs e)
+{
+    if (e.TotalManipulation.Translation.X &gt; .25 * ScreenWidth)
+    {
+        ScrollToDisplayItem(_currentDisplayItem - 1, true);
+    }
+    else if (e.TotalManipulation.Translation.X &lt; -.25 * ScreenWidth)
+    {
+        ScrollToDisplayItem(_currentDisplayItem + 1, true);
+    }
+    ScrollToDisplayItem(_currentDisplayItem, true);
+}
+
+/// &lt;summary&gt;
+/// Fired when new data is put into the last object. 
+/// Rendering is then finished - the middle text is showed in the middle again
+/// &lt;/summary&gt;
+/// &lt;param name=&quot;sender&quot;&gt;&lt;/param&gt;
+/// &lt;param name=&quot;e&quot;&gt;&lt;/param&gt;
+void tbPrevious_SizeChanged(object sender, SizeChangedEventArgs e)
+{
+    ScrollToDisplayItem(1, false);
+}</pre>
+
+<p>In the constructor the members are initialized – particularly the transform – which is set to the StackPanel surrounding the three TextBlocks. When the user now swipes, the texts appear to follow him. When, in pnlSwipe_ManipulationCompleted, the user has dragged the text over more than 25% of the screen, it scrolls the text further until the newly selected items is fully into view. If the text value of the last box is changed, we need to reset the middle TextBlock in the center again – but now without animation, and so it will seem if the scrolling text suddenly changes in color and appears to be selected.</p>
+
+<p>Notice a little gem in here – the ScreenWidth property. It turns out you can determine the actual screensize by trying to cast the RootVisual to a Frame, and then check it’s RenderSize.</p>
+
+<p>All that is left now, basically, is the implementation of ScrollToDisplayItem – and a companion method, as shown below:</p>
+
+<pre style="font-size: 8.5pt">/// &lt;summary&gt;
+/// Scrolls to one of the 3 display items
+/// &lt;/summary&gt;
+/// &lt;param name=&quot;item&quot;&gt;0,1 or 2&lt;/param&gt;
+/// &lt;param name=&quot;animate&quot;&gt;Animate the transition&lt;/param&gt;
+void ScrollToDisplayItem(int item, bool animate)
+{
+  _currentDisplayItem = item;
+  if (_currentDisplayItem &lt; 0) _currentDisplayItem = 0;
+  if (_currentDisplayItem &gt;= pnlSwipe.Children.Count)
+  {
+    _currentDisplayItem = pnlSwipe.Children.Count - 1;
+  }
+  var totalTransform = 0.0;
+  for (var counter = 0; counter &lt; _currentDisplayItem; counter++)
+  {
+    double leftMargin = 0;
+    if (counter + 1 &lt; pnlSwipe.Children.Count)
+    {
+      leftMargin = 
+        ((Thickness)(pnlSwipe.Children[counter + 1].GetValue(MarginProperty))).Left;
+    }
+    totalTransform += 
+      pnlSwipe.Children[counter].RenderSize.Width + leftMargin;
+  }
+  var whereDoWeGo = -1 * totalTransform;
+
+  if (animate)
+  {
+    //Set up the storyboard and animate the transition
+    var sb = new Storyboard();
+    var anim = 
+      new DoubleAnimation
+      {
+        From = _transform.X,
+        To = whereDoWeGo,
+        Duration = new Duration(
+          TimeSpan.FromMilliseconds(Math.Abs(_transform.X - whereDoWeGo)))
+      };
+    Storyboard.SetTarget(anim, _transform);
+    Storyboard.SetTargetProperty(anim, new PropertyPath(TranslateTransform.XProperty));
+    sb.Children.Add(anim);
+    sb.Completed += sb_Completed;
+    sb.Begin();
+  }
+  else
+  {
+    _transform.X = whereDoWeGo;
+  }
+}
+
+/// &lt;summary&gt;
+/// Fired when an animation is completed. Then a new items must be selected
+/// &lt;/summary&gt;
+/// &lt;param name=&quot;sender&quot;&gt;&lt;/param&gt;
+/// &lt;param name=&quot;e&quot;&gt;&lt;/param&gt;
+void sb_Completed(object sender, EventArgs e)
+{
+  if (SelectedItem != null)
+  {
+    var currentNode = _displayItems.Find(SelectedItem);
+    if (_currentDisplayItem == 0)
+    {
+      SelectedItem = (currentNode.Previous != null ? 
+                       currentNode.Previous.Value : _displayItems.Last.Value);
+    }
+    if (_currentDisplayItem == 2)
+    {
+      SelectedItem = (currentNode.Next != null ? 
+                       currentNode.Next.Value : _displayItems.First.Value);
+    }
+    UpdateDisplayTexts();
+  }
+}</pre>
+
+<p>In ScrollToDisplayItem the text is either moved or animated in the right direction, and when the animation is finished, the TextBlocks are updated with values according to the swipe direction. If no animation is needed – which occurs initially, or after the texts are updated – the transform is simply applied in stead of animated.</p>
+
+<p><span style="font-size: 130%">Credits</span></p>
+Important parts of the code came into being during a joint hacking evening at <a href="http://www.sevensteps.com" target="_blank">Sevensteps</a> in Amersfoort, Netherlands, at August 31 2010. My sincere thanks to <a href="http://twitter.com/sevensteps" target="_blank">Bart Rozendaal</a>, <a href="http://twitter.com/kleimeer" target="_blank">Kees Kleimeer</a> and <a href="http://twitter.com/pbijdens" target="_blank">Pieter-Bas IJdens</a>, all of Sevensteps, who basically coded the method pnlSwipe_ManipulationCompleted and the property ScreenWidth, almost all of the ScrollToDisplayItem method, and in addition supported me with wine, snacks and enjoyable company during that memorable evening. 
+
+  

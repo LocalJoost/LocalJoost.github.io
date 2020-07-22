@@ -1,0 +1,101 @@
+---
+layout: post
+title: Compacting C# code using implicit properties, object initialization and lambda
+  expressions
+date: '2008-01-14T20:47:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Lambda expressions
+- C#
+- Implicit properties
+- Object initialization
+- C# 3.0
+- Visual Studio 2008
+modified_time: '2008-12-04T21:19:13.128+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-843575546606536247
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2008/01/compacting-c-code-using-implicit.html
+---
+
+Not exactly hot science anymore - most could be distilled from <a href="http://weblogs.asp.net/scottgu/default.aspx">Scott Guthrie's blog</a> and numerous others, but this shows how you can use new C# 3.0 features to compact your code and make it more readable at the same time
+
+Suppose you have a simple person class sporting a first name, a last name and a birthdate. In the old days you would make something like this:
+<pre>public class Person
+{
+    string _firstName;
+    string FirstName
+    {
+        get
+        {
+            return _firstName;
+        }
+        set
+        {
+            _firstName = value;
+        }
+    }
+
+    string _lastName;
+    string LastName
+    {
+        get
+        {
+            return _lastName;
+        }
+        set
+        {
+            _lastName = value;
+        }
+    }
+
+    DateTime _birthDate;
+    DateTime BirthDate
+    {
+        get
+        {
+            return _birthDate;
+        }
+        set
+        {
+            _birthDate = value;
+        }
+    }
+}</pre>To create a list of these objects would be something like
+<pre>List&lt;Person&gt; opList = new List&lt;Person&gt;
+Person p1 = new Person();
+p1.FirstName = "Joost";
+p1.LastName = "van Schaik"
+p1.BirthDate = new DateTime( 1969,06,03);
+opList.Add( p1);
+// etc.
+</pre>To make things easier for you class user you could provide it with constructors, but as the numbers of properties grow, so does the number of (potential) constructors.
+
+To actually do something with the resulting list, you could do a foreach( OPerson p in opList) etc, or write something like this:<pre>l.ForEach(delegate(Person p)
+{
+  Console.WriteLine(p.FirstName);
+});</pre>It works but I always thought this to be a bit of an awkward way of making predicates
+
+<span style="font-size:130%;">Implicit properties</span>
+For a class as simple as the Person, you don't need to define 'backing variables anymore. These are inferred from code. Therefore, we can refactor the person class like this:<pre>public class Person
+{
+    public Person()
+    {
+    }
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public DateTime BirthDate { get; set; }
+}</pre>That's rather compact, I'd say
+
+<span style="font-size:130%;">Object initalization</span>
+The creation and initalization of a object can be written as follows:
+<pre>Person p1 = new Person { FirstName = "Joost", LastName = "van Schaik", BirthDate=new DateTime( 1969, 06, 03)});
+</pre>And while we are at it, the creation of a <em>list</em> of persons could be even simpler:
+<pre>List&lt;Person&gt; l= new List&lt;Person&gt;
+{
+    new Person { FirstName = "Joost", LastName = "van Schaik", BirthDate=new DateTime( 1969, 06, 03)},
+    new Person { FirstName = "John", LastName = "Doe", BirthDate = new DateTime(1970, 01, 01) },
+    new Person { FirstName = "Michel", LastName = "van Schaik", BirthDate = new DateTime(1970, 12, 25) }
+};
+</pre><span style="font-size:130%;">Lambda expressions</span>
+And finally, picking out the first name myself and my family members would require only one line:<pre>List&lt;Person&gt; vanSchaik = l.FindAll(p => p.LastName == "van Schaik");</pre>And writing them out, too
+<pre>vanSchaik.ForEach(p => Console.WriteLine(p.FirstName));</pre><span style="font-size:130%;">Conclusion</span>
+The new features of C# can be used to make code more compact and better readable at the same time. Lambda expressions is certainly something you need to get used to reading, but for simple expressions they make life a heck of a lot easier. Complex expressions are hard to understand and read, though. Keep in mind that the next programmer may have a hard time reading your code, so don't use it just for the sake of it.

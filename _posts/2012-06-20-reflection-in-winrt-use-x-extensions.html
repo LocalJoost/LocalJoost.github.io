@@ -1,0 +1,28 @@
+---
+layout: post
+title: 'Reflection in WinRT: use Rx Extensions for dynamically adding event handlers'
+date: '2012-06-20T13:21:00.001+02:00'
+author: Joost van Schaik
+tags:
+- reflection
+- Reactive
+- dotnetmag
+- Rx
+- Windows 8
+- WinRt
+- Win8nl
+modified_time: '2012-06-20T13:35:32.127+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1701252590584447303
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/06/reflection-in-winrt-use-x-extensions.html
+---
+
+<p>Suppose you want to add an event handler, but you don’t know up front which event. Admittedly, this is a bit of an edge case, but I have used it in a behavior that starts a storyboard upon an event (I will publish that later). The designer can specify the event using a string value in XAML, so I cannot simply use object.MyEvent += (handler). We need reflection here.</p> <p>So suppose you have found the event in the object using the GetRuntimeXXX methods <a href="http://dotnetbyexample.blogspot.nl/2012/06/reflection-in-winrt-declaredproperties.html" target="_blank">like I described earlier today</a>, and want to dynamically add a handler to the event “MyEvent”:</p><pre>var evt = MyObject.GetType().GetRuntimeEvent("MyEvent");
+evt.AddEventHandler(MyObject, 
+  new EventHandler<routedeventargs>((p, q) =&gt; {// your code here }));</pre>
+<p>This will compile, and even run - unless the object is, for instance, a Grid, and the event “Loaded”. That’s apparently a “<a href="http://msdn.microsoft.com/en-us/library/windows/apps/br211377.aspx?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">WinRT</a> event”, whatever that may be, and this will result in a runtime exception:</p>
+<p><strong>"Adding or removing event handlers dynamically is not supported on WinRT events."</strong></p>
+<p><strike>Googling</strike> Binging this message leads to all kind of complicated solutions using the WindowsRuntimeMarshall class (without any samples, alas), but the solution turns out to be very simple: use <a href="http://blogs.msdn.com/b/rxteam/archive/2012/03/12/reactive-extensions-v2-0-beta-available-now.aspx??ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Rx Extensions Beta for Windows RT</a>. For the really lazy reader: click tools/Library Package Manager/Package Manager Console and enter “Install-Package Rx-Main –Pre” in the Package Manager Console.</p>
+<p>Now add </p><pre>using System.Reactive.Linq;</pre>
+<p>to the top of the code file and then simply use the following code:</p><pre>Observable.FromEventPattern&lt;RoutedEventArgs&gt;(MyObject, "MyEvent")
+  .Subscribe(se =&gt; { // your code here });</pre>
+<p>and you are done. The difference between ordinary events and “WinRT events” is apparently swallowed up in the bowels of Rx. This library is great to begin with, but if it saves you the trouble of digging in yet another still not very thoroughly documented API, it’s even better. As a bonus, by very nature of Rx the handler is automatically disposed of when your calling object goes out of scope, which is not necessarily the case in my first code. But that did not work anyway ;-)</p>  

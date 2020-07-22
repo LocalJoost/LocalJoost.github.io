@@ -1,0 +1,79 @@
+---
+layout: post
+title: 'AngularJS + TypeScript: how to implement validation'
+date: '2014-08-06T21:12:00.001+02:00'
+author: Joost van Schaik
+tags:
+- TypeScript
+- Angularjs
+modified_time: '2014-08-07T12:32:14.423+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8601457040674097994
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/08/angularjs-typescript-how-to-implement.html
+---
+
+<h2>Preface</h2> <p>AngularJs supports all kinds of simple client-side validation. The simplest is data-ng-required which basically says a UI element must be filled in before the form is valid. I am picking up where I <a href="http://dotnetbyexample.blogspot.com/2014/07/angularjs-typescript-using-resource-to.html" target="_blank">left off in my previous post</a> – I am going to make the the phone input screen have validation.</p> <h2>Adapting the view</h2> <p>First of all we are going to tweak the view a little. This is just standard AnguarJS stuff, nothing <a href="http://www.typescriptlang.org/" target="_blank">TypeScript</a> specific here yet:</p><pre style="font-size: 11px">&lt;div&gt;
+  &lt;div&gt;
+    Phones
+    &lt;div data-ng-repeat="phone in listOfPhones"&gt;
+      &lt;div&gt;Name: {{ "{{" }}phone.name}}; screen size: {{ "{{" }}phone.screenSize}}"&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;button data-ng-click="phoneController.doLoadPhones()"&gt;Load phones from server&lt;/button&gt;
+  &lt;br /&gt;&lt;br /&gt;
+  Add a new phone&lt;br /&gt;
+  <u><font color="#ff0000">&lt;div data-ng-form="phoneform" class="css-form"&gt;</font></u>
+    &lt;label for="name" style="width:40px"&gt;Name&lt;/label&gt;
+    &lt;input id="name" type="text" data-ng-model="newPhone.name"
+           <font color="#ff0000"><u>data-ng-required="true"</u></font> /&gt;&lt;br /&gt;
+    &lt;label for="name" style="width:40px"&gt;Size&lt;/label&gt;
+    &lt;input id="screensize" type="text" data-ng-model="newPhone.screenSize"
+           <font color="#ff0000"><u>data-ng-required="true"</u></font> /&gt;&lt;br /&gt;
+    &lt;button data-ng-click="phoneController.doSavePhone()"
+            <u><font color="#ff0000">data-ng-disabled="!phoneController.canSave()"</font></u>&gt;
+      Save
+    &lt;/button&gt;
+  <font color="#ff0000"><u>&lt;/div&gt;</u></font>
+&lt;/div&gt;</pre>
+<p>I have underlined and written in red what is new:</p>
+<ul>
+<li>A wrapper div with a form name and a css class 
+<li>data-ng-required attribute, one on each field 
+<li>A data-ng-disabled attribute on the button that will enable/disable it when the input is not valid.</li></ul>
+<h2>Adapting the scope</h2>
+<p>Just like anormal AngularJS (based on JavaScript), the scope will now be extended with a property named “phoneform” – for that is how we called the form. So we need to adapt the IPhoneScope like this:</p><pre>/// &lt;reference path="../models/iphone.ts" /&gt;
+module App.Scope {
+    "use strict";
+
+    export interface IPhoneScope {
+        listOfPhones: Models.IPhone[];
+        newPhone: Models.IPhone;
+        <font color="#ff0000"><u>phoneform: ng.IFormController</u></font>
+    }
+}</pre>
+<p>And once again we now have the advantage of a typed object.</p>
+<h2>Adapting the controller</h2>
+<p>This is also very simple: we need to create the canSave method. So in the PhoneController we add:</p><pre>public canSave(): boolean {
+    return this.$scope.phoneform.$valid;
+}</pre>
+<p>And that is basically most of what we need to do. </p>
+<h2>Adding some feedback css</h2>
+<p>Now to have some visual feedback to see if things are valid or not, we use (again) a standard AngularJS trick. In the view we have added the class “css-form” to the form. So we open the Site.css file in the content folder and add the following css:</p><pre>.css-form input.ng-invalid.ng-dirty {
+    background-color: #FA787E;
+}
+
+.css-form input.ng-valid.ng-dirty {
+    background-color: #78FA89;
+}
+</pre>
+<h2>Testing the validation</h2>
+<p>If you run the app (after emptying your cache) you will notice you cannot click the save button initially:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/AngularJS--TypeScript-how-to-implement-f_119E6/image.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/AngularJS--TypeScript-how-to-implement-f_119E6/image_thumb.png" width="244" height="204"></a></p>
+<p>If you enter phone name, the field will become greenish. If you type something in the screen size field and then delete it again, the field will become reddish, and the button is still disabled.</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/AngularJS--TypeScript-how-to-implement-f_119E6/image_3.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/AngularJS--TypeScript-how-to-implement-f_119E6/image_thumb_3.png" width="244" height="207"></a></p>
+
+<p>Only when both fields are filled in the save button is enabled</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/AngularJS--TypeScript-how-to-implement-f_119E6/image_4.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/AngularJS--TypeScript-how-to-implement-f_119E6/image_thumb_4.png" width="244" height="207"></a></p>
+<h2>An interesting way to mess up validation – or a bug?</h2>
+<p>According to numerous samples I saw, you don’t need to write data-ng-required=”true”. Just entering data-ng-required (or plain ng-required) should work as well. It does – your field is invalid when it is empty. Trouble is, if you enter data <em>and then delete it again</em>, the field <em>stays</em> valid – and the form too, and you can hit the save button with one empty field. I have no idea if that is a bug in the version of AnguarJS I use, or if this recently has been changed – but please make sure you write <strong>data-ng-required=”true”</strong> </p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/atsdemo4.zip" target="_blank">Demo solution can be found here</a></p>  

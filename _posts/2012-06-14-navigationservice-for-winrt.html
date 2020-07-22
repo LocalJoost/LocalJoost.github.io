@@ -1,0 +1,94 @@
+---
+layout: post
+title: NavigationService for WinRT
+date: '2012-06-14T21:16:00.001+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- MVVM
+- Windows 8
+- WinRt
+- MVVM Light
+modified_time: '2012-06-15T16:11:37.935+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2442819628879610505
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/06/navigationservice-for-winrt.html
+---
+
+<p><font color="#666666"><em>"If I have been able to see further than others, it is because I have stood on the shoulders of giants.</em>" <br>&nbsp;<em><font size="1">Isaac Newton</font></em></font></p> <p>It was only 1.5 years ago, but it seems already a long time ago that <a href="http://www.twitter.com/lbugnion" target="_blank">Laurent Bugnion</a> described a “view service” for <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> navigation, commonly know as the <a href="http://geekswithblogs.net/lbugnion/archive/2011/01/06/navigation-in-a-wp7-application-with-mvvm-light.aspx" target="_blank">NavigationService</a>. I’ve incorporated this code in my <a href="http://twitter.com/#!/search/%23wp7nl" target="_blank">#<a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a>&nbsp;</a>and have been using it happily ever since (and a lot of other people I know have been doing so as well), Time goes on, along came <a href="http://windows.microsoft.com/en-US/windows-8/consumer-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> and <a href="http://msdn.microsoft.com/en-us/library/windows/apps/br211377.aspx?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">WinRT</a> and Metro Style Apps.</p> <p>Laurent ported his <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> framework to WinRT as well. But the NavigationService never has been a core part of MVVMLight (therefore I put it in the #wp7nl library) and porting it to WinRT as well proved to be a bit of a hassle. Some of its premises where no longer valid – most notable the way to retrieve the main application frame by accessing Application.Current.RootVisual, which does not work in WinRT. I messed around a little with the code, did not get anywhere, and left it there. So I was glad I saw my fellow Windows Phone Development MVP <a href="http://www.twitter.com/qmatteoq" target="_blank">Matteo Pagani</a> tweet he got a NavigationService to work. He was kind enough to mail me the code. He basically copied the code from Windows Phone and made the apps rootFrame, as created in the App.xaml.cs, publicly available. A neat trick, with as only drawback that you have to copy the code to every app. As things goes, it’s usually easier to see someone else’s idea and improve it, than think it up out of the blue. I toyed around with it and managed to get rid of the need to copy the code, so I could put it in a library.</p> <p>And here it is, an improved version of a NavigationService for WinRT, based upon Matteo’s code based upon Laurent’s code ;-)</p> <p>First of all, the NavigationService’s interface:</p><pre>using System;
+using Windows.UI.Xaml.Navigation;
+
+namespace Win8nl.Services
+{
+  public interface INavigationService
+  {
+    event NavigatingCancelEventHandler Navigating;
+    void Navigate(Type type);
+    void Navigate(Type type, object parameter);
+    void Navigate(string type);
+    void Navigate(string type, object parameter);
+    void GoBack();
+  }
+}</pre>
+<p>This quite looks like the old interface, with some notable exceptions. First of all, the NavigateTo method is renamed Navigate, to mimic the method name used in WinRT itself. And it has not one but four overloads. The first two are pretty logical – WinRT does not use an uri for navigation, but an actual Type object, making strongly-typed navigation possible. And it supports an overload for a parameter object, as well. The two other methods, with the string type object… well see for yourself below, in the implementation of the service:</p><pre>using System;
+using Windows.UI.Xaml;
+using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Navigation;
+
+namespace Win8nl.Services
+{
+  public class NavigationService : INavigationService
+  {
+  public NavigationService(Frame mainFrame)
+  {
+    _mainFrame = mainFrame;
+  }
+
+  private Frame _mainFrame;
+  
+  public event NavigatingCancelEventHandler Navigating;
+
+  public void Navigate(Type type)
+  {
+    _mainFrame.Navigate(type);
+  }
+
+  public void Navigate(Type type, object parameter)
+  {
+    _mainFrame.Navigate(type, parameter);
+  }
+
+  public void Navigate(string type, object parameter)
+  {
+    _mainFrame.Navigate(Type.GetType(type), parameter);
+  }
+
+  public void Navigate(string type)
+  {
+    _mainFrame.Navigate(Type.GetType(type));
+  }
+
+  public void GoBack()
+  {
+    if (_mainFrame.CanGoBack)
+    {
+      _mainFrame.GoBack();
+    }
+  }  
+}
+</pre>
+<p>So the string type methods allow you to specify the page to navigate by string. Before you all think I really lost my marbles this time, re-introducing weakly typed navigation just as the Windows team introduced strongly typed: I specifically added this as to allow navigation to be initiated from a ViewModel contained in an assembly <em>not</em> containing the XAML code. This also enables you to test code as well. This is the way I built my solutions for Windows Phone, and I intend to go on this way in Windows 8. ;-)</p>
+<p>Anyway, there’s a thing missing in this code: the EnsureMainFrame that looked up the root page, for which Matteo used a public property. I completely removed it, and added a constructor accepting that root page. By creating that constructor I deleted the default constructor, so registering the NavigationService at he SimpleIoc container shipped with MVVMLight in the App.xaml.cs, like this:</p><pre>SimpleIoc.Default.Register&lt;INavigationService, Wp7nl.Utilities.NavigationService&gt;();</pre>
+<p>as we did in Windows Phone code, won’t work anymore. Fortunately, SimpleIoc also supports <em>factory methods</em> to create an instance. So now you go to the App.xaml.cs of your Windows 8 app, find the OnLaunched method and just behind this line:</p><pre>var rootFrame = new Frame();</pre>
+<p>you add this piece of code:</p><pre>SimpleIoc.Default.Register&lt;INavigationService&gt;(() =&gt; 
+                                   {return new NavigationService(rootFrame);});</pre>
+<p>Now if your XAML code and ViewModels are all in one assembly, you can call the NavigationService to navigate to the main page this:</p><pre>SimpleIoc.Default.GetInstance&lt;INavigationService&gt;().Navigate(typeof(MainPage));</pre>
+<p>or if you are a bit stubborn like me and would like to separate ViewModels and views, you can use the string overload to specify the <em>full qualified name</em> and for instance use it in a ViewModel command like this</p><pre style="font-size: 11px">public ICommand TestNavigatieCommand
+{
+   get
+   {
+     return new RelayCommand(() =&gt; 
+       SimpleIoc.Default.GetInstance&lt;INavigationService&gt;().Navigate("MyApp.MainPage,MyApp"));
+   }
+}</pre>
+<p>And there you have, a fully functional NavigationService for Windows 8. Code can be downloaded <a href="http://www.schaikweb.net/dotnetbyexample/NavigationServiceRT.zip" target="_blank">here</a>. I will soon incorporate it in the <a href="http://win8nl.codeplex.com/" target="_blank">provisional port of the #wp7nl library called win8nl</a>.</p>
+<p>Thanks to Laurent and Matteo for being my trailblazers ;-)</p>

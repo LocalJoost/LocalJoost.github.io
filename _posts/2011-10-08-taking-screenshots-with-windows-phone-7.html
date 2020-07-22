@@ -1,0 +1,166 @@
+---
+layout: post
+title: Taking screenshots with Windows Phone 7 applications using a video feed
+date: '2011-10-08T12:18:00.001+02:00'
+author: Joost van Schaik
+tags:
+- wpdev
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- Augmented Reality
+- XAML
+- WP7
+modified_time: '2016-02-08T20:45:37.207+01:00'
+thumbnail: http://lh6.ggpht.com/-KV0UoHzicKI/TpAjeGepkVI/AAAAAAAAG3M/7TQ8vFESJQM/s72-c/Screenshooter_634536668888930000_thumb%25255B1%25255D.jpg?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6443499404109428068
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/10/taking-screenshots-with-windows-phone-7.html
+---
+
+<p>The Marketplace screenshot tool that came with the Windows Phone 7.1 SDK made life for developers a whole lot easier. But suppose you want to enable users to make screenshots from their application in action? This article shows you how.</p> <p>First of all, the easy part. The framework allows you to make a screen capture by making a WriteableBitmap from a user interface element in a pretty simple way. Create a new Windows Phone application, and select framework version 7.1. Then add a reference to Microsoft.Xna.Framework.dll. Enter the following XAML in your MainPage.xaml</p><pre>&lt;Grid x:Name="LayoutRoot"&gt;
+  &lt;Grid&gt;
+    &lt;Grid.Background&gt;
+      &lt;ImageBrush x:Name="BackgroundImageBrush"
+      Stretch="UniformToFill" ImageSource="ScreenBackground.jpg" 
+   AlignmentX="Left" AlignmentY="Top"/&gt;
+    &lt;/Grid.Background&gt;
+    &lt;Grid.RowDefinitions&gt;
+      &lt;RowDefinition Height="Auto"/&gt;
+      &lt;RowDefinition Height="*"/&gt;
+    &lt;/Grid.RowDefinitions&gt;
+
+    &lt;!--TitlePanel contains the name of the application and page title--&gt;
+    &lt;StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,17,0,28"&gt;
+      &lt;TextBlock x:Name="ApplicationTitle" Text="SCREENSHOOTER" 
+   Style="{StaticResource PhoneTextNormalStyle}" 
+          DoubleTap="ApplicationTitle_DoubleTap" Foreground="#FF0000" /&gt;
+      &lt;TextBlock x:Name="PageTitle" Text="hello world" Margin="9,-7,0,0" 
+   Style="{StaticResource PhoneTextTitle1Style}" Foreground="#FF0000" /&gt;
+    &lt;/StackPanel&gt;
+
+    &lt;!--ContentPanel - place additional content here--&gt;
+    &lt;Grid x:Name="ContentPanel" Grid.Row="1" Margin="12,0,12,0"&gt;
+      &lt;TextBlock Height="223" HorizontalAlignment="Left" Margin="52,169,0,0" 
+   Foreground="#FF0000" 
+          Text="Planeth Earth is blue and there's nothing I can do" 
+   VerticalAlignment="Top" FontSize="48" TextWrapping="Wrap" /&gt;
+    &lt;/Grid&gt;
+  &lt;/Grid&gt;
+&lt;/Grid&gt;</pre>
+<p>A pretty basic page with all texts in bright red and a background picture; this sample uses the background of <a href="http://www.windowsphone.com/en-us/apps/8b5f61a1-3ffa-df11-9264-00237de2db9e?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Map Mania</a>, about half of the globe as seen from space, but you can just use any 480x800 image. Then add just a little code to the MainPage.xaml.cs:</p><pre>private void ApplicationTitle_DoubleTap(object sender, GestureEventArgs e)
+{
+  TakeScreenShot();
+}
+
+private void TakeScreenShot()
+{
+  // Take a screenshot 
+  var screenshot = new WriteableBitmap(this, null);
+  var screenshotname = String.Format("Screenshooter_{0}", DateTime.Now.Ticks);
+  using (var ms = new MemoryStream())
+  {
+  screenshot.SaveJpeg(ms, 480, 800, 0, 85);
+  ms.Seek(0, SeekOrigin.Begin);
+
+  var library = new MediaLibrary();
+  var pic = library.SavePicture(screenshotname, ms);
+  }
+
+  MessageBox.Show(string.Concat("Screenshot saved as ", screenshotname));
+}</pre>
+<p><a href="http://lh5.ggpht.com/-CThwNILC4i0/TpAjdmzueNI/AAAAAAAAG3I/3A6NybfNsxQ/s1600-h/Screenshooter_634536668888930000%25255B3%25255D.jpg"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="Screenshooter_634536668888930000" border="0" alt="Screenshooter_634536668888930000" align="right" src="http://lh6.ggpht.com/-KV0UoHzicKI/TpAjeGepkVI/AAAAAAAAG3M/7TQ8vFESJQM/Screenshooter_634536668888930000_thumb%25255B1%25255D.jpg?imgmax=800" width="111" height="188"></a>This is your basic screenshooter. Double-tap the header and it makes a WriteableBitmap of the entire screen, saves it as a JPEG on a MemoryStream, and writes the result into a picture in the media library. The result looks something like displayed here on the right.</p>
+<p>
+<p>Once again this shows how simple things can be created in <a href="http://www.microsoft.com/windowsphone/" target="_blank">Windows Phone 7</a>. But although this application has some merits – for instance, to allow users of your App to create screenshots ‘in the field’, from a game situation or something like that – it’s pretty limited. Let’s make things a little bit more livelily and replace the static image by something more interesting – a live camera feed! </p>
+<p>This was <a href="http://dotnetbyexample.blogspot.com/2011/09/mango-augmented-reality-101-showing.html" target="_blank">already described earlier in this blog</a>, and applying the same technique, update the top part of the XAML a little:</p><pre>&lt;Grid x:Name="LayoutRoot"&gt;
+    &lt;Grid.Background&gt;
+      &lt;VideoBrush x:Name="BackgroundVideoBrush"
+          Stretch="UniformToFill" AlignmentX="Left" AlignmentY="Top"&gt;
+          &lt;VideoBrush.Transform&gt;
+            &lt;CompositeTransform Rotation="90" TranslateX="477"/&gt;
+          &lt;/VideoBrush.Transform&gt;
+      &lt;/VideoBrush&gt;
+    &lt;/Grid.Background&gt;
+    &lt;Grid&gt;
+      &lt;Grid.Background&gt;
+        &lt;ImageBrush x:Name="BackgroundImageBrush"
+        Stretch="UniformToFill" Opacity="0" AlignmentX="Left" AlignmentY="Top"&gt;
+          &lt;ImageBrush.Transform&gt;
+            &lt;CompositeTransform Rotation="90" TranslateX="477"/&gt;
+          &lt;/ImageBrush.Transform&gt;
+        &lt;/ImageBrush&gt;
+      &lt;/Grid.Background&gt;</pre>
+<p>The rest of the XAML is unchanged. Notice the ImageBrush stays – its Opacity is set to 0, it’s ImageSource tag is now empty and it gets the same transform applied to as the video brush. Why it’s not simply removed will become clear in a moment. Add a little code to the MainPage.xaml.cs </p><pre>PhotoCamera cam;
+
+protected override void OnNavigatedTo(NavigationEventArgs e)
+{
+  base.OnNavigatedTo(e);
+  cam = new PhotoCamera();
+  BackgroundVideoBrush.SetSource(cam);
+}
+
+protected override void OnNavigatedFrom(NavigationEventArgs e)
+{
+  base.OnNavigatedFrom(e);
+  cam.Dispose();
+}</pre>
+<p><a href="http://lh4.ggpht.com/-d7bi8NxURqc/TpAjejr5-xI/AAAAAAAAG3Q/9dqxM9JLkJU/s1600-h/Screenshooter_634536134540840000%25255B3%25255D.jpg"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="Screenshooter_634536134540840000" border="0" alt="Screenshooter_634536134540840000" align="right" src="http://lh5.ggpht.com/-n90fXuukKko/TpAjfJk4A5I/AAAAAAAAG3U/vF-hcum6bUQ/Screenshooter_634536134540840000_thumb%25255B1%25255D.jpg?imgmax=800" width="120" height="204"></a>Running this app on the phone will show the live camera feed displayed as a background and the texts floating over it. Double-tap the header again, and the result is …</p>
+<p>…not what you might expect, or at least not what you had hoped. The video feed is not being captured. To get this done, a little more trickery is needed. First, add two more methods to the MainPage.xaml.cs:</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p><pre>private void PrepareScreenShot()
+{
+  // Create capture buffer.
+  var ARGBPx = new int[(int)cam.PreviewResolution.Width * 
+                  (int)cam.PreviewResolution.Height];
+
+  // Copies the current viewfinder frame into a buffer.
+  cam.GetPreviewBufferArgb32(ARGBPx);
+
+  // Copy to preview image into a writable bitmap.
+  var wb = new WriteableBitmap((int)cam.PreviewResolution.Width, 
+                               (int)cam.PreviewResolution.Height);
+  ARGBPx.CopyTo(wb.Pixels, 0);
+  wb.Invalidate();
+
+  // Display that on the screen
+  BackgroundImageBrush.ImageSource = wb;
+  BackgroundImageBrush.Opacity = 1;
+}
+
+private void ContinueVideo()
+{
+  BackgroundImageBrush.Opacity = 0;
+  BackgroundImageBrush.ImageSource = null;
+}</pre>
+<p><a href="http://lh4.ggpht.com/-5PUle_4w2k0/TpAjfoBB4cI/AAAAAAAAG3Y/hm9AM9bgZmE/s1600-h/Screenshooter_634536149331290000%25255B4%25255D.jpg"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="Screenshooter_634536149331290000" border="0" alt="Screenshooter_634536149331290000" align="right" src="http://lh3.ggpht.com/-ALc8IPMdX8c/TpAjgJTaW8I/AAAAAAAAG3c/bZ0vzVYrhjc/Screenshooter_634536149331290000_thumb%25255B2%25255D.jpg?imgmax=800" width="107" height="190"></a>Then, add a call to “PrepareScreenShot” at the top of “TakeScreenShot”, and a call to “ContinueVideo” at the bottom of it. What this basically does is copy the viewfinder preview data into a buffer, make a WriteableBitmap of that, feed that to the as of yet transparent BackgroundImageBrush overlaying the video, and make that brush visible. Then, you have essentially a video-still beneath your texts and <em>that</em> will get screencaptured, as showed to the right – I took a picture of my monitor showing the code of the solution. After the screenshot is saved, BackgroundImageBrush is cleared and made transparent again -and the video feed becomes visible again, ready for the next shot.</p>
+<p>One last thing to add: by this time you may have noticed that double-tapping the screen is not the best way to take a picture – they tend go get a little blurry. That’s probably another reason why Microsoft made the camera button a mandatory Windows Phone feature, so lets use it. First, add a little code for processing the camera button events:</p><pre>void CameraButtons_ShutterKeyHalfPressed(object sender, EventArgs e)
+{
+  if (cam.IsFocusSupported)
+  {
+    cam.Focus();
+  }
+}
+
+void CameraButtons_ShutterKeyPressed(object sender, EventArgs e)
+{
+  TakeScreenShot();
+}</pre>
+<p>This brings about another little detail: the camera can get be given a focus command, but apparently not all cameras support this, so first ask the camera if it supports focus at all. Finally, make sure the camera button events are attached <em>and detached</em> at the right moment, so adapt the OnNavigatedTo and OnNavigatedFrom methods like this:</p><pre>protected override void OnNavigatedTo(NavigationEventArgs e)
+{
+  base.OnNavigatedTo(e);
+  cam = new PhotoCamera();
+  CameraButtons.ShutterKeyPressed += CameraButtons_ShutterKeyPressed;
+  CameraButtons.ShutterKeyHalfPressed += CameraButtons_ShutterKeyHalfPressed;
+  BackgroundVideoBrush.SetSource(cam);
+}
+
+protected override void OnNavigatedFrom(NavigationEventArgs e)
+{
+  base.OnNavigatedFrom(e);
+  CameraButtons.ShutterKeyPressed -= CameraButtons_ShutterKeyPressed;
+  CameraButtons.ShutterKeyHalfPressed -= CameraButtons_ShutterKeyHalfPressed;
+  cam.Dispose();
+}</pre>
+<p>And there you have it – a basic Augmented Reality Photo shooter.</p>
+<p>All the credits go to <a href="http://blogs.microsoft.nl/blogs/mhoekstra/default.aspx?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Matthijs Hoekstra</a> for laying the groundwork for this article with his <a href="http://www.windowsphone.com/en-us/apps/a5d4c59b-aef6-480d-abd9-8fea04bb3c04?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Rhino Vision</a> application - and supplying me with the full sources, so I only had to <strike>demolish</strike> refactor it into a basic understandable sample. I hope to see a boatload of ‘funny picture applications’ in the Marketplace soon.</p>
+<p>You can find the full source of the ScreenShooter sample app <a href="http://www.schaikweb.net/dotnetbyexample/screenshooter.zip" target="_blank">here</a>.</p>

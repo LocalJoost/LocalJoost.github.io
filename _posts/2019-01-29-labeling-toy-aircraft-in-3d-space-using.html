@@ -1,0 +1,82 @@
+---
+layout: post
+title: Labeling Toy Aircraft in 3D space using an ONNX model and Windows ML on a HoloLens
+date: '2019-01-29T20:58:00.000+01:00'
+author: Joost van Schaik
+tags:
+- Custom Vision
+- Windows Machine Learning
+- HoloLens
+- ONNX
+- Windows ML
+modified_time: '2019-01-31T20:22:04.801+01:00'
+thumbnail: https://i.ytimg.com/vi/DmPhKpKSne8/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2150943515188639045
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2019/01/labeling-toy-aircraft-in-3d-space-using.html
+---
+
+<h2>Intro</h2><p><a href="http://dotnetbyexample.blogspot.com/2018/11/using-azure-custom-vision-object.html" target="_blank"><img align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" src="https://www.schaikweb.net/blog/20190127/ONNX.png" border="0">Back in November</a> I wrote about a POC I wrote to recognize and label objects in 3D space, and used a Custom Vision Object Recognition project for that. Back then, as I wrote in my previous post, you could only use this kind of projects by uploading the images you needed to the model in the cloud. In the mean time, Custom Vision Object Recognition models can be downloaded in various formats - and one of them in ONNX, which can be used in Windows ML. And thus, it can be used to run on a <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> to do AI-powered object recognition. </p><p>Which is exactly what I am going to show you. In essence, the app still does the same as in November, but now it does not use the cloud anymore - the model is <em>trained and created</em> in the cloud, but can be executed on an edge device (in this case a HoloLens).</p><h2>The main actors</h2><p>These are basically still the same:</p><ul><li>CameraCapture
+watches for an air tap, and takes a picture of where you look<li>ObjectRecognizer
+receives the picture and feeds it to the 'AI', which is now a local process<li>ObjectLabeler shoots for the spatial map and places labels.</li></ul><p>As I said - the app is basically still the same as the previous version, only now it uses a local ONNX file.</p><h2>Setting up the project</h2><p>Basically you create a standard empty HoloLens project with the MRTK and configure it as you always do. Be sure to enable Camera capabilities, of course.</p><p>Then you simply download the ONNX file from you model. The procedure is described <a href="http://dotnetbyexample.blogspot.com/2019/01/adapting-custom-vision-object.html" target="_blank">in my previous post</a>. Then you need to place the model file (model.onnx) into a folder "StreamingResources" in the Unity project. This procedure is described in more detail <a href="https://blogs.msdn.microsoft.com/appconsult/2018/11/15/23535/" target="_blank">in this post</a> by <a href="https://social.msdn.microsoft.com/profile/Sebastien+Bovo" target="_blank">Sebastian Bovo</a> of the AppConsult team. He uses a different kind of model, but the workflow is exactly the same.</p><p>Be sure to adapt the ObjectDetection.cs file as I described in my <a href="http://dotnetbyexample.blogspot.com/2019/01/adapting-custom-vision-object.html" target="_blank">in my previous post</a>.</p><h2>Functional changes to the original project</h2><p>Like I said, the difference between this project and the online version are for the most part inconsequential. Functionally only one thing changed: in stead the app showing the picture that it took prior to starting the (online) model, it now sounds a click sound when you air tap to start the recognition process, and sounds either a pringg sound or a buzz sound, indicating the recognition process respectively succeeded (i.e. found at least toy aircraft) or failed (i.e. did not find an toy aircraft).</p><h2>Technical changes to the original project</h2><ul><li>The ObjectDetection file, downloaded from CustomVision.ai and <a href="http://dotnetbyexample.blogspot.com/2019/01/adapting-custom-vision-object.html" target="_blank">adapted for use in Unity</a>, has been added to the project</li><li>CustomVisonResult, containing all the JSON serialization code to deal with the online model, is deleted. The ObjectDetection file contains all classes we need</li><li>In all classes I have adapted the namespace from "CustomVison" *cough* to "CustomVision" (sorry, typo ;) ).</li><li>The ObjectDetection uses root class PredictionModel in stead of Predition, so that has been adapted in all files that use it. The affected classes are:</li><ul><li>ObjectRecognitionResultMessage</li><li>ObjectLabeler</li><li>ObjectRecognizer</li><li>PredictionExtensions</li></ul><li>Both CameraCapture and ObjectLabeler have sound properties and play sound on appropriate events</li><li>ObjectRecognizer has been extensively changed to use the local model. This I will describe in detail</li></ul><h2>Object recognition - the Windows ML way</h2><p>The first part of the ObjectRecognizer initializes the model</p><pre style="font-size: 12px;">using UnityEngine;
+#if UNITY_WSA &amp;&amp; !UNITY_EDITOR
+using System.Threading.Tasks;
+using Windows.Graphics.Imaging;
+using Windows.Media;
+#endif
+
+public class ObjectRecognizer : MonoBehaviour
+{
+#if UNITY_WSA &amp;&amp; !UNITY_EDITOR
+    private ObjectDetection _objectDetection;
+#endif
+
+    private bool _isInitialized;
+
+    private void Start()
+    {
+        Messenger.Instance.AddListener&lt;PhotoCaptureMessage&gt;(
+          p=&gt; RecognizeObjects(p.Image, p.CameraResolution, p.CameraTransform));<br>
+#if UNITY_WSA &amp;&amp; !UNITY_EDITOR
+        _objectDetection = new ObjectDetection(new[]{"aircraft"}, 20, 0.5f,0.3f );
+        Debug.Log("Initializing...");
+        _objectDetection.Init("ms-appx:///Data/StreamingAssets/model.onnx").ContinueWith<br>            (p =&gt;
+            {
+                Debug.Log("Intializing ready");
+                _isInitialized = true;
+            });
+#endif
+    }</pre><p>Notice, here, too the liberal use of preprocessor directives, just like <a href="http://dotnetbyexample.blogspot.com/2019/01/adapting-custom-vision-object.html" target="_blank">in my previous post</a>. In the start of it's method we create a model from the ONNX file that's in StreamingAssets, using the method I added to ObjectDetection. Since we can't make the start method awaitable, the ContinueWith needs to finish the initalization.</p><p>As you can see, the arrival of a PhotoCapture message from the CameraCapture behavior fires off RecognizeObjects, just like in the previous app.</p><pre style="font-size: 12px;">public virtual void RecognizeObjects(IList&lt;byte&gt; image, 
+                                     Resolution cameraResolution, 
+                                     Transform cameraTransform)
+{
+    if (_isInitialized)
+    {
+#if UNITY_WSA &amp;&amp; !UNITY_EDITOR
+        RecognizeObjectsAsync(image, cameraResolution, cameraTransform);
+#endif
+
+    }
+}</pre><p>But unlike the previous app, it does not fire off a Unity coroutine, but a private async method</p><pre style="font-size: 12px;">#if UNITY_WSA &amp;&amp; !UNITY_EDITOR
+private async Task RecognizeObjectsAsync(IList&lt;byte&gt; image, Resolution cameraResolution, Transform cameraTransform)
+{
+    using (var stream = new MemoryStream(image.ToArray()))
+    {
+        var decoder = await BitmapDecoder.CreateAsync(stream.AsRandomAccessStream());
+        var sfbmp = await decoder.GetSoftwareBitmapAsync();
+        sfbmp = SoftwareBitmap.Convert(sfbmp, BitmapPixelFormat.Bgra8, <br>                                       BitmapAlphaMode.Premultiplied);
+        var picture = VideoFrame.CreateWithSoftwareBitmap(sfbmp);<br>
+        var prediction = await _objectDetection.PredictImageAsync(picture);
+        ProcessPredictions(prediction, cameraResolution, cameraTransform);
+    }
+}
+#endif
+</pre><p>This method basically is 70% converting the raw bits of the image to something the ObjectDetection class's PredictImageAsync can handle. I have very much to thank <a href="https://stackoverflow.com/questions/35070622/photo-capture-stream-to-softwarebitmap" target="_blank">this post in the Unity forums</a> and <a href="https://blogs.msdn.microsoft.com/appconsult/2018/05/23/add-a-bit-of-machine-learning-to-your-windows-application-thanks-to-winml/" target="_blank">this post on the MSDN blog site</a> by my friend <a href="https://twitter.com/qmatteoq" target="_blank">Matteo Pagani</a> to piece this together. This is because I am a stubborn idiot - I want to take a picture in stead of using a frame of the video recorder, but then you have to convert the photo to a video frame.</p><p>The 2nd to last code actually calls the PredictImageAsync - essentially a black box for the app, and then the predictions are processed more or less like before:</p><pre style="font-size: 12px;">#if UNITY_WSA &amp;&amp; !UNITY_EDITOR
+private void ProcessPredictions(IList&lt;PredictionModel&gt;predictions, 
+                                Resolution cameraResolution, Transform cameraTransform)
+{
+    var acceptablePredications = predictions.Where(p =&gt; p.Probability &gt;= 0.7).ToList();
+    Messenger.Instance.Broadcast(
+       new ObjectRecognitionResultMessage(acceptablePredications, cameraResolution, 
+                                          cameraTransform));
+}
+#endif</pre><p>Everything with a probability lower than 70% is culled, and the rest is being send along to the messenger, where the ObjectLabeler picks it up again and starts shooting for the Spatial Map in the center of all rectangles in the predications to find out where the actual object may be in space.</p><iframe width="650" height="365" src="https://www.youtube.com/embed/DmPhKpKSne8" frameborder="0" allowfullscreen="" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"></iframe><h2>Conclusion</h2><p>I have had some fun experimenting with this, and the conclusions are clear:</p><ul><li>For a simple model as this, even with a fast internet connection, using a local model in stead of a cloud based model is <em>way</em> faster</li><li>Yet - the hit rate is notably lower - the cloud model is definitely more 'intelligent'. I suppose improvements to Windows ML will fix that in the near future. Also, the AI coprocessor the next release of HoloLens will undoubtedly contribute to both speed and accuracy. </li><li>With 74 pictures of a few model airplanes, almost all on the same background, my model is not nearly enough equipped to recognize random planes in random environments. This highlights a bit the crux of machine learning - you will need data, data more data and even more than that. </li><li>This method of training models in the cloud and executing them locally provides exiting new - an very usable - features for <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality</a> devices.</li></ul><p>Using Windows ML in edge devices is not hard, and on a HoloLens is only marginally harder because you have to circumvent an few differences between full UWP and Unity, and be aware of differences between C# 4.0 and C# 7.0. This can easily be addressed, as I showed before. </p><p>The complete project <a href="https://github.com/LocalJoost/ToyAircraftFinder/tree/WinML" target="_blank">can be found here (branch WinML)</a> - since in now operates without a cloud model it is actually runnable by everyone. I wonder if you can actually get it to recognize model planes you may have around. I've got it to recognize model planes up to about 1.5 meters.</p>

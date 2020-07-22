@@ -1,0 +1,140 @@
+---
+layout: post
+title: Migrating to MRTK2 - using the non-native keyboard in touch scenarios
+date: '2020-04-01T08:18:00.000+02:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Windows Mixed Reality
+- MRTK2
+- Unity3D
+- HoloLens2
+modified_time: '2020-04-15T08:50:33.654+02:00'
+thumbnail: https://i.ytimg.com/vi/gbniG4wZT9U/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4581693574941730579
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2020/04/migrating-to-mrtk2-using-non-native.html
+---
+
+<h2>
+Prelude</h2>
+With apologies for the uncharacteristic hiatus in my blog - last month I had a HoloLens 2 available for development and test purposes, and utilizing that opportunity to the max had a bit more priority than actually blogging about it. Then the world got hit head-on by the Corona madness and I had other things on my mind. Now, in self-isolation, hoping to avoid the virus (as no doubt most of you are right now), I have finally started to crank out the backed up blog posts I had chalked up 'for later' while I was converting apps for HoloLens 2.<br />
+<h2>
+Intro</h2>
+In the <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank"></a><a href="https://github.com/Microsoft/MixedRealityToolkit-Unity" target="_blank">Mixed Reality Toolkit</a> 2 you can use the beautiful system keyboard for text input and that works amazingly well - in <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> 2. Since MRKT2 development prioritizes HL2 development, and for good reason, this is not surprising. But in Immersive Headsets it works not so very well, and in HoloLens 1 it has the same problem. <br />
+Now since MRTK2.3 there's a new keyboard available - although actually it's an <em>old</em> keyboard - the Keyboard prefab, that used to reside in HoloToolkit\UX\Prefabs, has been renamed to the NonNativeKeyboard prefab and now sits in MixedRealityToolkit.SDK\Experimental. It has a few advantages over the native keyboard:<br />
+<ul>
+<li>It is a Unity object, not a native object, so you can control size, rotation and position just like any other Unity object</li>
+<li>It has basically the same API and usage as the old keyboard, which makes it attractive to use in existing applications.</li>
+<li>It has a built-in button for speech recognition</li>
+<li>It gives a consistent look &amp; feel for your apps.</li>
+</ul>
+It also has a few quite distinct disadvantages:<br />
+<ul>
+<li>It does not support touch events for HoloLens 2</li>
+<li>It does not take into account the differences in apparent size in WMR headsets and HoloLenses</li>
+<li>It should act different in various environments, (like being close when in HL2, and further away and bigger in other cases) which it does not</li>
+</ul>
+Now this, my friends, can be mitigated with a pretty simple add-on behaviour that I created. It takes care of positioning, platform dependent scaling and distance - but above all, it adds touch to the nonnative keyboard in a very simple way. <br />
+<h2>
+How it works</h2>
+The start is simple enough: just some settings for each platform:<br />
+<pre style="font-size: 12px;">public class KeyboardAdapter : MonoBehaviour
+{
+    [SerializeField]
+    private float Hl1Distance = 1.0f;
+    [SerializeField]
+    private float Hl1Scale = 1.0f;
+    
+    [SerializeField]
+    private float Hl2Distance = 0.3f;
+    [SerializeField]
+    private float Hl2Scale = 0.3f;
+
+    [SerializeField]
+    private float WmrHeadSetDistance = 0.6f;
+
+    [SerializeField]
+    private float WmrHeadSetScale = 0.6f;
+
+    [SerializeField] 
+    private AudioClip _clickSound;
+
+    private AudioSource _clickSoundPlayer;
+}</pre>
+Basically a couple of settings. For every platform support (HoloLens 1, HoloLens 2 and <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality</a> headsets there is a distance from the user it will appear, and an apparent scale it will have. Also, you can assign a click sound for when a key is hit.<br />
+Almost all the heavy lifting happens in Start:<br />
+<pre style="font-size: 12px;">private void Start()
+{
+    _clickSoundPlayer = gameObject.AddComponent&lt;AudioSource&gt;();
+    _clickSoundPlayer.playOnAwake = false;
+    _clickSoundPlayer.spatialize = true;
+    _clickSoundPlayer.clip = _clickSound;
+    var buttons = GetComponentsInChildren&lt;Button&gt;();
+    foreach (var button in buttons)
+    {
+        var ni = button.gameObject.AddComponent&lt;NearInteractionTouchableUnityUI&gt;();
+        ni.EventsToReceive = TouchableEventType.Pointer;
+        button.onClick.AddListener(PlayClick);
+    }
+}
+</pre>
+The first four lines simply add and initialize the sound that is played when you tap a button. The next ones do the real work: they find every Button object in the keyboard, add a NearInteractionTouchableUnityUI to it, set the events to receive to "pointer" and add an event listener to the Button - that basically only serves to play the sound<br />
+The keyboard is built of Unity UI components, and adding a NearInteractionTouchableUnityUI and setting the EventToReceive to Pointer is all the is necessary to make the button 'think' it's clicked when it's actually touched. And if you have set the ClickSound to an audio file in the editor, it plays a sound now when you tap our touch it, too.<br />
+Then we have these two properties who return the right value depending on the platform the app is running on:<br />
+<pre style="font-size: 12px;">private float Scale =&gt; GetPlatformValue(Hl1Scale, Hl2Scale, WmrHeadSetScale);
+private float Distance =&gt; GetPlatformValue(Hl1Distance, Hl2Distance, WmrHeadSetDistance);
+</pre>
+Which is done by this little method:<br />
+<pre style="font-size: 12px;">private float GetPlatformValue(float hl1Value, float hl2Value, float wmrHeadsetValue)
+{
+    if (CoreServices.CameraSystem.IsOpaque)
+    {
+        return wmrHeadsetValue;
+    }
+
+    var capabilityChecker = CoreServices.InputSystem as IMixedRealityCapabilityCheck;
+
+    return capabilityChecker.CheckCapability(MixedRealityCapability.ArticulatedHand) ? 
+            hl2Value : hl1Value;
+}
+</pre>
+If the headset is opaque, then it's a Windows Mixed Reality headset (or at least not a HoloLens), and otherwise we determine based upon the capability of tracking hands whether it's a HoloLens 1 or 2.<br />
+This is used to determine to show the keyboard on the desired place and at the desired scale.<br />
+<pre style="font-size: 12px;">public void ShowKeyboard()
+{
+    NonNativeKeyboard.Instance.PresentKeyboard();
+    NonNativeKeyboard.Instance.RepositionKeyboard(CameraCache.Main.transform.position + 
+                                                  CameraCache.Main.transform.forward * 
+                                                  Distance, 0f);
+    NonNativeKeyboard.Instance.gameObject.transform.localScale *= Scale;
+}
+</pre>
+And that is really all. Some creative use of components already in the MRTK2. <br />
+<h2>
+Usage</h2>
+Just drop a NonNativeKeyboard prefab from the MRTK2 in your scene, and drop this behavior on it. You then only have to take care of two things. First, set Min and Max scale both to 1, otherwise this will interfere with the way the keyboard is scaled by this behavior:<br />
+<img border="0" src="https://www.schaikweb.net/blog/20200401/nnkeyboardsetting2.png" style="background-image: none; border: 0px currentcolor;" /><br />
+And of course, you have to set some parameters for the behavior itself. I have chosen what I like to think are reasonable settings for every platform:<br />
+<img border="0" src="https://www.schaikweb.net/blog/20200401/adapterparams.png" style="background-image: none; border: 0px currentcolor;" /><br />
+And of course the sound that appears when you tap or touch the keyboard<br />
+<h2>
+How it looks</h2>
+On a HoloLens 2( in my app <a href="https://www.microsoft.com/store/productId/9P6SVQQCP2SQ" target="_blank">Walk the World</a> for HoloLens 2) it looks like this:<br />
+<img border="0" height="273" src="https://www.schaikweb.net/blog/20200401/hl2keyboard.png" style="background-image: none; border: 0px currentcolor;" width="640" /><br />
+It is pretty close, as you are supposed to be able to touch it<br />
+On HoloLens 1 it looks like this:<br />
+<img border="0" height="360" src="https://www.schaikweb.net/blog/20200401/hl1keyboard.jpg" style="background-image: none; border: 0px currentcolor;" width="640" /><br />
+Pretty much the same - bigger, but further away and thus easier to control with the air tap. Since this is a 2D picture, the differences between HoloLens 1 and 2 are actually hard to spot. And on Mixed Reality it looks like this - it look smaller, but that's because in a headset everything looks smaller. It's apparent size is the same as in HoloLens 1.<br />
+<img border="0" height="360" src="https://www.schaikweb.net/blog/20200401/MRkeyboard.jpg" style="background-image: none; border: 0px currentcolor;" width="640" /><br />
+And finally, and action movie of touch enabled non native keyboard on a HoloLens 2. You can actually touch the buttons and they respond with a button press sound, as you see<br />
+<iframe allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen="" frameborder="0" height="365" src="https://www.youtube.com/embed/gbniG4wZT9U" width="650"></iframe><br />
+<h2>
+Why no solvers?</h2>
+You might have noticed I did not use any MRTK2 solvers to keep the keyboard floating in view when you when you move your head, our keep a dynamical distance. I did initially, but I found out that a keyboard that actually moves is very annoying when you are trying to type, especially when using touch type. Then the keyboard is close, and a move is easily triggered when you want to do things like first type the A (left), then the P (totally right). So I decided just to let it appear right in front of the user, and keep it there. If you don't use it, it automatically disappears after a configurable timeout. This is built into the keyboard, that is not my doing. <br />
+<h2>
+Conclusion</h2>
+It's quite remarkable how you can make 'old' components interplay with the new HoloLens 2 interaction possibilities using the new components and a bit of imagination. Also, the MRTK2 made making apps that run on both HoloLens 1, HoloLens 2 <em>and</em> Windows Mixed Reality headsets a lot easier. Although it's clear MRTK2 prioritizes HoloLens 2 above all - and that's logical, because there's where the action and the business is. I fear the venerable trailblazing HoloLens 1, will quickly lose mindshare and disappear from the radar when HoloLens 2 becomes more widely available. I am not quite sure what to do with mine, but time will tell.<br />
+As usual, you can find the code of the little project <a href="https://github.com/LocalJoost/NonNativeKeyboardDemo" target="_blank">here</a><em></em>. If you want to run the app and see the keyboard, just say "Open Keyboard". <br />
+<h2>
+Post scriptum</h2>
+I put the part that makes the NonNativeKeyboard touchable in a <a href="https://github.com/microsoft/MixedRealityToolkit-Unity/pull/7611" target="_blank">pull request to the MRTK2</a> that was merged at April 14, and will be part of the MRTK 2.4.0 release.

@@ -1,0 +1,304 @@
+---
+layout: post
+title: Simple Windows Phone 7 / Silverlight drag/flick behavior
+date: '2011-03-08T20:50:00.004+01:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- Silverlight
+- XAML
+- behavior
+- WP7
+modified_time: '2011-04-20T11:34:57.080+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4173811903206738092
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/03/simple-windows-phone-7-silverlight.html
+---
+
+<p>In this post I describe a behavior that will essentially make <em>anything</em> draggable and ‘flickable’, that is, you can drag a GUI element along with your finger and it seems to have a little inertia when you let it go. The behavior mimics part of the Microsoft Surface’s ScatterView functionality and will feature in the small children’s game for <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> game I am currently developing. As a bonus, you will see some generally applicable extension methods for creating storyboards and translation GUI elements too.</p>  <p>I have not tried this in Silverlight but I am not doing anything Windows Phone 7 specific as far as I am aware, so I guess it should work in plain Silverlight too.</p>  <p><font size="4">Setting the stage</font></p>  <p>I created a simple solution containing three assemblies: a Windows Phone application, a class library “LocalJoost” holding my utilities including this behavior, and one containing Phone.Fx.Preview, not for the BindableApplicationBar this time, but because I make extensive use of its VisualTreeHelperExtensions. You will also need System.Windows.Interactivity.dll, which I nicked from the <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> toolkit.</p>  <p><font size="4">Extensions for FrameworkElement</font></p>  <p>First of all, I created a set of extension methods on FrameworkElement that allow me to easily find and manipulate an attached <em>CompositeTransform</em> from code. A CompositeTransform is only one of the many possibilities to manipulate a GUI element, but it basically is just a descriptor of how far from its original place the GUI element should be drawn, if it should be rotated, scaled, etc. I only use the translation attributes – to move it around.</p>  <p>To be able to translated and animated, the object <em>must</em> have a CompositeTransform. Well, at least it must for the solution I have chosen. You will see later that the behavior checks for this transform and if it’s not present, it simply makes it. But you can also create it in XAML, of course.</p>  <pre>using System;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Linq;
+using Phone7.Fx.Preview;
+
+namespace LocalJoost.Utilities
+{
+  /// &lt;summary&gt;
+  /// Class to help animations from code using the CompositeTransform
+  /// &lt;/summary&gt;
+  public static class FrameworkElementExtensions
+  {
+    /// &lt;summary&gt;
+    /// Finds the composite transform either direct
+    /// or as part of a TransformGroup
+    public static CompositeTransform GetCompositeTransform(
+       this FrameworkElement fe)
+    {
+      if (fe.RenderTransform != null)
+      {
+        var tt = fe.RenderTransform as CompositeTransform;
+        if( tt != null) return tt;
+
+        var tg = fe.RenderTransform as TransformGroup;
+        if (tg != null)
+        {
+          return tg.Children.OfType&lt;CompositeTransform&gt;().FirstOrDefault();
+        }
+      }
+      return null;
+    }
+
+    /// &lt;summary&gt;
+    /// Gets the point to where FrameworkElement is translated
+    /// &lt;/summary&gt;
+    public static Point GetTranslatePoint(this FrameworkElement fe)
+    {
+      var translate = fe.GetCompositeTransform();
+      if (translate == null) 
+         throw new ArgumentNullException(&quot;CompositeTransform&quot;);
+
+      return new Point(
+        (double) translate.GetValue(CompositeTransform.TranslateXProperty),
+        (double) translate.GetValue(CompositeTransform.TranslateYProperty));
+
+    }
+
+    /// &lt;summary&gt;
+    /// Translates a FrameworkElement to a new location
+    /// &lt;/summary&gt;
+    public static void SetTranslatePoint(this FrameworkElement fe, Point p)
+    {
+      var translate = fe.GetCompositeTransform();
+      if (translate == null) 
+         throw new ArgumentNullException(&quot;CompositeTransform&quot;);
+
+      translate.SetValue(CompositeTransform.TranslateXProperty, p.X);
+      translate.SetValue(CompositeTransform.TranslateYProperty, p.Y);
+    }
+
+    /// &lt;summary&gt;
+    /// Translates a FrameworkElement to a new location
+    /// &lt;/summary&gt;
+    public static void SetTranslatePoint(
+       this FrameworkElement fe, double x, double y )
+    {
+      fe.SetTranslatePoint(new Point(x, y));
+    }
+
+    public static FrameworkElement GetElementToAnimate( 
+      this FrameworkElement fe)
+    {
+      var parent = fe.GetVisualParent();
+      return parent is ContentPresenter ? parent : fe;
+    }
+  }
+}</pre>
+
+<p>Note in the last method that the element to animated is either the element itself or a <em>ContentPresenter</em> that is its parent. I noticed that stuff created by databinding is always surrounded by a ContentPresenter, and that animating an object within its ContentPresenter does not work – logically. So then then the ContentPresenter is animated in stead – dragging its contents with it.</p>
+
+<p><font size="4">Extensions for StoryBoard</font></p>
+
+<p>Next up, a set of extension methods to easily create translation animations, and add them to storyboard:</p>
+
+<pre>using System;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+
+namespace LocalJoost.Utilities
+{
+  public static class StoryboardExtensions
+  {
+    /// &lt;summary&gt;
+    /// Create a animation with a default easing function
+    /// &lt;/summary&gt;
+    public static Timeline CreateDoubleAnimation(this Storyboard storyboard,
+      Duration duration, double from, double to)
+    {
+      return storyboard.CreateDoubleAnimation(duration, from, to,
+        new SineEase
+        {
+          EasingMode = EasingMode.EaseInOut
+        });
+    }
+
+    /// &lt;summary&gt;
+    /// Create a animation with a custom easing function
+    /// &lt;/summary&gt;
+    public static Timeline CreateDoubleAnimation(this Storyboard storyboard, 
+      Duration duration, double from, double to, IEasingFunction easingFunction)
+    {
+      var animation = new DoubleAnimation
+      {
+        From = from,
+        To = to,
+        Duration = duration,
+        EasingFunction = easingFunction
+      };
+      return animation;
+    }
+
+    /// &lt;summary&gt;
+    /// Add an animation to an existing storyboard
+    /// &lt;/summary&gt;
+    public static void AddAnimation(this Storyboard storyboard, 
+      DependencyObject item, Timeline t, DependencyProperty p)
+    {
+      if (p == null) throw new ArgumentNullException(&quot;p&quot;);
+      Storyboard.SetTarget(t, item);
+      Storyboard.SetTargetProperty(t, new PropertyPath(p));
+      storyboard.Children.Add(t);
+    }
+
+    /// &lt;summary&gt;
+    /// Add a translation animation to an existing storyboard with a 
+    /// default easing function
+    /// &lt;/summary&gt;
+    public static void AddTranslationAnimation(this Storyboard storyboard, 
+      FrameworkElement fe, Point from, Point to, Duration duration)
+    {
+      storyboard.AddTranslationAnimation(fe, from, to, duration, null);
+    }
+
+    /// &lt;summary&gt;
+    /// Add a translation animation to an existing storyboard with a 
+    /// custom easing function
+    /// &lt;/summary&gt;
+    public static void AddTranslationAnimation(this Storyboard storyboard, 
+      FrameworkElement fe, Point from, Point to, Duration duration,
+      IEasingFunction easingFunction)
+    {
+      storyboard.AddAnimation(fe.RenderTransform,
+             storyboard.CreateDoubleAnimation(duration, from.X, to.X, 
+                                              easingFunction),
+              CompositeTransform.TranslateXProperty);
+      storyboard.AddAnimation(fe.RenderTransform,
+            storyboard.CreateDoubleAnimation(duration, from.Y, to.Y, 
+                                             easingFunction),
+              CompositeTransform.TranslateYProperty);
+    }
+  }
+}</pre>
+
+<p>You will probably only use the last two methods. Create an empty StoryBoard, pop in a FrameworkElement, the “from” and “to” point, the time it should take and optionally an easing function, then start your StoryBoard and off your GUI element goes. </p>
+
+<p>An easing function, by the way, describes a bit about the way an objects starts, stops and moves. No easing function means the object moves from start to end with a constant speed. If you take a SineEase with an EaseInOut mode, it will first move slowly, than increase speed, and at the end it more or less slowly comes to a halt. This makes for a more fluid behavior. There are about a gazillion easing functions, and I encourage you to explore them with Expression Blend.</p>
+
+<p><font size="4">The DragFlickBehavior itself</font></p>
+
+<p>Then finally the behavior itself, which is surprisingly simple now all the groundwork has been laid by the extension methods:</p>
+
+<pre>using System;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Interactivity;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using LocalJoost.Utilities;
+
+namespace LocalJoost.Behaviors
+{
+  public class DragFlickBehavior: Behavior&lt;FrameworkElement&gt;
+  {
+    private FrameworkElement _elementToAnimate;
+    
+    protected override void OnAttached()
+    {
+      base.OnAttached();
+      AssociatedObject.Loaded += AssociatedObjectLoaded;
+      AssociatedObject.ManipulationDelta += 
+         AssociatedObjectManipulationDelta;
+      AssociatedObject.ManipulationCompleted += 
+         AssociatedObjectManipulationCompleted;
+    }
+    
+    void AssociatedObjectLoaded(object sender, RoutedEventArgs e)
+    {
+      _elementToAnimate = AssociatedObject.GetElementToAnimate();
+      if (! (_elementToAnimate.RenderTransform is CompositeTransform))
+      {
+        _elementToAnimate.RenderTransform = new CompositeTransform();
+        _elementToAnimate.RenderTransformOrigin = new Point(0.5, 0.5);
+      }
+    }
+
+    void AssociatedObjectManipulationDelta(object sender, 
+        ManipulationDeltaEventArgs e)
+    {
+      var dx = e.DeltaManipulation.Translation.X;
+      var dy = e.DeltaManipulation.Translation.Y;
+      var currentPosition = _elementToAnimate.GetTranslatePoint();
+      _elementToAnimate.SetTranslatePoint(currentPosition.X + dx, 
+         currentPosition.Y + dy);
+    }
+
+    private void AssociatedObjectManipulationCompleted(object sender, 
+      ManipulationCompletedEventArgs e)
+    {
+      // Create a storyboard that will emulate a 'flick'
+      var currentPosition = _elementToAnimate.GetTranslatePoint();
+      var velocity = e.FinalVelocities.LinearVelocity;
+      var storyboard = new Storyboard { FillBehavior = FillBehavior.HoldEnd };
+
+      var to = new Point(currentPosition.X + (velocity.X / BrakeSpeed),
+        currentPosition.Y + (velocity.Y / BrakeSpeed));
+      storyboard.AddTranslationAnimation(
+        _elementToAnimate, currentPosition, to, 
+        new Duration(TimeSpan.FromMilliseconds(500)), 
+        new CubicEase {EasingMode = EasingMode.EaseOut});
+      storyboard.Begin();
+    }
+
+
+    protected override void OnDetaching()
+    {
+      AssociatedObject.Loaded -= AssociatedObjectLoaded;
+      AssociatedObject.ManipulationCompleted -= 
+          AssociatedObjectManipulationCompleted;
+      AssociatedObject.ManipulationDelta-= 
+          AssociatedObjectManipulationDelta;
+
+      base.OnDetaching();
+    }
+
+    #region BrakeSpeed
+    public const string BrakeSpeedPropertyName = &quot;BrakeSpeed&quot;;
+
+    /// &lt;summary&gt;
+    /// Describes how fast the element should brake, i.e. come to rest,
+    /// after a flick. Higher = apply more brake ;-)
+    /// &lt;/summary&gt;
+    public int BrakeSpeed
+    {
+      get { return (int)GetValue(BrakeSpeedProperty); }
+      set { SetValue(BrakeSpeedProperty, value); }
+    }
+
+    public static readonly DependencyProperty BrakeSpeedProperty = 
+      DependencyProperty.Register(
+      BrakeSpeedPropertyName,
+      typeof(int),
+      typeof(DragFlickBehavior),
+      new PropertyMetadata(10));
+
+    #endregion
+  }
+}</pre>
+
+<p>And half of it is a dependency property, too ;-). What this behavior does, is:</p>
+
+<ul>
+  <li>When attached, it checks which element to animate, checks for an CompositeTransform to be present and if not, simply create it. </li>
+
+  <li>While the element is being manipulated, change the translate point by the delta x and y of the drag event, therefore the element will follow your finger – and causing the element apparently to be ‘dragged’ </li>
+
+  <li>When you stop dragging, it creates a simple storyboard that will move the element a bit further in the direction you last dragged it, seemingly causing a bit on inertia. It does that by looking at the FinalVelocities’s LinearVelocity property values. If you move it fast enough, it will move right out of the screen, never to return ;-). That’s more or less what I mean by ‘flick’. The BrakeSpeed property of the behavior determines how fast the element comes to a half. I find the default value 10 to have quite a natural feeling to it – on my phone, that is. </li>
+</ul>
+
+<p><font size="4">Demo</font></p>
+
+<p>For the <a href="http://www.schaikweb.net/dotnetbyexample/DragFlickBehaviorDemo.zip" target="_blank">sample solution</a> I fired up Expression Blend, dragged some elements on a Windows Phone 7 page and attached the behavior to everything - up to the page name and application name, as you can see in the demo video. That is not particularly useful in itself, but it drives home the point. Your designer can now have fun with this behavior ;-), and I hope I have showed you some little things on how to manipulate storyboard and elements from code in the process. </p>
+
+<div style="padding-bottom: 0px; margin: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: left; padding-top: 0px" id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:c1679663-9c75-4748-a435-c34973c47200" class="wlWriterEditableSmartContent"><div id="90c9bc56-a450-4ebe-9cbb-07d3e7bcb5cc" style="margin: 0px; padding: 0px; display: inline;"><div><a href="http://www.youtube.com/watch?v=f65Wcf_WVlE" target="_new"><img src="http://lh3.ggpht.com/_QXPoKuE9q6k/TZwLvsOsKYI/AAAAAAAAGZk/YgzdI1FHBVc/videod3b966e5d639%5B3%5D.jpg?imgmax=800" style="border-style: none" galleryimg="no" onload="var downlevelDiv = document.getElementById('90c9bc56-a450-4ebe-9cbb-07d3e7bcb5cc'); downlevelDiv.innerHTML = &quot;&lt;div&gt;&lt;object width=\&quot;448\&quot; height=\&quot;277\&quot;&gt;&lt;param name=\&quot;movie\&quot; value=\&quot;http://www.youtube.com/v/f65Wcf_WVlE?hl=en&amp;hd=1\&quot;&gt;&lt;\/param&gt;&lt;embed src=\&quot;http://www.youtube.com/v/f65Wcf_WVlE?hl=en&amp;hd=1\&quot; type=\&quot;application/x-shockwave-flash\&quot; width=\&quot;448\&quot; height=\&quot;277\&quot;&gt;&lt;\/embed&gt;&lt;\/object&gt;&lt;\/div&gt;&quot;;" alt=""></a></div></div><div style="width:448px;clear:both;font-size:.8em">The DragFlickBehavior in action</div></div>  

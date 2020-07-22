@@ -1,0 +1,43 @@
+---
+layout: post
+title: String extension methods
+date: '2007-11-26T19:53:00.001+01:00'
+author: Joost van Schaik
+tags:
+- C#
+- C# 3.0
+- Extension methods
+- Visual Studio 2008
+modified_time: '2008-03-04T08:14:56.578+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4535236019845824981
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2007/11/string-extension-methods.html
+---
+
+C# 3.0 features the new extension methods. This basically seems to allow you to add your own methods to sealed classes. That seems a bit weird, and Microsoft gives the following advice in the Visual Studio 2008 help
+
+<blockquote>In general, we recommend that you implement extension methods sparingly and only when you have to. Whenever possible, client code that must extend an existing type should do so by creating a new type derived from the existing type.</blockquote><a href="http://msdn2.microsoft.com/en-us/library/bb397687(VS.90).aspx">Full article</a>
+
+Then try to make a List<> and bring up the Intellisense box. You will see 40-50 new methods, and by now you will guess they are all extension methods. Practiced what thy preached, Microsoft!
+
+Anyway, if Microsoft makes a lot of extension methods, so can we. We can now finally get rid of our 'utility' classes and make something like this:
+<pre>namespace LocalJoost.Utilities
+{
+    public static class StringExtensions
+    {
+        public static string Reverse(<span style="font-weight:bold;">this string s</span>)
+        {
+            StringBuilder builder = new StringBuilder();
+            for (int i = s.Length - 1; i >= 0; i--)
+            {
+                builder.Append(s.Substring(i, 1));
+            }
+            return builder.ToString();
+        }
+    }
+}</pre>
+And then we can do something like this:
+<pre>string test = "Hello hello";
+string reversed = test.Reverse();</pre>
+The string "reversed" will now contain the string "olleh olleH".
+
+Notice the "this" keyword before the string s in method Reverse of class StringExtensions - that is the thing that defines Reverse as an extension method of string. The only further requirements are that both class and method implementing the extension are static.

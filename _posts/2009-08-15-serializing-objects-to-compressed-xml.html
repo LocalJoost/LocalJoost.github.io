@@ -1,0 +1,104 @@
+---
+layout: post
+title: Using extension methods to serialize objects to XML and compress the result
+  - and deserialize again
+date: '2009-08-15T18:37:00.010+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- GZip
+- Compress
+- Serialization
+- XML
+- Extension methods
+modified_time: '2010-04-06T11:17:29.869+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6441482868842911227
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/08/serializing-objects-to-compressed-xml.html
+---
+
+Elaborating upon the string extension methods I created for <a href="http://dotnetbyexample.blogspot.com/2009/08/using-extension-methods-to-compress-and.html">compressing and decompressing strings to and from a byte array</a>, it turned out fairly easy to create another set of compress / decompress methods to serialize any type of <em>object</em> to and from a byte array containing compressed XML.
+
+I once again took the StringZipExtensions class and added the following methods to compress any old object to a byte array:<pre>/// &lt;summary&gt;
+/// XmlSerializes the object to a compressed byte array
+/// using the specified encoding.
+/// &lt;/summary&gt;
+/// &lt;param name="objectToCompress"&gt;The object to compress.&lt;/param&gt;
+/// &lt;param name="encoding"&gt;The encoding.&lt;/param&gt;
+/// &lt;returns&gt;bytes array with compressed serialized object&lt;/returns&gt;
+public static byte[] Compress(this object objectToCompress,
+  Encoding encoding)
+{
+  var xmlSerializer = new XmlSerializer(objectToCompress.GetType());
+  using (var stringWriter = new StringWriter())
+  {
+    xmlSerializer.Serialize(stringWriter, objectToCompress);
+    return stringWriter.ToString().Compress(encoding);
+  }
+}
+
+/// &lt;summary&gt;
+/// XmlSerializes the object to a compressed byte array using default
+/// UTF8 encoding.
+/// &lt;/summary&gt;
+/// &lt;param name="objectToCompress"&gt;The object to compress.&lt;/param&gt;
+/// &lt;returns&gt;bytes array with compressed serialized object&lt;/returns&gt;
+public static byte[] Compress(this object objectToCompress)
+{
+  return Compress(objectToCompress, new UTF8Encoding());
+}</pre>Here, once again, an overload using a default UTF8 encoding and a method which uses your own encoding to do the heavy lifting. Then, the methods for decompressing, which - in all modesty - are a rather neat usage of generics, I think:<pre>/// &lt;summary&gt;
+/// Decompress an array of bytes into an object via Xml Deserialization
+/// using the specified encoding
+/// &lt;/summary&gt;
+/// &lt;typeparam name="T"&gt;&lt;/typeparam&gt;
+/// &lt;param name="compressedObject"&gt;The compressed string.&lt;/param&gt;
+/// &lt;param name="encoding"&gt;The encoding.&lt;/param&gt;
+/// &lt;returns&gt;Decompressed object&lt;/returns&gt;
+public static T DecompressToObject&lt;T&gt;(this byte[] compressedObject,
+  Encoding encoding)
+{
+  var xmlSer = new XmlSerializer(typeof(T));
+  return (T)xmlSer.Deserialize(new StringReader(
+    compressedObject.DecompressToString(encoding)));
+}
+
+/// &lt;summary&gt;
+/// Decompress an array of bytes into an object via Xml Deserialization
+/// using default UTF8 encoding
+/// &lt;/summary&gt;
+/// &lt;param name="compressedObject"&gt;The compressed string.&lt;/param&gt;
+/// &lt;returns&gt;Decompressed object&lt;/returns&gt;
+public static T DecompressToObject&lt;T&gt;(this byte[] compressedObject )
+{
+  return DecompressToObject&lt;T&gt;(compressedObject, new UTF8Encoding());
+}</pre>Then you can take something like this hugely complex ;-) object Person<pre>public class Person
+{
+  public int Id { get; set; }
+  public string Name { get; set; }
+  public DateTime Birthday { get; set; }
+
+  public override bool Equals(object obj)
+  {
+    var toCompare = obj as Person;
+    if( toCompare != null )
+    {
+      return
+        Name.Equals(toCompare.Name) &&
+        Id.Equals(toCompare.Id) &&
+        Birthday.Equals(toCompare.Birthday);
+
+    }
+    return base.Equals(obj);
+  }
+}</pre>and serialize/compress and decompress/deserialize it like this:<pre>[Test]
+public void CompressObjectTest()
+{
+  var baseLineObject = new Person
+  {
+  Id = 99, 
+  Name = "Tom", 
+  Birthday = new DateTime(1969, 06, 03)
+  };
+  var compressed = baseLineObject.Compress();
+  var testObject = compressed.DecompressToObject&lt;Person&gt;();
+  Assert.AreEqual(testObject, baseLineObject);
+}</pre>Code downloadable <a href="http://schaikweb.net/dotnetbyexample/StringZipExtensions.zip">here</a>

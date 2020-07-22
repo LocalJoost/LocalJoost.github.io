@@ -1,0 +1,69 @@
+---
+layout: post
+title: Gotcha–navigating from SplitView requires back button to be pressed twice in
+  UWP apps
+date: '2015-12-27T13:11:00.005+01:00'
+author: Joost van Schaik
+tags:
+- UWP
+- XAML
+modified_time: '2015-12-28T07:55:34.423+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4028443462492274412
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/12/gotchanavigating-from-splitview.html
+---
+
+Yesterday, while being in the process of converting my one of my apps to UWP, I was moving a lot of the functionality of the app menu to a SplitView. Microsoft have really gone out on a limb as far as <a href="https://github.com/Microsoft/Windows-universal-samples">samples</a> are concerned, so I was following the <a href="https://github.com/Microsoft/Windows-universal-samples/tree/master/Samples/BackButton/cs">SystemBack</a> sample, which has really little code in it. How hard can it be, right?<br />
+All&nbsp; went rosey, until I discovered that altough the back button showed up nicely on my secondary page, the actual navigation back only happenend after I had pressed the back button <em>twice</em>. Some debugging learned me the global event <br />
+<pre>SystemNavigationManager.GetForCurrentView().BackRequested</pre>
+<img align="right" src="http://cliparts.co/cliparts/dT9/XoR/dT9XoRgac.png" height="74" style="display: inline; float: right;" width="85" />does not even get <em>called </em>the first time. I spent a not so enjoyable hour deconstructing my app, then finally building a bare bones repro – and there it happened too. One of those moment where you seriously start to doubt your own mental health. 
+The code is not very complicated. I have a MainPage.xaml with a button on a SplitView, and when you click that, it navigates to the next page<br />
+<pre>private void Navigation_Click(object sender, RoutedEventArgs e)
+{
+  Frame rootFrame = Window.Current.Content as Frame;
+  rootFrame.Navigate(typeof(Page2));
+}</pre>
+And on that Page2 a rather piece of standard code<br />
+<pre style="font-size: 11px;">protected override void OnNavigatedTo(NavigationEventArgs e)
+{
+  base.OnNavigatedTo(e);
+  var rootFrame = Window.Current.Content as Frame;
+  if (rootFrame != null)
+  {
+    SystemNavigationManager.GetForCurrentView().AppViewBackButtonVisibility =
+      rootFrame.CanGoBack
+        ? AppViewBackButtonVisibility.Visible
+   : AppViewBackButtonVisibility.Collapsed;
+  }
+}</pre>
+And in the app.xaml.cs, also rather standard (and ugly, now that I look at it), nicked from the sample<br />
+<pre>private void App_BackRequested(object sender, BackRequestedEventArgs e)
+{
+  Frame rootFrame = Window.Current.Content as Frame;
+  if (rootFrame == null)
+    return;
+
+  if (rootFrame.CanGoBack &amp;&amp; e.Handled == false)
+  {
+    e.Handled = true;
+    rootFrame.GoBack();
+  }
+}</pre>
+And yet, this method gets only called on the <em>second</em> back button press. The solution? Read back a little. <br />
+<br />
+“I have a MainPage.xaml with a button <strong><em><span style="color: red;">on a SplitView</span></em></strong>, and when you click that, it navigates to the next page”<br />
+<br />
+It's one of those mental leaps you sometimes have to make as a developer. It turns out that the exact method Navigation_Click works flawlessly when the button calling the method <em>is not on a SplitView</em>. Somehow, some way, having a SplitView open messes up the navigation back stack. 
+<br />
+The solution, once you know that, is very simple of course:<br />
+<pre>private void Navigation_Click(object sender, RoutedEventArgs e)
+{
+  <strong>rootSplitView.IsPaneOpen = false;</strong>
+  Frame rootFrame = Window.Current.Content as Frame;
+  rootFrame.Navigate(typeof(Page2));
+}</pre>
+Go back to the click event handler, and add a line that closes the SplitView before initiating the navigation. It’s the little things like this that makes developer life so <em>interesting.</em> ;)<br />
+<br />
+Code used in this post can be found <a href="https://github.com/LocalJoost/NavigationTest">here.</a><br />
+<br />
+Special thanks to <a href="http://twitter.com/scottisafool">Scott Lovegrove</a> and the other people from the <a href="http://openlivewriter.org/">Open Live Writer</a> team for making this post possible – it’s the first one using Open Live Writer that now supports blogger – right after Google shut down the outdated web api endpoint that Live Writer still used. Thank you all folks!<br />
+<br />

@@ -1,0 +1,65 @@
+---
+layout: post
+title: Repairing the Windows Phone 7 behavior to show an image background for a search
+  string
+date: '2012-09-30T19:25:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Reactive
+- wpdev
+- dotnetmag
+- Rx
+- Windows Phone 7
+- behavior
+- Bing Search API
+- WP7
+modified_time: '2012-10-04T11:09:01.132+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3835048345436615037
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/09/repairing-windows-phone-7-behavior-to.html
+---
+
+<p>On the last day of 2011 ago I made <a href="http://dotnetbyexample.blogspot.nl/2011/12/windows-phone-7-behavior-to-show-image.html" target="_blank">DynamicBackgroundBehavior</a> - a quite bizarre behavior which plays a supporting role in my latest <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> application “<a href="http://windowsphone.com/s?appid=97382680-f222-47c9-9917-205eabc131b1&amp;ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">What’s cooking</a>”. It basically shows a picture from a search string as a background, using Bing Image search. Quite neat. Until Microsoft decided to change the Bing Search API a bit. Up until then, it had been a free unlimited ride – since about August you have to buy a package of searches (anything below 5000 searches per month is free). And some more stuff has been changed.</p> <p>Microsoft provides a nice little C# client library that should solve all of this using an OData protocol. The sad thing is that for the life of it I could not get it to compile on Windows Phone. So I ended up analyzing the PHP (*shudder*) sample in <a href="http://www.bing.com/webmaster/content/developers/ADM_MIGRATION_GUIDE.docx" target="_blank">this document</a> – a Word document no less – to see what I needed to do (see page 27 and further).</p> <p>From a coding perspective, the following details have been changed:</p> <ul> <li>The actual location of the API has been changed from <a href="http://api.bing.net/xml.aspx">http://api.bing.net/xml.aspx</a> to <a title="https://api.datamarket.azure.com/Data.ashx/Bing/Search/v1/Image" href="https://api.datamarket.azure.com/Data.ashx/Bing/Search/v1/Image">https://api.datamarket.azure.com/Data.ashx/Bing/Search/v1/Image</a>  <li>The schema of the MediaUrl element where the actual image in is returned moved from name space <a href="http://schemas.microsoft.com/LiveSearch/2008/04/XML/multimedia">http://schemas.microsoft.com/LiveSearch/2008/04/XML/multimedia</a> to name space <a title="http://schemas.microsoft.com/ado/2007/08/dataservices" href="http://schemas.microsoft.com/ado/2007/08/dataservices">http://schemas.microsoft.com/ado/2007/08/dataservices</a>  <li>It uses an account key in stead of an App id.  <li>The App Id must be send base 64 encoded in the header of the request in stead of in the url as plain text.</li></ul> <p>Okay. My cheese moved a little. First things first. I need base64 encoded text. Samples of this are on the internet a dime a dozen, I took this one:</p><pre>/// &lt;summary&gt;
+/// Converts string to base64
+/// &lt;/summary&gt;
+/// &lt;param name="data"&gt;&lt;/param&gt;
+/// &lt;returns&gt;&lt;/returns&gt;
+private string Base64Encode(string data)
+{
+  try
+  {
+    var encData_byte = new byte[data.Length];
+    encData_byte = System.Text.Encoding.UTF8.GetBytes(data);
+    return Convert.ToBase64String(encData_byte);
+  }
+  catch (Exception e)
+  {
+    throw new Exception("Error in Base64Encode" + e.Message);
+  }
+}</pre>
+<p>Now the method that does the actual calling of the Bing Search API has changed a little, but not very much:</p><pre style="font-size: 10px">/// &lt;summary&gt;
+/// Start the image request using Bing Serach
+/// &lt;/summary&gt;
+/// &lt;param name="searchString"&gt;&lt;/param&gt;
+protected void StartGetFirstImage(string searchString)
+{
+  if (!string.IsNullOrWhiteSpace(searchString))
+  {
+    var queryUri =
+      string.Format(
+        "https://api.datamarket.azure.com/Data.ashx/Bing/Search/v1/Image?Query=%27{0}%27&amp;$top=1&amp;$format=Atom",
+         HttpUtility.UrlEncode(searchString));
+    var request = WebRequest.Create(queryUri) as HttpWebRequest;
+    <font color="#ff0000">request.Headers["Authorization"] = "Basic " + Base64Encode(string.Format("{0}:{0}", BingSearchKey));</font>
+    
+    var response =
+      Observable.FromAsyncPattern&lt;WebResponse&gt;(
+        request.BeginGetResponse, request.EndGetResponse)();
+    response.Subscribe(WebClientOpenReadCompleted, WebClientOpenReadError);
+  }
+}</pre>
+<p>Note the new url. It goes to a different location, the search term must be enclosed by %27 (i.e. the double quote “) and I have to specify a format (Atom). Really interesting is the thing I marked red, for a variety of reasons:</p>
+<ul>
+<li>Windows Phone’s Response.Headers collection does not sport the Add method. That stopped me a little, until I realized you could poke directly a new key in the collection by using [“Autorization”] =.</li>
+<li> Now the authentication is Basic, followed by a space, your account key, colon, your key again and that key:key sequence needs to base 64 encoded. Why this is implemented this way – no idea, but it gets your key across – and validated.</li></ul>
+<p>The final thing is that in the callback WebClientOpenReadCompleted I need to use “<a title="http://schemas.microsoft.com/ado/2007/08/dataservices" href="http://schemas.microsoft.com/ado/2007/08/dataservices">http://schemas.microsoft.com/ado/2007/08/dataservices</a>” for a namespace,as I already stated.</p>
+<p>And then my little Windows Phone behavior works again. <a href="http://www.schaikweb.net/dotnetbyexample/DynamicBackgroundBehavior.zip" target="_blank">The fixed version can be downloaded here</a>. I will fix <a href="http://wp7nl.codeplex.com/" target="_blank">my #wp7nl library on codeplex</a> ASAP. </p>  

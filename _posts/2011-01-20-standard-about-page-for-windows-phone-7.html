@@ -1,0 +1,288 @@
+---
+layout: post
+title: A Standard About Page for Windows Phone 7 applications
+date: '2011-01-20T22:54:00.008+01:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- XAML
+- MVVM Light
+- WP7
+modified_time: '2011-12-03T16:16:35.471+01:00'
+thumbnail: http://lh3.ggpht.com/_QXPoKuE9q6k/TTivJXfVwgI/AAAAAAAAF4w/PGlhRQB6gsQ/s72-c/resources_thumb%5B3%5D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4951556402715257521
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/01/standard-about-page-for-windows-phone-7.html
+---
+
+<span style="font-style:italic;"><p>Update - if your read this, <a href="http://dotnetbyexample.blogspot.com/2011/10/standard-about-page-for-windows-phone-7.html">you might want to read this update</a> too when you are done</p></span>
+<p>I admit – I fell for it too. I was a bit too lax reading the <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> Application Certification Requirements and missed section 5.6:</p>  <blockquote>   <p>“<font size="3">An application must include the application name, version information, and technical support contact information that are easily discoverable</font>.”</p> </blockquote>  <p>Like most, I got away with it the first three times since Microsoft initially did not enforce it very strictly - because the rule came in place very late in the process or something like that. But I fell flat on my face the fourth time. I spotted a very nice about page on the Slim Tanken App by <a href="http://www.twitter.com/adarit" target="_blank">Manfred Dalmeijer</a>, fellow member of the <a href="http://twitter.com/#!/list/LocalJoost/wp7nl" target="_blank">Dutch Windows Phone 7 developer community</a>. He was kind enough to send me a sample solution from which I happily copied a lot of XAML. I decided to not only include it in my own <a href="http://social.zune.net/redirect?type=phoneApp&amp;id=8b5f61a1-3ffa-df11-9264-00237de2db9e" target="_blank">Map Mania</a> App, but to build a kind of standard page and <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> model around it – so that everyone who wanted to quickly add a functional About page with support info, review and buy links for his or her App could easily do so. So here goes, the Standard About Page:</p>  <p>I started out the usual way:</p>  <ul>   <li>Create a new Windows Phone application – this one I called “StandardAboutPage” </li>    <li>Add a Solution Folder “Binaries” </li>    <li>Put “GalaSoft.MvvmLight.WP7.dll”, “GalaSoft.MvvmLight.Extras.WP7.dll” and “System.Windows.Interactivity.dll” in it. </li> </ul>  <p>Repeat after me, kids: ” Thou shalt not make unto thee any Windows Phone 7 application without MVVMLight”</p>  <p>Then I added a new Windows Phone 7 class library that I called “LocalJoost.Utilities” – but feel free to pick your own name ;-) . I added references to “Microsoft.Phone.dll” to this library, and thus the library was ready for the AboutViewModelBase class. This class has the following string properties, which I will not write out for the sake of brevity:</p>  <ul>   <li>AppTitle </li>    <li>About </li>    <li>Buy </li>    <li>BuyTheApp </li>    <li>CompanyUrl </li>    <li>Copyright </li>    <li>Review </li>    <li>ReviewTheApp </li>    <li>Support </li>    <li>SupportEmail </li>    <li>SupportMessage </li> </ul>  <p>There are also three properties that retrieve information from the application itself:</p>  <pre>private bool? _trialMode;
+public bool IsTrialMode
+{
+  get
+  {
+    if (_trialMode == null)
+    {
+      var s = new LicenseInformation();
+#if DEBUG
+      _trialMode = true;
+#else
+      _trialMode = new bool?(s.IsTrial());
+#endif
+    }
+    return _trialMode.Value;
+  }
+}
+
+public Visibility BuyPanelVisible
+{
+  get { return IsTrialMode || DesignerProperties.IsInDesignTool ? 
+    Visibility.Visible : Visibility.Collapsed; }
+}
+
+public string ApplicationVersion
+{
+  get
+  {
+    if (DesignerProperties.IsInDesignTool)
+      return &quot;version x.x.x&quot;;
+
+    Assembly assembly = Assembly.GetExecutingAssembly();
+    var name = new AssemblyName(assembly.FullName);
+    return name.Version.ToString(3);
+  }
+}</pre>
+
+<p>The rest of the class looks like this:</p>
+
+<pre>using System.ComponentModel;
+using System.Reflection;
+using System.Windows;
+using System.Windows.Input;
+using GalaSoft.MvvmLight;
+using GalaSoft.MvvmLight.Command;
+using Microsoft.Phone.Marketplace;
+using Microsoft.Phone.Tasks;
+
+namespace LocalJoost.Utilities
+{
+  public class AboutViewModelBase : ViewModelBase
+  {
+
+    public ICommand BuyCommand
+    {
+      get
+      {
+        return new RelayCommand(() =&gt; 
+          new MarketplaceDetailTask().Show());
+      }
+    }
+
+    public ICommand ReviewCommand
+    {
+      get
+      {
+        return new RelayCommand(() =&gt; 
+          new MarketplaceReviewTask().Show());
+      }
+    }
+
+    public ICommand ViewWebsiteCommand
+    {
+      get
+      {
+        return new RelayCommand(() =&gt;  
+          new WebBrowserTask { URL = CompanyUrl }.Show());
+      }
+    }
+
+    public ICommand SupportQuestionCommand
+    {
+      get
+      {
+        return new RelayCommand(() =&gt;
+          {
+            var emailComposeTask = new EmailComposeTask
+            {
+              To = SupportEmail,
+              Subject =
+                Support + &quot; &quot; + AppTitle + &quot; &quot; +
+                ApplicationVersion
+            };
+            emailComposeTask.Show();
+          });
+      }
+    }
+
+    public void LoadValuesFromResource&lt;T&gt;()
+    {
+      var targetType = GetType();
+      var sourceType = typeof(T);
+      foreach (var targetProperty in targetType.GetProperties())
+      {
+        var sourceProperty =  sourceType.GetProperty(targetProperty.Name, 
+                      BindingFlags.Static | BindingFlags.Public);
+        if (sourceProperty != null)
+        {
+          targetProperty.SetValue(this, 
+             sourceProperty.GetValue(null, null), null);
+        }
+      }
+    }
+  }
+}</pre>
+
+<p>These are the four commands corresponding to the four basic tasks the user accessing the about page should be able to perform:</p>
+
+<ul>
+  <li>buy the App (if the current version is a trial version) </li>
+
+  <li>review the App </li>
+
+  <li>view the support website </li>
+
+  <li>send a support question e-mail </li>
+</ul>
+
+<p>The LoadValuesFromResource&lt;T&gt; method is a typical implementation of the paradigm that every good programmer is a lazy programmer –&#160; if you make sure your resource key names match the AboutViewModelBase property names, this method will automatically copy values from the resource to the AboutViewModel class. This will be demonstrated later on.</p>
+
+<p>Anyway, in my StandardAboutPage project I made a Windows Phone Portrait Page “AboutPage” and a resource file “AppResources” with the following entries:</p>
+
+<p><a href="http://lh5.ggpht.com/_QXPoKuE9q6k/TTivIwoxILI/AAAAAAAAF4s/vQf5klgmC2c/s1600-h/resources%5B5%5D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="resources" border="0" alt="resources" src="http://lh3.ggpht.com/_QXPoKuE9q6k/TTivJXfVwgI/AAAAAAAAF4w/PGlhRQB6gsQ/resources_thumb%5B3%5D.png?imgmax=800" width="422" height="254" /></a></p>
+
+<p>I always go to the resource file's properties and set "Custom Tool" to "PublicResXFileCodeGenerator". This is <i>not</i> the default. Anyway, in that same project I make a very simple class AboutViewModel:</p>
+
+<pre>using LocalJoost.Utilities;
+
+namespace StandardAboutPage
+{
+  public class AboutViewModel : AboutViewModelBase
+  {
+    public AboutViewModel()
+    {
+      LoadValuesFromResource&lt;AppResources&gt;();
+    }
+  }
+}</pre>
+
+<p>In the constructor I simply call the LoadValuesFromResource method from the base class, pass my resource type and the ViewModel is ready and filled. In order to make this work, your StandardAboutPage project needs to have references to three dll’s in the “Binaries” solution folder al well as to the “LocalJoost.Utilities” project. </p>
+
+<p>All that’s left now is a ‘bit’ of XAML. First of all, you add the following namespaces to your AboutPage.xaml:</p>
+
+<pre>xmlns:LJUtilities=&quot;clr-namespace:StandardAboutPage&quot;
+xmlns:i=&quot;clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity&quot;
+xmlns:GalaSoft_MvvmLight_Command=&quot;clr-namespace:GalaSoft.MvvmLight.Command;assembly=GalaSoft.MvvmLight.Extras.WP7&quot;</pre>
+
+<p>Be aware that in this blog text between double quotes is split over two lines due to space limitations, but in your code they should be on one lines. Then, just above the “LayoutRoot” grid, you add the following resource</p>
+
+<pre>&lt;phone:PhoneApplicationPage.Resources&gt;
+  &lt;LJUtilities:AboutViewModel x:Key=&quot;AboutViewModel&quot;/&gt;
+&lt;/phone:PhoneApplicationPage.Resources&gt;</pre>
+And then basically you are free to make up your XAML. I replaced the whole default LayoutRoot grid by what I got form Manfred, which I basically only adapted to use the ViewModel's properties and commands: 
+
+<pre>&lt;Grid x:Name=&quot;LayoutRoot&quot; DataContext=&quot;{StaticResource AboutViewModel}&quot;&gt;
+  &lt;Grid.RowDefinitions&gt;
+    &lt;RowDefinition Height=&quot;Auto&quot; /&gt;
+    &lt;RowDefinition Height=&quot;*&quot; /&gt;
+  &lt;/Grid.RowDefinitions&gt;
+
+  &lt;!--TitlePanel contains the name of the application and page title--&gt;
+  &lt;StackPanel x:Name=&quot;TitlePanel&quot; Grid.Row=&quot;0&quot; Margin=&quot;12,17,0,12&quot;&gt;
+    &lt;TextBlock x:Name=&quot;ApplicationTitle&quot; Text=&quot;{Binding AppTitle}&quot; 
+      Style=&quot;{StaticResource PhoneTextNormalStyle}&quot; /&gt;
+    &lt;Grid&gt;
+      &lt;Grid.ColumnDefinitions&gt;
+        &lt;ColumnDefinition Width=&quot;60&quot; /&gt;
+        &lt;ColumnDefinition /&gt;
+      &lt;/Grid.ColumnDefinitions&gt;
+      &lt;Canvas xmlns=&quot;http://schemas.microsoft.com/client/2007&quot; 
+     Width=&quot;15.583&quot; Height=&quot;60.000&quot;&gt;
+        &lt;Path Fill=&quot;{StaticResource PhoneAccentBrush}&quot; Data=&quot; M 15.393,3.596 C 17.718,19.307 -2.038,16.232 0.173,5.387 C 1.435,-0.804 11.028,-2.002 15.393,3.596 Z&quot; /&gt;
+        &lt;Path Fill=&quot;{StaticResource PhoneAccentBrush}&quot; Data=&quot; M 1.963,18.816 C 5.843,18.816 9.722,18.816 13.602,18.816 C 13.602,32.545 13.602,46.272 13.602,60.000 C 9.722,60.000 5.843,60.000 1.963,60.000 C 1.963,46.272 1.963,32.545 1.963,18.816 Z&quot; /&gt;
+      &lt;/Canvas&gt;
+      &lt;TextBlock Grid.Column=&quot;1&quot; x:Name=&quot;PageTitle&quot; Text=&quot;{Binding About}&quot; 
+      Margin=&quot;9,-7,0,0&quot; Style=&quot;{StaticResource PhoneTextTitle1Style}&quot; /&gt;
+    &lt;/Grid&gt;
+  &lt;/StackPanel&gt;
+
+  &lt;!--ContentPanel - place additional content here--&gt;
+  &lt;Grid x:Name=&quot;ContentPanel&quot; Grid.Row=&quot;1&quot; Margin=&quot;12,0,12,0&quot;&gt;
+    &lt;Grid.RowDefinitions&gt;
+      &lt;RowDefinition /&gt;
+      &lt;RowDefinition Height=&quot;Auto&quot; /&gt;
+    &lt;/Grid.RowDefinitions&gt;
+    &lt;StackPanel&gt;
+      &lt;StackPanel Orientation=&quot;Horizontal&quot;&gt;
+        &lt;TextBlock Text=&quot;{Binding AppTitle}&quot; 
+          FontSize=&quot;{StaticResource PhoneFontSizeLarge}&quot; 
+          FontFamily=&quot;{StaticResource PhoneFontFamilySemiBold}&quot; 
+          VerticalAlignment=&quot;Bottom&quot; 
+        Foreground=&quot;{StaticResource PhoneAccentBrush}&quot; /&gt;
+        &lt;TextBlock Text=&quot;{Binding ApplicationVersion}&quot; Margin=&quot;12,0,0,2&quot; 
+        FontSize=&quot;{StaticResource PhoneFontSizeMediumLarge}&quot; 
+          VerticalAlignment=&quot;Bottom&quot; 
+        FontFamily=&quot;{StaticResource PhoneFontFamilySemiBold}&quot; /&gt;
+      &lt;/StackPanel&gt;
+      &lt;TextBlock TextWrapping=&quot;Wrap&quot; Text=&quot;{Binding Copyright}&quot; /&gt;
+      &lt;ScrollViewer Margin=&quot;0,10,0,0&quot;&gt;
+        &lt;StackPanel Orientation=&quot;Vertical&quot;&gt;
+          &lt;TextBlock Text=&quot;{Binding SupportMessage}&quot; TextWrapping=&quot;Wrap&quot; 
+            d:LayoutOverrides=&quot;Width&quot; /&gt;
+          &lt;Button x:Name=&quot;MailButton&quot; Padding=&quot;17,12&quot;&gt;
+            &lt;i:Interaction.Triggers&gt;
+              &lt;i:EventTrigger EventName=&quot;Click&quot;&gt;
+                &lt;GalaSoft_MvvmLight_Command:EventToCommand 
+                  Command=&quot;{Binding SupportQuestionCommand, Mode=OneWay}&quot;/&gt;
+              &lt;/i:EventTrigger&gt;
+            &lt;/i:Interaction.Triggers&gt;
+            &lt;Canvas xmlns=&quot;http://schemas.microsoft.com/client/2007&quot; 
+              Width=&quot;23.903&quot; Height=&quot;18.441&quot;&gt;
+              &lt;Path Fill=&quot;{StaticResource PhoneForegroundBrush}&quot; Data=&quot;F1 M 2.446,15.994 L 2.446,5.334 L 11.021,12.021 C 11.243,12.193 11.510,12.279 11.774,12.279 C 12.038,12.279 12.303,12.193 12.524,12.023 L 21.457,5.100 L 21.457,15.994 L 2.446,15.994 Z M 20.883,2.447 L 11.776,9.506 L 2.728,2.447 L 20.883,2.447 Z M 22.678,0.000 L 1.221,0.000 C 0.547,0.000 0.000,0.547 0.000,1.223 L 0.000,17.217 C 0.000,17.893 0.547,18.441 1.221,18.441 L 22.678,18.441 C 23.354,18.441 23.903,17.893 23.903,17.217 L 23.903,1.223 C 23.903,0.547 23.354,0.000 22.678,0.000&quot; /&gt;
+            &lt;/Canvas&gt;
+          &lt;/Button&gt;
+          &lt;StackPanel x:Name=&quot;BuyPanel&quot; Orientation=&quot;Vertical&quot; 
+            Visibility=&quot;{Binding BuyPanelVisible}&quot;&gt;
+
+            &lt;TextBlock TextWrapping=&quot;Wrap&quot; Text=&quot;{Binding BuyTheApp}&quot;/&gt;
+            &lt;Button x:Name=&quot;BuyButton&quot; Content=&quot;{Binding Buy}&quot;&gt;
+              &lt;i:Interaction.Triggers&gt;
+                &lt;i:EventTrigger EventName=&quot;Click&quot;&gt;
+                  &lt;GalaSoft_MvvmLight_Command:EventToCommand 
+                    Command=&quot;{Binding BuyCommand, Mode=OneWay}&quot;/&gt;
+                &lt;/i:EventTrigger&gt;
+              &lt;/i:Interaction.Triggers&gt;
+            &lt;/Button&gt;
+          &lt;/StackPanel&gt;
+          &lt;TextBlock HorizontalAlignment=&quot;Left&quot; TextWrapping=&quot;Wrap&quot; 
+             Text=&quot;{Binding ReviewTheApp}&quot;/&gt;
+          &lt;Button x:Name=&quot;ReviewButton&quot; Content=&quot;{Binding Review}&quot;&gt;
+            &lt;i:Interaction.Triggers&gt;
+              &lt;i:EventTrigger EventName=&quot;Click&quot;&gt;
+                &lt;GalaSoft_MvvmLight_Command:EventToCommand 
+                  Command=&quot;{Binding ReviewCommand, Mode=OneWay}&quot;/&gt;
+              &lt;/i:EventTrigger&gt;
+            &lt;/i:Interaction.Triggers&gt;
+          &lt;/Button&gt;
+        &lt;/StackPanel&gt;
+      &lt;/ScrollViewer&gt;
+    &lt;/StackPanel&gt;
+    &lt;HyperlinkButton Content=&quot;{Binding CompanyUrl}&quot; Grid.Row=&quot;1&quot; 
+       Margin=&quot;0,0,0,6&quot; &gt;
+      &lt;i:Interaction.Triggers&gt;
+        &lt;i:EventTrigger EventName=&quot;Click&quot;&gt;
+          &lt;GalaSoft_MvvmLight_Command:EventToCommand 
+            Command=&quot;{Binding ViewWebsiteCommand, Mode=OneWay}&quot;/&gt;
+        &lt;/i:EventTrigger&gt;
+      &lt;/i:Interaction.Triggers&gt;
+    &lt;/HyperlinkButton&gt;
+  &lt;/Grid&gt;
+&lt;/Grid&gt;</pre>
+
+<p>which you might as well forget about and just copy it from the <a href="http://www.schaikweb.net/dotnetbyexample/StandardAboutPage.zip" target="_blank">sample solution</a> which I uploaded. The net result is something like this in trial mode:</p>
+
+<p><a href="http://lh3.ggpht.com/_QXPoKuE9q6k/TTivKJ1ahPI/AAAAAAAAF40/RPfj5NtX-EA/s1600-h/aboutsample%5B6%5D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 5px; display: inline; float: left; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="aboutsample" border="0" alt="aboutsample" align="left" src="http://lh5.ggpht.com/_QXPoKuE9q6k/TTivKWADedI/AAAAAAAAF44/s60tQNRdgdc/aboutsample_thumb%5B4%5D.png?imgmax=800" width="223" height="384" /></a></p>
+
+<p>If your app is not running in trial mode, the text “If you prefer the full version… “ and the “buy” button are invisible. Of course, you can change the texts that are displayed by changing the resource, or you can have a ball and make your own stylish look &amp; feel for an about page. It’s up to you. But using a resource file, my base class and Manfred’s XAML you can make a fully functional about page in next to no time, and there is no excuse now for failing section 5.6 ever again.</p>
+
+<p>Update: you might want to change &quot;trail&quot; into &quot;trial&quot; in your resource file ;-). Thanks to <a href="http://twitter.com/#!/mahoekst">Matthijs Hoekstra</a> for spotting this.</p>

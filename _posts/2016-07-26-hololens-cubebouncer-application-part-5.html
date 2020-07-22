@@ -1,0 +1,144 @@
+---
+layout: post
+title: HoloLens CubeBouncer application part 5-using gravity, adding more speech &
+  sound, and app icons
+date: '2016-07-26T21:37:00.000+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- HoloLens
+- Unity3D
+- C#
+modified_time: '2016-08-04T10:25:02.437+02:00'
+thumbnail: https://lh3.googleusercontent.com/-1829j0jT4KY/V3y_4t7WjhI/AAAAAAAAOCE/Ygk3K5vi6Qk/s72-c/image_thumb%25255B63%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2315215318486908330
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/07/hololens-cubebouncer-application-part-5.html
+---
+
+<h2>Preface</h2> <p><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-1829j0jT4KY/V3y_4t7WjhI/AAAAAAAAOCE/Ygk3K5vi6Qk/image_thumb%25255B63%25255D.png?imgmax=800" width="220" align="right" height="144">In the <a href="http://dotnetbyexample.blogspot.com/2016/07/hololens-cubebouncer-application-part-4.html" target="_blank">previous post</a> I showed you how to integrate speech recognition. This post mostly builds upon stuff we now already know. It introduces actually one new concept. From the <a href="http://dotnetbyexample.blogspot.com/2016/07/hololens-cubebouncer-application-part-1.html" target="_blank">very first post</a> you might recall I instructed you to <em>turn off gravity</em> in the rigid body component. Hence, the cubes float in the air. But they still have <em>mass</em>, so like any body a cube has <em>inertia. </em>You will notice that when you bounce two cubes – they keep on moving, although they slowly lose speed (because we also defined <em>drag)</em>. If you were to set drag to zero, you get the effect as if the cubes move through vacuum – they just keep on moving, as Sir Isaac Newton described in <a href="https://www.grc.nasa.gov/WWW/K-12/airplane/newton.html" target="_blank">the first of his three laws of motion</a>. So if you were to suddenly switch on gravity, the floating cubes would drop to the floor. Of course, in real life you would not be able to switch gravity on and off at will, but in AR magic is just a matter of setting the right property. And that is exactly what we are going to do.</p> <h2>Down she goes!</h2> <p>We open the CubeManipulator script, and add a one line method:</p><pre>public void OnDrop()
+{
+  _rigidBody.useGravity = true;
+}</pre>
+<p>Did I mention using Unity feels a lot like cheating? I did, right? We also need to add a line to the top of the OnRevert method, or else the cube will move to it’s old position when we call “go to start”, but after that it will immediately drop to the floor again. That’s not what we want. when the cube returns, we turn on gravity off for that particular cube.</p><pre>public IEnumerator OnRevert()
+{
+  _rigidBody.useGravity = false;
+  //rest of method
+</pre>
+<p>And then it’s a matter of adding a new command to the SpeechManager:</p><pre>if (cmd == DropCommand)
+{
+  if (GazeManager.Instance.Hit)
+  {
+    GazeManager.Instance.HitInfo.collider.gameObject.SendMessage("OnDrop");
+  }
+}</pre>
+<p>Of course you have to define “DropCommand” and add it to the the keyword recognizer like in the <a href="http://dotnetbyexample.blogspot.com/2016/07/hololens-cubebouncer-application-part-4.html" target="_blank">previous post</a>, but that’s all. Rebuild the project from Unity, deploy the Visual Studio solution, look at a cube, say “drop” and it falls to the floor. And if you say “go to start” it will still go back to it’s old position <em>and stay there</em>. Easy, right?</p>
+<h2>Dropping and returning all cubes</h2>
+<p>By now I think you won’t find this very hard to understand anymore. First, we need actually implement the code in the MainStarter, as this is the object that knows which cubes are available:</p><pre>public void RevertAll()
+{
+  foreach (var c in _cubes)
+  {
+    c.SendMessage("OnRevert");
+  }
+}
+
+public void DropAll()
+{
+  foreach (var c in _cubes)
+  {
+    c.SendMessage("OnDrop");
+  }
+}</pre>
+<p>Every cube knows where it came from, so we only have to call “OnRevert” on every cube. In the same line, calling “OnDrop” for every cube will drop all cubes. And in the SpeechManager we just add two commands to recognize: “drop” and “total recall”, or whatever for phrases you choose for these commands. When the phrases are recognize, simply call the right method:</p><pre>if (cmd == RevertCommand)
+{
+    _mainStarter.RevertAll();
+}
+
+if (cmd == DropAllCommand)
+{
+   _mainStarter.DropAll();
+}</pre>
+<p>Of course you have to define the RevertCommand and the DropCommand fields again and add them to the KeywordRecognizer, but once again – very little code, powerful functionality. Clever use of and already very clever the SDK goes a long way. </p>
+<h2>Adding some missing sounds</h2>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_thumb.png" width="304" align="right" height="158"></a>So in the video I showed in the <a href="http://dotnetbyexample.blogspot.com/2016/07/hololens-cubebouncer-application-part-1.html" target="_blank">first post</a>, “create new grid” gave a kind of ping-sound, a returning cube a whistling sound, and “total recall” made a kind of&nbsp; “tadadaah” sound. I find these kind of affirmative sounds very useful for giving feedback to the user that the app understands you, although in practice you might go for a little less garish sounds than I did ;).&nbsp; </p>
+<p>I added three sounds to Assets/Custom/Audio in Unity, then added an audio source to the Managers game object. I only changed the settings “Play on awake” (to off) and Volume (to 0.5)</p>
+<p>Then we proceed to MainStarter.cs, and we add two public AudioClips fields and a private AudioSource clip:</p><pre>public AudioClip ReadyClip;
+
+public AudioClip ReturnAllClip;
+
+private AudioSource _audioSource;</pre>
+<p>The Audio source of course needs to be initialized in Start:</p><pre>_audioSource = GetComponent<audiosource>();</pre>
+<p>At the top of the CreateGrid method we add one line:</p><pre>private void CreateGrid(Vector3 hitPosition)
+{
+  <strong><font color="#ff0000">_audioSource.PlayOneShot(ReadyClip);</font></strong></pre>
+<p>And we do something similar at the top of the RevertAll method</p><pre>public void RevertAll()
+{
+ <strong><font color="#ff0000"> _audioSource.PlayOneShot(ReturnAllClip);</font></strong></pre>
+<p>Go back to Unity, drag the Audio assets “Ready” and “Return all” on top of the Main Starter Script in Managers. We have done that a couple of times already but the be sure, one more time a picture that shows what I mean here:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_thumb_3.png" width="404" height="253"></a></p>
+<p>Then rebuild the project, re-deploy from Visual Studio, and sure enough you will hear the sounds the “pringgg!” sound when the grid is created (at app start-up, and when you say “create new grid”), and the “tadadaah” when you say “totall recall”</p>
+<p>Then for the final sound – the whistling sound the cube makes when it returns. Well, that’s almost the same, only now we go to the CubeManipulator script, and add a field:</p><pre>public AudioClip ComeBackClip;</pre>
+<p>And on top of the of the OnRevert method we just need this?</p><pre>public IEnumerator OnRevert()
+{
+  _audioSource.PlayOneShot(ComeBackClip);</pre>
+<p>Go back to Unity, select the WortellCube prefab and drag the “Return” Audio assets on top of the field “Come Back Clip” that now has appeared on the CubeManipulator script component. Rebuild your project, deploy the Visual Studio solution and indeed, the cube now returns with a whistling sound. when your say “go to start”.</p>
+<p>The problem now only is – when you say “total recall” now, the app will play the “tadadaah” sound<em> –</em> and a lot of time the whistling sound simultaneously, resulting in quite a cacophony. After all, we are calling the OnRevert method for every single cube. This is not a good user experience. So we will have to change a few things.</p>
+<h2>Some tweaks to improve the sound experience</h2>
+<p>We need some way to tell the cubes <em>not</em> to play their sound on “total recall”. To that end, we first need to change the OnRevert method as follows:</p><pre>public IEnumerator OnRevert(object doPlaySound)
+{
+  if ((bool) doPlaySound)
+  {
+    _audioSource.PlayOneShot(ComeBackClip);
+  }</pre>
+<p>Then we go back to the SpeechManager, and in the method KeywordRecognizer_OnPhraseRecognized we add “true” to the OnRevert message that is fired when “go to start” is recognized</p><pre>if (cmd == GoToStartCommand)
+{
+  if (GazeManager.Instance.Hit)
+  {
+    GazeManager.Instance.HitInfo.collider.gameObject.SendMessage("OnRevert", <strong><font color="#ff0000">true</font></strong>);
+  }
+}</pre>
+<p>In contrast, in the MainStarter script we need to add <em>false </em>in OnRevert:</p><pre>public void RevertAll()
+{
+  _audioSource.PlayOneShot(ReturnAllClip);
+  foreach (var c in _cubes)
+  {
+    c.SendMessage("OnRevert", false);
+  }
+}</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_thumb_4.png" width="304" align="right" height="216"></a>And now if you say “totall recall” you will once again only hear the “tadadaa”, while a “go to start” still lets one cube return with the whistling sound.</p>
+<h2>Tiles and naming</h2>
+<p>I have added 5 files to the “Assets/Custom/UWPAssets” folder in Unity (see right). These are all 200% assets. So what you need to do is:</p>
+<ul>
+<li>Hit File/Build settings/<u>Player settings</u> 
+<li>Go to the right, to the inspector. 
+<li>Expand the Icon pane 
+<li>Scroll<em> all the way down</em> to “Universal 10 tiles and Logos”</li></ul>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_5.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_thumb_5.png" width="304" height="549"></a></p>
+<ul>
+<li>Expand the Square 44x44 Logo pane 
+<li>Scroll down to the “Scale 200%, (88x88 pixels)” 
+<li>Hit the “select” button in the square on the right 
+<li>Select “Square44x44Logo” from the popup</li></ul>
+<p>Your net result should be this.</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_6.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_thumb_6.png" width="554" height="325"></a></p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_7.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; margin: 0px 7px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_thumb_7.png" width="244" align="left" height="147"></a></p>
+<p>Repeat this for the other for logo formats. When you are done and you collapse all the image panes, they should all have the suffix”(200)” now.</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>Finally, we scroll all the way to the top again, and change the following settings:</p>
+<ul>
+<li>Change the company name into whatever you like – I took “LocalJoost Ltd.” This not not mandatory 
+<li>Change “Product name” to “CubeBouncer” 
+<li>Hit the “Select” button on the “Default icon” square and once again select the 310x310 square logo 
+<li>Under “Icon”, change short name into “CubeBouncer” 
+<li>Check “Large tile” and “Wide tile” under “Show name on”.</li></ul>
+<p>Net result:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_8.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_thumb_8.png" width="354" height="360"></a></p>
+<p>At this point it’s best to close Visual Studio, and delete the generated solution from the App folder. We have effectively changed the app title, <a href="https://www.blogger.com/blogger.g?blogID=5295746446529817470#editor/target=post;postID=2648710931919544323;onPublishedMenu=editor;onClosedMenu=editor;postNum=6;src=postname" target="_blank">yet you will notice that it does not have any effect if you keep the solution</a>. If you generate the solution anew, you will see it’s name is different too – it’s now called CubeBouncer.sln, no longer CubeBouncerDemo.sln. If you deploy it to a <a href="https://www.microsoft.com/microsoft-hololens/" target="_blank">HoloLens</a>, you will see either this in the all apps menu</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_9.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_thumb_9.png" width="404" height="332"></a></p>
+<p>and this one when you have pinned it:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_10.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/HoloLens-CubeBouncer-application-part-5-_11E14/image_thumb_10.png" width="404" height="486"></a></p>
+<p>And that’s it! Were done!</p>
+<h2>Concluding remarks</h2>
+<p>After setting up Unity, adding air taps, force, spatial sound, voice recognition, gravity and some imagery we have a simple but functional HoloLens app that demonstrates a lot (but not nearly all) of the HoloLens interaction model. I hope you enjoyed this trip, I sure had a lot of fun building and documenting it. It was a very educating experience for me and I found it a very fitting subject for the 256th post on this blog ;). Should you have any remarks, questions or improvements, let me know. </p>
+<p>The source code for the final project can be downloaded <a href="https://github.com/LocalJoost/CubeBouncer/tree/blog5" target="_blank">here</a>.</p>
+<p>Oh… There is still a very minor issue with it, though. I wonder if anyone actually finds it. <a href="https://twitter.com/@vbandi" target="_blank">András Velvárt</a> is excluded from competition ;). Let me know if you find it.&nbsp; </p>

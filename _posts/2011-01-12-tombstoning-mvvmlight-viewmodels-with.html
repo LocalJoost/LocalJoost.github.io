@@ -1,0 +1,155 @@
+---
+layout: post
+title: Tombstoning MVVMLight ViewModels with SilverlightSerializer on Windows Phone
+  7
+date: '2011-01-12T20:03:00.007+01:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- MVVM
+- WP7NL
+- Windows Phone 7
+- Serialization
+- MVVM Light
+- Tombstoning
+- WP7
+modified_time: '2011-05-14T10:06:11.914+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5185740490437692065
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/01/tombstoning-mvvmlight-viewmodels-with.html
+---
+
+<p>I’ve been <a href="http://dotnetbyexample.blogspot.com/2010/09/extensions-methods-for-tomb-stoning.html" target="_blank">down this road before</a> but I thought it wise to revisit this subject, since I see a lot of people in the <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> developer community still struggling with the concept of tombstoming. In my previous attempt to make some universal way of tombstoning ViewModels on Windows Phone 7 I used DataContractSerializer, which is a nice idea but does not work very well with <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> since the ViewModelBase is not serializable. And sometimes you have to go trough a lot of hooplah if stuff you use in your code does not turn out to be serializable after all.There is a better way, I think. So here it is: universal tombstoning for MVVMLight, take two. </p>  <p>Enter <a href="http://whydoidoit.com/2010/04/08/silverlight-serialization/" target="_blank">SilverlightSerializer</a> by the as far as I am concerned immortal <a href="http://twitter.com/mike_talbot" target="_blank">Mike Talbot</a>. Download this thing and store it somewhere in your sources. To use it for tombstoning, I have created the following extension methods:</p>  <pre>using System;
+using System.IO;
+using System.IO.IsolatedStorage;
+using System.Windows;
+using GalaSoft.MvvmLight;
+
+namespace LocalJoost.Utilities
+{
+  public static class ApplicationExtensions
+  {
+    private static string GetIsFile( Type t)
+    {
+      return string.Concat(t.Name, &quot;.dat&quot;);
+    }
+
+    public static T RetrieveFromIsolatedStorage&lt;T&gt;(this Application app) 
+      where T : class
+    {
+      using (var userAppStore = 
+         IsolatedStorageFile.GetUserStoreForApplication())
+      {
+        var dataFileName = GetIsFile(typeof(T));
+        if (userAppStore.FileExists(dataFileName))
+        {
+          using (var iss = userAppStore.OpenFile(dataFileName, FileMode.Open))
+          {
+             return SilverlightSerializer.Deserialize(iss) as T;
+          }
+        }
+      }
+      return null;
+    }
+
+    public static void SaveToIsolatedStorage(this Application app, 
+                                      ViewModelBase model)
+    {
+      var dataFileName = GetIsFile((model.GetType()));
+      using (var userAppStore = 
+               IsolatedStorageFile.GetUserStoreForApplication())
+      {
+        if (userAppStore.FileExists(dataFileName))
+        {
+          userAppStore.DeleteFile(dataFileName);
+        }
+        using (var iss = userAppStore.CreateFile(dataFileName))
+        {
+          SilverlightSerializer.Serialize(model,iss);          
+        }
+      }
+    }
+  }
+}</pre>
+
+<p>Then I go to the App.xaml.cs and modify it as depicted next:</p>
+
+<pre>private void Application_Launching(object sender, LaunchingEventArgs e)
+{
+  <font color="#ff0000">LoadModel();
+</font>}
+
+private void Application_Activated(object sender, ActivatedEventArgs e)
+{
+  <font color="#ff0000">LoadModel();</font>
+}
+
+<font color="#ff0000">private void LoadModel()
+{
+  try
+  {
+    MyMainViewModel.Instance = this.RetrieveFromIsolatedStorage&lt;MyMainViewModel&gt;();
+  }
+  catch (Exception){ }
+  if( MyMainViewModel.Instance == null) MyMainViewModel.CreateNew(); 
+}</font>
+
+private void Application_Deactivated(object sender, DeactivatedEventArgs e)
+{
+  <font color="#ff0000">this.SaveToIsolatedStorage(MyMainViewModel.Instance);</font>
+}
+
+private void Application_Closing(object sender, ClosingEventArgs e)
+{
+  <font color="#ff0000">this.SaveToIsolatedStorage(MyMainViewModel.Instance);</font>
+}</pre>
+
+<p>In <font color="#ff0000">red</font> you see my additions to the standard generated App.xaml.cs. You will also need to add at least one “using” statement (using LocalJoost.Utilities) and a second one with the namespace in which you have put MyMainViewModel. Notice the fact that there is an empty try-catch around the RetrieveFromIsolatedStorage call. This is intentional. Since binary deserialization tends to throw exceptions if you have changed the ViewModel’s code, you always want to make sure your application gets served a working ViewModel where ever it needs to come from.</p>
+
+<p>The skeleton of a MainViewModel looks something like this in my household:</p>
+
+<pre>public class MyMainViewModel : ViewModelBase
+{
+  public MyMainViewModel( )
+  {
+  }  
+
+  private static MyMainViewModel _instance;
+  public static MyMainViewModel Instance
+  {
+    get {return _instance;}
+    set { _instance = value; }
+  }
+
+  public static void CreateNew()
+  {
+    if (_instance == null)
+    {
+      _instance = new MyMainViewModel();
+    }
+  }
+}</pre>
+
+<p>If your want certain properties of your ViewModel specifically <em>not</em> to be serialized (because they come from a – in this example omitted – application model) you can mark them with the <strong>[DoNotSerialize]</strong> attribute that comes with SilverlightSerializer.</p>
+
+<p>You can now always bind to MyMainViewModel.Instance and you will either get a fresh new or a retrieved from isolated storage ViewModel. The fun thing is that although MVVMLight’s ViewModelBase is not serializable, the SilverlightSerializer does in fact serialize it which makes life a whole lot easier.</p>
+
+<p>You can, by the way, also decide to store the ViewModel on the PhoneApplicationService on deactivation and retrieve it there on activation. IMHO always storing on isolated storage gives a more consistent feeling to an application. But that’s just me. </p>
+
+<p>A few important points to conclude this post:</p>
+
+<ul>
+  <li>A ViewModel that is to be serialized on isolated storage should <em>always have a default constructor.</em> </li>
+
+  <li>Properties of the ViewModel that you want to have serialized need to have a getter <em>and a setter</em> (believe me, you can spend some time overlooking this). </li>
+
+  <li><em>Do not try something clever like this on the static instance property of your ViewModel: </em></li>
+</ul>
+
+<pre>public static MyMainViewModel Instance
+{
+  get {return _instance ?? (_instance = new MyMainViewModel());}
+  set { _instance = value; }
+}</pre>
+If you do this, <strong>MyMainViewModel.Instance = this.RetrieveFromIsolatedStorage</strong> will <em>first</em> call the getter, <em>thus creating a new instance of MyMainViewModel whatever happens next</em>, then <em>overwrite</em> it with the <em>retrieved</em> version. But if you do something like registering a message in the constructor of MyMainViewModel, the initially created model will stay alive ‘somewhere’ - you will end up with two instances of your supposedly singleton instance running in you App, both listening to the same message and reacting to it - and spend, like me, a not so nice and probably extended period of&#160; time scratching your head and wondering what the hell is going on. 
+
+<p>I hope that with this post I once and for all made it easier for the Windows Phone 7 community to tackle something apparently tricky as tombstoning thus improving the quality of what we are all going to put in the <a href="http://create.msdn.com/" target="_blank">App Hub</a>. </p>

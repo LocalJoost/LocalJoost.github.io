@@ -1,0 +1,106 @@
+---
+layout: post
+title: Centralized reusable audio feedback mechanisms for Mixed Reality apps
+date: '2017-12-27T09:08:00.000+01:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Windows Mixed Reality
+- Unity3D
+modified_time: '2017-12-27T12:13:32.559+01:00'
+thumbnail: https://lh3.googleusercontent.com/-4Ls6n2o2BUw/WkNUuCNIvcI/AAAAAAAAPfQ/i9WXrK0ZEWETXJlPiE-J9ybNrGsn7QFDQCHMYCw/s72-c/image_thumb%255B1%255D?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4966686773734083249
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2017/12/centralized-reusable-audio-feedback.html
+---
+
+<h2>Intro – feedback is key</h2><p>Although speech recognition in <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality</a> apps is very good, sometimes the best recognition fails, or you slightly mispronounced something. Or the command you just said is recognized, but not applicable in the current state. Silence,&nbsp; nothing happens and you wonder - did the app just not understand me, is the response slow or what? The result is always undesirable – users wait for something to happen and nothing does. They start to repeat the command and halfway the app executes the first command after all, or even worse – they start start shouting, which makes for a quite embarrassing situation (both for user and bystanders). Believe me, I’ve been there. So – it’s super important to inform your Mixed Reality app’s user&nbsp; that a voice command has been understood and is being processed right away. And if you <em>can’t</em> process it, inform the user of that as well.</p><h2>What kind of feedback?</h2><p>Well, that’s basically up to you. I usually choose a simple audio feedback sound – if you have been following my blog or downloading my apps you are by now very familiar with the <a href="https://github.com/LocalJoost/AudioFeedback/blob/master/Assets/HoloToolkitExtensions/Audio/Ready.wav" target="_blank">‘pringggg’ sound</a> I use in every app, be it an app in the Windows Store or one of my many sample apps on GitHub. If someone uses a voice command that’s not appropriate in the current context or state of the app, I tend to give some spoken feedback, telling the user that although the app has understood the command, can’t be executed now and if possible for what reason. Or prompt for some additional action. For both mechanisms I use a kind of centralized mechanism that uses my <a href="https://dotnetbyexample.blogspot.com/2017/04/using-messenger-to-communicate-between.html" target="_blank">Messenger</a> behaviour, that already has played a role in multiple samples. </p><h2>Project setup overview</h2><p>The hierarchy of the project is as displayed below, and all is does is showing the user interface on the right: </p><p><a href="https://lh3.googleusercontent.com/-JggyD5wgEAE/WkNUtvmcm2I/AAAAAAAAPfM/00f_ZhpFGVULzgaQqL7dff4QEUoa57vtACHMYCw/s1600-h/image%255B3%255D"><img width="220" height="231" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-4Ls6n2o2BUw/WkNUuCNIvcI/AAAAAAAAPfQ/i9WXrK0ZEWETXJlPiE-J9ybNrGsn7QFDQCHMYCw/image_thumb%255B1%255D?imgmax=800" border="0"></a><a href="https://lh3.googleusercontent.com/-woGBOaV275Q/WkNUvLrdstI/AAAAAAAAPfU/DQeo6wehQjAqGOK-o9_SGOZnxFciuJvVQCHMYCw/s1600-h/image%255B8%255D"><img width="335" height="230" title="image" style="margin: 0px 0px 0px 10px; border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-S43Q1lRVtZM/WkNUw9grBOI/AAAAAAAAPfY/DNxYEy6sPaYQerZdxcS-twtZznoB90tFgCHMYCw/image_thumb%255B4%255D?imgmax=800" border="0"></a></p><p>If you say “Test command”, you will hear the “pringggg” sound I already described, and if you push the button the spoken feedback “Thank you for pressing this button”. Now this is rather trivial, but it only serves to show the principle. Notice, by the way, the button comes from the Mixed Reality Toolkit examples – I described before <a href="http://dotnetbyexample.blogspot.com/2017/12/short-tip-using-ui-components-from.html" target="_blank">how to extract those samples and use them in your app.</a>&nbsp;</p><p>The Audio Feedback Manager and Spoken Feedback Manager look like this:</p><p><a href="https://lh3.googleusercontent.com/-pH1NufEtuUQ/WkNUxMd3JiI/AAAAAAAAPfc/8UUuH0SZHQkw8FydD0y2hVSnBsJuOt_RwCHMYCw/s1600-h/image%255B27%255D"><img width="220" height="347" title="image" align="left" style="border: 0px currentcolor; border-image: none; float: left; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-AfZill1U3_U/WkNUxlyRFpI/AAAAAAAAPfg/Loblgl66L2080ZAMzjDF7sku0OZ6A820QCHMYCw/image_thumb%255B15%255D?imgmax=800" border="0"></a><a href="https://lh3.googleusercontent.com/--XbR3ESizV8/WkNUx-KfUAI/AAAAAAAAPfk/hQpExUNQ-G0Ga5icQtuRkqDZl0csWqBkwCHMYCw/s1600-h/image%255B28%255D"><img width="220" height="388" title="image" style="margin: 0px 9px 0px 10px; border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-C50svBpn7Tk/WkNUyQoHRhI/AAAAAAAAPfo/1GbdvLrs21sOKE_6Rve5MtOhxRRb-HKEQCHMYCw/image_thumb%255B16%255D?imgmax=800" border="0"></a></p><p>The Audio Feedback Manager contains an Audio Source that just contains the confirmation sound, and a little script “Confirm Sound Ringer” by yours truly, which will be explained below. This sound is intentionally <em>not</em> spatialized, as it’s a global confirmation sound. If it was spatialized, it would also be localized, and the user would be able to walk away from confirmation sounds or spoken feedback, which is not what we want. </p><p>The Spoken Feedback Manager contains an empty Audio Source (also not spatialized), a Text To Speech Script from the Mixed Reality Toolkit, and a the “Spoken Feedback Manager’ script also by me.</p><h2>ConfirmSoundRinger</h2><pre style="font-size: 12px;">using HoloToolkitExtensions.Messaging;
+using UnityEngine;
+
+namespace HoloToolkitExtensions.Audio
+{
+    public class ConfirmSoundRinger : MonoBehaviour
+    {
+        void Start()
+        {
+            Messenger.Instance.AddListener&lt;ConfirmSoundMessage&gt;(ProcessMessage);
+        }
+
+        private void ProcessMessage(ConfirmSoundMessage arg1)
+        {
+            PlayConfirmationSound();
+        }
+
+        private AudioSource _audioSource;
+        private void PlayConfirmationSound()
+        {
+            if (_audioSource == null)
+            {
+                _audioSource = GetComponent&lt;AudioSource&gt;();
+            }
+            if (_audioSource != null)
+            {
+                _audioSource.Play();
+            }
+        }
+    }
+}</pre><p>Not quite rocket science. If a message of type ConfirmSoundMessage arrives, try to find an Audio Source. If found, play the sound. ConfirmSoundMessage&nbsp; is just an empty class with not properties or methods whatsoever – it’s a bare signal class.</p><h2>SpokenFeedbackManager </h2><p>Marginally more complex, but not a lot:</p><pre style="font-size: 12px;">using HoloToolkit.Unity;
+using HoloToolkitExtensions.Messaging;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace HoloToolkitExtensions.Audio
+{
+    public class SpokenFeedbackManager : MonoBehaviour
+    {
+        private Queue&lt;string&gt; _messages = new Queue&lt;string&gt;();
+        private void Start()
+        {
+            Messenger.Instance.AddListener&lt;SpokenFeedbackMessage&gt;(AddTextToQueue);
+            _ttsManager = GetComponent&lt;TextToSpeech&gt;();
+        }
+
+        private void AddTextToQueue(SpokenFeedbackMessage msg)
+        {
+            _messages.Enqueue(msg.Message);
+        }
+
+        private TextToSpeech _ttsManager;
+
+        private void Update()
+        {
+            SpeakText();
+        }
+
+        private void SpeakText()
+        {
+            if (_ttsManager != null &amp;&amp; _messages.Count &gt; 0)
+            {
+                if(!(_ttsManager.SpeechTextInQueue() || _ttsManager.IsSpeaking()))
+                {
+                    _ttsManager.StartSpeaking(_messages.Dequeue());
+                }
+            }
+        }
+    }
+}
+
+</pre><p>If a SpokenFeedbackMessage comes in, it’s added to the queue. In the Update method, SpeakText is called, which first checks if there are any messages to process, then checks if the TextToSpeech is available – and if so, it pops the message out of the queue and actually speaks it. The queue has two functions. First, the message may come from a background thread, and by having SpeakText called from Update, it’s automatically transferred to the main loop. Second, it prevents messages being ‘overwritten’ before they are even spoken. </p><p>The trade-off of course is that you might stack up messages if the user quickly repeats an action, resulting in the user getting a lot of talk while the action is already over. </p><p>On the Count &gt; 0 in stead of any – apparently you are to refrain from using LINQ extensively in Unity apps, as this is deemed inefficient. It hurts my eyes to see it used this way, but when in Rome…</p><h2>Wiring it up</h2><p>There is a script SpeechCommandExecuter sitting in Managers, next to a Speech Input Source and a Speech Input Handler, that is being called by the Speech Input Handler when you say “Test Command”. This is not quite rocket science, to put it mildly:</p><pre style="font-size: 12px;">public class SpeechCommandExecuter : MonoBehaviour
+{
+    public void ExecuteTestCommand()
+    {
+        Messenger.Instance.Broadcast(new ConfirmSoundMessage());
+    }
+}</pre><p>As is the ButtonClick script, that’s attached to the ButtonPush:</p><pre style="font-size: 12px;">using HoloToolkit.Unity.InputModule;
+using HoloToolkitExtensions.Audio;
+using HoloToolkitExtensions.Messaging;
+using UnityEngine;
+
+public class ButtonClick : MonoBehaviour, IInputClickHandler
+{
+    public void OnInputClicked(InputClickedEventData eventData)
+    {
+        Messenger.Instance.Broadcast(
+            new SpokenFeedbackMessage { Message = "Thank you for pressing this button"});
+    }
+}
+</pre><h2>The point of doing it like this</h2><p>Anywhere you now have to give confirmation or feedback, you now just need to send a message – and you don’t have to worry about setting up an Audio Source, a Text To Speech and wiring that up correctly. Two reusable components take care of that. Typically, you would not send the conformation directly from the pushed button or the speech command – you would <em>first</em> validate if the command can be processed in the component that holds the logic, and <em>then</em> give confirmation or feedback from there. </p><h2>Conclusion</h2><p>I hope to have convinced you of the importance of feedback, and I showed you a simple and reusable way of implementing that. You can find the sample code, as always, <a href="https://github.com/LocalJoost/AudioFeedback" target="_blank">on GitHub</a>. </p>

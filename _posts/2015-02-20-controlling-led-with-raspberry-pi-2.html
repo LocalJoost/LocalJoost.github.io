@@ -1,0 +1,99 @@
+---
+layout: post
+title: Controlling a LED with a Raspberry PI 2 using Mono and C#
+date: '2015-02-20T22:14:00.001+01:00'
+author: Joost van Schaik
+tags:
+- IoT
+- C#
+- Raspberry PI2
+- Mono
+modified_time: '2015-02-24T13:34:51.449+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7539005117127725130
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/02/controlling-led-with-raspberry-pi-2.html
+---
+
+<p>My fellow MVP <a href="http://twitter.com/PeNoWiMo">Peter Nowak</a> from Germany pointed me to <a href="http://www.amazon.de/SunFounder-modules-Sensor-Raspberry-Extension/dp/B00P66XRNK/ref=sr_1_1?ie=UTF8&amp;qid=1423736952&amp;sr=8-1&amp;keywords=sunfounder+raspberry+pi+b%2B">this awesome kit</a> on Amazon.de that has this vast array of sensors in it.</p> <p><img src="http://ecx.images-amazon.com/images/I/71od59CUG%2BL._SL1000_.jpg" width="650" height="650"></p> <p>It comes with 37 sensors and peripherals that can be controlled with a Raspberry PI2. It’s originally made for the PI B+, but as this is pin compatible with the PI 2 this works fine. It comes with a mini CD with sample code, but unfortunately this is all C - you need to compile it using GCC. Not having programmed in C since the late 90’s, it’s not code I feel very comfortable messing around with. On the other hand, I am also to impatient to let this gather dust until Windows 10 for devices becomes available.</p> <p>Now the code samples in C that go with this kit all use a library called <a href="http://wiringpi.com/">wiringPI</a>, that is created by one <a href="https://twitter.com/drogon">Gordon Henderson</a>. I basically used this library as a foundation for getting the stuff to work with C#. You first have to install the library. Gordon has a <a href="http://wiringpi.com/download-and-install/">simple step-by-step manual</a> on how to go about on this. Simply open a console, go to the directory where you want to download the library’s sources to, and follow his instructions.”Installing” in Linux apparently means installing git, clone the repository, and start a build file that apparently compiles the whole shebang and puts it ‘somewhere’. The net result is that you can compile the sample C programs that comes with the kit using Gordon’s library to control the sensors.</p> <p>Then there is this guy, <a href="https://github.com/danriches">Daniel Riches</a>, who has created a simple wrapper library for C#. How this works is mind-bogglingly simple – he simple uses DllImport to wrap calls to the C library and making those accessible to C#. I haven’t seen this technique used in anger since 1999, in a Visual Basic 6 project. But apparently this still works – and what’s more important – it apparently works under Mono too, even if the imported code does not come from a DLL at all, but a ‘so’ file.</p> <p>He kind of describes what you need to do – after installing Gordon’s library, you go (still on the command line of course) to the subfolder “wiringPi” of the folder where you have started the build, and then start three commands to create ‘shared libraries’:</p> <p>cc -shared wiringPi.o -o libwiringPi.so<br>cc -shared wiringPiI2C.o -o libwiringPiI2C.so<br>cc -shared wiringPiSPI.o -o libwiringPiSPI.so</p> <p>And apparently you can then just delete the folder where you have downloaded wiringPi’s sources in. The library is installed and can be used.</p> <p>Now Daniel’s sample shows the way, unfortunately it’s missing one key feature for my goal – for controlling a <em>LED</em> you will need access to the “softPwm” routines of wiringPi. Browsing the C sources I found the softPwm.c file with the routines I needed to access. So I created my own wrapper class:</p><pre>using System.Runtime.InteropServices;
+
+namespace WiringPi
+{
+  public class SoftPwm
+  {
+    [DllImport("libwiringPi.so", EntryPoint = "softPwmCreate")]
+    public static extern void Create(int pin, int initialValue, int pwmRange);
+
+    [DllImport("libwiringPi.so", EntryPoint = "softPwmWrite")]
+    public static extern void Write(int pin, int value);
+
+    [DllImport("libwiringPi.so", EntryPoint = "softPwmStop")]
+    public static extern void Stop(int pin);
+  }
+}
+
+</pre>
+<p>As you see, this is all pretty ugly – everything is public static, it follows the layout of the original code very closely and is in its current for totally not object oriented. But whatever, it’s still early days and it’s a temporary measure until Windows 10 pops up anyway. What this does is make a few C routines accessible to C# – for instance, the C routine “softPwmWrite”, that puts a value on a GPIO pin, becomes available al SoftPwm.Write.</p>
+<p>And then I can write the following simple program that lets the multi color LED that comes with the SunFounder kit it all kinds of colors:</p><pre>using System;
+using System.Threading;
+using WiringPi;
+
+namespace SunfounderTest
+{
+  class Program
+  {
+    const int LedPinRed = 0;
+    const int LedPinGreen = 1;
+    const int LedPinBlue = 2;
+
+    static void Main(string[] args)
+    {
+      if (Init.WiringPiSetup() != -1)
+      {
+        SoftPwm.Create(LedPinRed, 0, 100);
+        SoftPwm.Create(LedPinGreen, 0, 100);
+        SoftPwm.Create(LedPinBlue, 0, 100);
+        Console.WriteLine("Init succeeded");
+
+        for (var i = 1; i &lt; 3; i++)
+        {
+          ShowColor(255, 0, 0, "Red");
+          ShowColor(0, 255, 0, "Green");
+          ShowColor(0, 0, 255, "Blue");
+          ShowColor(255, 255, 0, "Yellow");
+          ShowColor(255, 0, 255, "Pink");
+          ShowColor(0, 255, 255, "Cyan");
+          ShowColor(195, 0, 255, "Purple");
+          ShowColor(255, 255, 255, "White");
+        }
+
+        SoftPwm.Stop(LedPinRed);
+        SoftPwm.Stop(LedPinGreen);
+        SoftPwm.Stop(LedPinBlue);
+      }
+      else
+      {
+        Console.WriteLine("Init failed");
+      }
+    }
+
+    private static void ShowColor(int r, int g, int b, string label)
+    {
+      SetLedColor(r, g, b);
+      Console.WriteLine(label);
+      Thread.Sleep(1000);
+    }
+
+    private static void SetLedColor(int r, int g, int b)
+    {
+      SoftPwm.Write(LedPinRed, r);
+      SoftPwm.Write(LedPinGreen, g);
+      SoftPwm.Write(LedPinBlue, b);
+    }
+  }
+}</pre>
+<p>I will not even begin with pretending that I actually fully understand what I am doing – and I even understand less of the <em>why </em>- but you <em>first</em> have to call the Init.WiringPiSetup method – that was already wrapped by Daniel – and <em>then</em> you need to call ‘Create’ on the three pins - only then you can actual set value to the pins using SoftPwm.Write. I wrapped the calls to that in SetLedColor that accepts red, green and blue values (apparenly 0-255), which is in turn wrapped in a routine that writes progress info and waits a little before progressing. And at the end, you will need to call Stop on all three pins to make the LED go off again, or else it will happily stay on.</p>
+<p>Net effect: if you connect LED Pin R to GPIO17, Pin G to 18, Pin B to 27 and the ground pin to on of the GND, the led will flash trough a whole range of colors. </p>
+<div id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:e2b1e69c-a2e8-43a3-a3e6-9b3ced25dfa1" class="wlWriterEditableSmartContent" style="float: none; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px"><div><object width="587" height="330"><param name="movie" value="http://www.youtube.com/v/g1oxGCc3l_c?hl=en&amp;hd=1"></param><embed src="http://www.youtube.com/v/g1oxGCc3l_c?hl=en&amp;hd=1" type="application/x-shockwave-flash" width="587" height="330"></embed></object></div><div style="width:587px;clear:both;font-size:.8em">LED controlled by C# on Raspberry PI2 using C#</div></div>
+<p>It will only work if you run the app using sudo, so</p>
+<p><strong>sudo mono SunfounderTest.exe</strong></p>
+<p>The annoying part is that in the samples provide with this kit these pins 17, 18 and 27 are referred to as 0, 1 and 2. This apparently has historical reasons. On <a href="http://www.element14.com/community/docs/DOC-73950/l/raspberry-pi-2-model-b-gpio-40-pin-block-pinout">this page</a> at element14 I have found a pin schema with translation from one naming to the other. Notice Pin number 11 is called both GPIO17 as well as GPIO_GEN0. This correspond to Pin 0 in the <em>code</em>. I assume there is some logic somewhere, but I yet have to discover that :) </p><img src="http://www.element14.com/community/servlet/JiveServlet/previewBody/73950-102-4-309126/GPIO_Pi2.png" width="449" height="480"> 
+<p>As is my custom, you can find a demo solution <a href="https://github.com/LocalJoost/SunfounderTest1">here</a>. Mind you – not all of the code is mine, part of it is from <a href="https://github.com/danriches">Daniel Riches</a></p>  

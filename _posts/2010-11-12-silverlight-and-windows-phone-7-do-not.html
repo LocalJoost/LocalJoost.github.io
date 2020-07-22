@@ -1,0 +1,28 @@
+---
+layout: post
+title: Silverlight and Windows Phone 7 do not like DTDs
+date: '2010-11-12T14:08:00.001+01:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- Silverlight
+- XML
+- WP7
+modified_time: '2011-04-20T11:34:57.120+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1855653450609886116
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/11/silverlight-and-windows-phone-7-do-not.html
+---
+
+<p>My current <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> project requires the possibility of reading configurations from various servers. For the GIS lovers among my audience: I am trying to read a GetCapabilities document from a WMS server. I was reading <a href="http://t1.hypercube.telascience.org/cgi-bin/landsat7?service=wms&amp;request=getcapabilities&amp;.xml" target="_blank">this one</a> and <a href="http://www2.demis.nl/wms/wms.ashx?wms=worldmap&amp;service=wms&amp;request=getcapabilities&amp;.xml" target="_blank">this one</a>, and the first one succeeded, while the second one failed. It became even more odd when I tried to write unit tests running from the full framework – then both links processed flawlessly. The error was “NotSupportedException” on XDocument.Load().</p>  <p>The second links contains a DTD from ye goode olde days and it turns out Silverlight and Windows Phone 7 by default are not very fond of DTD’s in documents. After some searching around I found the <a href="http://msdn.microsoft.com/en-us/library/system.xml.dtdprocessing(v=VS.95).aspx" target="_blank">DtdProcessing Enumeration</a> and I changed this code</p>  <pre>var doc = XDocument.Load(stream)</pre>
+
+<p>into</p>
+
+<pre>using (var reader = XmlReader.Create(stream, 
+  new XmlReaderSettings {DtdProcessing = DtdProcessing.Ignore}))
+{
+  var doc = XDocument.Load(reader)
+}</pre>
+
+<p>And indeed, problem solved</p>  

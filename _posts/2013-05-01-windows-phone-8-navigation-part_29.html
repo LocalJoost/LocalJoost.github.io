@@ -1,0 +1,461 @@
+---
+layout: post
+title: Windows Phone 8 navigation part 2–routing, route details,tombstoning–and testing
+date: '2013-05-01T01:50:00.000+02:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- Mapping
+- wpnl
+- wpdev
+- dotnetmag
+- MVVM
+- Unit Test
+- MVVM Light
+modified_time: '2013-05-02T08:11:50.266+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7642206347526282277
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/04/windows-phone-8-navigation-part_29.html
+---
+
+<p><font size="4">What happened last time on this show</font></p> <p>In <a href="http://dotnetbyexample.blogspot.nl/2013/04/windows-phone-8-navigation-part.html" target="_blank">the previous post</a> I described to how to write the business logic to find a location by searching for an address by text, how to be able to tombstone the results, and how to make sure this all worked by using simple tests. Fine, but the purpose was <em>routing</em>, that is, actually making the app finding instructions to get from A to B. As a GIS buff, being used to complex algorithms and stuff, this is almost embarrassingly easy in <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> 8. You basically need an object of type RouteQuery, plonk in any number of waypoints (at least two, of course, being the start and the end) and a method of transport (drive or walk). And that’s basically it.</p> <p>But we still have to honor the other two requirements – in needs to be testable <em>and</em> serializable so we can support tombstoning</p> <p><font size="4">Find the route, <strike>Luke</strike> phone</font></p> <p>So <a href="http://www.schaikweb.net/dotnetbyexample/NavigationDemo1.zip" target="_blank">in the solution I created last time</a> I add another business class that does the actual finding of the route:</p><pre>using System.Collections.Generic;
+using System.Device.Location;
+using System.Threading.Tasks;
+using Microsoft.Phone.Maps.Services;
+using Wp7nl.Utilities;
+
+namespace NavigationDemo.Logic.Models
+{
+  public class NavigationModel
+  {
+    public NavigationModel()
+    {
+      From = new GeocodeModel();
+      To = new GeocodeModel();
+    }
+
+    public async Task DoRouting()
+    {
+      await DoRouting(From.SelectedLocation.GeoCoordinate, 
+                      To.SelectedLocation.GeoCoordinate);
+    }
+
+    public async Task DoRouting(GeoCoordinate from, GeoCoordinate to)
+    {
+      var wayPoints = new List&lt;GeoCoordinate&gt;(new[] { from, to });
+      <font color="#ff0000"><u><strong>var routeQuery = new RouteQuery</strong></u></font> 
+        <strong><u><font color="#ff0000">{ TravelMode = TravelMode.Driving, Waypoints = wayPoints };</font></u></strong>
+      <font color="#ff0000"><u><strong>FoundRoute = await routeQuery.GetRouteAsync();</strong></u></font>
+    }
+
+    public Route FoundRoute { get; set; }   
+
+    public GeocodeModel From { get; set; }
+
+    public GeocodeModel To { get; set; }
+  }
+}
+</pre>
+<p>This comes in the NavigationDemo.Logic project, in the Models folder, next to GeocodeModel. Here you can see what I just mentioned – the actual navigation logic is very simple. This whole model comes down to three lines (red, bold <em>and </em>underlined). But, does this work?</p>
+<p><font size="4">Testing the routing</font></p>
+<p>In the unit test app I added a NavigationModelTest class. To ease testing, I created public overload method where I can directly supply the waypoints. We already know the GeocodeModel works. We have tested that before.</p><pre>using System;
+using System.Device.Location;
+using System.Linq;
+using System.Threading;
+using System.Windows;
+using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
+using NavigationDemo.Logic.Models;
+<br>using Wp7nl.Utilities;<br>
+namespace NavigationDemo.Logic.Test
+{
+  [TestClass]
+  public class NavigationModelTest
+  {
+    [TestMethod]
+    public void TestPointRouting()
+    {
+      var m = new NavigationModel();
+
+      var waitHandle = new AutoResetEvent(false);
+
+      Deployment.Current.Dispatcher.BeginInvoke(async () =&gt;
+      {
+        await m.DoRouting(
+            new GeoCoordinate(52.182679977268, 5.39752000942826),
+            new GeoCoordinate(52.1061999723315, 5.03457002341747));
+        waitHandle.Set();
+      });
+
+      waitHandle.WaitOne(TimeSpan.FromSeconds(25));
+
+      Assert.IsTrue(m.FoundRoute.Geometry.Any());
+    }
+  }
+}</pre>
+<p>Route finding is async as well and needs to run on the UI thread, <a href="http://dotnetbyexample.blogspot.nl/2013/03/unit-testing-async-windows-phone-8-code.html" target="_blank">hence the hoopla with the AutoResetEvent and the Dispatcher</a>. Basically I ask the the RouteQuery to find some route from one place to another in the Netherlands. For those interested: it’s a road I drove for many a hackathon – from my street to the street where our <a href="http://twitpic.com/mahoekst" target="_blank">former Dutch DPE Matthijs Hoekstra</a> used to live before he decided to go upstream <a href="http://familie.hoekstraonline.net/2013/04/15/goodbye-dpe/" target="_blank">to Seattle to join the Windows Phone team</a>. I actually seem to recall I wrote this very code in his house at the last ‘kitchen table’ hackathon :-)</p>
+<p>There are two things to wonder at at this point: </p>
+<ol>
+<li>Will this serialize to support tombstoning? (remember from the previous post the MapLocation that came back from GeocodeQuery did not) 
+<li>What the hell is it that we find?</li></ol>
+<p><font size="4">Does this serialize?</font></p>
+<p>I added a second test to NavigationModelTest&nbsp; which is basically an extended version of the first.</p><pre>[TestMethod]
+public void TestStoreNavigationModel()
+{
+  var m = new NavigationModel();
+
+  var waitHandle = new AutoResetEvent(false);
+
+  Deployment.Current.Dispatcher.BeginInvoke(async () =&gt;
+  {
+    await m.DoRouting(
+        new GeoCoordinate(52.182679977268, 5.39752000942826),
+        new GeoCoordinate(52.1061999723315, 5.03457002341747));
+    waitHandle.Set();
+  });
+
+  waitHandle.WaitOne(TimeSpan.FromSeconds(25));
+
+  var h = new IsolatedStorageHelper&lt;NavigationModel&gt;();
+  if (h.ExistsInStorage())
+  {
+    h.DeletedFromStorage();
+  }
+  h.SaveToStorage(m);
+
+  var retrieved = h.RetrieveFromStorage();
+
+  Assert.IsTrue(retrieved.FoundRoute.Geometry.Any());
+}</pre>
+<p>And here we go again: the test fails with SilverlightSerializer complaining that “Could not construct an object of type 'Microsoft.Phone.Maps.Services.Route', it must be creatable in this scope and have a default parameterless constructor”. So we basically have the same problem we had in the previous post. The way to make this test work is to adorn FoundRoute in NavigationModel</p><pre>[DoNotSerialize]
+public Route FoundRoute { get; set; }</pre>and change the last line of test a little <pre>Assert.IsNotNull(retrieved);</pre>
+<p>The test now succeeds, but the route you found is now of course still not serialized. You can wonder (or gripe on twitter) why Microsoft have implemented it this way, but that won’t get your app any closer to shipping. It simply means we have to defer tombstoning of the found route to the viewmodel again, just like in the previous post.</p>
+<p><font size="4">What DO we get back?</font></p>
+<p>Actually, quite a lot. The routing information is <em>very</em> detailed. The main Route class has the following properties and methods:</p><pre>public class Route : IRoutePath
+{
+  public LocationRectangle BoundingBox { get; internal set; }
+  public TimeSpan EstimatedDuration { get; internal set; }
+  public ReadOnlyCollection&lt;Device.Location.GeoCoordinate&gt; Geometry <br>         { get; internal set; }
+  public ReadOnlyCollection&lt;RouteLeg&gt; Legs { get; internal set; }
+  public int LengthInMeters { get; internal set; }
+}
+</pre>
+<p>A route can exist out of multiple RouteLeg objects (if you give the RouteQuery more than two waypoints. RouteLeg is defined as follows:</p><pre>public class RouteLeg : IRoutePath
+{
+  public LocationRectangle BoundingBox { get; internal set; }
+  public TimeSpan EstimatedDuration { get; internal set; }
+  public ReadOnlyCollection&lt;Device.Location.GeoCoordinate&gt; Geometry 
+        { get; internal set; }
+  public int LengthInMeters { get; internal set; }
+  public ReadOnlyCollection&lt;RouteManeuver&gt; Maneuvers 
+       { get; internal set; }
+}</pre>
+<p>Which makes me feel that a RouteLeg and a Route are nearly the same object and there might have been some code re-use possibilities, but I digress. A RouteLeg consists, apart from a geometry, out of various <em>RouteManeuvers, </em>which look like this:</p><pre>public class RouteManeuver
+{
+  public RouteManeuverInstructionKind InstructionKind { get; internal set; }
+  public string InstructionText { get; internal set; }
+  public int LengthInMeters { get; internal set; }
+  public GeoCoordinate StartGeoCoordinate { get; internal set; }
+}</pre>
+<p>The InstructionText literally contains stuff like “Turn left on xyz street” and a location where this should happen. RouteManeuverInstructionKind is an enum describing the kind of instruction and really is so comprehensive it’s actually a bit hilarious, <a href="http://msdn.microsoft.com/en-us/library/windowsphone/develop/microsoft.phone.maps.services.routemaneuverinstructionkind(v=vs.105).aspx" target="_blank">so go and have a look on it</a>. But you can very much use this to depict what you the driver needs to do, and I am pretty sure this is what Nokia’s “Here Drive”&nbsp; uses under the hood. So here we have a full fledged routing API under the hood – but there’s no way in Hades we are ever going to serialize that will all those internal sets, as we already ascertained.</p>
+<p>In real life, at this point you really need to confer with the stakeholder and the designer – what <em>is</em> it what we are going to show and <em>how</em> we are going to show it? Since I am both <em>and</em> developer at this point, I decided I want to show the route on the map as a line, the maneuvers (being the point where you actually need to <em>do</em> something) as symbols you can tap on, and having a window with the InstructionText to pop up as you do. Basically we’ll end up with a simple routing system in stead of a full fledged navigation app, but we have to start somewhere. And being the lazy *** I am, I am going to re-use the <a href="http://dotnetbyexample.blogspot.nl/2012/10/data-binding-shapes-to-new-windows.html" target="_blank">map binding behavior</a> I wrote last year for <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> and Windows Phone 8. But that’s later. First the view models.</p>
+<p><font size="4">Enter the viewmodels – again</font></p>
+<p>The first, and most simple viewmodel is for handling the maneuver we are going to show in the popup</p><pre>using System.Windows.Input;
+using GalaSoft.MvvmLight;
+using GalaSoft.MvvmLight.Command;
+using GalaSoft.MvvmLight.Messaging;
+using Microsoft.Phone.Maps.Controls;
+using Wp7nl.Utilities;
+
+namespace NavigationDemo.Logic.ViewModels
+{
+  public class ManeuverViewModel: ViewModelBase
+  {
+    private GeoCoordinateCollection location;
+    public GeoCoordinateCollection Location
+    {
+      get { return location; }
+      set
+      {
+        if (location != value)
+        {
+          location = value;
+          RaisePropertyChanged(() =&gt; Location);
+        }
+      }
+    }
+
+    private string description;
+    public string Description
+    {
+      get { return description; }
+      set
+      {
+        if (description != value)
+        {
+          description = value;
+          RaisePropertyChanged(() =&gt; Description);
+        }
+      }
+    }
+
+    [DoNotSerialize]
+    public ICommand SelectCommand
+    {
+      get
+      {
+        return new RelayCommand(
+            () =&gt; Messenger.Default.Send(this),
+            () =&gt; true);
+      }
+    }
+  }
+}</pre>
+<p>The command firing of the object itself over the Messenger is a time-tested and tried method I use – if a user selects an object from a list, let a viewmodel that has the actual <em>list</em> of these objects as a property – I call that the ‘parent’ - handle the select. This prevents a whole lot who messing around with data contexts. Be nice to your designer ;-). Also note the geometry in this class is a GeoCoordinateCollection – although the maneuver is a point, my MapShapeDrawBehavior needs a GeoCoordinateCollection, because it does not know in advance if it needs to draw a point or a shape.</p>
+<p>The next one is a bit awkward and also direct result of the way my MapShapeDrawBehavior behavior works – it needs a <em>list of objects</em> with a property that’s a GeoCoordinateCollection – this being the geometry. But the RouteLeg gives me a ReadOnlyCollection&lt;GeoCoordinate&gt; and we have only one object – one route. So I write a simple wrapper viewmodel to make sure that it has:</p><pre>using System.Collections.Generic;
+using System.Device.Location;
+using GalaSoft.MvvmLight;
+using Microsoft.Phone.Maps.Controls;
+using Wp7nl.Utilities;
+
+namespace NavigationDemo.Logic.ViewModels
+{
+  public class RouteGeometryViewModel : ViewModelBase
+  {
+    public RouteGeometryViewModel()
+    {
+    }
+
+    public RouteGeometryViewModel(IEnumerable&lt;GeoCoordinate&gt; coordinates)
+    {
+      Geometry = new GeoCoordinateCollection();
+      Geometry.AddRange(coordinates);
+    }
+
+    private GeoCoordinateCollection geometry;
+    public GeoCoordinateCollection Geometry
+    {
+      get { return geometry; }
+      set
+      {
+        if (geometry != value)
+        {
+          geometry = value;
+          RaisePropertyChanged(() =&gt; Geometry);
+        }
+      }
+    }
+  }
+}</pre>
+<p>… and make sure the viewmodel holding this object has a list of these. </p>
+<p>And finally, the RoutingViewModel itself, that starts like this:</p><pre>using System.Collections.ObjectModel;
+using System.Device.Location;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Input;
+using GalaSoft.MvvmLight;
+using GalaSoft.MvvmLight.Command;
+using GalaSoft.MvvmLight.Messaging;
+using Microsoft.Phone.Maps.Controls;
+using NavigationDemo.Logic.Models;
+using Wp7nl.Utilities;
+
+namespace NavigationDemo.Logic.ViewModels
+{
+  public class RoutingViewmodel : ViewModelBase
+  {
+    public RoutingViewmodel()
+    {
+      Maneuvers = new ObservableCollection&lt;ManeuverViewModel&gt;();
+      RouteCoordinates = new ObservableCollection&lt;RouteGeometryViewModel&gt;();
+
+      Messenger.Default.Register&lt;ManeuverViewModel&gt;(this, 
+                                                    p =&gt; SelectedManeuver = p);
+    }
+
+    public RoutingViewmodel(NavigationModel model)
+      : this()
+    {
+      Model = model;
+    }
+
+    private ManeuverViewModel selectedManeuver;
+    public ManeuverViewModel SelectedManeuver
+    {
+      get { return selectedManeuver; }
+      set
+      {
+        selectedManeuver = value;
+        RaisePropertyChanged(() =&gt; SelectedManeuver);
+      }
+    }
+
+    public ObservableCollection&lt;RouteGeometryViewModel&gt; RouteCoordinates <br>                                                        { get; set; }
+
+    public ObservableCollection&lt;ManeuverViewModel&gt; Maneuvers { get; set; }
+  }
+}</pre>
+<p>In the default constructor sits the standard initialization of the ObservableCollection types, as well as the setup for ManeuverViewModel select interception. Further below another constructor to make initialization from code easier, and the SelectedManeuver property. Nothing special here yet. We add two viewmodels for both to and from searching:</p><pre>private GeocodeViewModel toViewModel;
+public GeocodeViewModel ToViewModel
+{
+  get { return toViewModel; }
+  set
+  {
+    if (toViewModel != value)
+    {
+      toViewModel = value;
+      RaisePropertyChanged(() =&gt; ToViewModel);
+    }
+  }
+}
+
+private GeocodeViewModel fromViewModel;
+public GeocodeViewModel FromViewModel
+{
+  get { return fromViewModel; }
+  set
+  {
+    if (fromViewModel != value)
+    {
+      fromViewModel = value;
+      RaisePropertyChanged(() =&gt; FromViewModel);
+    }
+  }
+}</pre>
+<p>And then the public model property as well, with some clever skullduggery here:</p><pre>private NavigationModel model;
+public NavigationModel Model
+{
+  get { return model; }
+  set
+  {
+    model = value;
+    if (model != null)
+    {
+      ToViewModel = new GeocodeViewModel(model.To) { Name = "To" };
+      FromViewModel = new GeocodeViewModel(model.From) { Name = "From" };
+    }
+  }
+}</pre>
+<p>The “Name” property has no function whatsoever in the code, but I assure you – if you have two identical viewmodels in your app, having them easily distinguishable by a simple property that you can see in a breakpoint helps a ton!</p>
+<p>Finally, the piece that does the actual routing:</p><pre>public async Task DoRouting()
+{
+  await DoRouting(
+   FromViewModel.SelectedLocation.Location,
+   ToViewModel.SelectedLocation.Location);
+}
+
+public async Task DoRouting(GeoCoordinate from, GeoCoordinate to)
+{
+  RouteCoordinates.Clear();
+  Maneuvers.Clear();
+  await Model.DoRouting(from, to);
+  RouteCoordinates.Add(new RouteGeometryViewModel(Model.FoundRoute.Geometry));
+  ViewArea = Model.FoundRoute.BoundingBox;
+  Model.FoundRoute.Legs.ForEach(r =&gt;
+  Maneuvers.AddRange(
+    r.Maneuvers.Select(
+      p =&gt; new ManeuverViewModel { <br>            Description = p.InstructionText, <br>            Location = <br>               new GeoCoordinateCollection { p.StartGeoCoordinate }})));
+}
+
+[DoNotSerialize]
+public ICommand DoRoutingCommand
+{
+  get
+  {
+    return new RelayCommand(
+        async () =&gt;
+        {
+          await DoRouting();
+        });
+  }
+}</pre>
+<p>Once again I have a public overload with just coordinates to make testing easier. The line with all the Lambdas basically iterates over all legs of the route, gets all maneuvers per leg, and creates ManeuverViewModel types of every maneuver, using the StartGeoCoordinate of said maneuver to create location. Also note I put the route’s bounding box into a ViewArea property of the RoutingViewModel (code omitted) to enable the designer to let the map zoom to the extent of the new-found route. In the RoutingViewModel are two more properties I omitted – ZoomLevel and MapCenter, they are with ViewArea <a href="http://dotnetbyexample.blogspot.nl/2012/10/introducing-new-windows-8-map-control.html" target="_blank">taken from the map binding sample I wrote last year</a>.</p>
+<p>Well… that’s quite some code. And now the proof of the pudding…</p>
+<p><font size="4">Testing the RoutingViewModel</font> </p>
+<p>I added a class RoutingViewModelTest and a simple test method to see if coordinates and maneuvers are duly filled when I call the DoRouting method with coordinates</p><pre>using System;
+using System.Device.Location;
+using System.Linq;
+using System.Threading;
+using System.Windows;
+using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
+using NavigationDemo.Logic.Models;
+using NavigationDemo.Logic.ViewModels;
+using Wp7nl.Utilities;
+
+
+namespace NavigationDemo.Logic.Test
+{
+  [TestClass]
+  public class RoutingViewModelTest
+  {
+    [TestMethod]
+    public void TestSimpleRoutingViewModel()
+    {
+      var vm = new RoutingViewmodel(new NavigationModel());
+
+      var waitHandle = new AutoResetEvent(false);
+
+      Deployment.Current.Dispatcher.BeginInvoke(async () =&gt;
+      {
+        await vm.DoRouting(
+            new GeoCoordinate(52.182679977268, 5.39752000942826),
+            new GeoCoordinate(52.1061999723315, 5.03457002341747));
+        waitHandle.Set();
+      });
+
+      waitHandle.WaitOne(TimeSpan.FromSeconds(25));
+
+      Assert.IsTrue(vm.RouteCoordinates.Any());
+      Assert.IsTrue(vm.Maneuvers.Any());
+    }
+  }
+}</pre>
+<p>Which, not entirely surprising, is the case. Now if you follow the TDD pattern correctly, you should add all kinds of mocks and interfaces between these classes and also test every method separately. I decided to go more for the integration test like route – so I made a big test which basically emulates a complete routing request, tombstones it and checks the result.</p><pre>[TestMethod]
+public void TestSearchRoutingViewModelAndTombstoning()
+{
+  var waitHandle = new AutoResetEvent(false);
+
+  var vm = new RoutingViewmodel(new NavigationModel());
+  vm.FromViewModel.SearchText = "Springerstraat Amersfoort Netherlands";
+  vm.ToViewModel.SearchText = "Heinrich Bertestraat Utrecht";
+  Deployment.Current.Dispatcher.BeginInvoke(async () =&gt;
+  {
+    await vm.FromViewModel.SearchLocations();
+    await vm.ToViewModel.SearchLocations();
+    waitHandle.Set();
+  });
+  waitHandle.WaitOne(TimeSpan.FromSeconds(5));
+
+  Assert.IsTrue(vm.FromViewModel.MapLocations.Any());
+  Assert.IsTrue(vm.ToViewModel.MapLocations.Any());
+
+  vm.FromViewModel.SelectedLocation = vm.FromViewModel.MapLocations[0];
+  vm.ToViewModel.SelectedLocation = vm.ToViewModel.MapLocations[0];
+  Deployment.Current.Dispatcher.BeginInvoke(async () =&gt;
+  {
+    await vm.DoRouting();
+    waitHandle.Set();
+  });
+
+  waitHandle.WaitOne(TimeSpan.FromSeconds(5));
+
+  var h = new IsolatedStorageHelper<routingviewmodel>();
+  if (h.ExistsInStorage())
+  {
+    h.DeletedFromStorage();
+  }
+  h.SaveToStorage(vm);
+
+  var retrievedVm = h.RetrieveFromStorage();
+
+  Assert.IsTrue(vm.RouteCoordinates.Any());
+  Assert.IsTrue(vm.Maneuvers.Any());
+  Assert.IsTrue(retrievedVm.RouteCoordinates.Count == vm.RouteCoordinates.Count);
+  Assert.IsTrue(retrievedVm.FromViewModel.SearchText == 
+    "Springerstraat Amersfoort Netherlands");
+  Assert.IsTrue(retrievedVm.Maneuvers.Count == vm.Maneuvers.Count);
+}</pre>
+<p>So, I first setup a complete new RoutingViewModel with NavigationModel, simulate the user input two streets and let them search locations. Then I test if there are any locations found at all. I can safely assume they are, <a href="http://dotnetbyexample.blogspot.nl/2013/04/windows-phone-8-navigation-part.html" target="_blank">since the previous tests worked as well</a>, but still. Then I actually let the app perform routing, ‘tombstone’ the whole viewmodel and retrieve it again.</p>
+<p>And then I do a number of tests to check if anything is found at all, and if whatever comes back from storage matches what went into it. It will not surprise you – it does. This test is far from comprehensive – you could test all the properties one by one, but at least you now can have a reasonable confidence in the basic workings of your app. What’s more – if you start <em>changing</em> things and test start failing, you know your app will probably fail too somewhere down the line.</p>
+<p><font size="4">Conclusion (so far)</font></p>
+<p>By using unit/integration testing we have been able to make and test a working model of the app, finding out how stuff work and tackling serialization problems head on before we actually made a user interface at all – therefore eliminating potential double work by both you and your designer. Next time we will actually start <em>assembling</em> the app, and we will learn that no amount of unit testing will eliminate you from the fact that you still need to test your app manually ;-)</p>
+<p>Once again, before I get flamed: technically I showed you how to do <em>integration</em> tests, not <em>unit</em> tests, because I tested multiple classes interacting with each other, in stead of single methods and/or properties</p>
+<p>As always, a finished solution (if you can call this finished) <a href="http://www.schaikweb.net/dotnetbyexample/NavigationDemo2.zip" target="_blank">is available for download here</a>.</p>  

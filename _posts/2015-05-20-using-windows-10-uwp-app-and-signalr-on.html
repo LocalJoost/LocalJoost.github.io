@@ -1,0 +1,446 @@
+---
+layout: post
+title: Using a Windows 10 UWP app and Signal/R on Azure to display Microsoft Band
+  heart rates–basically everywhere
+date: '2015-05-20T11:31:00.001+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- Azure
+- IoT
+- Raspberry PI2
+- Windows 10
+- Signal/R
+modified_time: '2015-05-20T16:39:55.148+02:00'
+thumbnail: https://i.ytimg.com/vi/L2_Yxzc8RYo/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4844919355574788470
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/05/using-windows-10-uwp-app-and-signalr-on.html
+---
+
+<p><font size="4">Intro: sometimes it seems like I’ve been here before</font></p> <p>Back in February I got my Raspberry PI2 and wanted to do something with it. So <a href="http://dotnetbyexample.blogspot.com/2015/02/displaying-microsoft-band-heart-rate.html">I created a setup that made it display my heart rate</a> as measured by my <a href="https://www.microsoft.com/Microsoft-Band/en-us">Microsoft Band</a>, making it blink a colored LED in the same rate as my heartbeat. <a href="https://dev.windows.com/en-US/iot">Windows 10 IoT Core</a> wasn’t available at that time, which made me resort to using Raspbian Linux, installing Mono on that, getting a <a href="http://owin.org/">OWIN</a> ASP.NET server running on that, that listened to postings on a WebAPI endpoint, employing a modified C library to actually drive the pins to make the LED go, editing files, setting permissions, all via command line stuff. </p> <p>The architecture was, simply put, this:</p> <p><a href="http://www.schaikweb.net//dotnetbyexample/Using-a-Windows-10-UWP-app-to-display-Mi_8409/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net//dotnetbyexample/Using-a-Windows-10-UWP-app-to-display-Mi_8409/image_thumb.png" width="438" height="129"></a></p> <p>This brings another issue to light that is a problem from both an architectural and a practical viewpoint. The Raspberry PI2 had to run a <em>HTTP server. </em>The phone running the app listening to the Band data needs to know the IP address of the PI2, which implicates they must be more or less in the same network space. In addition, running a server on a small device is not desirable in any way at all as it also implicates security issues. Imagine having to set passwords and/or certificates on all your devices. And it’s hard to demo as well.</p> <p><font size="4">Back to the drawing board</font></p> <p>What I envisioned when I started out in February, was something like this:</p> <p><a href="http://www.schaikweb.net//dotnetbyexample/Using-a-Windows-10-UWP-app-to-display-Mi_8409/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net//dotnetbyexample/Using-a-Windows-10-UWP-app-to-display-Mi_8409/image_thumb_3.png" width="645" height="129"></a></p> <p>A kind of magic black box in the middle that would take care of this problem by receiving data and distributing it to clients. It’s the kind of diagram typically drawn by a branch of people who tends to net big salaries by painting happy stories in the client’s mind - and, with the warm fuzzy feeling of a job well done, drop the actual problem of getting these magic boxes to appear out of thin air on the desk of some hapless unsuspecting developer. These people tend to call themselves architects, but I think <em>marchitects</em> would be a better word. Believe me, I’ve done architecture myself, I know how this goes. But I digress.</p> <p>Anyway, in this case Microsoft has you (and me) poor developer’s – er – behind already covered, because this magic box already exists. It’s called <a href="http://signalr.net/">Signal/R</a>, and it’s been around for a while. A basic setup hardly needs any code, and if you host it on on <a href="http://portal.azure.com/">Azure</a>, you can very simply publish it with a few mouseclicks, debug it while running, and you never need to worry about where your magic box is on the network – it has a global URL. And what you end up then with, is this possibility:<a href="http://www.schaikweb.net//dotnetbyexample/Using-a-Windows-10-UWP-app-to-display-Mi_8409/image_6.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net//dotnetbyexample/Using-a-Windows-10-UWP-app-to-display-Mi_8409/image_thumb_6.png" width="645" height="404"></a></p> <p>Make a <a href="http://windows.microsoft.com/en-us/windows-10/about">Windows 10</a> Universal Windows Platform app, and you get an app that can display a heart rate from your Band on <em>any</em> device – a phone, a Surface (or any other PC), a Raspberry PI 2 or any other device capable of running some form on Windows 10 - <em>anywhere in the world</em>. </p> <p>And the net result really hammers home the concept of the Universal Windows Platform. I just deployed the app to three totally different types of devices and… it just works. It almost feels like cheating.</p><iframe height="362" src="https://www.youtube.com/embed/L2_Yxzc8RYo" frameborder="0" width="645" allowfullscreen></iframe> <p><font size="4">The basic setup</font></p> <p>I have created a pretty simple solution that contains 4 projects:</p> <p><a href="http://www.schaikweb.net//dotnetbyexample/Using-a-Windows-10-UWP-app-to-display-Mi_8409/image_5.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net//dotnetbyexample/Using-a-Windows-10-UWP-app-to-display-Mi_8409/image_thumb_5.png" width="297" height="157"></a></p> <ul> <li>A Windows Phone 8.1 app to receive Microsoft Band heart rate data and send it to the Signal/R hub  <li>A Windows 10 UWP app to display the hearth rate as it receives notifications from the Signal/R hub  <li>A Portable Class Library that contains some classes that are shared by the various projects.  <li>A very simple ASP.NET web app hosting a Signal/R app that can accept heart rate pulse information and notify all clients</li></ul> <p>I opted for making a Windows Phone 8.1 Universal App to actually drive the code that receives the actual Band data for two reasons: first, my main phone is still Windows Phone 8.1 and I still use my Band every day and second, it is a nice way to demonstrate how similar Windows 10 UWP and the ‘old’ UAP code now is (and share code between it). </p> <p>There are two caveats:</p> <ul> <li>To open the whole solution and deploy the Windows 10 apps you will need VS2015RC (of course), but I can only get the 8.1 app deployed correctly on my phone by opening the same solution with VS2013 and deploying it from there.&nbsp; <li>There is an issue with Signal/R and Windows 10 UAP – you will need to do some fiddling with referenced assemblies to get it working – that is why there is an Signal/R client assembly in a Binaries solution folder. For details <a href="http://dotnetbyexample.blogspot.com/2015/05/getting-signalr-clients-to-work-on.html">see this post I did earlier</a>.</li></ul> <p><font size="4">Signal/R hub setup</font></p> <p>Basically everything you have to know you can find here in the <a href="http://www.asp.net/signalr/overview/guide-to-the-api/hubs-api-guide-net-client">“ASP.NET SignalR Hubs API Guide - .NET Client”</a>, and I found this <a href="http://www.asp.net/signalr/overview/getting-started/tutorial-getting-started-with-signalr">“Tutorial: Getting Started with SignalR 2”</a> very useful to get started (until about point 7, where it goes into JavaScript, which is not used in this sample).</p> <p>Since I dislike solutions peppered with magic strings (ahem), I tend to define them in some form of helper classes. In the HeartRate.Shared project I have created a simple static class “Settings”:</p><pre>namespace HeartRate
+{
+  public static class Settings
+  {
+   public static readonly string HubUrl = "http://heartratehub.azurewebsites.net";
+
+    public static readonly string HubName = "BlinkHub";
+    public static readonly string ServerMethod = "PostNewRate";
+    public static readonly string ClientMethod = "NotifyNewRate";
+    public static readonly string TestBandName = "Joost's Band";
+  }
+}
+</pre>
+<p>Then I created a simple interface which you don’t even have to use, but that makes the Hub strongly-typed, and I tend to like that:</p><pre>using HeartRate.Models;
+
+namespace Heartrate.SignalRHub
+{
+  public interface IBlinkHub
+  {
+    void NotifyNewRate(PulseData pulse);
+  }
+}
+</pre>
+<p>The Hub itself then is pretty simple: </p><pre>using HeartRate.Models;
+using Microsoft.AspNet.SignalR;
+
+namespace Heartrate.SignalRHub
+{
+  public class BlinkHub : Hub&lt;IBlinkHub&gt;
+  {
+    public void PostNewRate(PulseData pulse)
+    {
+      Clients.All.NotifyNewRate(pulse);
+    }
+  }
+}</pre>
+<p>This basically says: expose a method “PostNewRate” accepting a parameter of type “PulseData” to a clients, that upon being called notifies all clients (including the caller) by calling a method “NotifyNewRate” with that same PulseData as parameter. Note that NotifyNewRate is not a stronly defined method – it’s dynamic. Signal/R is just going to assume it’s there on the client. If it’s not, it won’t crash or something. It just won’t do anything.</p>
+<p>PulseData itself is just a simple DTO-type class that lives in the HeartRate.Shared project</p><pre>namespace HeartRate.Models
+{
+  public class PulseData
+  {
+    public int HeartRate { get; set; }
+    public string Name { get; set; }
+  }
+}</pre>
+<p>All we need now for the Hub is a startup class, and that is also not very complicated:</p><pre>using Microsoft.AspNet.SignalR;
+using Microsoft.Owin;
+using Owin;
+
+[assembly: OwinStartup(typeof(Heartrate.SignalRHub.Startup))]
+namespace Heartrate.SignalRHub
+{
+  public class Startup
+  {
+    public void Configuration(IAppBuilder app)
+    {
+      var hubConfiguration = new HubConfiguration
+      {
+        EnableDetailedErrors = true,
+        EnableJavaScriptProxies = false
+      };
+      app.MapSignalR(hubConfiguration);
+    }
+  }
+}
+</pre>
+<p>Having used Azure in it’s beta days, this really blew me away – you can just publish this to Azure with a few mouse click at some URL you like (provided it’s not already taken), and you have a fully functional Signal/R hub capable of distributing a heart rate to any Signal/R client on the world. Done. I wish every magic box sold by marchitects was so easy to set up. </p>
+<p><font size="4">The Windows 10 UWP client</font></p>
+<p><font size="3">Blinking at the right rate</font></p>
+<p>As I explained in February, a Microsoft Band does not give you a pulse every time your heart beats – <em>it rather posts at a quite regular interval what your current heartbeat is</em>. So in order to let something blink or flash at the rate of a heartbeat, we actually have to calculate the blink rate ourselves. As you will see, the blinking does not show your actual heartbeat – blinks will happen at the same rate as your heartbeat. More or less.</p>
+<p>Stealing my own code from February, I have created a simple generic Blinker class that raises an event every time a blink should occur based upon the heart rate supplied to it. It’s basically an endless loop, that runs until it’s stopped. If the last update was less than 5 seconds ago, it will raise an event, wait for 60000ms divided by the beats per minute – and then fires the next event. If it does not get updates after 5 seconds, it goes into a 10-seconds polling mode. It’s nearly the same thing as last time, except now it’s only raising an event “DoBlink” in stead of actually flashing a LED.</p><pre>using System;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace HeartRate.Models
+{
+  public class Blinker
+  {
+    private DateTime lastReceivedUpdate = DateTime.MinValue;
+    private int heartRate;
+    private Task task;
+
+    private Blinker()
+    {
+    }
+
+    public void Start()
+    {
+      if (task == null)
+      {
+        cancellationTokenSource = new CancellationTokenSource();
+        task = new Task(() =&gt; ShowHeartRateBlinking(cancellationTokenSource.Token),
+           cancellationTokenSource.Token);
+        task.Start();
+      }
+    }
+
+    public void Stop()
+    {
+      if (cancellationTokenSource != null)
+      {
+        cancellationTokenSource.Cancel();
+        task = null;
+      }
+    }
+
+    private CancellationTokenSource cancellationTokenSource;
+
+    private async Task ShowHeartRateBlinking(CancellationToken cancellationToken)
+    {
+      while (!cancellationToken.IsCancellationRequested)
+      {
+        if (DateTime.Now - lastReceivedUpdate &lt; TimeSpan.FromSeconds(5))
+        {
+          if(DoBlink!=null) DoBlink(this, GetRate());
+          await Task.Delay(60000 / HeartRate, cancellationToken);
+        }
+        else
+        {
+          await Task.Delay(10000, cancellationToken);
+        }
+      }
+    }
+
+    public event EventHandler&lt;BlinkRate&gt; DoBlink;
+
+    private BlinkRate GetRate()
+    {
+      if (HeartRate &lt; 80) return BlinkRate.Low;
+      return HeartRate &lt; 130 ? BlinkRate.Medium : BlinkRate.High;
+    }
+
+    public int HeartRate
+    {
+      get { return heartRate; }
+      set
+      {
+        if (value &gt;= 0 &amp;&amp; value &lt;= 200)
+        {
+          lastReceivedUpdate = DateTime.Now;
+          heartRate = value;
+        }
+      }
+    }
+
+    private static Blinker blinker;
+    public static Blinker GetBlinker()
+    {
+      return blinker ?? (blinker = new Blinker());
+    }
+  }
+}
+</pre>
+<p><font size="3">Listening to Signal/R notifications</font></p>
+<p>To this extent I have created a small helper class HearthRateListener that basically converts a Signal/R call to an ordinary event. It looks like this:</p><pre>using System;
+using System.Threading.Tasks;
+using HeartRate.Models;
+using Microsoft.AspNet.SignalR.Client;
+
+namespace HeartRate.Monitor.Models
+{
+  public class HearthRateListener
+  {
+    public async Task Init()
+    {
+      var hubConnection = new HubConnection(Settings.HubUrl);
+      var hubProxy = hubConnection.CreateHubProxy(Settings.HubName);
+      hubProxy.On&lt;PulseData&gt;(Settings.ClientMethod, pulse =&gt;
+        {
+          PulseDataReceived?.Invoke(this, pulse);
+        }
+      );
+      await hubConnection.Start();
+    }
+
+    public event EventHandler&lt;PulseData&gt; PulseDataReceived;
+  }
+}
+</pre>
+<p>So I make a connection to the hub’s url as defined in the settings class (“http://heartratehub.azurewebsites.net”), then create a hub proxy with the name of the hub (“BlinkHub”, which also is the class name of the Hub) and then, using the “On” method to fire when the Signal/R hub wants to notify me using the “NotifyNewRate” method. So you have to make sure the class name of hub equals the name of the hub you are subscribing to on the client, and that the client makes a dynamic ‘method’ with the same name as the server tries to call. It’s a bit fiddly and getting all the names right is important. Defining names in constants helps a little. In some of the comments on Signal/R people ask for a more strongly typed method. The answer of the team is along the lines of “You want strongly typed? Feel free to use WCF” ;)</p>
+<p>You can see the LED and circles blinking at 74 BPM first (in blue), that for some reason my hear rate goes over 100 according to the band and the color of the flash becomes green - and faster, too. This was not intentional, but a happy coincidence when I was shooting the video.</p>
+<p><font size="3">Blinking the lights</font></p>
+<p>Although the basics of operating a GPIO pin on Windows 10 IoT Core is about the same as on the Linux/Mono/C#/WiringPI, the process is vastly less complicated. There are some easy samples to find how to do that, <a href="https://github.com/ms-iot/samples/tree/develop/Blinky/CS">for instance here</a> on the IoT Github page. I created this helper class to do the work. The basic setup is this:</p><pre>using System.Threading.Tasks;
+using HeartRate.Models;
+using Windows.Devices.Gpio;
+
+namespace HeartRate.Monitor.Models
+{
+  public class LedSoundOperator
+  {
+    GpioController gpioCtrl;
+
+    private LedSoundOperator()
+    {
+      InitGPIO();
+    }
+
+    private static LedSoundOperator lsOperator;
+    public static LedSoundOperator GetBlinker()
+    {
+      return lsOperator ?? (lsOperator = new LedSoundOperator());
+    }
+
+    private GpioPin GetPin(BlinkRate rate)
+    {
+      switch (rate)
+      {
+        case BlinkRate.High:
+          return RedPin;
+        case BlinkRate.Medium:
+          return GreenPin;
+        default:
+          return BluePin;
+      }
+    }
+
+    private GpioPin RedPin;
+    private GpioPin GreenPin;
+    private GpioPin BluePin;
+    private GpioPin SoundPin;
+
+    private const int RedPinId = 5;
+    private const int GreenPidId = 6;
+    private const int BluePinId = 13;
+    private const int SoundPinId = 16;
+  }
+}
+</pre>
+<p>I define this class to be a Singleton. The Sunfounder’s three color LED I used last time red pin is connected to GPIO5, the green pin to GPIO6, the blue pin to GPIO13 and the buzzer’s pin to GPIO16. Based upon the heart rate it selects a different pin and thus the LED color changes.</p>
+<p>Initializing a pin is not exactly rocket science either. First you initialize the Gpio controller, then you open a pin, set it’s drive method to output, and write an initial “Low” value to turn in off.</p><pre>private void InitGPIO()
+{
+  if (Windows.Foundation.Metadata.ApiInformation‏.IsTypePresent(
+     "Windows.Devices.Gpio.GpioController"))
+  {
+    gpioCtrl = GpioController.GetDefault();
+    if (gpioCtrl != null)
+    {
+      RedPin = InitPin(RedPinId);
+      GreenPin = InitPin(GreenPidId);
+      BluePin = InitPin(BluePinId);
+      SoundPin = InitPin(SoundPinId);
+    }
+  }
+}
+
+private GpioPin InitPin(int pinId)
+{
+  var pin = gpioCtrl.OpenPin(pinId);
+  pin.SetDriveMode(GpioPinDriveMode.Output);
+  pin.Write(GpioPinValue.Low);
+  return pin;
+}
+</pre>
+<p>If you intend to be able to run this app on a device that <em>may</em> <em>not</em> support a Gpio controller, like a phone or a PC, you might want to check the actual presence of the Gpio controller type before actually calling it.You do this using the Windows.Foundation.Metadata.ApiInformation‏.IsTypePresent method as displayed.</p>
+<p>Making the LED blink (and the buzzer tick) works like this:</p><pre>public async Task Blink(BlinkRate rate)
+{
+  if (gpioCtrl != null)
+  {
+    var pin = GetPin(rate);
+    pin.Write(GpioPinValue.High);
+    SoundPin.Write(GpioPinValue.High);
+    await Task.Delay(200);
+    pin.Write(GpioPinValue.Low);
+    SoundPin.Write(GpioPinValue.Low);
+  }
+}
+</pre>
+<p>Notice the check if gpioCtrl is set – the IsTypePresent may have prevented that. But if we are running on a device that actually has a GPIO board, then get the right pins, set their value to high (blink! tick!), wait 200ms, and set them to low. As easy as that.</p>
+<p>Oh yeah, and at the end, call</p><pre>public void Cleanup()
+{
+  RedPin?.Dispose();
+  GreenPin?.Dispose();
+  BluePin?.Dispose();
+  SoundPin?.Dispose();
+}
+</pre>
+<p><font size="3">And then some UI stuff</font></p>
+<p>The fun thing is that, unlike when running Raspbian, one app can <em>actually display a XAML defined UI on the PI2</em>. And having a little UI is useful as well when running, for instance, on a phone. The XAML of the page is not very complicated either</p><pre>&lt;Page
+    x:Class="HeartRate.Monitor.MainPage"
+    xmlns="..."&gt;
+  &lt;Grid Background="{ThemeResource AppBarBackgroundThemeBrush}"&gt;
+    &lt;Grid Margin="12,0,12,0"&gt;
+      &lt;Grid.RowDefinitions&gt;
+        &lt;RowDefinition Height="Auto"/&gt;
+        &lt;RowDefinition Height="*"/&gt;
+      &lt;/Grid.RowDefinitions&gt;
+      &lt;StackPanel Margin="0,0,0,5" Orientation="Horizontal"&gt;
+        &lt;TextBlock TextWrapping="Wrap" Text="UWT Heart Rate Displayer" 
+        FontSize="26.667" HorizontalAlignment="Left"/&gt;
+      &lt;/StackPanel&gt;
+      &lt;Grid Margin="12,0,12,0" Grid.Row="1"&gt;
+        &lt;Grid&gt;
+          &lt;Ellipse x:Name ="BlinkCircle" 
+                 Fill="Gray"
+                Height="200"
+                Width="200"
+                StrokeThickness="0" /&gt;
+        &lt;/Grid&gt;
+      &lt;/Grid&gt;
+    &lt;/Grid&gt;
+  &lt;/Grid&gt;
+&lt;/Page&gt;
+</pre>
+<p><a href="http://www.schaikweb.net//dotnetbyexample/Using-a-Windows-10-UWP-app-to-display-Mi_8409/image_7.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net//dotnetbyexample/Using-a-Windows-10-UWP-app-to-display-Mi_8409/image_thumb_7.png" width="104" align="right" height="177"></a>And that is because the net resulting UI isn’t that complex either :)</p>
+<p><font size="3">Wiring it all together</font></p>
+<p>Mind you, in a real app I would do all this using MVVM, but I don’t want to obscure the thing I am actually trying to convey by getting too much architecture in the way. So in the code behind of the XAML page there is some stuff that wires it all together:</p><pre>namespace HeartRate.Monitor
+{
+  public sealed partial class MainPage : Page
+  {
+    public MainPage()
+    {
+      this.InitializeComponent();
+    }
+
+    HearthRateListener listener;
+    LedSoundOperator lsOperator;
+
+    protected async override void OnNavigatedTo(NavigationEventArgs e)
+    {
+      listener = new HearthRateListener();
+      lsOperator = LedSoundOperator.GetBlinker();
+      var blinker = Blinker.GetBlinker();
+      listener.PulseDataReceived += (p, q) =&gt;
+      {
+        blinker.HeartRate = q.HeartRate;
+      };
+      blinker.DoBlink += Blinker_DoBlink;
+      blinker.Start();
+      await listener.Init();
+    }
+
+    private void Blinker_DoBlink(object sender, BlinkRate e)
+    {
+      lsOperator.Blink(e);
+      Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =&gt;
+      {
+        Color c;
+        switch (e)
+        {
+          case BlinkRate.High:
+            c = Colors.Red;
+            break;
+          case BlinkRate.Medium:
+            c = Colors.Green;
+            break;
+          default:
+            c = Colors.Blue;
+            break;
+        }
+        BlinkCircle.Fill = new SolidColorBrush(c);
+        await Task.Delay(200);
+        BlinkCircle.Fill = new SolidColorBrush(Colors.Gray);
+      });
+    }
+    
+    protected override void OnNavigatingFrom(NavigatingCancelEventArgs e)
+    {
+      lsOperator.Cleanup();
+      Blinker.GetBlinker().Stop();
+    }
+  }
+}
+</pre>
+<p>I create a new Heart rate listener – that is the thing that listens to heart rate data coming from the Azure Signal/R hub – and I initialize the LedSoundOperator (that will drive the pins) and a Blinker (that will raise events at the heart rate received from Azure). When the listener gets new data from Azure, it will turn it to the blinker. When the blinker raises an event, the method DoBlink will actually blink the LED and make the buzzer tick by calling the LedSoundOperator and by flashing the circle on the screen.</p>
+<p><font size="4">Some highlights of the Windows Phone 8.1 Band Client</font></p>
+<p><a href="http://www.schaikweb.net//dotnetbyexample/Using-a-Windows-10-UWP-app-to-display-Mi_8409/image_8.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net//dotnetbyexample/Using-a-Windows-10-UWP-app-to-display-Mi_8409/image_thumb_8.png" width="235" align="right" height="244"></a>This is a simple app that listens to the Microsoft Band heart rate data coming in and simply pushes it Azure. To make some monitoring possible, I actually added here as well the circle that flashes at your heart rate, as well as two little circles that flash yellow when Band data is received or data from Azure comes back (to the very phone that sent it). </p>
+<p>The HeartRateModel does most of the work: it listens to the Band events, sends that data to Signal/R and checks if data is coming back. Both the receiving of data from the Band and Signal/R is exposed via events (BandDataReceived<strong> </strong>and PulseDataReceived</p>
+<p>The method SendPulse is worth pointing out as it shows how data is actually <em>sent</em> to a Signal/R hub:</p><pre>public async Task SendPulse(PulseData p)
+{
+  try
+  {
+    if (hubConnection.State == ConnectionState.Connected)
+    {
+      await hubProxy.Invoke(Settings.ServerMethod, p);
+    }
+  }
+  catch (Exception ex)
+  {
+    Debug.WriteLine(ex);
+  }
+}
+</pre>
+<p>I would also like to draw your attention to the fact the app now needs to ask the user’s consent to be able to connect to the Band’s heart rate sensor. This automatically displays a prompt that the user can accept or cancel, and you need to take care of that in your code:</p><pre>public async Task&lt;bool&gt; StartListening()
+{
+  var pairedBands = await BandClientManager.Instance.GetBandsAsync();
+  if (pairedBands.Any())
+  {
+    var band = pairedBands.FirstOrDefault();
+    if (band != null)
+    {
+      bandName = band.Name;
+      bandClient = await BandClientManager.Instance.ConnectAsync(band);
+     <strong> </strong><strong><font color="#ff0000">var consent = 
+        await bandClient.SensorManager.HeartRate.RequestUserConsentAsync();</font>
+</strong>      if (consent)
+      {
+        var sensor = bandClient.SensorManager.HeartRate;
+        sensor.ReadingChanged += SensorReadingChanged;
+        await sensor.StartReadingsAsync();
+      }
+      return consent;
+    }
+  }
+  return false;
+}
+</pre>
+<p>Then there is this little oddity about Windows Phone 8.1 Universal apps and Signal/R – to get data back you actually have to set Long Polling as communication method when starting the hub connection or else the data simply won’t come down</p><pre>public async Task Init()
+{
+  hubConnection = new HubConnection(Settings.HubUrl);
+  hubProxy = hubConnection.CreateHubProxy(Settings.HubName);
+
+  hubProxy.On&lt;PulseData&gt;(Settings.ClientMethod, pulse =&gt;
+  {
+    if (PulseDataReceived != null)
+    {
+      PulseDataReceived(this, pulse);
+    }
+  });
+
+  await hubConnection.Start(<strong><font color="#ff0000">new LongPollingTransport()</font></strong>);
+}</pre>
+<p>My sincere thanks to <a href="http://cy.linkedin.com/pub/irmak-tevfik/77/521/467">Irmak Tevfik</a> for writing <a href="http://www.4sln.com/Articles/creating-a-simple-application-using-universal-apps-with-signalr-and-mobile-servic">this article</a>&nbsp; explaining that or I would probably still be scratching my head now.</p>
+<p><font size="4">Conclusion</font></p>
+<p>With some very basic stuff published on Azure and utilizing the power of the Universal Windows Platform apps I was able to write a distributed system for displaying my heart rate – using not only one code base but <em>a single app</em> that can be deployed on a range of devices; devices that could basically be everywhere on the world, as long as they have internet access. This really shows the power of current and near future Microsoft technology, making things that used to be extremely hard just very very simple. If I understand this right, this would even be able to run on XBox One and HoloLens, although I am not quite sure a gamer would like to see a big circle flashing on his console, nor would a HoloLens user like to see that more or less blocking his field of vision. But the point is that using these technologies it becomes very easy to connect a lot of devices very easily using one type of app. </p>
+<p>There are some issues still to be addressed in this solution. Basically everyone can post to the hub now and everyone can connect to it, so this opens great possibilities of completely destroying an on-stage demo. You clearly need to be sure that not everyone can post heart rate data to your hub or, if you want to make this available as a cloud service, at least make sure no-one get’s other people’s data pushed to it. There are several ways to achieve that, but that’s beyond the scope of this post.</p>
+<p>I actually have to credit my wife for thinking of an actual practical application of this crazy demo, for when I showed this to her in my typically overenthusiastic geek way, her reaction was not the typical geeks’ wife “well that’s nice dear” but “so if I understand you right, I can make a doctor listen to my heart rate even if I am on a holiday somewhere far away?” :). </p>
+<p>The demo solution, as always when applicable, <a href="https://github.com/LocalJoost/DistributedHeartRateMonitor">can be found here</a></p>  

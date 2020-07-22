@@ -1,0 +1,88 @@
+---
+layout: post
+title: Windows 10 maps part 5 - styles and 3D
+date: '2015-09-03T20:24:00.000+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- Mapping
+- Windows 10
+modified_time: '2015-09-04T19:46:08.294+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7452354223915180200
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/09/windows-10-maps-part-5-styles-and-3d.html
+---
+
+<p><font size="4">Intro</font><br>In part 5 of this series I will show two seemingly unrelated things - the map "styles" and 3D maps. From a code perspective this is, just like last time, a post that is pretty light on code, but it contains some of the most exiting new features of the <a href="http://www.windows.com" target="_blank">Windows</a> 10 map control.</p> <p><font size="4">Styles? What Styles?</font><br>Map data differs from ordinary tabular data in the sense that it needs reference data - a backdrop map - to make it intelligible. A map of parking garages on a otherwise black screen is almost totally useless - a map of parking garages on top of a topographical map makes it possible for the human eying it to connect the data to the real world (and decide the trip is too far or not). This is where the map's Style property comes in. Personally I fear the word "style" when used in a map context will not immediately conjure up the right image in the uninitiated developer's mind. 'Styling' usually refers to changes to the layout of some screen element&nbsp; -think of inline CSS styles, or the XAML Style element. Styling in the context of the Windows 10 UWP map refers to the kind of data displayed as backdrop on the map, and to an extent how the data is interpreted. </p> <p>A map's Style attribute may be set to a value of the MapStyle enumeration, which has the following members</p><pre>public enum MapStyle
+{
+  //
+  // Summary:
+  //     A style is not specified.
+  None = 0,
+  //
+  // Summary:
+  //     A road map.
+  Road = 1,
+  //
+  // Summary:
+  //     An aerial map.
+  Aerial = 2,
+  //
+  // Summary:
+  //     A hybrid map that combines an aerial map with roads.
+  AerialWithRoads = 3,
+  //
+  // Summary:
+  //     A terrain map.
+  Terrain = 4,
+  //
+  // Summary:
+  //     An aerial 3D map.
+  Aerial3D = 5,
+  //
+  // Summary:
+  //     A hybrid map that combines an aerial 3D map with roads.
+  Aerial3DWithRoads = 6
+}</pre>
+<p>and since the Windows Development Team has been so kind to add comments to the code explaining each member's function, I thought it best to include that verbatim in this blog post. And now the link with 3D immediately becomes clear: styles Aerial3D and Aerial3DWithRoads kick the map into 3D mode. But let's keep the best for lest, and have a look at the 'ordinary' 2D styles first.</p>
+<p><font size="3">MapStyle.None</font><br>This may seem like the oddest of styles, but this indeed creates a map with no backdrop at all. I have just stated that a map like that is completely useless, but all you are doing now is instructing the map to draw all shapes (that is, lines, polygons and icons) but no backdrop because you don't want to use the available standard data - for instance, because you want to use a custom backdrop map. Examples of this will be handled in the last post of this series.</p>
+<p><font size="3">MapStyle.Road</font><br>This is the default map style showing roads and labels, and in the <a href="https://github.com/LocalJoost/Manipulation_Drawing" target="_blank">sample app</a> it looks like this<br><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_thumb.png" width="644" height="437"></a></p>
+<p><font size="3">MapStyle.Aerial</font><br>This looks like this - it shows a map with aerial imagery in stead of a 'normal' map - without any labels. For mainstream app development you will not be using this map very much I think, unlike the next one<br><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_thumb_3.png" width="644" height="437"></a></p>
+<p><font size="3">MapStyle.AerialWithRoads</font> <br>This shows the aerial map with a road network and name labels superimposed. <a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_thumb_4.png" width="644" height="437"></a></p>
+<p>This definitely hasit uses, especially in tourist and 'getting to know the environment' targeted scenarios, but a little caveat is on it's place: while it looks 'more cool' than an ordinary topographical map, it it has two distinct disadvantages:</p>
+<ul>
+<li>For navigation purposes, a topographical map wins heads down from a imagery map because map makers over the ages have perfected the art of emphasizing what's important to get from a to b, and on imagery maps this is impossible. 
+<li>Image maps are way bigger and do not work in an offline scenario. When Windows offer you the possibility to download offline maps, that means the <em>road maps</em>, not the imagery maps. Downloading an imagery map for the whole of the Netherlands - spanning a meager 300x200 km - alone would probably eat more storage than my 1520 has aboard, while that same phone now holds the road maps for all of the Netherlands, Germany, Belgium and Washington State - and all that map data barely makes a dent in available storage. This is because road maps can be (at least partly) stored as very efficient so-called '<a href="http://en.wikipedia.org/wiki/Vector_graphics" target="_blank">vector graphics</a>', while imagery is just bitmaps - essentially a digital photo - and that gets big very fast. So be aware - Windows does cache this kind map imagery to optimize bandwidth usage, but it does not pre-download it so relying on this in a potential offline scenario may result in a degraded user experience.</li></ul>
+<p><font size="3">MapStyle.</font><font size="3">Terrain</font><br>This gives you a kind of faux-3D view of the maps,using shading techniques. If I were to use this on my standard location - around my home in the Netherlands - you would see not much of a difference, as height differences in the Netherlands for most parts are measured in mere <em>centimeters</em>, but if I zoom to some more complex terrain in for instance the edge of the German Pfalzer Forest, you get this kind of effect:<br><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_5.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_thumb_5.png" width="644" height="437"></a></p>
+<p>To show this is not 'real' 3D - if you change the pitch, you don't see any hills appear:<br><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_6.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_thumb_6.png" width="644" height="437"></a></p>
+<p>Be aware that this kind of data has the same limitations in offline scenarios as aerial maps.</p>
+<p><font size="3">MapStyle.</font><font size="3">Aerial3D</font> <br>The previous style, as I said, was a kind of 'false 3D effect'. But if you take the same area as before (Neustadt an der Weinstraße in the German Pfalz) in Aerial3D you get this awesome view of rolling forested hills with houses and road meandering between them. It very much looks like the real thing, standing on a hilltop looking around<br><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_7.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_thumb_7.png" width="644" height="437"></a></p>
+<p><font size="3">MapStyle.</font><font size="3">Aerial3DWithRoads</font><br>Essentially the same map as before, but now with a projected road network on top of it, as well as 3D labels that look as if they are on edge, so you can always read them. <br><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_8.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_thumb_8.png" width="644" height="437"></a><br>This is by far the most mind boggling map mode of all - it is a very visually powerful map, gives a real sense of how things look in real life, and you can put your own data on top of it, too! I think this is what GIS will look like in the very near future. And of course, this also works on Windows 10 mobile, it's not called a Universal Windows App for show:<a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_9.png"><br><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_thumb_9.png" width="644" height="345"></a><br>Although, in all honesty, the effect is not as profound as on a bigger screen. Be aware, once again this uses data that cannot be pre-downloaded.</p>
+<p><font size="3">Setting styles</font><br>The code for setting the styles is very simple. I made drop down with texts in it that match the MapStyle enum values, and when the user selects a different map style, this code is executed: </p><pre>private void MapSelectionChanged(object sender, SelectionChangedEventArgs e)
+{
+  var selectedItem = e.AddedItems.OfType&lt;ComboBoxItem&gt;().FirstOrDefault();
+  if (selectedItem != null)
+  {
+    MapStyle mapStyle;
+    if (Enum.TryParse(selectedItem.Content.ToString(), out mapStyle))
+    {
+      MyMap.Style = mapStyle;
+    }
+  }
+}</pre>As you can see this is not quite rocket science. 
+<p><font size="4">3D data</font><br>I actually <a href="http://dotnetbyexample.blogspot.com/2015/04/3d-maps-with-windows-10-maps-sdk.html" target="_blank">visited this before</a>, when it first surfaced in Windows 10 SDK build that appeared around April 1st.If you start the <a href="https://github.com/LocalJoost/Manipulation_Drawing" target="_blank">sample app and</a>:</p>
+<ul>
+<li>set pitch to zero (so you have an ordinary maps that you look upon from above), 
+<li>then go back to initial location 
+<li>then press "draw points" a couple of times again 
+<li>set "icon collision" to "show" 
+<li><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_10.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_thumb_10.png" width="73" align="right" height="57"></a>then select Aerial3DWithRoads 
+<li>and finally set the pitch again back to 75, <em>not</em> using my slider but the canvas control </li></ul>
+<p>You will see that that the MapIcons actually float in the air</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_11.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-1---styles-and-3D_12F68/image_thumb_11.png" width="644" height="437"></a><br>The way this is achieved is actually very simple. In <a href="http://dotnetbyexample.blogspot.com/2015/08/windows-10-maps-part-2-manipulation-and.html" target="_blank">part 2</a> of this series I showed you needed a Geopoint to place a MapIcon on the map. A Geopoint needs to be created from a BasicGeoposition like this</p><pre>new Geopoint(new BasicGeoposition { Latitude = 52.181427, Longitude = 5.399780 });</pre>
+<p><a href="http://dotnetbyexample.blogspot.com/2015/08/windows-10-maps-part-2-manipulation-and.html" target="_blank">As I already wrote in part 2</a>, BasicGeoposition also has an Altitude property, so setting an altitude to a MapIcon is a simple as this:</p><pre>new Geopoint(new BasicGeoposition 
+    { <br>      Latitude  = 52.181427, 
+      Longitude = 5.399780,
+      Altitude  = 10
+    });</pre>
+<p>Be aware that while Latitude and Longitude are in degrees, the Altitude is simply in meters - thank heavens it's not in feet :), so this MapIcon will appear 10 meters up in the air. In my code I am simply giving random values between 0 and 1000 meters - you can find that code in PointList.GetRandomPoints.</p>
+<p><font size="4">Concluding remarks</font><br>With these new capabilities mapping on Windows has made a major leap forward in ways to present map data in a both attractive and informative way, that can be controlled with just a few properties. Be aware though of the limitations in offline scenarios - always make sure your app still works on 'just road maps' to make sure the users still can use your app when he/she is out and about and does not have the best (if at all) network connection</p>  

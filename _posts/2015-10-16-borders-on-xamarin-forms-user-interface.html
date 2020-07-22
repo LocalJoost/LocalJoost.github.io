@@ -1,0 +1,63 @@
+---
+layout: post
+title: Borders on Xamarin Forms user interface elements
+date: '2015-10-16T21:27:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Xamarin Forms
+- XAML
+modified_time: '2015-10-16T21:27:58.555+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8948169050343332958
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/10/borders-on-xamarin-forms-user-interface.html
+---
+
+<p>This is one of those blog posts, born out of utter frustration because looking for this yielded no usable results - while you would expect a lot of people would be wanting to do, as it's quite elementary IMHO. Maybe it's just my inexperience with <a href="http://xamarin.com/" target="_blank">Xamarin</a> Forms, but for the life of me I could not find how to place borders around panel-like structures like a grid. Sure, there is Frame, but that places a meager 1 pixel hardly visible line around it.</p> <p>Suppose I had this code</p><pre>&lt;?xml version="1.0" encoding="utf-8" ?&gt;
+&lt;ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="XamBorders.MainPage" BackgroundColor="White"&gt;
+  &lt;ContentView Padding = "20" VerticalOptions="Start" &gt;
+    &lt;Label Text="I want a border here!" 
+           FontSize="20" TextColor="Black" 
+           HorizontalOptions="Center"&gt;&lt;/Label&gt;
+  &lt;/ContentView&gt;
+&lt;/ContentPage&gt;</pre>
+<p>Result in in the UI below (on the Visual Studio Android Emulator) <a href="http://www.schaikweb.net/dotnetbyexample/Borders-around-user-interface-element-in_12559/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Borders-around-user-interface-element-in_12559/image_thumb.png" width="457" height="196"></a></p>
+<p>How on Earth do you get something like this?</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Borders-around-user-interface-element-in_12559/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Borders-around-user-interface-element-in_12559/image_thumb_3.png" width="453" height="209"></a></p>
+<p>Turns out you need a couple of ContentViews inside each other like a bunch of Matryoshka dolls - one with the border color as background color, and inside that a slightly smaller ContentView with the same background color as the page. Like this:</p><pre>&lt;?xml version="1.0" encoding="utf-8" ?&gt;
+&lt;ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="XamBorders.MainPage" 
+  BackgroundColor="{StaticResource BackgroundColor}"&gt;
+  &lt;ContentPage.Resources&gt;
+    &lt;ResourceDictionary x:Name="AppDictionary"&gt;
+
+      &lt;Color x:Key="BackgroundColor"&gt;#FFFFFF&lt;/Color&gt;
+      &lt;Color x:Key="BorderColor"&gt;#E1E1E1&lt;/Color&gt;
+
+      &lt;Style x:Key="InternalViewStyle" TargetType="ContentView"&gt;
+        &lt;Setter Property="BackgroundColor" <br>            Value="{StaticResource BackgroundColor}"/&gt;
+        &lt;Setter Property="VerticalOptions" Value="Fill"/&gt;
+        &lt;Setter Property="Padding" Value="10,10,10,10"&gt;&lt;/Setter&gt;
+      &lt;/Style&gt;
+
+      &lt;Style x:Key="BorderStyle" TargetType="ContentView"&gt;
+        &lt;Setter Property="BackgroundColor" Value="{StaticResource BorderColor}"/&gt;
+        &lt;Setter Property="Padding" Value="3,1,1,3"&gt;&lt;/Setter&gt;
+      &lt;/Style&gt;
+
+    &lt;/ResourceDictionary&gt;
+  &lt;/ContentPage.Resources&gt;
+  &lt;ContentView Padding="20" VerticalOptions="Start" &gt;
+    &lt;ContentView Style="{StaticResource BorderStyle}" &gt;
+      &lt;ContentView Style="{StaticResource InternalViewStyle}"&gt;
+        &lt;Label Text="I want a border here!"
+               FontSize="20" TextColor="Black"
+               HorizontalOptions="Center"&gt;&lt;/Label&gt;
+      &lt;/ContentView&gt;
+    &lt;/ContentView&gt;
+  &lt;/ContentView&gt;
+&lt;/ContentPage&gt;</pre>
+<p>So we have the internal view that has the same background color as the page, as well as a padding of 10 on every side to make the border not too tight around the text. Then the 'border contentview' around that has a padding 0 3,1,1,3 so that it's slightly larger bottom and right as to create some kind of shadow effect. If you don't want that, just make the padding equal. I defined the settings a styles as to make them easily reusable (they are in a app-wide resource dictionary in the app I am now developing).</p>
+<p>Why it has to be this way - no idea, but I hope it will save some other Xamarin Forms newbie the frustration I experienced this afternoon. Maybe there are better alternatives - I really welcome comments. But this works</p>
+<p>Sample project can be found <a href="https://github.com/LocalJoost/XamarinBorders" target="_blank">here</a>.</p>  

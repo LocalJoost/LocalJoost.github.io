@@ -1,0 +1,537 @@
+---
+layout: post
+title: Using MVVMLight, ItemsControl, Blend and behaviors to make a ‘heads up compass’
+date: '2011-11-22T21:36:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Blend
+- DataBinding
+- dotnetmag
+- MVVM
+- WP7NL
+- Augmented Reality
+- behavior
+- MVVM Light
+- WP7
+modified_time: '2012-03-04T10:26:25.465+01:00'
+thumbnail: http://lh3.ggpht.com/-EHpu4ufxRHU/TswHtIE-9oI/AAAAAAAAHCU/K34Qv-RhJxc/s72-c/DataSource_thumb1.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5191789389352624796
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/11/when-i-talk-of-mvvm-pattern-people.html
+---
+
+<p>When I talk of the MVVM pattern, people usually think of business objects that get wrapped by ViewModels which get data bound to a user interface. Usually this is something like a list of people, news, items that can be purchased, whatever – and usually this data is displayed in a list box, with a bit of templating if it isn’t too much trouble. That’s fine in itself and good way to use my favorite pattern but there are more things possible using MVVM data binding than most people imagine. The most fun way I have been able to discover is to combine <a href="http://msdn.microsoft.com/en-us/library/system.windows.controls.itemscontrol(v=VS.95).aspx?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">ItemsControl</a> and behaviors. This is what drives my game <a href="http://www.windowsphone.com/en-US/apps/48fd8097-f07e-e011-986b-78e7d1fa76f8?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Catch’em Birds</a>. And this article shows how to use this technique make a kind of heads up compass. I’ll sprinkle some ‘how to do things in Blend’ (like adding and configuring behaviors) throughout the article as well.</p> <p>For the hasty readers: “Setting the stage”, “Building the models” and “Building the ViewModel” is the ground work. The real stuff starts at “<a href="#IntialUserInterface">Initial user interface</a>”.</p> <p><font size="4">Setting the stage</font></p> <ul> <li>Create a new <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone 7</a> application. Let’s call it “HeadsUpCompass”. Select Windows Phone 7.1 - duh ;).  <li>Install my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library from codeplex</a> via NuGet. This will get you some of my stuff and MVVMLight and some more stuff as well in one go.  <li>Add references to Microsoft.Device.Sensors and Microsoft.Xna.Framework.</li></ul> <p><font size="4">Building the models</font></p> <p>The application has two models: CompassDirectionModel – holding stuff that wants to be displayed, and CompassModel, that checks the compass direction using the motion API. The CompassModel is implemented below. I’ve explained <a href="http://dotnetbyexample.blogspot.com/2011/10/using-motion-api-to-check-what.html" target="_blank">using the Motion API to check where the camera is looking</a> in an earlier post so I’ll skip the details here. It’s basically the same functionality, wrapped in a model, with an event firing at the end:</p><pre>using System;
+using System.Windows;
+using Microsoft.Devices.Sensors;
+using Microsoft.Xna.Framework;
+
+namespace HeadsUpCompass.Models
+{
+  public class CompassModel
+  {
+    Motion motion;
+
+    /// &lt;summary&gt;
+    /// Inits this instance.
+    /// &lt;/summary&gt;
+    public void Init()
+    {
+      // Check to see if the Motion API is supported on the device.
+      if (!Motion.IsSupported)
+      {
+        MessageBox.Show("the Motion API is not supported on this device.");
+        return;
+      }
+
+      // If the Motion object is null, initialize it and add a CurrentValueChanged
+      // event handler.
+      if (motion == null)
+      {
+        motion = new Motion {TimeBetweenUpdates = TimeSpan.FromMilliseconds(250)};
+        motion.CurrentValueChanged += MotionCurrentValueChanged;
+      }
+
+      // Try to start the Motion API.
+      try
+      {
+        motion.Start();
+      }
+      catch (Exception)
+      {
+        MessageBox.Show("unable to start the Motion API.");
+      }
+    }
+
+        /// &lt;summary&gt;
+    /// Stops this instance.
+    /// &lt;/summary&gt;
+    public void Stop()
+    {
+      motion.Stop();
+      motion.CurrentValueChanged -= MotionCurrentValueChanged;
+    }
+
+    /// &lt;summary&gt;
+    /// Fired when a direction change is detected
+    /// &lt;/summary&gt;
+    void MotionCurrentValueChanged(object sender, 
+                                   SensorReadingEventArgs&lt;MotionReading&gt; e)
+    {
+      var yaw = MathHelper.ToDegrees(e.SensorReading.Attitude.Yaw);
+      var roll = MathHelper.ToDegrees(e.SensorReading.Attitude.Roll);
+      var pitch = MathHelper.ToDegrees(e.SensorReading.Attitude.Pitch);
+
+      if (roll &lt; -20 &amp;&amp; roll &gt; -160)
+      {
+        SetNewCompassDirection(360 - yaw + 90);
+      }
+      else if (roll &gt; 20 &amp;&amp; roll &lt; 160)
+      {
+        SetNewCompassDirection(360 - yaw - 90);
+      }
+      else if (pitch &gt; 20 &amp;&amp; pitch &lt; 160)
+      {
+        SetNewCompassDirection(-yaw );
+      }
+      else if (pitch &lt; -20 &amp;&amp; pitch &gt; -160)
+      {
+        SetNewCompassDirection(360 - yaw + 180);
+      }
+    }
+
+    private void SetNewCompassDirection(double compassDirection)
+    {
+      if (compassDirection &gt; 360)
+      {
+        compassDirection -= 360;
+      }
+      if (compassDirection &lt; 0)
+      {
+        compassDirection += 360;
+      }
+
+      if (CompassDirectionChanged != null)
+      {
+        CompassDirectionChanged(Convert.ToInt32(Math.Round(compassDirection)));
+      }
+    }
+
+    // Event communicating compass direction change to outside world
+    public event CompassDirectionChangedHandler CompassDirectionChanged;
+    
+    public delegate void CompassDirectionChangedHandler(int newDirection);
+  }
+}</pre>
+<p>The stuff that gets displayed has it’s own model, and is very simple:</p><pre>using System.Collections.Generic;
+
+namespace HeadsUpCompass.Models
+{
+  public class CompassDirectionModel
+  {
+    public int Direction { get; set; }
+
+    public string Text { get; set; }
+
+    public static IEnumerable&lt;CompassDirectionModel&gt; GetCompassDirections()
+    {
+      return new List&lt;CompassDirectionModel&gt;
+      {
+        new CompassDirectionModel {Direction = 0, Text = "N"},
+        new CompassDirectionModel {Direction = 45, Text = "NE"},
+        new CompassDirectionModel {Direction = 90, Text = "E"},
+        new CompassDirectionModel {Direction = 135, Text = "SE"},
+        new CompassDirectionModel {Direction = 180, Text = "S"},
+        new CompassDirectionModel {Direction = 225, Text = "SW"},
+        new CompassDirectionModel {Direction = 270, Text = "W"},
+        new CompassDirectionModel {Direction = 315, Text = "NW"}
+      };
+    }
+  }
+}</pre>
+<p>And most of is a static factory method too that I, being a lazy programmer, just plonked into a class. This model accepts a text and a compass direction where it wants to be displayed. You can limit or add whatever you like.</p>
+<p><font size="4">Building the ViewModel</font></p>
+<p>So far it has not been quite rocket science, and neither is the only ViewModel that is employed in this solution:</p><pre>using System.Collections.ObjectModel;
+using System.Windows;
+using GalaSoft.MvvmLight;
+using HeadsUpCompass.Models;
+
+namespace HeadsUpCompass.ViewModels
+{
+  public class CompassViewModel : ViewModelBase
+  {
+    private readonly CompassModel model;
+
+    public CompassViewModel()
+    {
+      model = new CompassModel();
+      model.CompassDirectionChanged += ModelCompassDirectionChanged;
+      CompassDirections = 
+        new ObservableCollection&lt;CompassDirectionModel&gt;(
+          CompassDirectionModel.GetCompassDirections());
+      if( !IsInDesignMode) model.Init();
+    }
+
+    void ModelCompassDirectionChanged(int newDirection)
+    {
+      Deployment.Current.Dispatcher.BeginInvoke(
+        () =&gt; { CompassDirection = newDirection; });
+    }
+
+    private int compassDirection;
+    public int CompassDirection
+    {
+      get { return compassDirection; }
+      set
+      {
+        if (compassDirection != value)
+        {
+          compassDirection = value;
+          RaisePropertyChanged(() =&gt; CompassDirection);
+        }
+      }
+    }
+
+    private ObservableCollection&lt;CompassDirectionModel&gt; compassDirections;
+    public ObservableCollection&lt;CompassDirectionModel&gt; CompassDirections
+    {
+      get { return compassDirections; }
+      set
+      {
+        if (compassDirections != value)
+        {
+          compassDirections = value;
+          RaisePropertyChanged(() =&gt; CompassDirections);
+        }
+      }
+    }
+  }
+}</pre>
+<p>The ViewModel creates a CompassDirectionModel and subscribes to its events, and fills an observable collection with CompassDirectionModels – so basically a list of texts and the direction in which they want to be displayed. </p><a name="IntialUserInterface"></a>
+<p><font size="4">Initial user interface</font></p>
+<p>First of all, open MainPage.xaml, set shell:SystemTray.IsVisible="false", SupportedOrientations="PortraitOrLandscape" and then delete the grid “LayoutRoot” and everything inside it (and get rid of the App Bar sample code that commented out as well, that clears the stage). Replace it by this:</p><pre>&lt;Grid x:Name="LayoutRoot" &gt;
+  &lt;Grid.RowDefinitions&gt;
+    &lt;RowDefinition Height="Auto"/&gt;
+    &lt;RowDefinition Height="*"/&gt;
+  &lt;/Grid.RowDefinitions &gt;
+
+  &lt;!--TitlePanel contains the name of the application and page title--&gt;
+  &lt;StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,17,0,28"&gt;
+    &lt;TextBlock x:Name="ApplicationTitle" Text="HeadsUp Compass" 
+      Style="{StaticResource PhoneTextNormalStyle}"/&gt;
+  &lt;/StackPanel&gt;
+
+  &lt;!--ContentPanel - place additional content here--&gt;
+  &lt;Grid x:Name="ContentPanel" Grid.Row="1" Margin="12,0,12,0"&gt;
+    &lt;Grid&gt;
+      &lt;Grid.RowDefinitions&gt;
+        &lt;RowDefinition Height="0.7*"/&gt;
+        &lt;RowDefinition Height="0.3*"/&gt;
+      &lt;/Grid.RowDefinitions &gt;
+    <font color="#ff0000">&lt;ItemsControl x:Name="CompassItems" ItemsSource="{Binding CompassDirections}"
+           Grid.Row="0"&gt;
+      &lt;ItemsControl.ItemsPanel&gt;
+        &lt;ItemsPanelTemplate&gt;
+          &lt;Canvas Background="Transparent" /&gt;
+        &lt;/ItemsPanelTemplate&gt;
+      &lt;/ItemsControl.ItemsPanel&gt;
+      &lt;ItemsControl.ItemTemplate&gt;
+        &lt;DataTemplate&gt;
+          &lt;Grid&gt;
+            &lt;TextBlock Text="{Binding Text}" FontSize="48" Foreground="Red"/&gt;
+          &lt;/Grid&gt;
+        &lt;/DataTemplate&gt;
+      &lt;/ItemsControl.ItemTemplate&gt;
+    &lt;/ItemsControl&gt;</font>
+
+    &lt;TextBlock TextWrapping="Wrap" Text="{Binding CompassDirection}" 
+       VerticalAlignment="Top" Margin="0,10,0,0" FontSize="48" Foreground="Red" 
+       HorizontalAlignment="Center" Grid.Row="1"/&gt;
+    &lt;/Grid&gt;
+  &lt;/Grid&gt;
+&lt;/Grid&gt;</pre>
+<p>The interesting part I’ve marked red. This is an ItemsControl - nothing more than a simple repeater. The declaration used in this article uses two templates: an <em>ItemsPanelTemplate</em>, which describes what all the bound items are rendered upon – in this case, a transparent canvas – and an <em>ItemTemplate, </em>which describes how each individual item in the CompassDirections property bound to the control itself is displayed – in this case, a grid with a simple text bound to a Text property. But on the ItemTemplate you can put literally everything you can dream. Including behaviors.</p>
+<p><font size="4">Setting up data binding using Expression Blend</font></p>
+<p>First let’s get the data binding done. This is considerably easier using Expression Blend. Compile the application so far, and open it up in Expression Blend. Then use the following workflow:<a href="http://lh4.ggpht.com/-0vjOneRdr6U/TswHsjBNTsI/AAAAAAAAHCQ/whAcEd5jLzg/s1600-h/DataSource5.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="DataSource" border="0" alt="DataSource" align="right" src="http://lh3.ggpht.com/-EHpu4ufxRHU/TswHtIE-9oI/AAAAAAAAHCU/K34Qv-RhJxc/DataSource_thumb1.png?imgmax=800" width="244" height="84"></a></p>
+<ul>
+<li>On the top right hand side, select the “Data” tab 
+<li>Click the Icon on the right that gives as tooltip “Create data source” 
+<li>Select “Create Object DataSource” 
+<li>Select “CompassViewModel” in the popup that appears. 
+<li>Drag “CompassViewModel” under “CompassViewModelSource on top of the “LayoutRoot” grid in the Objects and Timeline Panel to the left bottom</li></ul>
+<p><a href="http://lh4.ggpht.com/-o0_mZyRmdGI/TswHtlFxaUI/AAAAAAAAHCg/g60-I-d5o8c/s1600-h/Bound3.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="Bound" border="0" alt="Bound" align="right" src="http://lh6.ggpht.com/-Oty0YwYluOc/TswHus6P61I/AAAAAAAAHCo/UlSTrJXPnYg/Bound_thumb1.png?imgmax=800" width="133" height="217"></a></p>
+<p>If you have done things correctly, you should immediately see appear a red zero in the horizontal middle of your screen a little below the center, and a lot of texts stacked upon each other in the top left op your screen. </p>
+<p>The fun thing is, this application already works more or less. If you deploy this on a device and fire it up, you will already see that the 0 starts to display the compass direction in degrees. But the compass direction texts are still stacked upon each other in the top left corner. Now it’s time for the coupe de grâce: a behavior that dynamically changes the location of the compass direction texts.</p>
+<p><font size="4">Location calculation</font></p>
+<p>The behavior actually consist out of two parts: the LocationCalculator class and the actual CompassDirectionDisplayBehavior. I pulled the actual location calculation out of the behavior because I had to cobble it together by trial and error – and adding it to a test project by means of a link and testing it by unit tests made this a lot easier. Anyway, the code itself it pretty small: most of it is comments and properties:</p><pre>using System;
+using System.Windows;
+
+namespace ARCompass.Behaviors
+{
+  /// &lt;summary&gt;
+  /// Calculates screen positions based upon compass locations
+  /// &lt;/summary&gt;
+  public class LocationCalcutator
+  {
+    /// &lt;summary&gt;
+    /// Initializes a new instance of the LocationCalcutator class.
+    /// Sets some reasonable defaults
+    /// &lt;/summary&gt;
+    public LocationCalcutator()
+    {
+      Resolution = (6 * 800 / 360);
+      CanvasHeight = 800;
+      CanvasWidth = 480;
+      ObjectWidth = 10;
+    }
+
+    /// &lt;summary&gt;
+    /// Gets or sets the resolution (i.e. the pixels per degree
+    /// &lt;/summary&gt;
+    public int Resolution { get; set; }
+
+    /// &lt;summary&gt;
+    /// The compass direction where the object to calculate for is located
+    /// &lt;/summary&gt;
+    public int DisplayCompassDirection { get; set; }
+
+    /// &lt;summary&gt;
+    /// Gets or sets the width of the canvas.
+    /// &lt;/summary&gt;
+    public double CanvasWidth { get; set; }
+
+    /// &lt;summary&gt;
+    /// Gets or sets the height of the canvas.
+    /// &lt;/summary&gt;
+    public double CanvasHeight { get; set; }
+
+    /// &lt;summary&gt;
+    /// Gets or sets the width of the object (in pixels)
+    /// &lt;/summary&gt;
+    public double ObjectWidth { get; set; }
+
+    /// &lt;summary&gt;
+    /// Sets the horizontal pixels.
+    /// &lt;/summary&gt;
+    /// &lt;param name="pixels"&gt;The pixels.&lt;/param&gt;
+    public void SetHorizontalPixels(double pixels)
+    {
+      Resolution = Convert.ToInt32(Math.Round(pixels/360));
+    }
+
+    /// &lt;summary&gt;
+    /// Calculates the screen position.
+    /// &lt;/summary&gt;
+    /// &lt;param name="compassDirection"&gt;The compass direction the screen is 
+    /// currently looking at.&lt;/param&gt;
+    /// &lt;returns&gt;&lt;/returns&gt;
+    public Point CalculateScreenPosition(int compassDirection)
+    {
+      if (!(double.IsNaN(CanvasHeight) || double.IsNaN(CanvasWidth)))
+      {
+        var y = CanvasHeight / 2;
+        var deltaDegrees1 = compassDirection - DisplayCompassDirection;
+        var deltaDegrees2 = compassDirection - DisplayCompassDirection - 360;
+        var deltaDegrees = 
+           Math.Abs(deltaDegrees1) &lt; Math.Abs(deltaDegrees2) ? 
+             deltaDegrees1 : deltaDegrees2;
+
+        var dx = deltaDegrees * Resolution;
+        var x = Convert.ToInt32(CanvasWidth / 2) - dx;
+        return new Point(x, y);
+      }
+      return new Point(-1000, -1000);
+    }
+
+    /// &lt;summary&gt;
+    /// Determines whether the specified point is visible in the current canvas
+    /// &lt;/summary&gt;
+    public bool IsVisible(Point point)
+    {
+      var overshoot = Convert.ToInt32(Math.Round(ObjectWidth/2 + 5));
+      return (point.X &gt; -overshoot &amp;&amp; point.X &lt; CanvasWidth + overshoot);
+    }
+  }
+}</pre>
+<p>Resolution is a pretty weird property and is the base for all other calculations. It basically says – how many pixels is 1 degree? Default I set it to 6 * 800 / 360 = 13.333, which basically means if you move your camera 1 degree to the left whatever is displayed on your screen moves 13 pixels to the right. </p>
+<p>The CalculateScreenPosition method basically is my way to calculate the screen position of an object in direction compassDirection, without using trigonometry – since I am notoriously bad at it. I’ve learned it about three times if I really have to use it, but for some reason as soon as I stop using it, it quite quickly drops from my mind again. I don’t doubt I’ll be getting reactions of math lovers who will point out this a stupid way to do it ;-). But this works, and that’s fine with me. Finally, the IsVisible property can be used to determine if the objects is on the screen at all.</p>
+<p><font size="4">The actual behavior</font></p>
+<p>This behavior heavily leans on things I wrote about earlier, namely the extension methods for FrameWorkElement I described in my article&nbsp; “<a href="http://dotnetbyexample.blogspot.com/2011/03/simple-windows-phone-7-silverlight.html">Simple Windows Phone 7 / Silverlight drag/flick behavior</a>” but which are now fortunately all in the Wp7nl library. It is also based upon the <a href="http://dotnetbyexample.blogspot.com/2011/04/safe-event-detachment-pattern-for.html">Safe event detachment ‘pattern’ for behaviors</a>. Anyway – the base setup is like this:</p><pre>using System.Windows;
+using System.Windows.Interactivity;
+using System.Windows.Media;
+using ARCompass.Behaviors;
+using Phone7.Fx.Preview;
+using Wp7nl.Utilities;
+
+namespace HeadsUpCompass.Behaviors
+{
+  public class CompassDirectionDisplayBehavior : Behavior&lt;FrameworkElement&gt;
+  {
+    private FrameworkElement elementToAnimate;
+
+    private FrameworkElement displayCanvas;
+
+    private LocationCalcutator calculator;
+
+    #region Setup
+    protected override void OnAttached()
+    {
+      base.OnAttached();
+      AssociatedObject.Loaded += AssociatedObjectLoaded;
+      AssociatedObject.Unloaded += AssociatedObjectUnloaded;
+    }
+
+    void AssociatedObjectLoaded(object sender, RoutedEventArgs e)
+    {
+      calculator = new LocationCalcutator 
+        {DisplayCompassDirection = DisplayCompassDirection};
+      elementToAnimate = AssociatedObject.GetElementToAnimate();
+      if (!(elementToAnimate.RenderTransform is CompositeTransform))
+      {
+        elementToAnimate.RenderTransform = new CompositeTransform();
+      }
+      displayCanvas = elementToAnimate.GetVisualParent();
+      if (displayCanvas != null)
+      {
+        displayCanvas.SizeChanged += DisplayCanvasSizeChanged;
+        UpdateCalculator();
+      }
+    }
+    #endregion
+
+    #region Cleanup
+    private bool isCleanedUp;
+
+    private void Cleanup()
+    {
+      if (!isCleanedUp)
+      {
+        isCleanedUp = true;
+        AssociatedObject.Loaded -= AssociatedObjectLoaded;
+        AssociatedObject.Unloaded -= AssociatedObjectUnloaded;
+      }
+    }
+
+    protected override void OnDetaching()
+    {
+      Cleanup();
+      base.OnDetaching();
+    }
+
+    void AssociatedObjectUnloaded(object sender, RoutedEventArgs e)
+    {
+      Cleanup();
+    }
+    #endregion
+  }
+}</pre>
+<p>Now that most of the calculation logic is in the LocationCalculator, the calculation and positioning logic is reduced to these three little methods:</p><pre>void DisplayCanvasSizeChanged(object sender, SizeChangedEventArgs e)
+{
+  UpdateCalculator();
+}
+
+private void UpdateCalculator()
+{
+  calculator.CanvasHeight = displayCanvas.ActualHeight;
+  calculator.CanvasWidth = displayCanvas.ActualWidth;
+  calculator.SetHorizontalPixels(6 * calculator.CanvasWidth);
+  UpdateScreenLocation();
+}
+
+void UpdateScreenLocation()
+{
+  var translationPoint = 
+     calculator.CalculateScreenPosition(CurrentCompassDirection);
+  if (calculator.IsVisible(translationPoint))
+  {
+    elementToAnimate.SetTranslatePoint(
+      calculator.CalculateScreenPosition(CurrentCompassDirection));
+    elementToAnimate.Visibility = Visibility.Visible;
+  }
+  else
+  {
+    elementToAnimate.Visibility = Visibility.Collapsed;
+  }
+}</pre>
+<p>The fun thing is that the calculator’s resolution is set to 6 times the canvas width, so that every time you rotate the phone it recalculates the location where objects are displayed. The net result is that objects are spaced wider apart when you rotate the phone in landscape. Thus, the app makes optimal use of the screen space available.</p>
+<p>And all there is left are two dependency properties: DisplayCompassDirection which holds the location in which the current object wants to be displayed, and CurrentCompassDirection&nbsp; which should get the current direction the camera is looking at. By nature they are pretty verbose unfortunately:</p><pre>#region DisplayCompassDirection
+public const string DisplayCompassDirectionPropertyName = 
+   "DisplayCompassDirection";
+
+public int DisplayCompassDirection
+{
+  get { return (int)GetValue(DisplayCompassDirectionProperty); }
+  set { SetValue(DisplayCompassDirectionProperty, value); }
+}
+
+public static readonly DependencyProperty DisplayCompassDirectionProperty = 
+  DependencyProperty.Register(
+    DisplayCompassDirectionPropertyName,
+    typeof(int),
+    typeof(CompassDirectionDisplayBehavior),
+    new PropertyMetadata(0, null));
+#endregion
+
+#region CurrentCompassDirection
+public const string CurrentCompassDirectionPropertyName = 
+  "CurrentCompassDirection";
+
+public int CurrentCompassDirection
+{
+  get { return (int)GetValue(CurrentCompassDirectionProperty); }
+  set { SetValue(CurrentCompassDirectionProperty, value); }
+}
+
+public static readonly DependencyProperty CurrentCompassDirectionProperty =
+  DependencyProperty.Register(
+    CurrentCompassDirectionPropertyName,
+    typeof(int),
+    typeof(CompassDirectionDisplayBehavior),
+    new PropertyMetadata(0, CurrentCompassDirectionChanged));
+
+public static void CurrentCompassDirectionChanged(
+  DependencyObject d, DependencyPropertyChangedEventArgs e)
+{
+  var behavior = d as CompassDirectionDisplayBehavior;
+  if (behavior != null)
+  {
+    behavior.UpdateScreenLocation();
+  }
+}
+#endregion</pre>
+<p>Save and compile the app. Don’t run it yet.</p>
+<p><font size="4"><a href="http://lh6.ggpht.com/-6SOei25OEyE/TswHveZcjhI/AAAAAAAAHCw/6esOVfRLDjY/s1600-h/DragBehavior3.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="DragBehavior" border="0" alt="DragBehavior" align="right" src="http://lh5.ggpht.com/-3b6uQVGZvaw/TswHwRYTOOI/AAAAAAAAHC4/ef8x1dK4d8A/DragBehavior_thumb1.png?imgmax=800" width="177" height="313"></a>Adding/configuring the behavior using Expression Blend</font></p>
+<p>Go back to Expression Blend, and use the following workflow:</p>
+<ul>
+<li>In the Objects and Timeline Panel to the left, select ItemsControl “CompassItems” 
+<li>Right-click on in, select “Edit Additional Templates”, then “Edit Generated Items (ItemsTemplate)”,&nbsp; and finally “Edit Current” 
+<li>Top left, select the “Assets” tab. In the left panel below it, select “Behaviors”. In the right panel you should see “CompassDirectionDisplayBehavior” appear. 
+<li>Drag the behavior on top of the grid</li></ul>
+<p>As soon as you have done this, you will get a properties tab on the right of your screen that neatly shows the two dependency properties. Of course you can do this in code, but Blend takes care of creating namespaces and name space references – it makes life so much easier and that should appeal to a programmer’s natural laziness. Next task is data binding properties of the behavior to the ViewModel, and using Blend that is dead easy too.</p>
+<p><font size="4">Configuring behavior binding</font></p>
+<p><a href="http://lh3.ggpht.com/-Pdko64LA0GE/TswHxaAFrgI/AAAAAAAAHDA/N6LLKIYR7gc/s1600-h/behaviorproperties%25255B11%25255D.png"><img style="background-image: none; border-bottom: 0px; border-left: 0px; margin: 0px 5px 0px 0px; padding-left: 0px; padding-right: 0px; display: inline; float: left; border-top: 0px; border-right: 0px; padding-top: 0px" title="behaviorproperties" border="0" alt="behaviorproperties" align="left" src="http://lh5.ggpht.com/-yxyFa-z_Umc/TswHySYD1gI/AAAAAAAAHDE/la2iik_LZUI/behaviorproperties_thumb%25255B5%25255D.png?imgmax=800" width="149" height="99"></a>Data binding to a behavior, yes sir (or ma’am)! Welcome to Mango: this is Silverlight 4, so no more complex hooplah with attached dependency properties if you want to have a behavior to play along with data binding. You can now directly bind to dependency properties in the behavior itself! After you have dragged the CompassDirectionDisplayBehavior on Grid, you get the little properties tab as displayed on the left, showing the behavior's two properties. To data bind these, use the following workflow:</p>
+<ul>
+<li>Click the little square right of “DisplayCompassDirection” (indicated with the red circle), and select “Data Binding” from the popup menu</li>
+<li>Choose tab “Data context” on the dialog that pops us (usually that’s default)</li>
+<li>Select property “Direction : (Int32), that is directly under CompassDirections : (CompassDirectionModel)</li></ul>
+<p>You have now selected the DisplayCompassDirection property of the behavior to be bound directly to the “Direction” property to the CompassDirectionModel. One can argue if it’s technically corr<a href="http://lh5.ggpht.com/-_wpdI1WHA7E/TswHy1aVaZI/AAAAAAAAHDQ/YARqWWYGdM0/s1600-h/DataBindingDisplayDirection%25255B5%25255D.png"><img style="background-image: none; border-bottom: 0px; border-left: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top: 0px; border-right: 0px; padding-top: 0px" title="DataBindingDisplayDirection" border="0" alt="DataBindingDisplayDirection" align="right" src="http://lh6.ggpht.com/-AgGmuiq0iM4/TswHznwjoOI/AAAAAAAAHDY/j_v-GM4FOos/DataBindingDisplayDirection_thumb%25255B3%25255D.png?imgmax=800" width="248" height="323"></a>ect to directly bind a Model in stead of having a ViewModel sitting in between. Since this Model only shows data and has no intelligence at all, I feel comfortable with it – if you do not, go ahead and define a ViewModel around it ;-)</p>
+<p>The second and last part of binding goes like this:</p>
+<ul>
+<li>Click the square behind “CurrentCompassDirection” and select “Data Binding” again in the popup menu</li>
+<li>Select the “Data Field” tab</li>
+<li>In the Data Field Tab, select “CompassViewModelDataSource” in the right pane</li>
+<li>In the left pane, select “CompassDirection : (Int32) </li>
+<li>Click the down-pointing arrow on the bottom of the dialog – more options appear</li>
+<li>Select “TwoWay” for “Binding Direction”</li><!--EndFragment--></ul>
+
+
+
+
+
+
+
+<p>You have now selected the CurrentCompassDirection property of the behavior to be bound to the CompassDirection of the CompassViewModel. And that means – you are done! Hit File/Save all and go back to Visual Studio to launch the application on your phone, and you will see compass directions moving through your screen if you move phone.</p>
+<p><font size="4">One for the road</font></p>
+<p>Having a plain black screen to see the compass directions moving over is quite boring. So lets add the <a href="http://dotnetbyexample.blogspot.com/2011/10/behavior-to-show-windows-phone-7-camera.html">behavior to show the Windows Phone 7 camera as background</a> I wrote some time ago as well. Add it to the project, drag it on top of the LayoutRoot grid, and bang – now you don’t only have a heads-up, but a see-trough compass as well!</p>
+<p><font size="4">Some final words</font></p>
+<p>This is all pretty crude in terms of how things move, and there are quite some things eligible for improvement but nevertheless - what we have here is almost like any other old LOB MVVM based application. Business objects bound to the GUI. Only, that GUI happens to be an ItemsControl with a behavior on its template. Which turns the whole app into a dynamic experience. I hope to have tickled your imagination, and showed some useful Blend how-to as well. </p>
+<p>MVVM is not limited to just LOB apps. Make something fun. To quote Nokia – make the amazing everyday ;-</p>
+<p>Complete sample solution can be found <a href="http://www.schaikweb.net/dotnetbyexample/HeadsUpCompass.zip" target="_blank">here</a>.</p>

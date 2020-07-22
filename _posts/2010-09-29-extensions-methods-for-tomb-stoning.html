@@ -1,0 +1,195 @@
+---
+layout: post
+title: Extension methods for tomb stoning the Windows Phone 7 model
+date: '2010-09-29T21:39:00.001+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- MVVM
+- WP7NL
+- Windows Phone 7
+- Architecture
+- Serialization
+- Extension methods
+- MVVM Light
+- Tombstoning
+- WP7
+modified_time: '2010-12-03T22:45:20.604+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5882402897602177708
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/09/extensions-methods-for-tomb-stoning.html
+---
+
+<p>As I was (and still am) playing with my <a href="http://dotnetbyexample.blogspot.com/2010/07/using-mvvm-light-to-drive-windows-phone.html" target="_blank">MVVM-driven Windows Phone 7 map viewer</a>, I started thinking about tomb stoning and/or serializing stuff into the <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> application state and/or isolated storage. I came up with four extension methods than can be used to store/serialize the complete model in both. Maybe not ideal in all cases, but it was a simple solution for me.</p>  <p><span style="font-size: 130%">Getting started</span></p>  <p>I created an assembly LocalJoost.Utilities, in which I first defined a generic interface for the model, which I called – with a flash of inspiration – IModel ;-). It’s implementation is not interesting for the extension methods.</p>  <p><span style="font-size: 130%">Save to phone application state</span></p>  <pre>using System;
+using System.IO;
+using System.IO.IsolatedStorage;
+using System.Runtime.Serialization;
+using System.Windows;
+using Microsoft.Phone.Shell;
+
+namespace LocalJoost.Utilities
+{
+  /// &lt;summary&gt;
+  /// Some extensions method that allow serializing and deserializing
+  /// a model to and from phone state and/or isolated storage
+  /// &lt;/summary&gt;
+  public static class ApplicationExtensions
+  {
+    private const string ModelKey = &quot;model&quot;;
+ 
+    public static IModel RetrieveFromPhoneState(this Application app) 
+    {
+      if (PhoneApplicationService.Current.State.ContainsKey(ModelKey))
+      {
+        return PhoneApplicationService.Current.State[ModelKey] as IModel;
+      }
+      return null;
+    }
+
+    public static void SaveToPhoneState(this Application app, IModel model)
+    {
+      if (PhoneApplicationService.Current.State.ContainsKey(ModelKey))
+      {
+        PhoneApplicationService.Current.State.Remove(ModelKey);
+      }
+      PhoneApplicationService.Current.State.Add(ModelKey, model);
+    }
+  }
+}</pre>
+
+<p><span style="font-size: 130%">Creating a Locator</span></p>
+
+<p>I wanted my model to be bindable by XAML and be usable from code as well, so I created the following ‘Locator’:</p>
+
+<pre>using LocalJoost.Utilities;
+
+namespace LocalJoost.Models
+{
+  public class Locator
+  {
+    private static IModel _model;
+    private static Locator _locator;
+
+    public IModel Model
+    {
+      get { return _model; }
+      set { _model = value; }
+    }
+
+    public static Locator Instance
+    {
+      get { return _locator ?? (_locator = new Locator()); }
+    }
+  }
+}</pre>
+
+<p><span style="font-size: 130%">Using Locator and Model from XAML</span></p>
+
+<p>First, add the namespace to the XAML</p>
+
+<pre style="font-size: 8pt">xmlns:Utilities=&quot;clr-namespace:LocalJoost.Utilities;assembly=LocalJoost.Utilities&quot;</pre>
+
+<p>Then bind it to your Layout root or any other element of choice</p>
+
+<pre style="font-size: 8pt"> &lt;Grid x:Name=&quot;LayoutRoot&quot;
+  DataContext=&quot;{Binding Source={StaticResource Locator}, Path=Model}&quot;&gt;</pre>
+
+<p><span style="font-size: 130%">Instantiating your model</span></p>
+
+<p>Interesting caveat – the <em>Locator</em> is instantiated, <em>not your model.</em> When the application runs for the very first time, there will be no model to retrieve. Thus, in the constructor of App.Xaml.cs you need to add:</p>
+
+<pre>Locator.Instance.Model = new YourModel();</pre>
+
+<p>in which you replace &quot;YourModel&quot; for your own model type. </p>
+
+<p><span style="font-size: 130%">Storing in / retrieving from phone application state</span></p>
+
+<p>Using the extension methods is pretty simple then: open your App.Xaml.cs, find two methods called “Application_Activated” and “Application_Deactivated” and modify them as follows: </p>
+
+<pre>// Code to execute when the application is activated (brought to foreground)
+// This code will not execute when the application is first launched
+private void Application_Activated(object sender, ActivatedEventArgs e)
+{
+  Locator.Instance.Model = this.RetrieveFromPhoneState();
+}
+
+// Code to execute when the application is deactivated (sent to background)
+// This code will not execute when the application is closing
+private void Application_Deactivated(object sender, DeactivatedEventArgs e)
+{
+  this.SaveToPhoneState(Locator.Instance.Model);
+}</pre>
+
+<p>And that’s it. Your model now persists to the phone state and survives, for instance, a hit on the search button</p>
+
+<p><span style="font-size: 130%">Storing in Isolated Storage</span></p>
+
+<p>This proves to be marginally more difficult. I expanded the class ApplicationExtensions with two more methods and a const:</p>
+
+<pre>private const string DataFile = &quot;model.dat&quot;;
+
+public static T RetrieveFromIsolatedStorage&lt;T&gt;(this Application app) 
+  where T : class
+{
+  using (var appStorage = IsolatedStorageFile.GetUserStoreForApplication())
+  {
+    if (appStorage.FileExists(DataFile))
+    {
+      using (var iss = appStorage.OpenFile(DataFile, FileMode.Open))
+      {
+        try
+        {
+          var serializer = new DataContractSerializer(typeof(T));
+          return serializer.ReadObject(iss) as T;
+        }
+        catch (Exception e)
+        {
+          System.Diagnostics.Debug.WriteLine(e);
+        }
+      }
+    }
+  }
+  return null;
+}
+
+public static void SaveToIsolatedStorage(this Application app, IModel model)
+{
+  using (var appStorage = IsolatedStorageFile.GetUserStoreForApplication())
+  {
+    if (appStorage.FileExists(DataFile))
+    {
+      appStorage.DeleteFile(DataFile);
+    }
+    var serializer = new DataContractSerializer(model.GetType());
+    using (var iss = appStorage.CreateFile(DataFile))
+    {
+      serializer.WriteObject(iss, model);
+    }
+  }
+}</pre>
+
+<p>You now have to find Application_Launching and Application_Closing in App.Xaml.cs and modify them in a similar way:</p>
+
+<pre>// Code to execute when the application is launching (eg, from Start)
+// This code will not execute when the application is reactivated
+private void Application_Launching(object sender, LaunchingEventArgs e)
+{
+    Locator.Instance.Model = 
+       this.RetrieveFromIsolatedStorage&lt;YourModel&gt;();
+}
+
+// Code to execute when the application is closing (eg, user hit Back)
+// This code will not execute when the application is deactivated
+private void Application_Closing(object sender, ClosingEventArgs e)
+{
+    this.SaveToIsolatedStorage(Locator.Instance.Model);
+}</pre>
+
+<p><span style="font-size: 130%">Some notes</span></p>
+
+<ul>
+  <li>In order to make this work, your need to mark your model class with the [DataContract] attribute, and every member you want to be serialized with [DataMember] </li>
+
+  <li>If you are using <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> (which of course you are ;-) ) and if you are just making simple apps that don’t use separate models but just view models, be aware that your model cannot inherit from ViewModelBase, for the simple reason that this class is not serializable. Oops ;-) </li>
+
+  <li>If your model communicates with the view using <a href="http://dotnetbyexample.blogspot.com/2010/05/attached-dependency-properties-for.html" target="_blank">attached dependency properties</a> you may run into some timing difficulties. I will soon blog about a work-around for that. </li>
+</ul>  

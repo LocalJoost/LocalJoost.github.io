@@ -1,0 +1,152 @@
+---
+layout: post
+title: Using MVVMLight Messenger and behaviors to open files from local disk in Silverlight
+date: '2010-10-06T10:25:00.003+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- MVVM
+- Architecture
+- Silverlight
+- Silverlight 4.0
+- XAML
+- behavior
+- Behaviour
+- MVVM Light
+modified_time: '2011-02-22T17:04:06.516+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4687914817219672462
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/10/using-mvvmlight-messenger-and-behaviors.html
+---
+
+<p>The very first Silverlight application I had to make professionally (i.e. not as a hobby/research project at home) required the possibility to open a file from (local) disk. Of course I wanted to use <a href="www.twitter.com/lbugnion" target="_blank">Laurent Bugnion</a>’s <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> and the strict separation between logic that I talked and blogged about so much – ‘practice what thou preach’, eh?</p>  <p>This proved to be an interesting challenge. The most logical way forward seemed to be: make a button, attach a command to it via the usual EventToCommand route and then use OpenFileDialog from the model – which landed me a “<strong>Dialogs must be user-initiated</strong>” error. <strike>Googling</strike> Binging around I found out that <a href="http://community.dotned.nl/blogs/dennis_blog/default.aspx" target="_blank">Dennis Vroegop had run into this thingy quite recently as well</a>.</p>  <p>Things looked ugly. Getting around it took me some code in the code behind. This kept nagging me, and only recently I found a better way to deal with this. Apart from the EventToCommand binding MVVMLight contains another gem, called the <em>Messenger</em>. This is an implementation of the Mediator pattern that - as far as I understand – is designed to broadcast property changes between different models in the application. But this mechanism can also be used as an alternative way to shuttle data from the GUI to the model in a designer-friendly – Blendable -way. The way to go for this particular problem is like this:</p>  <ul>   <li>Define a message that holds the data from an OpenFileDialog </li>    <li>Make a behavior that can attach to a button that launches an OpenFileDialog on click, and then sends a message on the Messenger </li>    <li>Register a listener on the Messenger in the model for that particular message </li> </ul>  <p>True to my blog’s title, I will demonstrate this principle with an example. First, a message containing the result of an OpenFileDialog:</p>  <pre>using System.Collections.Generic;
+using System.IO;
+using GalaSoft.MvvmLight.Messaging;
+
+namespace LocalJoost.Behaviours
+{
+  public class FilesOpenedMessage : GenericMessage&lt;IEnumerable&lt;FileInfo&gt;&gt;
+  {
+    public FilesOpenedMessage(IEnumerable&lt;FileInfo&gt; parm)
+      : base(parm)
+    {
+      Identifier = string.Empty;
+    }
+
+    public string Identifier{get;set;}
+  }
+}</pre>
+
+<p>Notice that the message also contains a property Identifier, acting like an optional additional message identifier. This is necessary, since the MVVMLight messenger seems to identify messages by type. Therefore, <em>every</em> method listening to a FilesOpenedMessage gets a message, and the various models would have no way to know if it was actually for them to act on it. Identifier makes coupling a particular listener to a particular sender possible. I’m sure there are other ways to get this done, I simply chose the simplest.</p>
+
+<p>Getting on with the behavior:</p>
+
+<pre>using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Interactivity;
+using GalaSoft.MvvmLight.Messaging;
+
+namespace LocalJoost.Behaviours
+{
+  /// &lt;summary&gt;
+  /// A behavior attaching to a button
+  /// &lt;/summary&gt;
+  public class FileOpenBehavior : Behavior&lt;Button&gt;
+  {
+    // Properties - can be set from XAML
+    public string MessageIdentifier { get; set; }
+    public string Filter { get; set; }
+    public bool MultiSelect { get; set; }
+
+    protected override void OnAttached()
+    {
+      base.OnAttached();
+      Filter = &quot;All files (*.*)|*.*&quot;;
+      AssociatedObject.Click += AssociatedObject_Click;
+    }
+
+    void AssociatedObject_Click(object sender, RoutedEventArgs e)
+    {
+      // Open the dialog and send the message
+      var dialog = 
+        new OpenFileDialog {Filter = Filter, Multiselect = MultiSelect};
+      if (dialog.ShowDialog() == true)
+      {
+        Messenger.Default.Send(
+          new FilesOpenedMessage(dialog.Files) 
+          { Identifier = MessageIdentifier });
+      }      
+    }
+
+    protected override void OnDetaching()
+    {
+      AssociatedObject.Click -= AssociatedObject_Click;
+      base.OnDetaching();
+    }
+  }
+}</pre>
+
+<p>Which works pretty simple: it attaches itself to the click event, composes a message and fires it away on the Messenger. In your model you register a listener like this:</p>
+
+<pre>public class DemoModel : ViewModelBase
+{
+  public DemoModel()
+  {
+    if (IsInDesignMode)
+    {
+      // Code runs in Blend --&gt; create design time data.
+    }
+    else
+    {
+      Messenger.Default.Register&lt;FilesOpenedMessage&gt;(
+        this,
+        DoOpenFileCallback);
+    }
+  }
+
+  private void DoOpenFileCallback(FilesOpenedMessage msg)
+  {
+    if (msg.Identifier != &quot;1234&quot;) return;
+    // Store result in SelectedFiles
+    SelectedFiles = msg.Content.Select(f =&gt; f.Name).ToList();
+  }
+  // Rest of model omitted - see demo solution
+}</pre>
+
+<p>The “Content” property of the message always contains the payload, i.e. whatever you had to pass to the message constructor – in this case, an IEnumerable&lt;FileInfo&gt;. In XAML you then bind the whole thing together like this, like any ordinary behavior:</p>
+
+<pre style="font-size: 7.7pt">&lt;UserControl x:Class=&quot;DemoMessageBehaviour.MainPage&quot;
+  xmlns=&quot;http://schemas.microsoft.com/winfx/2006/xaml/presentation&quot;
+  xmlns:x=&quot;http://schemas.microsoft.com/winfx/2006/xaml&quot;
+  xmlns:d=&quot;http://schemas.microsoft.com/expression/blend/2008&quot;
+  xmlns:mc=&quot;http://schemas.openxmlformats.org/markup-compatibility/2006&quot;
+  xmlns:model=&quot;clr-namespace:DemoMessageBehaviour.Model;assembly=DemoMessageBehaviour.Model&quot;
+  xmlns:LJBehaviours=&quot;clr-namespace:LocalJoost.Behaviours;assembly=LocalJoost.Behaviours&quot;
+  xmlns:i=&quot;clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity&quot;        
+  mc:Ignorable=&quot;d&quot;
+  d:DesignHeight=&quot;300&quot; d:DesignWidth=&quot;400&quot;&gt;
+  &lt;UserControl.Resources&gt;
+    &lt;model:DemoModel x:Key=&quot;MyDemoModel&quot;/&gt;
+  &lt;/UserControl.Resources&gt;
+  &lt;Grid x:Name=&quot;LayoutRoot&quot; Background=&quot;White&quot; DataContext=&quot;{StaticResource MyDemoModel}&quot;&gt;
+    &lt;Grid.RowDefinitions&gt;
+      &lt;RowDefinition Height=&quot;0.9*&quot;/&gt;
+      &lt;RowDefinition Height=&quot;0.1*&quot;/&gt;
+    &lt;/Grid.RowDefinitions&gt;
+<font color="#ff0000">    &lt;Button Content=&quot;Open&quot; Grid.Row=&quot;1&quot; IsEnabled=&quot;{Binding CanOpen}&quot; &gt;
+      &lt;i:Interaction.Behaviors&gt;
+        &lt;LJBehaviours:FileOpenBehavior MessageIdentifier=&quot;1234&quot; MultiSelect=&quot;True&quot;/&gt;
+      &lt;/i:Interaction.Behaviors&gt;
+    &lt;/Button&gt;</font>
+    &lt;ListBox Grid.Row=&quot;0&quot; ItemsSource=&quot;{Binding SelectedFiles}&quot;/&gt;
+  &lt;/Grid&gt;
+&lt;/UserControl&gt;</pre>
+
+<p>The Listbox is used to display the names of the selected files. I did leave this out, there’s enough code in this sample already. For those who want to have the full picture: a complete solution demonstrating the behavior can be found <a href="http://www.schaikweb.net/dotnetbyexample/DemoMessageBehaviour.zip" target="_blank">here</a>.</p>
+
+<p>Notice there’s an important difference using this technique in stead of the EventToCommand: when the user presses the button, <em>the model cannot control the actual display of the OpenFileDialog</em>: the click is handled by the <em>behavior, </em>not the model itself (via EventToCommand) and the OpenFileDialog is <em>always</em> displayed once the button is clicked. Therefore, the model should control if the user can press the button at all, which is done by binding the IsEnabled property to a property of the model (CanOpen – sorry, lame pun). Which is good UX practice anyway – controls that cannot be used should be disabled in stead of giving a ‘sorry, you can’t do that’ message whenever possible, but in this case it’s simply necessary.</p>
+
+<p>I only showed how to do open a file from disk, but a pattern like this can be used to save files to disk as well, or do other things that might seem to require coding in the code behind file. That is no sin in itself – nobody from the MVVM police will show up at your doorstep and take your family away if you need to do that. At least <a href="http://blog.galasoft.ch/archive/2010/04/09/using-commands-with-applicationbarmenuitem-and-applicationbarbutton-in-windows-phone-7.aspx" target="_blank">that is what Laurent himself promised</a> at his MIX10 talk ;-). But by coding a behavior, you enable designers to add fairly easily relatively complex actions using Blend without having to dive too deep into XAML. Using behaviors like this FileOpenBehavior makes it even easier to add interactivity than the EventToCommand (which was closed off anyway during security restrictions).</p>
+
+<p>It can’t hurt to be nice to your designers – after all, they make the pretty stuff up front that makes your application sell ;-) </p>
+
+<p>Oh, and one final thing: in all my previous posts I was talking about ‘behaviour’ in stead of ‘behavior’. I hope you all will excuse me for being educated in the Queen’s English, even tough I am just Dutch. ;-). </p>

@@ -1,0 +1,451 @@
+---
+layout: post
+title: An MVVM-friendly ‘tap-to-connect’ NFC socket network helper for Windows Phone
+  8
+date: '2013-01-14T21:25:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Bluetooth
+- Windows Phone 8
+- NFC
+- wpnl
+- wpdev
+- dotnetmag
+- MVVM
+- MVVM Light
+modified_time: '2013-01-16T19:47:43.935+01:00'
+thumbnail: http://lh4.ggpht.com/-NrlxRNIHvtg/UPasPqi3L7I/AAAAAAAAKDU/bnA-7NGwG6s/s72-c/wp_ss_20130116_0002%25255B1%25255D_thumb%25255B1%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5070521052577576591
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/01/am-mvvm-friendly-tap-to-connect-nfc.html
+---
+
+<p>For my <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> 8 game “<a title="Pull the Rope" href="http://windowsphone.com/s?appid=4aaf1cc1-4393-4d81-98b7-d438d7e83fac&amp;amp;ocid=aff-n-we-loc--ITPRO40939&amp;amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Pull the Rope</a>” I wrote a utility class to make pairing phones and obtaining a&nbsp; two-way communication channel a little bit easier. I already dabbled into this while developing the game, but now I feel it’s time to show a more comprehensive solution.</p> <p>I re-use the NavigationEventArgsExtensions and the NavigationMessage from my previous article “<a href="http://dotnetbyexample.blogspot.be/2012/12/handling-windows-phone-8-nfc-startup.html" target="_blank">Handling Windows Phone 8 NFC startup events using the MVVMLight</a>” without describing them further – I suggest you read this article as a preface to this one if you haven’t done so before. The utility class I describe in this article handles the pairing via tap-to-connect and provides – when that’s done – a method for sending a message and an event for receiving a message. I have peppered the code with debug statements, so can you nicely see in your output windows what’s exactly happening inside of the class when you are debugging on the phone.</p> <p>Messages are sent and received as strings, therefore the message argument class is not very complex either:</p><pre>using System;
+
+namespace Wp7nl.Devices
+{
+  public class ReceivedMessageEventArgs : EventArgs
+  {
+    public string Message { get; set; }
+  }
+}</pre>The start of the TtcSocketHelper (‘Tap-To-Connect’) class, as I have called it, is as follows: <pre>using System;
+using System.Diagnostics;
+using System.Threading.Tasks;
+using GalaSoft.MvvmLight.Messaging;
+using Windows.Foundation;
+using Windows.Networking.Proximity;
+using Windows.Networking.Sockets;
+using Windows.Storage.Streams;
+
+namespace Wp7nl.Devices
+{
+  public class TtcSocketHelper
+  {
+    public TtcSocketHelper()
+    {
+      Messenger.Default.Register&lt;NavigationMessage&gt;(this, 
+        ProcessNavigationMessage);
+    }
+
+    public virtual void Start()
+    {
+      PeerFinder.TriggeredConnectionStateChanged += 
+         PeerFinderTriggeredConnectionStateChanged;
+
+      PeerFinder.AllowBluetooth = true;
+      PeerFinder.Start();
+    }
+
+    private void ProcessNavigationMessage(NavigationMessage message)
+    {
+      Debug.WriteLine("TtsHelper.ProcessNavigationMessage " + 
+        message.NavigationEvent.Uri);
+
+      if (message.IsStartedByNfcRequest)
+      {
+        Start();
+      }
+    }
+  }
+}</pre>The constructor subscribes this helper class to a message that will need to be fired when the application navigates to it's main page. If it detects the app is started by an NfcRequest - i.e. a tap-to-connect, the PeerFinder is immediately started to allow for the further build-up of the connection. I already described this technique in <a href="http://dotnetbyexample.blogspot.be/2012/12/handling-windows-phone-8-nfc-startup.html" target="_blank">the article I already mentioned.</a> The method Start can also be called by an the application, for instance the press of a “connect” button. Note that I only allow Bluetooth connections – this is because this class comes from my game, which does not need the highest possible speed, but the <em>lowest possible latency</em>. Ironically Wi-Fi seems to have a little more latency than Bluetooth. 
+<p>The next part is the handling of the connection process itself:</p><pre>private void PeerFinderTriggeredConnectionStateChanged(object sender, 
+             TriggeredConnectionStateChangedEventArgs args)
+{
+  switch (args.State)
+  {
+    case TriggeredConnectState.Completed:
+      FireConnectionStatusChanged(args);
+      socket = args.Socket;
+      StartListeningForMessages();
+      PeerFinder.Stop();
+      break;
+    default:
+      FireConnectionStatusChanged(args);
+      break;
+  }
+}
+
+private void FireConnectionStatusChanged(TriggeredConnectionStateChangedEventArgs args)
+{
+  Debug.WriteLine("TtsHelper: " + args);
+  if (ConnectionStatusChanged != null)
+  {
+    ConnectionStatusChanged(this, args );
+  }
+}
+
+public event TypedEventHandler&lt;object, 
+             TriggeredConnectionStateChangedEventArgs&gt; ConnectionStatusChanged;
+
+private StreamSocket socket;</pre>
+<p>This is kind of nicked from the <a href="http://code.msdn.microsoft.com/wpapps/Bluetooth-app-to-app-sample-890f8303?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Bluetooth app to app sample at MSDN</a>, although I made it a bit simpler: only on TriggeredConnectState.Completed I need to do something, i.e. obtain a socket. For the rest of the events, I just pass them to the outside world in case it’s interested.</p>
+<p>Next is the part that initiates and performs the actual listening for messages, once the socket is obtained:</p><pre>private async void StartListeningForMessages()
+{
+  if( socket != null )
+  {
+    if (!listening)
+    {
+      listening = true;
+      while (listening)
+      {
+        var message = await GetMessage();
+        if (listening)
+        {
+          if (message != null &amp;&amp; MessageReceived != null)
+          {
+            MessageReceived(this, 
+               new ReceivedMessageEventArgs {Message = message});
+          }
+        }
+      }
+    }
+  }
+}
+
+private async Task&lt;string&gt; GetMessage()
+{
+  try
+  {
+    if (dataReader == null) dataReader = new DataReader(socket.InputStream);
+    await dataReader.LoadAsync(4);
+    var messageLen = (uint)dataReader.ReadInt32();
+
+    await dataReader.LoadAsync(messageLen);
+    var message = dataReader.ReadString(messageLen);
+    Debug.WriteLine("Message received: " + message);
+
+    return message;
+  }
+  catch (Exception ex)
+  {
+    Debug.WriteLine("GetMessage: " + ex.Message);
+  }
+  return null;
+}
+
+public event TypedEventHandler&lt;object, ReceivedMessageEventArgs&gt; MessageReceived;
+
+private DataReader dataReader;
+
+private bool listening;
+</pre>
+<p>The StartListeningForMessages basically enters an endless loop – endless that is, until the “listening” is set to “false” - waiting for GetMessage to return something. The GetMessage is almost 100% nicked from the <a href="http://code.msdn.microsoft.com/wpapps/Bluetooth-app-to-app-sample-890f8303?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Bluetooth app to app sample at MSDN</a>. the first four bytes are supposed to contain the message length, the rest is payload, hence the two read actions.</p>
+<p>Then of course we need a method to actually <em>send</em> messages:</p><pre>private readonly object lockObject = new object();
+
+public async void SendMessage(string message)
+{
+  Debug.WriteLine("Send message:" + message);
+  if (socket != null)
+  {
+    try
+    {
+      lock (lockObject)
+      {
+        {
+          if (dataWriter == null)
+          {
+            dataWriter = new DataWriter(socket.OutputStream);
+          }
+
+          dataWriter.WriteInt32(message.Length);
+          dataWriter.StoreAsync();
+
+          dataWriter.WriteString(message);
+          dataWriter.StoreAsync();
+        }
+      }
+    }
+    catch (Exception ex)
+    {
+      Debug.WriteLine("SendMessage: " + ex.Message);
+    }
+  }
+}
+private readonly object lockObject = new object();
+
+private DataWriter dataWriter;
+</pre>
+<p>which comes almost directly from my earlier article “<a href="http://dotnetbyexample.blogspot.be/2012/12/preventing-high-speed-socket.html">Preventing high speed socket communication on Windows Phone 8 going south when using async/await</a>” </p>
+<p>And finally we have this brilliant method, which basically resets the TtcSocketHelper class back to its initial status.</p><pre>public void Reset()
+{
+  PeerFinder.Stop();
+  if (dataReader != null)
+  {
+    try
+    {
+      listening = false;
+      if (dataReader != null)
+      {
+        dataReader.Dispose();
+        dataReader = null;
+      }
+      if (dataWriter != null)
+      {
+        dataWriter.Dispose();
+        dataWriter = null;
+      }
+      if (socket != null)
+      {
+        socket.Dispose();
+        socket = null;
+      }
+    }
+    catch (Exception ex)
+    {
+    }
+  }
+}</pre>
+<p>To use this class:</p>
+<ul>
+<li>Make sure you app does <a href="http://dotnetbyexample.blogspot.be/2012/12/handling-windows-phone-8-nfc-startup.html" target="_blank">fire a NavigationMessage as described here</a> 
+<li>Make a new TtcSocketHelper. 
+<li>Subscribe to its ConnectionStatusChanged event 
+<li>Subscribe to its MessageReceived event 
+<li>Call Start 
+<li>Wait until a TriggeredConnectState.Completed comes by 
+<li>Call SendMessage – and see them appear in the method subscribed to MessageReceived on the other phone.</li></ul>
+<p>Oh, and don’t forget to set ID_CAP_PROXIMITY in your WMAppManifest.Xaml.right?</p>
+<p>The source code – and a working demo of this component – can be found in the <a href="http://www.schaikweb.net/dotnetbyexample/TtcDemo.zip" target="_blank">demo solution right here</a>. It’s a very simple chat-application built upon TtcSocketHelper. Of course this is all <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> based, and I start off with the basic viewmodel and its properties:</p><pre>using System.Collections.ObjectModel;
+using System.Windows;
+using System.Windows.Input;
+using GalaSoft.MvvmLight;
+using GalaSoft.MvvmLight.Command;
+using GalaSoft.MvvmLight.Messaging;
+using Windows.Networking.Proximity;
+using Wp7nl.Devices;
+
+namespace TtcDemo.Viewmodels
+{
+  public class NfcConnectViewModel : ViewModelBase
+  {
+    private TtcSocketHelper ttcSocketHelper;
+
+    public ObservableCollection&lt;string&gt; ConnectMessages { get; private set; }
+    public ObservableCollection&lt;string&gt; ReceivedMessages { get; private set; }
+
+    private bool canInitiateConnect;
+    public bool CanInitiateConnect
+    {
+      get { return canInitiateConnect; }
+      set
+      {
+        if (canInitiateConnect != value)
+        {
+          canInitiateConnect = value;
+          RaisePropertyChanged(() =&gt; CanInitiateConnect);
+        }
+      }
+    }
+
+    private bool isConnecting;
+    public bool IsConnecting
+    {
+      get { return isConnecting; }
+      set
+      {
+        if (isConnecting != value)
+        {
+          isConnecting = value;
+          RaisePropertyChanged(() =&gt; IsConnecting);
+        }
+      }
+    }
+
+    private bool canSend;
+    public bool CanSend
+    {
+      get { return canSend; }
+      set
+      {
+        if (canSend != value)
+        {
+          canSend = value;
+          RaisePropertyChanged(() =&gt; CanSend);
+        }
+      }
+    }
+    
+    private string message;
+    public string Message
+    {
+      get { return message; }
+      set
+      {
+        if (message != value)
+        {
+          message = value;
+          RaisePropertyChanged(() =&gt; Message);
+        }
+      }
+    }
+  }
+}</pre>
+<p>We have a TtcSocketHelper itself, and two ObservableCollections of strings. ConnectMessages serves is to report the connection progress, and ReceivedMessages hold the messages received by your ‘opponent’ once the connection is established. Then we have three booleans, that basically turn on or off certain parts of the user interface depending on the state:</p>
+<ul>
+<li>Initially, IsConnecting is true and CanSend is false. That should show a part of the user interface to show ConnectMessages. 
+<li>If the app is started by the user, CanInitiateConnect is true as well, so the user can click on some “connect” button as well. If the apps is started by an NFC request, the process of creating a connection is initiated by someone else and the user should <em>not</em> be able to press a “connect” button to prevent the whole process from being south. I my mind I call the instance of the app that has been started by the user “master”, the instance started by the NFC request “slave”. 
+<li>If the connection has been successfully established, IsConnecting should become false and CanSend true, disabling the controls handling the connection setup, and enabling the controls doing the actual chatting stuff.</li></ul>
+<p>And yeah, I know, usually CanSend != IsConnecting so I could replace this with one boolean. But that makes the designer’s job harder, as I will show further on. </p>
+<p>Finally we have the Message property, which is where the message the user wants to send. We’ll come to that later. The viewmodel is initialized via a method “Init”, now called in the constructor:</p><pre>public NfcConnectViewModel()
+{
+  Init();
+}
+
+private void Init()
+{
+  Messenger.Default.Register&lt;NavigationMessage&gt;(this, ProcessNavigationMessage);
+
+  if (ConnectMessages == null)
+  {
+    ConnectMessages = new ObservableCollection&lt;string&gt;();
+  }
+
+  if (ReceivedMessages == null)
+  {
+    ReceivedMessages = new ObservableCollection&lt;string&gt;();
+  }
+
+  if (!IsInDesignMode)
+  {
+    if (ttcSocketHelper == null)
+    {
+      ttcSocketHelper = new TtcSocketHelper();
+      ttcSocketHelper.ConnectionStatusChanged += ConnectionStatusChanged;
+      ttcSocketHelper.MessageReceived += TtsHelperMessageReceived;
+    }
+    else
+    {
+      CanSend = true;          
+    }
+  }
+  IsConnecting = true;
+}</pre>
+<p>It doesn’t really do that much – apart from initializing the ObservableCollections, creating an instance of TtcSocketHelper and subscribing to its events, and setting the initial status. There are two things to note here – one, in design mode both CanSend and IsConnecting are true so <em>all</em> the parts of the GUI are enabled. This is to remain friends with the designer, who can now shut on or off both the connection part of the GUI <em>and</em> the messaging part when he/she chooses <em>using Blend</em>, making the design process a lot easier - in stead of having to muck around in your code – or worse, by coming to complain to you.</p>
+<p>The second thing to note is that this viewmodel <em>also</em> subscribes to NavigationMessage (just as TtcSocketHelper itself) . This is because the viewmodel likes to know as well if it’s in a master or slave app:</p><pre>private void ProcessNavigationMessage(NavigationMessage message)
+{
+  CanInitiateConnect = !message.IsStartedByNfcRequest;
+}</pre>
+<p>so it can enable or disable the connect button. The handling of the connection messages is done by ConnectionStatusChanged:</p><pre>private void ConnectionStatusChanged(object sender,
+  TriggeredConnectionStateChangedEventArgs e)
+{
+  Deployment.Current.Dispatcher.BeginInvoke(() =&gt;
+    ConnectMessages.Add(GetMessageForStatus(e.State)));
+    
+  if (e.State == TriggeredConnectState.Completed)
+  {
+    Deployment.Current.Dispatcher.BeginInvoke(() =&gt;
+    {
+      IsConnecting = false;
+      CanSend = true;
+    });
+  }
+}
+
+private static string GetMessageForStatus(TriggeredConnectState state)
+{
+  switch (state)
+  {
+    case TriggeredConnectState.Listening:
+      return "Listening....";
+
+    case TriggeredConnectState.PeerFound:
+      return "Opponent found";
+
+    case TriggeredConnectState.Connecting:
+      return "Opponent found";
+
+    case TriggeredConnectState.Completed:
+      return "Connection succesfull!";
+
+    case TriggeredConnectState.Canceled:
+      return "Connection canceled";
+
+    default: //TriggeredConnectState.Failed:    
+      return "Connection failed";
+  }
+}</pre>
+<p>That first adds a message to ConnectMessages using a little helper method GetMessageForStatus (I’d suggest loading this from a resource if you do this in a real app) . After that, if it detects a TriggeredConnectState.Completed message coming by, switches from connect mode to chat mode, so to speak. Since all these events are raised outside of the UI thread, say hello to your old friend <a href="http://msdn.microsoft.com/en-us/library/system.windows.threading.dispatcher(v=VS.95).aspx" target="_blank">Dispatcher</a> to prevent cross-thread access exceptions. Oh, and then of course there’s the little matter of enabling the user actually starting the whole connection process:</p><pre>public ICommand StartCommmand
+{
+  get
+  {
+    return new RelayCommand(
+        () =&gt;
+        {
+          ConnectMessages.Add("Connect started...");
+          CanSend = false;
+          CanInitiateConnect = false;
+          ttcSocketHelper.Start();
+        });
+  }
+}</pre>
+<p>It adds a message to ConnectMessage (to show “see, I am really doing something!”), disables the connect button (as to prevent an annoying Windows Phone certification tester crashing your program) and then it starts the helper. All this is only needed to handle the build-up of the connection. All that actually handles the <em>chatting</em> is merely this:</p><pre>public ICommand SendComand
+{
+  get
+  {
+    return new RelayCommand(
+      () =&gt;
+      {
+        ttcSocketHelper.SendMessage(Message);
+        Message = string.Empty;
+      }
+   );
+  }
+}
+
+private void TtsHelperMessageReceived(object sender,
+                                      ReceivedMessageEventArgs e)
+{
+  Deployment.Current.Dispatcher.BeginInvoke(() =&gt;
+    ReceivedMessages.Add(e.Message));
+}</pre>
+<p>As you can see it’s only a command that relays the message to the TtcSocketHelper and then clears the field, and a simple method listening for messages and adding received message contents to ReceivedMessages, once again with the aid of the Dispatcher.</p>
+<p>Since this article is already way longer than I planned, I limit myself to the part of the XAML that is actually interesting:</p><pre style="font-size: 9pt">&lt;!-- Connect panel--&gt;
+<font color="#ff0000"><u>&lt;</u><u>Grid x:Name="ConnectGrid" Margin="0,0,0,76" Grid.RowSpan="2"</u></font><font color="#ff0000"> 
+   <u>Visibility="{Binding IsConnecting, Converter={StaticResource VisibilityConverter}}"&gt;</u></font>
+  &lt;Grid.RowDefinitions&gt;
+    &lt;RowDefinition Height="425*"/&gt;
+    &lt;RowDefinition Height="106*"/&gt;
+  &lt;/Grid.RowDefinitions&gt;
+  <u><font color="#ff0000">&lt;Button Content="Connect" HorizontalAlignment="Center" VerticalAlignment="Top"</font></u>
+     <font color="#ff0000"><u>IsEnabled="{Binding CanInitiateConnect}" Command="{Binding StartCommmand}"</u></font> 
+     Grid.Row="1"/&gt;
+  &lt;ListBox ItemsSource="{Binding ConnectMessages}" Background="#FF091630"/&gt;
+&lt;/Grid&gt;
+
+&lt;!-- Message panel--&gt;
+<font color="#ff0000"><u>&lt;Grid x:Name="MessageGrid"</u></font> 
+      <u><font color="#ff0000">Visibility="{Binding CanSend, Converter={StaticResource VisibilityConverter}}" &gt;</font></u>
+  &lt;Grid.RowDefinitions&gt;
+    &lt;RowDefinition Height="110*"/&gt;
+    &lt;RowDefinition Height="100*"/&gt;
+    &lt;RowDefinition Height="412*"/&gt;
+  &lt;/Grid.RowDefinitions&gt;
+  &lt;TextBox Height="72" Margin="0,10,0,0" TextWrapping="Wrap" VerticalAlignment="Center" 
+    Text="{Binding Message, Mode=TwoWay}"/&gt;
+  &lt;Button Content="send message" Grid.Row="1" Command="{Binding SendComand, Mode=OneWay}"/&gt;
+  &lt;ListBox Grid.Row="2" ItemsSource="{Binding ReceivedMessages}" 
+           Background="#FF091630" Margin="12,0"/&gt;
+&lt;/Grid</pre>
+<p><a href="http://lh4.ggpht.com/-vAmoGGlav9M/UPasOq1jolI/AAAAAAAAKDQ/PvMejiVgwg0/s1600-h/wp_ss_20130116_0002%25255B1%25255D%25255B5%25255D.png"><img title="wp_ss_20130116_0002[1]" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="wp_ss_20130116_0002[1]" align="right" src="http://lh4.ggpht.com/-NrlxRNIHvtg/UPasPqi3L7I/AAAAAAAAKDU/bnA-7NGwG6s/wp_ss_20130116_0002%25255B1%25255D_thumb%25255B1%25255D.png?imgmax=800" width="148" height="244"></a><a href="http://lh5.ggpht.com/-j4YhdP7me38/UPasQq7IhyI/AAAAAAAAKDc/dh8LaFCyAKM/s1600-h/wp_ss_20130116_0001%25255B1%25255D%25255B2%25255D.png"><img title="wp_ss_20130116_0001[1]" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="wp_ss_20130116_0001[1]" align="right" src="http://lh6.ggpht.com/-XVzd0aSZ45c/UPasRd4mKwI/AAAAAAAAKDo/lpS128x0yy0/wp_ss_20130116_0001%25255B1%25255D_thumb.png?imgmax=800" width="148" height="244"></a>You can see ConnectGrid whose visibility is controlled by IsConnecting, and a MessageGrid whose visibility is controlled by CanSend. Then there is the Connect button that is enabled or disabled by CanInitiateConnect. The two faces of the application look like as showed on the right. On the left image you see the app just after connect has been initiated by the ‘master’ the right shows the app after having received a message from the first phone and the user of the second phone responding.</p>
+<p>I will add the classes described in this article to the wp8-specific version of&nbsp; my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl CodePlex library</a> soon. In the mean time, you can find them in the Wp7nl.Contrib project of <a href="http://www.schaikweb.net/dotnetbyexample/TtcDemo.zip" target="_blank">the demo solution</a>.</p>
+<p>For the record, there’s also a ResetCommand in the viewmodel that makes it possible to reset the whole connection process, but that’s currently not bound to a button of sorts. I leave that as exercise for the reader ;-)</p>
+<p>A final word: I am aware of the fact that I could also have used the Visual State Manager to turn pieces of the GUI on and off (and animate that, too) but I did not want to add even more complexity to this article.</p>  

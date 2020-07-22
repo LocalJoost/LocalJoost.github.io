@@ -1,0 +1,38 @@
+---
+layout: post
+title: Don't ever use backslashes in Silverlight 2 image URLS!
+date: '2008-05-23T22:06:00.009+02:00'
+author: Joost van Schaik
+tags:
+- image url
+- Silverlight 2.0
+- Silverlight
+- backslash
+modified_time: '2009-07-13T21:02:32.960+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4014257007978538931
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2008/05/dont-ever-use-backslashes-in.html
+---
+
+I had a great time today and yesterday at the <a href="http://www.devdays.nl/DevDays2008/Default.aspx">Microsoft Developer Days 2008 in Amsterdam</a>, where they shared quite a bit of data on Silverlight 2.0. I have been hacking along with it for some time now and I would like to share a bit of hard-won information <em>I</em> stumbled across.
+
+That piece of information is quite simple:
+<strong>If you programmatically set an URL to an Image, do not ever let the URL contain a backslash, <em>not even when it is URLEncoded</em></strong>
+
+So, suppose your XAML looks like this:
+<pre>&lt;usercontrol class="SilverMapLoader.Page" 
+  xmlns="http://schemas.microsoft.com/client/2007" 
+  x="http://schemas.microsoft.com/winfx/2006/xaml" 
+  width="700" height="500"&gt;
+  &lt;canvas name="LayoutRoot" background="Gray"&gt;
+    &lt;img height="460" src="" width="700" name="map" top="0" left="0" /&gt;
+  &lt;/img&gt;
+  &lt;/canvas&gt;
+&lt;/usercontrol&gt;</pre>You can set the URL to the image in your Page.xaml.cs like this:
+<pre>string URL = "http://www.someadress.org/image.jpg";
+map.Source = new System.Windows.Media.Imaging.BitmapImage(new Uri(URL));</pre>Now I was trying to show images that came from some cache mechanisme that effectively needed URLs like this:
+<pre>http://localhost:2872/SilverMapLoaderClient/MapLoaderCache.aspx?CacheFileData=C%3a%5cMapLoaderCache5cMapLoaderCache.png"</pre>Silverlight simply does not show the image. It does not even give an error message. I suppose this is a bug, but this is more or less how I programmed around it:
+<pre>string newURL = URL.Replace("\\", "/").Replace("%5c", "%2f").Replace("%5C", "%2F");</pre>Effectively I am replacing all backslashes by forward slashes. And modified the page that actually loads the images so that it understands that forward slashes need to be translated into back slashes before the actual path is picked. It does not win a beauty contest, but it works, and in the end, that's all that counts
+
+It took me the better part of a rainy Saturday to find this out, while I was actually on planning on finding out a lot of Silverlight, and <a href="http://silverlight.net/forums/p/16247/53836.aspx#53836">I reported it as a bug on Silverlight.net</a>. Maybe this post will save some poor sod from repeating my experience ;-)
+
+Update: obviously my report helped, since I just installed SilverLight 2.0 release, upgraded and recompiled the project, deleted the workaround code, and it still works as a charm.

@@ -1,0 +1,124 @@
+---
+layout: post
+title: Cutting images with PresentationCore
+date: '2009-05-07T21:26:00.012+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- System.Windows.Media.Imaging
+- image cutting
+- PresentationCore
+modified_time: '2010-04-06T11:17:29.894+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7955249675010716285
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/05/cutting-images-with-presentationcore.html
+---
+
+In my business cutting images into smaller images is something that happens quite often these days, since tile based mapping systems like Google Maps, Virtual Earth and OpenLayers are becoming ever more popular. For the past few years I have been using GDI+ as my workhorse, but last week I've kissed it goodbye. Over are the days of messing around with Graphics and Bitmap and not forgetting to dispose them. Enter PresentationCore with the System.Windows.Media.Imaging classes!
+
+To use this API, you need to make references to both PresentationCore.dll and WindowsBase.dll.
+
+I created a small sample cutter class like this:
+<pre>using System;
+using System.Windows;
+using System.Windows.Media.Imaging;
+using System.IO;
+
+namespace LocalJoost.ImageCutting
+{
+  public class ImageCutter
+  {
+    private string _fileName;
+    public ImageCutter(string fileName)
+    {
+      _fileName = fileName;
+    }
+
+    public void Cut(int TileSize, int TilesX, int TilesY)
+    {
+      var img = new BitmapImage();
+      img.BeginInit();
+      img.UriSource = new Uri(_fileName);
+      img.CacheOption = BitmapCacheOption.OnLoad;
+      img.EndInit();
+
+      var fInfo = new FileInfo(_fileName);
+
+      for (int x = 0; x < TilesX; x++)
+      {
+        for (int y = 0; y < TilesY; y++)
+        {
+          var subImg = new CroppedBitmap(img,
+                   new Int32Rect(x * TileSize,
+                          y * TileSize,
+                          TileSize, TileSize));
+          SaveImage(subImg, fInfo.Extension, 
+            string.Format( "{0}_{1}{2}", x, y, fInfo.Extension));
+
+        }
+      }
+    }
+ 
+    private void SaveImage(BitmapSource image, 
+                           string extension, string filePath)
+    {
+      var encoder = ImageUtilities.GetEncoderFromExtension(extension);
+      using (var fs = new FileStream(filePath, 
+              FileMode.Create, FileAccess.Write))
+      {
+        encoder.Frames.Add(BitmapFrame.Create(image));
+        encoder.Save(fs);
+        fs.Flush();
+        fs.Close();
+      }
+    }
+  }
+}</pre>You construct this class with a full path to an image file as a string, and then call the "Cut" method with tilesize in pixels (tiles are considered to be square) and the number of tiles in horizontal and vertical direction. It then goes on to cut the image into tiles of TileSize x TileSize pixels.
+Notice a few things:
+<pre>img.CacheOption = BitmapCacheOption.OnLoad;</pre> makes sure the image is loaded in one go, and does not get locked
+The trick of cutting the image itself is done by <pre>var subImg = new CroppedBitmap(img,
+               new Int32Rect(x * TileSize,
+               y * TileSize,
+               TileSize, TileSize));
+</pre>and then it is fed to a simple private method that saves it to a file.
+Last, I do not check if the image is large enough to cut the number of tiles you want from. This is a sample, eh?
+
+The sample uses a small utility class that gets the right imaging encoder from either the file extension or the mime type, whatever you pass on to it<pre>using System.Windows.Media;
+using System.Windows.Media.Imaging;
+
+namespace LocalJoost.ImageCutting
+{
+  /// <summary>
+  /// Class with Image utilities - duh
+  /// </summary>
+  public static class ImageUtilities
+  {
+    public static BitmapEncoder GetEncoderFromMimeType(string mimeType)
+    {
+      switch (mimeType.ToLower())
+      {
+        case "image/jpg":
+        case "image/jpeg": 
+          return new JpegBitmapEncoder();
+        case "image/gif": 
+          return new GifBitmapEncoder();
+        case "image/png":
+          return new PngBitmapEncoder();
+        case "image/tif":
+        case "image/tiff":
+          return new TiffBitmapEncoder();
+        case "image/bmp": 
+          return new BmpBitmapEncoder();
+      }
+      return null;
+    }
+
+    public static BitmapEncoder GetEncoderFromExtension(string extension)
+    {
+      return GetEncoderFromMimeType( extension.Replace(".", "image/"));
+    }
+  }
+}</pre>Not only are the System.Windows.Media.Imaging classes easier to use, they are also faster: switching from GDI+ to System.Windows.Media.Imaging reduced processing time to 50%, with an apparant significant lower CPU load and memory requirement.
+
+A complete example, including a unit test project that contains a test image which performs the <i>completely</i> hypothetical action of cutting a large 2048x2048 map file into 256x256 tiles ;-), is downloadable <a href="http://www.schaikweb.net/dotnetbyexample/ImageCutter.zip">here</a>.
+
+This project contains the following statement<pre>Path.GetDirectoryNameAssembly.GetExecutingAssembly().Location</pre>don't be intimidated by this, that's just a way to determine the full path of the current directory, i.e. the directory in which the unit test is running - you will find the resulting images there.

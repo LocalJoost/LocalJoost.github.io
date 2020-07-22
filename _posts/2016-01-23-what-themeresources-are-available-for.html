@@ -1,0 +1,26 @@
+---
+layout: post
+title: What themeresources are available for Windows 10 UWP apps?
+date: '2016-01-23T20:57:00.001+01:00'
+author: Joost van Schaik
+tags:
+- UWP
+- XAML
+modified_time: '2016-02-10T14:21:08.410+01:00'
+thumbnail: https://lh3.googleusercontent.com/-J9ga0cvMqKc/VqPaZopsO7I/AAAAAAAANdA/dz5Le1YQ_CU/s72-c/image_thumb%25255B1%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1230080016352114267
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/01/what-themeresources-are-available-for.html
+---
+
+If you use Blend, and what to color your elements using a system resource, you get a depressing number of resources in the pop-up. So much, that you actually have no idea what you are looking at. <b></b><b></b><a href="https://lh3.googleusercontent.com/-JU8b25bjG8c/VqPaZFEz_bI/AAAAAAAANc8/MFsLrtmNXWY/s1600-h/image%25255B3%25255D.png"><img alt="image" border="0" height="431" src="https://lh3.googleusercontent.com/-J9ga0cvMqKc/VqPaZopsO7I/AAAAAAAANdA/dz5Le1YQ_CU/image_thumb%25255B1%25255D.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="image" width="644" /></a><br />
+If you want to see what resources are actually available, go to the following directory:<br />
+<b>C:\Program Files (x86)\Windows Kits\10\DesignTime\CommonConfiguration\Neutral\UAP\&lt;framework version&gt;\Generic</b><br />
+So for instance<br />
+<b>C:\Program Files (x86)\Windows Kits\10\DesignTime\CommonConfiguration\Neutral\UAP\10.0.10586.0\Generic</b><br /><br />
+You will see two files:<br />
+<ul>
+<li>generic.xaml</li>
+<li>themeresources.xaml</li>
+</ul>
+Themeresources.xaml actually contains all of the theme resources, colors and whatnot, and generic.xaml the implementation of the various themes (default, high contrast and light).<br />
+Of course, once you <em>know</em> that, you can easily find some documentation on that, <a href="https://msdn.microsoft.com/en-us/library/windows/apps/mt187274.aspx">like this one on MSDN</a>. It was not immediately obvious to me, and I then assume it won’t be for others, so I thought it best to jot this down quickly – if only for future reference.

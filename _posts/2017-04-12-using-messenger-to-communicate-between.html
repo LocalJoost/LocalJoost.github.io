@@ -1,0 +1,115 @@
+---
+layout: post
+title: Using a messenger to communicate between objects in HoloLens apps
+date: '2017-04-12T19:30:00.001+02:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Unity3D
+- Architecture
+modified_time: '2017-04-12T19:35:26.561+02:00'
+thumbnail: https://lh3.googleusercontent.com/-6s6joGqlNiU/WO5kHWyNxPI/AAAAAAAAOx8/FNQl-7iroS4/s72-c/image_thumb%25255B5%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6575715529260379672
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2017/04/using-messenger-to-communicate-between.html
+---
+
+<h2>Intro</h2> <p>I know I am past the ‘this has to work one way or the other’ stage of a new development environment when I start spinning off reusable pieces of software. I know that I am really getting comfortable when I am start thinking about architecture and build architectural components.</p> <p>Yes my friends, I am going to talk architecture today.</p> <h2>Unity3D-spaghetti – I need a messenger</h2> <p>Coming from the clean and well-fleshed out of UWP XAML development using MVVM (more specifically <a href="http://www.mvvmlight.net/" target="_blank">MVVMLight</a>), Unity3D can be a bit overwhelming. Apart from the obvious – the 3D stuff itself - there is no such thing as data binding, there is no templating (not sure how this would translate to a 3D environment anyway) and in samples (including some of my own) components communicate by either getting references to each other by looking in parent or child objects and calling methods in those components. This is a method that breaks as soon as 3D object hierarchies change and it’s very easy to make spaghetti code of epic proportions. Plus, it hard links classes. Especially speech commands come in just ‘somewhere’ and need to go ‘somewhere else’. How lovely it would be to have a kind of messenger. Like the one in MVVMLight. There is a kind of messaging in Unity, but in involves sending messages up or down the 3D object hierarchy. No way to other branches in that big tree of objects without a lot of hoopla. And to make things worse, you need to call methods by (string) name. A very brittle arrangement.</p> <h2>Good artist steal…</h2> <p>I will be honest up front – most of the code in the <a href="https://github.com/LocalJoost/CubeBouncer2/blob/master/Assets/HoloToolkitExtensions/Scripts/Messaging/Messenger.cs" target="_blank">Messenger</a> class that I show here is stolen. <a href="http://wiki.unity3d.com/index.php?title=CSharpMessenger_Extended" target="_blank">From here</a>, to be precisely. But although it solves one problem – it creates a generic messenger – it still uses strings for event names. So I adapted it quite heavily to use typed parameters, and now – in usage – it very much feels like the MVVMLight messenger. I also made it a <a href="https://github.com/Microsoft/HoloToolkit-Unity" target="_blank">HoloToolkit</a> Singleton. I am not going to type out all the details – have a look in the code if you feel inclined to do so. This article concentrates on <em>using</em> it.</p> <p>So basically, you simply drag this thing anywhere in your object hierarchy – I tend to have a special empty 3D object “Managers” for that in the scene – and then you have the following simple interface:</p> <ul> <li>To subscribe to a message of MyMessageType, simply write code like this</li></ul><pre>Messenger.Instance.AddListener&lt;MyMessage&gt;(ProcessMyMessage);
+
+private void ProcessMyMessage(MyMessage msg)
+{
+    //Do something
+}</pre>
+<ul>
+<li>To be notified to a message of MyMessageType, simply call</li></ul><pre> Messenger.Instance.Broadcast(new MyMessage());</pre>
+<ul>
+<li>To stop being notified of MyMessageType, call</li></ul><pre>Messenger.Instance.RemoveListener&lt;MyMessage&gt;(ProcessMyMessage);</pre>
+<h2>Example setup usage</h2>
+<p><a href="https://lh3.googleusercontent.com/-Ro2xKy1aYkM/WO5kG4rtQ-I/AAAAAAAAOx4/zxtMHbKjx6c/s1600-h/image%25255B11%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; margin: 0px 8px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-6s6joGqlNiU/WO5kHWyNxPI/AAAAAAAAOx8/FNQl-7iroS4/image_thumb%25255B5%25255D.png?imgmax=800" width="254" align="left" height="484"></a>I have revisited my good old <a href="http://dotnetbyexample.blogspot.nl/2016/07/hololens-cubebouncer-application-part-1.html" target="_blank">CubeBouncer</a>, the very first HoloLens app I ever made and wrote about (although I never published it as such) that basically uses everything a HoloLens can do: it uses gaze, gestures, speech recognition, spatial awareness, interaction of Holograms with reality, occlusion, and spatial sound. Looking back at it now it looks a bit clumsy, which is partially because of my vastly increased experience with Unity3D and HoloLens, but also because of the progress of the <a href="https://github.com/Microsoft/HoloToolkit-Unity" target="_blank">HoloToolkit</a>. But anyway, <a href="https://github.com/LocalJoost/CubeBouncer2" target="_blank">I rewrote it using the new HoloToolkit and using the Messenger class</a> as a working demo of the Messenger.</p>
+<p>In the Managers object that I use to group, well, manager-like scripts and objects, I have placed the a number of components that basically control the whole app. You see the messenger, a ‘Speech Command Handler’ and a standard HoloToolkit Keyword manager. This is a enormous improvement over building keyword recognizing script manually, as I did in <a href="http://dotnetbyexample.blogspot.nl/2016/07/hololens-cubebouncer-application-part-4.html" target="_blank">part 4</a> of the original CubeBouncer series. In case you need info on how the Keyword Manager works, see <a href="http://dotnetbyexample.blogspot.nl/2017/01/manipulating-holograms-move-scale.html" target="_blank">this post on moving objects by gestures</a> where it plays a supporting role.</p>
+<p>Note, by the way, that I also assigned a keyboard key to all speech commands. This enables to test quickly within the Unity3D editor without actually speaking, thus preventing distracting (or getting funny looks and/or remarks) from your colleagues ;).</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>The SpeechCommandHandler class is <em>really</em> simple</p><pre>using CubeBouncer.Messages;
+using UnityEngine;
+using HoloToolkitExtensions.Messaging;
+
+namespace CubeBouncer
+{
+    public class SpeechCommandHandler : MonoBehaviour
+    {
+        public void CreateNewGrid()
+        {
+            Messenger.Instance.Broadcast(new CreateNewGridMessage());
+        }
+
+        public void Drop(bool all)
+        {
+            Messenger.Instance.Broadcast(new DropMessage { All = all });
+        }
+
+        public void Revert(bool all)
+        {
+            Messenger.Instance.Broadcast(new RevertMessage { All = all });
+        }
+    }
+}</pre>
+<p>It basically forwards all speech commands as messages, for anyone who is interested. Notice now, as well, that in the Keyword Manager both “drop” and “drop all” call the same method, but if you you look at the image above you will see a checkbox that is only selected for ‘drop all’. This is pretty neat, the editor that goes with this component automatically generates UI components for target method parameters.</p>
+<p>Indeed, very similar to how it's done in MVVMLight</p>
+<h2>Example of consuming messages</h2>
+<p><a href="https://lh3.googleusercontent.com/-8nCXFTxqBDs/WO5kH9GLfRI/AAAAAAAAOyA/zGjJHnUN4m0/s1600-h/image%25255B15%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-x-nyQLtx0Jc/WO5kIez3K1I/AAAAAAAAOyE/Eb1-Er6TBhU/image_thumb%25255B7%25255D.png?imgmax=800" width="504" height="225"></a></p>
+<p>Now the CubeManager, the thing that creates and manages cubes (it was called “MainStarter” in the original CubeBouncer) is sitting in the HologramCollection object. This is for no other reason than to prove the point that the location of the consumer in the object hierarchy doesn’t matter. This is (now) the only consumer of messages. It's start method goes like this.</p><pre>void Start()
+{
+    _distanceMeasured = false;
+    _lastInitTime = Time.time;
+    _audioSource = GetComponent&lt;AudioSource&gt;();
+    Messenger.Instance.AddListener&lt;CreateNewGridMessage&gt;(p=&gt; CreateNewGrid());
+    Messenger.Instance.AddListener&lt;DropMessage&gt;( ProcessDropMessage);
+    Messenger.Instance.AddListener&lt;RevertMessage&gt;(ProcessRevertMessage);
+}</pre>
+<p>It subscribes to three types of messages. To process those messages, you can either used a Lambda expression or just a regular method, as shown above. </p>
+<p>The processing of the message is like this:</p><pre>public void CreateNewGrid()
+{
+    foreach (var c in _cubes)
+    {
+        Destroy(c);
+    }
+    _cubes.Clear();
+
+    _distanceMeasured = false;
+    _lastInitTime = Time.time;
+}
+	
+private void ProcessDropMessage(DropMessage msg)
+{
+    if(msg.All)
+    {
+        DropAll();
+    }
+    else
+    {
+        var lookedAt = GetLookedAtObject();
+        if( lookedAt != null)
+        {
+            lookedAt.Drop();
+        }
+    }
+}
+
+private void ProcessRevertMessage(RevertMessage msg)
+{
+    if (msg.All)
+    {
+        RevertAll();
+    }
+    else
+    {
+        var lookedAt = GetLookedAtObject();
+        if (lookedAt != null)
+        {
+            lookedAt.Revert(true);
+        }
+    }
+}</pre>
+<p>For Drop and Revert, if the “All” property of the message is set, all cubes are dropped (or reverted) and that’s it, the rest works as before. Well kind of – for the actual revert method I now used two <a href="http://dentedpixel.com/LeanTweenDocumentation/classes/LeanTween.html" target="_blank">LeanTween</a> calls to move the Cube back to it’s original location – the actual code shrank from two methods of about 42 lines together to one 17 line method – that actually has an extra check in it. So as an aside – please use <a href="http://itween.pixelplacement.com/gettingstarted.php" target="_blank">iTween</a>, LeanTween or whatever for animation. Don’t write them yourself. Laziness is a virtue ;).</p>
+<h2>Conclusion</h2>
+<p>I will admit it’s a bit contrived example, but the speech recognition is now a thing on it’s own and it’s up to any listener to act on it – or not. My newest application “<a href="https://www.microsoft.com/store/productid/9P6SVQQCP2SQ" target="_blank">Walk the World</a>” uses the Messenger quite a bit more extensively and components all over the app communicate via that Messenger to receive voice commands, show help screen, and detect the fact the user has moved too far from the center and the map should be reloaded. These components do not need to have hard links to each other, they just put their observations on the Messenger and other components can choose to act. This makes re-using components for application assembly a lot easier. Kind of like in the UWP world.</p>

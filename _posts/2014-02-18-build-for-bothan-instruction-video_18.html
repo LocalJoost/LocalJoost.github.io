@@ -1,0 +1,129 @@
+---
+layout: post
+title: Build for both–an instruction video pivot page for Windows Phone apps
+date: '2014-02-18T19:41:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- wpnl
+- wpdev
+- dotnetmag
+modified_time: '2014-02-18T21:34:18.929+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2589286984290471556
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/02/build-for-bothan-instruction-video_18.html
+---
+
+<p>For <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> apps, the same goes a for <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> store apps – a picture tells more than a thousand words and a video even more. So <a href="http://dotnetbyexample.blogspot.nl/2014/02/build-for-bothan-instruction-video.html" target="_blank">as promised earlier</a>, I am going to show you how to make a video instruction pivot for Windows Phone, that works as showed here below.</p> <div id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:cac7bb82-989e-48b3-bb2d-5b5075df460f" class="wlWriterSmartContent" style="float: none; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px"> <div><embed type="application/x-shockwave-flash" height="252" width="448" src="http://www.youtube.com/v/c3itxIuBqhk?hl=en&amp;hd=1"></embed></div> <div style="font-size: 0.8em; width: 448px; clear: both">Windows Phone video instruction demo</div></div> <p>The Pivot part is easy, as this is already built-in – controlling the MediaElements proved to be substantially harder. </p> <p>A recap of the objectives:</p> <ul> <li>Start the video on the current visible pivot item automatically – and start the first video on the first pivot as soon as the user access the page.  <li>Repeat that movie automatically when it ends  <li>Stop it as soon as the user selects a different pivot item</li></ul> <p><font size="4">Setting the stage</font></p> <ul> <li>Create a blank Windows Phone app  <li>Bring in my <a href="http://WpWinNl.codeplex.com">WpWinNl</a> library from Nuget  <li>Add an empty page “Help.xaml”  <li>Open WMAppManifest.xml, look for the box “Navigation Page” and change this from “MainPage.xaml” to “Help.xaml”. This will make your app start the Help page on startup. That’s not a smart move for production code but it will make a demo app a lot easier.</li></ul> <p><font size="4">The XAML basics</font></p> <p>Basically the page (expect for the header) is filled by a StackPanel containing a PivotItem and some styling for (mostly) the MediaElementand the PivotItem. That gives every MediaElement a specific alignment and size that will make it fit just in a portrait-oriented page.</p><pre>&lt;StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,30,0,0"&gt;
+  &lt;TextBlock x:Name="ApplicationTitle" Text="MY APP" 
+             Style="{StaticResource PhoneTextNormalStyle}" Margin="0,0,30,0"/&gt;
+  &lt;phone:Pivot x:Name="VideoPivot" Title="How to do stuff" 
+               HeaderTemplate="{StaticResource HeaderTemplate}" Margin="-25,0,0,0"&gt;
+    &lt;phone:Pivot.Resources&gt;
+      &lt;Style TargetType="MediaElement"&gt;
+        &lt;Setter Property="Margin" Value="12,0,0,0"&gt;&lt;/Setter&gt;
+        &lt;Setter Property="VerticalAlignment" Value="Top"&gt;&lt;/Setter&gt;
+        &lt;Setter Property="HorizontalAlignment" Value="Left"&gt;&lt;/Setter&gt;
+        &lt;Setter Property="Width" Value="478"&gt;&lt;/Setter&gt;
+        &lt;Setter Property="Height" Value="268"&gt;&lt;/Setter&gt;
+      &lt;/Style&gt;
+      &lt;Style TargetType="phone:PivotItem"&gt;
+        &lt;Setter Property="CacheMode" Value="{x:Null}"&gt;&lt;/Setter&gt;
+      &lt;/Style&gt;
+    &lt;/phone:Pivot.Resources&gt;
+    &lt;phone:PivotItem Header="connect via tap+send"&gt;
+      &lt;MediaElement Source="Video/2PhonePongConnect.mp4" /&gt;
+    &lt;/phone:PivotItem&gt;
+  &lt;!-- More PivotItems with video --&gt;
+  &lt;/phone:Pivot&gt;
+&lt;/StackPanel&gt;
+</pre>
+<p>Also note that the styling turns off CacheMode for the Pivot items. That seems to be necessary. The MediaElements themselves contain, apart from the url to the video, nothing else. The rest is set from code behind.</p>
+<p>You might also notice that the Pivot used a HeaderTemplate: that’s fairly simple and just exists to limit the header text size a little:</p><pre>&lt;DataTemplate x:Key="HeaderTemplate"&gt;
+   &lt;TextBlock Text="{Binding}" FontSize="35"/&gt;
+&lt;/DataTemplate&gt;</pre>
+<p><font size="4">And again some code to make it work</font></p>
+<p>There is an important difference between the FlipView and the Pivot – in what I think is an effort to conserve memory, not all the pivot panes are loaded into memory at startup: only the selected one (i.e. the first), and the ones left en right of that. So we have no way of retrieving all the MediaElements <em>up front</em>. So we have to gather and attach to those elements as we go along.</p>
+<p>There is also an important issue with MediaElement on Windows Phone – it does not like to have multiple initialized MediaElements on one page. So I designed all kind of trickery to make this work. For starters, in order to make this work, we need a dictionary of all the video elements and their sources:</p><pre>using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Navigation;
+using Microsoft.Phone.Controls;
+using WpWinNl;
+using WpWinNl.Utilities;
+
+namespace TwoPhonePong
+{
+  public partial class Help
+  {
+    private readonly Dictionary&lt;MediaElement, Uri&gt; sources = <br>        new Dictionary&lt;MediaElement, Uri&gt;();
+  }
+}</pre>The constructor, of course, kicks off the whole process <pre>public Help()
+{
+  InitializeComponent();
+  VideoPivot.Loaded += VideoPivotLoaded;
+  VideoPivot.LoadedPivotItem += VideoPivotLoadedPivotItem;
+}</pre>Then comes the funky stuff: <pre>private void VideoPivotLoaded(object sender, RoutedEventArgs e)
+{
+  VideoPivot.GetVisualDescendents().OfType&lt;MediaElement&gt;().<br>      ForEach(StoreMediaElementReference);
+  PlayMovieOnPivotItem((PivotItem)VideoPivot.SelectedItem);
+}
+
+private void StoreMediaElementReference(MediaElement mediaElement)
+{
+  sources.Add(mediaElement, mediaElement.Source);
+  mediaElement.Source = null;
+  mediaElement.AutoPlay = false;
+<br><br>  mediaElement.MediaEnded += MovieMediaElementMediaEnded;
+  mediaElement.MediaOpened += MovieMediaElementMediaEnded;
+}</pre>
+<p>I case you are wondering about your sanity (or mine) – don’t worry, what you seems to be reading is correct: VideoPivotLoaded finds all the active MediaElements on the Pivot, an the calls StoreMediaElementReference – which stores the URL of their source in the sources directory and then clears the MediaElement’s Source (basically un-initializing it) and sets AutoPlay to false. And then it add the MovieMediaElementMediaEnded method to both the MediaEnded and MediaOpened events of the MediaElement. It does this – of course – only for the PivotItems that are actually loaded.</p>
+<p>In case you think thinks can’t get any weirder than this, wait till you see the PlayMovieOnPivotItem method</p><pre>private void PlayMovieOnPivotItem(PivotItem e)
+{
+  var mediaElement = e.GetVisualDescendents().<br>      OfType&lt;MediaElement&gt;().FirstOrDefault();
+  VideoPivot.GetVisualDescendents().OfType&lt;MediaElement&gt;().
+   Where(p =&gt; p != mediaElement).ForEach(
+    p =&gt;
+    {
+      p.Stop();
+      p.Source = null;
+    });
+
+  if (mediaElement != null)
+  {
+    mediaElement.Position = new TimeSpan(0);
+    if (!sources.ContainsKey(mediaElement))
+    {
+      StoreMediaElementReference(mediaElement);
+    }
+    mediaElement.Source = sources[mediaElement];
+  }</pre>
+<p>So, first it tries to find the MediaElement on the current PivotItem. Then it stops all the MediaElements that are not on this Pivot, and clears their source – effectively as I said, uninitializing them. For the MediaElement on the <em>current</em> PivotItem – if it’s not in the sources dictionary (so it was on the fourth or higher PivotItem) it is <em>added</em> to the sources using StoreMediaElementReference. However – the source of the MediaElement – that at this point is null, whether it was in the sources dictionary or not – is now set from that sources dictionary. 
+<p>If the movie has finished loading the MediaOpened event is fired, and calls the MovieMediaElementMediaEnded method – remember that is was wired up in StoreMediaElementReference?<pre>private void MovieMediaElementMediaEnded(object sender, RoutedEventArgs e)
+{
+  var mediaElement = sender as MediaElement;
+  if (mediaElement != null)
+  {
+    mediaElement.Position = new TimeSpan(0);
+    mediaElement.Play();
+  }
+}</pre>
+<p>This method starts video playback it – so as soon as the video loaded, it starts playing. And since this same method is wired up to the <em>MediaEnded</em> event too – this will enable the repeated playback of this video as well. Until it is not by code.</p>
+<p>Of course – when a user <em>changes</em> the selected PivotItem by swiping left or right – a new video needs to be started and the other ones stopped. This is pretty easily done now:</p><pre>private void VideoPivotLoadedPivotItem(object sender, PivotItemEventArgs e)
+{
+  PlayMovieOnPivotItem(e.Item);
+}</pre>
+<p>This method was wired up to the Pivot’s LoadedPivotItem way up in the constructor of this page.</p>
+<p>Your video instruction page now works. Now to prevent memory leaks and especially prevent blocking other MediaElements elsewhere in the application, this method clears all even wiring <em>and the MediaElement’s Source properties</em></p><pre>protected override void OnNavigatedFrom(NavigationEventArgs e)
+{
+  sources.Keys.ForEach(p =&gt;
+                       {
+                         p.Source = null;
+                         p.MediaEnded -= MovieMediaElementMediaEnded;
+                         p.MediaOpened -= MovieMediaElementMediaEnded;
+                       });
+  VideoPivot.Loaded -= VideoPivotLoaded;
+  VideoPivot.LoadedPivotItem -= VideoPivotLoadedPivotItem;
+  base.OnNavigatedFrom(e);
+}
+</pre>
+<p>And thus you have created a video instruction page that works on Windows Phone under all circumstances (at least under all circumstances I have encountered). </p>
+<p>Enjoy – and find the <a href="http://www.schaikweb.net/dotnetbyexample/WpVideoPivot.zip" target="_blank">demo solution here</a></p>  

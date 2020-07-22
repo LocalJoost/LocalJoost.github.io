@@ -1,0 +1,225 @@
+---
+layout: post
+title: 'JSON deserialization with JSON.net: caching results'
+date: '2012-05-06T16:31:00.001+02:00'
+author: Joost van Schaik
+tags:
+- wpdev
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- JSON
+- WP7
+modified_time: '2012-05-06T16:35:42.541+02:00'
+thumbnail: http://lh6.ggpht.com/-WONvTyjJ954/T6aLXe1K8-I/AAAAAAAAJDU/Nx6TgnFkmzA/s72-c/JSONdemo3_thumb%25255B2%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4252544857302986520
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/05/json-deserialization-with-jsonnet.html
+---
+
+<p>On January 22 I promised this to be a three-part series. I’ve been kinda busy with upgrading apps, <a href="http://windows.microsoft.com/en-US/windows-8/consumer-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> experiments and trivial ;-) stuff like code camps, an MVP summit, preparing my first and second talk about Windows Phone and whatnot and made you wait for the final part for exactly three months – but those who know me, know I stick my promises, so here’s the third and final part of my JSON for <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> series. </p> <p>In <a href="http://dotnetbyexample.blogspot.com/2012/01/json-deserialization-with-jsonnet.html">part 1 of this series</a> I described the basics of creating classes from a JSON string and then simply deserializing the string into a (list of) classes. In <a href="http://dotnetbyexample.blogspot.com/2012/02/json-deserialization-with-jsonnet-class.html" target="_blank">part 2</a> I showed how to use JSONConverter subclasses to handle complex stuff the deserializer cannot handle out of the box, like class hierarchies. Part 3, as promised, shows a way to cache results - which makes your application faster, more responsive and more battery/data plan friendly.</p> <p>Using the <a href="http://www.schaikweb.net/dotnetbyexample/JSONDemo2.zip" target="_blank">demo solution of part 2</a> as a starting point, I first brought in my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a> using NuGet. I am lazy just like any programmer (should be) and I like to defer as much heavy lifting to already existing code as I can ;-). </p> <p>When dealing with data downloaded from the web everything becomes asynchronous by nature (at least on Windows Phone), and since we don’t have the await and async keyboards aboard our platform yet, I tend to use Observables from Microsoft.Phone.Reactive. To let that work with events, I need an EventArgs child class for my “loading completed” delegate, which I have defined in the following trivial way:</p><pre>using System;
+using System.Collections.Generic;
+
+namespace Wp7nl.Utilities
+{
+  public class DataLoadCompletedArgs&lt;T&gt; : EventArgs
+  {
+    public IList&lt;T&gt; Result { get; set; }
+
+    public Exception Error { get; set; }
+  }
+}</pre>
+<p>It’s a generic class because I am basically too lazy to write casting statements everywhere. The basic setup of the helper class that does both loading itself is like this:</p><pre>using System.Linq;
+using Microsoft.Phone.Reactive;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Net;
+using Newtonsoft.Json;
+
+namespace Wp7nl.Utilities
+{
+  public class CachedServiceDataLoader&lt;T&gt; where T : class
+  {
+    private readonly IsolatedStorageHelper&lt;List&lt;T&gt;&gt; storageHelper;
+
+    public CachedServiceDataLoader()
+    {
+      storageHelper = new IsolatedStorageHelper&lt;List&lt;T&gt;&gt;();
+    }
+
+    private void FireDataLoadCompleted(IList&lt;T&gt; result, Exception error)
+    {
+      if (DataLoadCompleted != null)
+      {
+        DataLoadCompleted(this,
+                          new DataLoadCompletedArgs&lt;T&gt; 
+                          {Result = result, Error = error});
+      }
+    }
+
+    public delegate void DataLoadCompletedHandler(object sender, 
+      DataLoadCompletedArgs&lt;T&gt; args);
+
+    public event DataLoadCompletedHandler DataLoadCompleted;
+  }
+}</pre>
+<p>So what have we here? A constructor that creates an IsolatedStorageHelper – that’s a class from the latest version from Wp7nl, where it sits in the Wp7nl.Utilities namespace. It’s basically the internal logic of the extension methods I described in my <a href="http://dotnetbyexample.blogspot.com/2011/01/tombstoning-mvvmlight-viewmodels-with.html" target="_blank">article</a> about tombstoning <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> viewmodels using <a href="http://whydoidoit.com/2011/08/05/silverlightserializer-version-2/" target="_blank">SilverlightSerializer</a> cut loose from those extension methods – so they can be used for caching all kinds of classes, and not only viewmodels on deactivation or closing of the app. The bottom part of the class is just the event indicating a data load action has been completed, and a convenience method to easily fire that event (I mentioned I was lazy, didn’t I? ;-) ) .</p>
+<p>Next up is another little convenience methods for loading stuff from the cache or returning a default (empty) list if the results are not available:</p><pre>private List&lt;T&gt; LoadFromStorage()
+{
+  return storageHelper.ExistsInStorage() ? 
+     storageHelper.RetrieveFromStorage() : new List&lt;T&gt;();
+}</pre>
+<p>It’s only used once, so I could just a easy have omitted it, but it makes the rest of the code a bit more readable and that’s important too. When you state your intentions in code, that saves on comment.</p>
+<p>The method to read stuff from cache is a bit more complex than strictly necessary, but since data coming from the web is coming in asynchronously, why would I want my app to wait on my cache coughing up its results? So I made the cache retrieval asynchronously as well, using some old skool BackgroundWorker hoopla:</p><pre>public bool StartLoadFromCache()
+{
+  if (storageHelper.ExistsInStorage())
+  {
+    var w = new BackgroundWorker();
+    w.DoWork += (s, e) =&gt;
+      {
+        e.Result = LoadFromStorage();
+      };
+
+    w.RunWorkerCompleted += (s, e) =&gt;
+      FireDataLoadCompleted(e.Result as List&lt;T&gt;, e.Error);
+
+    w.RunWorkerAsync();
+    return true;
+  }
+  return false;
+}</pre>
+<p>I could have used an observable here as well I guess, but I still have not adapted my code snippet. So anyway, I cheat a little by checking first if there’s any cache data at all – if there is not, the method immediately returns false, informing the calling method there’s no cached data and to go get the stuff on the web. Which it can, incidentally, by calling the following method:</p><pre>public void StartDownloadCacheData(IList&lt;T&gt; currentObjects, Uri serviceUri,
+                                   params JsonConverter[] converters)
+{
+  var w = new SharpGIS.GZipWebClient();
+  Observable.FromEvent&lt;DownloadStringCompletedEventArgs&gt;(
+    w, "DownloadStringCompleted")
+    .Subscribe(r =&gt;
+    {
+      if (DataLoadCompleted != null)
+      {
+        if (r.EventArgs.Error == null)
+        {
+          var deserialized = 
+               JsonConvert.DeserializeObject&lt;List&lt;T&gt;&gt;(r.EventArgs.Result,
+                                                      converters);
+          var result = new List&lt;T&gt;(currentObjects);
+          result.AddRange(deserialized.Where(p =&gt; !currentObjects.Contains(p)));
+          FireDataLoadCompleted(result, r.EventArgs.Error);
+          storageHelper.SaveToStorage(result);
+        }
+        else
+        {
+          FireDataLoadCompleted(null, r.EventArgs.Error);
+        }
+      }
+    });
+
+  w.DownloadStringAsync(serviceUri);
+}</pre>
+<p>So what this method does is pretty simple: </p>
+<ul>
+<li>It makes a GZipWebClient (that allows data to be loaded zipped, thus saving on amount of bytes actually transmitted) 
+<li>It makes an Observable from the event “DownloadStringCompleted” and subscribes an anonymous method 
+<li>It fires the DownloadStringAsync method on the uri</li></ul>
+<p>Now the anonymous method that is fired when the data arrives</p>
+<ul>
+<li>Checks for errors 
+<li>Tries to deserialize the incoming data using the provides converters (if any) 
+<li>Adds the existing object list to the result list 
+<li>Add the <em>new</em> objects to the list after weeding out duplicates that were already in the list 
+<li>Fires the complete event 
+<li>Stores the now merged data set in isolated storage.</li></ul>
+<p>So the idea is that you can do consecutive downloads, but that resulting data never contains any duplicates. This is why you must provide the list of <em>current</em> objects. This may seem like a little odd, but this is exactly the thing you want to do with working with geographical data – which I do almost all the time for a living. As an inspector you want to download stuff from the areas you want to inspect, not the whole municipality. You move your map to a location, hit “download” and presto, you have the stuff you want to use cached on you device before you go on the road. Repeat until all areas you want to visit today have been processed. Kinda like Nokia Drive does – there is never enough room aboard your phone to store all the possible maps of the world, but when you to Seattle, you download the maps for Washington State, not the whole of North America, and you’re good to go.</p>
+<p>But what if you want to start over – clearing the cache in stead of adding it? That’s the last method of this class:</p><pre>public void StartClearStorage()
+{
+  var w = new BackgroundWorker();
+  w.DoWork += (s, e) =&gt; storageHelper.DeletedFromStorage();
+
+  w.RunWorkerCompleted += (s, e) =&gt;
+  {
+    if (DataLoadCompleted != null)
+    {
+      FireDataLoadCompleted(new List&lt;T&gt;(), e.Error);
+    }
+  };
+
+  w.RunWorkerAsync();
+}</pre>
+<p>Also asynchronously, also not strictly necessary, but Microsoft tend to move toward doing everything asynchronously – if you have done any Windows 8 development you know performance requirements are pretty high and strict, so better get used to it already. </p>
+<p><a href="http://lh5.ggpht.com/-Y6Sii4aYUUE/T6aLWoxkVUI/AAAAAAAAJDQ/wlq8n2P48TU/s1600-h/JSONdemo3%25255B4%25255D.png"><img style="background-image: none; border-right-width: 0px; margin: 0px 5px 0px 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="JSONdemo3" border="0" alt="JSONdemo3" align="right" src="http://lh6.ggpht.com/-WONvTyjJ954/T6aLXe1K8-I/AAAAAAAAJDU/Nx6TgnFkmzA/JSONdemo3_thumb%25255B2%25255D.png?imgmax=800" width="161" height="317"></a>I updated the demo solution to show off the workings of this class, that presents itself like showed to the right. If you click on “Load devices”, it will show four devices, as displayed on the image, and the message “Loading from web”. If you hit the “Load devices” button again, it will show the same four devices, but show the message “Loading from cache” and it will show them just a wee bit faster.</p>
+<p>If you hit “Load more devices” you will see <em>six</em> devices, – with the Lumia 800 mentioned two times. But wait, what about weeding out the duplicates in StartDownloadCacheData – doesn’t that work? It sure does, but I already mentioned I was lazy, so I did not implement any “Equals” logic on&nbsp; the Device class – that’s left as exercise for the reader ;-). I assure you it will work properly then.</p>
+<p>“Clear list” just clears the list, and if you hit “Load devices” it will load the devices from cache again – very fast. </p>
+<p>“Clear cache and list” will actually wipe the cache, so if you hit “Load devices” again it will show “Loading from web”.</p>
+<p>I won’t bother you with the XAML – the code in MainPage.xaml.cs is pretty straightforward and shows off all the features of the CachedServiceDataLoader:</p><pre>using System;
+using System.Collections.Generic;
+using System.Windows;
+using Microsoft.Phone.Controls;
+using Microsoft.Phone.Reactive;
+using Wp7nl.Utilities;
+
+namespace JsonDemo
+{
+  public partial class MainPage : PhoneApplicationPage
+  {
+    private CachedServiceDataLoader&lt;Device&gt; cachedLoader;
+    private IList&lt;Device&gt; currentData;
+    public MainPage()
+    {
+      InitializeComponent();
+      Loaded += MainPage_Loaded;
+    }
+
+    void MainPage_Loaded(object sender, RoutedEventArgs e)
+    {
+      cachedLoader = new CachedServiceDataLoader&lt;Device&gt;();
+      currentData = new List&lt;Device&gt;();
+      Observable.FromEvent&lt;DataLoadCompletedArgs&lt;Device&gt;&gt;(
+        cachedLoader, "DataLoadCompleted")
+       .Subscribe(r =&gt;
+                    {
+                      currentData = r.EventArgs.Result;
+                      PhoneList.ItemsSource = r.EventArgs.Result;
+                    });
+    }
+
+    private void Load_Click(object sender, RoutedEventArgs e)
+    {
+      if (!cachedLoader.StartLoadFromCache())
+      {
+        Message.Text = "Loading from web";
+        cachedLoader.StartDownloadCacheData(currentData,
+          new Uri("http://www.schaikweb.net/dotnetbyexample/JSONPhones2.txt"),
+          new JsonDeviceConverter(), new JsonSpecsConverter());
+      }
+      else
+      {
+        Message.Text = "Loading from cache";        
+      }
+    }
+
+    private void Load2_Click(object sender, RoutedEventArgs e)
+    {
+      Message.Text = "Loading from web";
+      cachedLoader.StartDownloadCacheData(currentData,
+        new Uri("http://www.schaikweb.net/dotnetbyexample/JSONPhones3.txt"),
+        new JsonDeviceConverter(), new JsonSpecsConverter());
+    }      
+
+    private void Clear_Click(object sender, RoutedEventArgs e)
+    {
+      PhoneList.ItemsSource = null;
+      Message.Text = "cleared list (not cache)";
+    }
+
+    private void ClearCache_Click(object sender, RoutedEventArgs e)
+    {
+      cachedLoader.StartClearStorage();
+      Message.Text = "cleared list and cache";
+    }
+  }
+}
+</pre>
+<p>There isn’t even any of my trademark MVVM code in here. In the MainPage_Loaded – not surprisingly - all the stuff is initialized. The CachedServiceDataLoader is created using a type T, and spits out a IList of T. I use an Observable to keep track of things here as well, but of course you are free to subscribe to events in the ‘old fashioned’ way.</p>
+<p>Load_Click shows the usage of StartLoadFromCache and StartDownloadCacheData, the latter one using the JSONconverter child classes I showed in part 2. The rest I assume to be pretty straightforward.</p>
+<p>As you can see, working with JSON on Windows Phone is dead easy and my little helper class makes it even more easy. I am still pondering if I should include this in the wp7nl library, as this creates yet two more dependencies (SharpGIS.GZipWebClient and Newtonsoft.Json) to keep in sync. If you have any feedback on this, I’d be happy to hear it. But anyway, this concludes my JSON for Windows Phone series, I hope it will prove to be a useful mini-tutorial for the Windows Phone developer community. And as usual, you can <a href="http://www.schaikweb.net/dotnetbyexample/JSONDemo3.zip" target="_blank">download the full solution</a> from my website.</p>  

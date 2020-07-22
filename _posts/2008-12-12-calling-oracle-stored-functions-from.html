@@ -1,0 +1,90 @@
+---
+layout: post
+title: Calling Oracle stored functions from ADO.NET
+date: '2008-12-12T09:08:00.007+01:00'
+author: Joost van Schaik
+tags:
+- stored procedure
+- Oracle
+- stored function
+- dotnetmag
+- ADO.NET
+modified_time: '2010-04-06T11:17:29.903+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1945523919153735562
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2008/12/calling-oracle-stored-functions-from.html
+---
+
+Die-hard Microsofties may be flabbergasted, but there are people out there using <em>Oracle</em> as a database in stead of SQLServer and - oh horror - are <em>even daft enough to try to retrieve data from it using ADO.NET</em>. But while Microsoft cranks out code samples for using SQLServer by the the truckload, those that are living in a hybrid environment may have a hard time finding actual working data access sample code. Like calling a stored function in Oracle and retrieving the value.
+
+Suppose whe have the following trivial stored function, created by my collegue <a href="http://yweblog.ywema.com">Louis Ywema</a> for unit testing purposes. It takes a numerical value and a string value and concatenates them with a hyphen between. Not quite the functionality you've been waiting for all your life but it proves the point<pre>create function get_test  (p_parameter1 in number
+                   ,p_parameter2 in varchar2)
+return varchar2
+is
+   l_parameter1 number;
+   l_parameter2 varchar2(1024);
+begin
+   l_parameter1 := p_parameter1;
+   l_parameter2 := p_parameter2;
+   return to_char(l_parameter1)||' - '||l_parameter2;
+exception
+   when others then
+       return(sqlerrm);       
+end get_test</pre>You run this code in a database user that has CREATE PROCEDURE privileges
+
+Next, you define an Oracle connection in your connectionStrings section of your config file:<pre>&lt;connectionStrings&gt;
+  &lt;add name="MYCONNECTION" 
+    connectionString="Password=TEST;User ID=TEST;Data Source=JOOST;"
+    providerName="System.Data.OracleClient" /&gt;
+&lt;/connectionStrings&gt;</pre>I use a database JOOST with username TEST and password TEST
+
+Using raw ADO.NET code you can run the stored function like this<pre>[TestFixture]
+[Test(Description = "Stored function - Raw ADO.NET")]
+public void TestStoredFunctionRaw()
+{
+  var myConnection = 
+      ConfigurationManager.ConnectionStrings["MYCONNECTION"];
+  using (var connection = 
+      new OracleConnection(myConnection.ConnectionString))
+  {
+     connection.Open();
+     using(var command = connection.CreateCommand() )
+     {
+       var p1 = new OracleParameter("p_parameter1", OracleType.Number);
+       p1.Value = 1;
+       command.Parameters.Add(p1);
+
+       var p2 = new OracleParameter("p_parameter2", OracleType.VarChar);
+       p2.Value = "Hello";
+       command.Parameters.Add(p2);
+
+       var retVal = new OracleParameter("returnvalue", OracleType.VarChar);
+       retVal.Size = 1024;
+       retVal.Direction = ParameterDirection.ReturnValue;
+       command.Parameters.Add(retVal);
+
+       command.CommandText = "get_test";
+       command.CommandType = CommandType.StoredProcedure;
+       command.ExecuteNonQuery();
+
+       Assert.IsTrue(((string)retVal.Value) == "1 - Hello");
+     }
+  }
+}</pre>I would not recommend this to anyone but it proves the point. For real life situations, use the <a href="http://www.codeplex.com/entlib">Enterprise Library</a> and write your code like this<pre>[Test(Description = "Stored function -  EL")]
+public void TestStoredFunctionEntLib()
+{
+    Database Db = DatabaseFactory.CreateDatabase("MYCONNECTION");
+    using (var cmd = Db.GetSqlStringCommand("get_test" ) )
+    {
+      Db.AddInParameter(cmd, "p_parameter1", DbType.VarNumeric, 1);
+      Db.AddInParameter(cmd, "p_parameter2", DbType.String, "Hello");
+      Db.AddParameter(cmd, "returnvalue", DbType.String,1024, 
+        ParameterDirection.ReturnValue, 
+        false, 0, 0, null, DataRowVersion.Default, null);
+
+      cmd.CommandType = CommandType.StoredProcedure;
+      Db.ExecuteNonQuery(cmd);
+      Assert.IsTrue(((string) cmd.Parameters[2].Value) == "1 - Hello");
+    }
+}</pre>Notice the "returnvalue" parameter - it has a ParameterDirection.ReturnValue and more importantly - <em>it has a size</em>. This is important: the default size of a parameter is 0, and if Oracle tries to write back te parameter value into the parameter you will get an error indicating so. In this example I use 1024, but you can set this to any size you need. In my production code I set it to 32K (32768) but I am not sure of the absolute maximum value. The crazy thing about this is, of course, there are situations where you cannot know the size of the return value. Your only option is to set is as high pas possible and hope for the best ;-)
+
+Complete test project downloadable <a href="http://www.schaikweb.net/dotnetbyexample/oracledemo.zip">here</a>. This example still uses the May 2007 EntLib 3.1, by the way.

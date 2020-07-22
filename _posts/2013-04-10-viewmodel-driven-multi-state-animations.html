@@ -1,0 +1,209 @@
+---
+layout: post
+title: ViewModel driven multi-state animations using DataTriggers and Blend on Windows
+  Phone
+date: '2013-04-10T08:32:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Blend
+- Windows Phone 8
+- wpnl
+- wpdev
+- dotnetmag
+- XAML
+- MVVM Light
+modified_time: '2013-04-22T08:54:30.741+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2911306483147661452
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/04/viewmodel-driven-multi-state-animations.html
+---
+
+<p>Long long time ago I wrote how to <a href="http://dotnetbyexample.blogspot.nl/2011/01/viewmodel-driven-animations-using.html" target="_blank">drive animations from your ViewModel using DataStateBehavior</a>, and I explicitly stated this was the only way to do it, since (quoting myself), “Windows Phone 7 does not support <a href="http://msdn.microsoft.com/en-us/library/system.windows.datatrigger.aspx">DataTriggers</a>”. That was then, and this is now. The drawback of DataStateBehavior is that you basically can only do on/off animations, which makes more complex multi-state animations impossible. There was another behavior that could do that, but I could not find that anymore and I could not quite remember the name. And then I suddenly stumbled upon the Microsoft.Expression.Interactions assembly – and in its Microsoft.Expression.Interactions.Core namespace there is indeed a DataTrigger. And that seems to have been present in the 7.1 framework as well. *Cough*.</p> <p>So in this blog post I am going to demonstrate how to animate a few ‘popup windows’ via a single Visual State block and a ViewModel, using DataTriggers. I am going to show this using Visual Studio 2012, <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> and mostly Blend. It’s time to give this unsung hero some love again, so I am going to follow the tutorial-style again.</p> <p><font size="4"><a href="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; margin: 51px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_thumb.png" width="365" height="103"></a>Setting the stage</font></p> <ul> <li>Open Visual Studio, create a “<a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> app”, and target 8.0 (it should work in 7.1 as well BTW)  <li>Click Tools/Library Package Manager/Manage NuGet Packages for Solution.  <li>Search for MvvmLightLibs, select “MVVM Light Libraries only”  <li>Click “Install”, “Ok” and “I Accept” </li></ul> <p><font size="4">Building the ViewModel</font></p> <p>The ViewModel actually consist out of two files – an enumeration describing the states and the actual ViewModel itself. First, create a folder “ViewModel” in your solution, and the create the enumeration like this:</p><pre>namespace DataTriggerAnimation.ViewModel
+{
+  public enum DisplayState
+  {
+    Normal = 0,
+    ShowPopupHello = 1,
+    ShowPopupBye = 2,
+  }
+}
+
+</pre>
+<p>And then the ViewModel like this:</p><pre>using System;
+using System.Windows.Input;
+using GalaSoft.MvvmLight;
+using GalaSoft.MvvmLight.Command;
+
+namespace DataTriggerAnimation.ViewModel
+{
+  public class DisplayViewModel : ViewModelBase
+  {
+    private DisplayState displayState;
+    public DisplayState DisplayState
+    {
+      get { return displayState; }
+      set
+      {
+        if (displayState != value)
+        {
+          displayState = value;
+          RaisePropertyChanged(() =&gt; DisplayState);
+        }
+      }
+    }
+
+    public ICommand DisplayPopupCommand
+    {
+      get
+      {
+        return new RelayCommand&lt;string&gt;(
+            (p) =&gt;
+              {
+                DisplayState = (DisplayState)Enum.Parse(typeof(DisplayState), p);
+              });
+      }
+    }
+
+    public ICommand CloseCommand
+    {
+      get
+      {
+        return new RelayCommand(() 
+           =&gt; DisplayState = DisplayState.Normal);
+      }
+    }
+  }
+}
+
+</pre>
+<p>The important thing to note is that the command “DisplayPopupCommand” requires a parameter to determine the popup that must be displayed. The CloseCommand is equivalent to a DisplayPopupCommand with parameter “Normal”, and is just there for making the designer’s life easier.</p>
+<p>… and that’s all the coding we are going to do. Build your application and close Visual Studio. The rest, just like my last animation post is done in Blend! <em>All</em> of it.</p>
+<p><font size="4">Creating the first panel</font></p>
+<ul>
+<li><a href="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_thumb_3.png" width="128" height="135"></a>Drag a grid on the empty rectangle “ContentPanel”. Like all GUI objects, these can be found on the Assets tab on the left top. 
+<li>Click on the “Grid” in the “Objects on Timeline” pane left, and rename it to “Panel1” 
+<li>Right-click on the “Panel1” grid, hit ‘Reset Layout/All” 
+<li>Go to the right-hand pane, select “Properties” and expand the “Layout” pane if it’s collapsed. 
+<li>Then click “Top” for Vertical Alignment. 
+<li>Then enter “150” for height</li></ul>
+<p>Then proceed to add a text:</p>
+<ul>
+<li><a href="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_thumb_4.png" width="130" height="133"></a>Drag a TextBlock on the “Panel1” grid. You can do this by either dragging it on the design surface on top of “Panel1”, or on the “Objects and Timeline” pane (also on top of “Panel1”) 
+<li>Change the text from “TextBlock” to “Hello this is popup one” 
+<li>Do Reset Layout/All on this text as well 
+<li>In the Layout Pane, select Horizontal Alignment “Center” and Vertical Alignment “Top”</li></ul>
+<p>And finally add a button:</p>
+<ul>
+<li><a href="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_5.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_thumb_5.png" width="129" height="124"></a>Drag a button on Panel1 
+<li>Do Reset Layout/All on this button as well 
+<li>Change the caption to “Done” 
+<li>In the Layout Pane, select Horizontal Alignment “Center” and Vertical Alignment “Bottom”</li></ul>
+<p>And then finally do something that seems like pretty bonkers, but trust me: it will all become clear in the end:</p>
+<ul>
+<li><a href="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_6.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_thumb_6.png" width="131" height="144"></a>Select Panel1 in the Objects and Timeline panel. 
+<li>Go to the Properties pane on the right hand side, and find the “Transform” pane. It’s usually collapsed. Expand it first. 
+<li>Select Center Point tab - the 2nd tab from the right under “Rendertransform” (with the dot on in) 
+<li>For both X and Y type “0.5”. This sets the transformation point dead in the middle of the panel 
+<li>Then also select the Global offset tab – that’s the 2nd tab from the right under “Projection” (with the up and left pointing arrow on it) 
+<li><a href="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_7.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; margin: 0px 0px 0px 2px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_thumb_7.png" width="198" height="198"></a>Enter “500” for X. </li></ul>
+<p>Your design surface now should look like showed on the right. The panel is sitting well right of the phone. Bonkers, I said it. ;-). </p>
+<p><font size="4">Creating the second panel</font></p>
+<p>Going to be a bit lazy here. I don’t want to to the whole sequence again</p>
+<ul>
+<li>Select Panel 1 in “Objects and Timeline” 
+<li>Hit CTRL-C, CTRL-V. This will result in a Panel1_Copy below Panel 1 
+<li><a href="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_8.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_thumb_8.png" width="244" height="121"></a>Rename that to “Panel2” 
+<li>Go to the Properties tab again on the right, and enter “160” for top margin. This should result in Panel2 appearing <em>under</em> Panel1 
+<li>Then, for an encore, go to the Transform panel again and change “500” for X Projection to -500</li></ul>
+<p>The second panel should jump to the left and <a href="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_9.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; margin: 0px 35px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_thumb_9.png" width="240" height="182"></a>resulting design surface should now look like this:</p>
+<p><font size="4">Creating the popup buttons</font></p>
+<p>At this time I am going to assume you now understand the layout panel, so I am not going to make screenshots of every button you need to click and number you need to enter in the layout panels ;-)</p>
+<ul>
+<li>Drag a StackPanel on the design surface, near the bottom of the screen. 
+<li>Do Reset Layout/All, 
+<li>Select Vertical Alignment Bottom, and enter a height of 220. 
+<li>Proceed to drag three buttons on top of the StackPanel. These should appear under each other, taking the full width of the screen. 
+<li>Change the captions of the buttons to (from top to bottom) “Popup 1”, “Popup 2” and “Done”. </li></ul>
+<p>The final design surface, including the objects tree, should look like this:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_10.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_thumb_10.png" width="628" height="383"></a></p>
+<p><font size="4">Defining the Visual States</font></p>
+<p>We have three visual states:</p>
+<ul>
+<li>None of the popups are displayed 
+<li>Popup 1 is displayed 
+<li>Popup 2 is displayed</li></ul>
+<p>To create these, proceed as follows:</p>
+<ul>
+<li><a href="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_11.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_thumb_11.png" width="244" height="112"></a>At the top left, click the “States” Tab. 
+<li>Click the “Add state Group” Button 
+<li>Rename “VisualStateGroup” to "PopupGroup” 
+<li>Enter “0.5” for “Default Transition”. This indicates any state transitions will be automatically animated over a 0.5 second time period.</li></ul>
+<p>Next steps:</p>
+<ul>
+<li><a href="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_12.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_thumb_12.png" width="244" height="116"></a>Click the “Add state” Button 
+<li>Rename the state “VisualState” to “Normal” 
+<li>Add two more states, “ShowPopupHello” and “ShowPopupBye” 
+<li>Click the red dot before “ShowPopupBye”.&nbsp; The red color disappears. The main design surface should now have a caption “ShowPopupBye state recording is off”</li></ul>
+<p>Now the next things are tricky, so pay close attention and make sure you do this exactly right.</p>
+<ul>
+<li>Select “Panel1” in “Objects and Timeline” 
+<li>Click state “ShowPopupHello”. The main design surface should now have a caption “ShowHelloPopupstate recording is on” and have a red border. 
+<li>Go to the Transform panel again, select under projection the Global offset (2nd tab from the right) again and change 500 back to 0. Panel 1 should now appear in the phone screen 
+<li>Now select state “ShowPopupBye”. Panel 1 disappears again 
+<li>Select Panel2 
+<li>Change its global offset to 0 as well. Now panel 2 appears in the phone screen 
+<li>Select State “Normal” 
+<li>Select the red dot before “Normal” to turn state recording off. Both panels now should be outside of the phone screen again. 
+<li>Select “Base” on top of the State panel.</li></ul>
+<p><font size="4">Bringing in the ViewModel</font></p>
+<p>Before we are going to connect the Visual States to the ViewModel’s actions, let’s first bring it in. That’s pretty easy. </p>
+<ul>
+<li><a href="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_13.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_thumb_13.png" width="168" height="165"></a>Go top right and select the data tab. 
+<li>Select the “Create data source” button all to the right and select “Create object data source” 
+<li>On about the 8th line you should see “DisplayViewModel”. Select that 
+<li>Enter “DisplayViewModelDataSource” in the “Data source name” box 
+<li>Hit OK. 
+<li>Net result should be as displayed to the right.</li></ul>
+<p><font size="4">Setting up initial data binding</font></p>
+<p>This is so ridiculously easy in Blend it always makes me happy when I get to this state.</p>
+<ul>
+<li>Drag “DisplayViewModel” from the data tab on top of the LayoutRoot panel in the Objects and Timeline panel 
+<li>Drag “CloseCommand” on top of all three “Done” buttons. You can do that either on the design surface or on the Objects and Timeline panel, whatever you like. 
+<li>Proceed to drag “PopupCommand” on top of both the “Popup 1” and “Popup 2” button. 
+<li>Now select the “Popup 1” button, and select the “Properties” tab again. 
+<li>On top there’s a “Search properties” box. The developers of Blend soon recognized the number of things you can set it <em>so</em> big you can easily loose track. Enter “Command” in that search box to limit the number of properties it shows. 
+<li>The Properties box now should only show “Command” and “CommandParameter”. Enter value “ShowPopupHello” for “CommandParameter” 
+<li>Now select the “Popup 2” button, and enter “ShowPopupBye” for “CommandParameter” 
+<li>Clear the text “Command” from “Search Properties” so you can see all the properties again.</li></ul>
+<p>Programming by dragging stuff on top of each other. Ain’t life fun sometimes?</p>
+<p><font size="4"><a title="By Mac m 13 (Own work) [GFDL (http://www.gnu.org/copyleft/fdl.html) or CC-BY-SA-3.0-2.5-2.0-1.0 (http://creativecommons.org/licenses/by-sa/3.0)], via Wikimedia Commons" href="http://commons.wikimedia.org/wiki/File%3AFurioso_dragon-13-.jpg"><img style="float: right; margin: 0px 34px 0px 0px; display: inline" alt="Furioso dragon-13-" align="right" src="http://upload.wikimedia.org/wikipedia/commons/6/63/Furioso_dragon-13-.jpg" width="182" height="220"></a>Enter the dragon: datatriggers for putting it all together</font></p>
+<p>And now for the <em>really</em> scary part – the datatriggers. Just kidding of course – just more dragging stuff and filling in some fields. The odd thing is – from the Blend perspective, data triggers are hardly visible. We are using <em>GotoStateActions</em>. Finish the app by following these final steps:</p>
+<ul>
+<li>Drag a GotoStateAction from Assets box on top of ContentPanel. If you can’t find it: type “goto” in the search box of the Asset panel. It will popup in the list to the right of the panel 
+<li>Under Properties, Click on the “New” button next to “TriggerType” and select “DataTrigger” in the box that pops up. 
+<li>Behind “Binding”, click the barrel like icon. A dialog pops up with the properties of your DisplayViewModel. Select “DisplayState” and hit OK 
+<li>Enter “0” for value 
+<li><a href="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_15.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-multi-state-animations-_796F/image_thumb_15.png" width="142" height="169"></a>For StateName, select “Normal” 
+<li>Drag another GotoStateAction from Assets box on top of ContentPanel. Make this a DataTrigger to, select the same property to bind to, but 
+<ul>
+<li>Enter “1” for “Value” 
+<li>Select “ShowPopupHello” for StateName</li></ul>
+<li>And finally, a third GotoStateAction with 2 as value and “ShowPopupBye” for StateName.</li></ul>
+<p>And that’s all. If you run your application (you should be able to hit F5 from Blend) you will get a simple app that scrolls Popup 1 from the left in half a second when you hit “Popup 1”, and scroll it back when you hit on of the done buttons. If you hit the “Popup 2” button when Popup 1 is visible, it will scroll the second popup into the screen while simultaneously scrolling the first on <em>out</em> of the screen.</p>
+<p>The data triggers look like this in XAML:</p><pre>&lt;i:Interaction.Triggers&gt;
+  &lt;ec:DataTrigger Binding="{Binding DisplayState}" Value="0"&gt;
+    &lt;ec:GoToStateAction StateName="Normal"/&gt;
+  &lt;/ec:DataTrigger&gt;
+  &lt;ec:DataTrigger Binding="{Binding DisplayState}" Value="1"&gt;
+    &lt;ec:GoToStateAction StateName="ShowPopupHello"/&gt;
+  &lt;/ec:DataTrigger&gt;
+  &lt;ec:DataTrigger Binding="{Binding DisplayState}" Value="2"&gt;
+    &lt;ec:GoToStateAction StateName="ShowPopupBye"/&gt;
+  &lt;/ec:DataTrigger&gt;
+&lt;/i:Interaction.Triggers&gt;</pre>
+<p><font size="4">Some things to note</font></p>
+<ul>
+<li>We hardly did program anything at all, and what’s more – we did not even make animations or storyboards. By simply setting the default transition to 0.5 seconds and indicating where we want stuff to be once a state is reached, the Windows Phone framework automatically <em>infers and creates </em>an animation when changing state, moving the GUI elements from one place to another in half a second (in stead of flashing them from one place to another). 
+<li>In the <em>Command</em> I was able to use <em>names</em> as defined in the enumeration because I did an Enum.Parse in the ViewModel, in the data triggers I had to use the real <em>value</em> (0,1,2) to be able to compare. Something that can be fixed using a converter, but I did not want to complicate things. 
+<li>The fact that the visual state names have the same name as the enumeration values, does not bear any significance. I could have named them Huey, Dewey, and Louie for all I cared. Only the CommandParameter values need to be the same as the Enumeration <em>string</em>, and the DataTriggers need to have the same <em>numeric</em> value.</li></ul>
+<p>That’s it. Although the Visual Studio 2012 designer is light years ahead of the 2010 designer, Blend still rocks when defining a lot of stuff in XAML. Have fun making beautifully animated apps with this. </p>
+<p>If you don’t feel like following all these steps yourself, find, as usual, <a href="http://www.schaikweb.net/dotnetbyexample/DataTriggerAnimation.zip" target="_blank">the completed solution here</a>.</p>  

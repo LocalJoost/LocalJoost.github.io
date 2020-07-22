@@ -1,0 +1,94 @@
+---
+layout: post
+title: Building multi-resolution popups in an Universal App
+date: '2014-06-25T11:52:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Windows phone 8.1
+- windev
+- wpnl
+- wpdev
+- Universal Apps
+- Windows 8
+- Converter
+modified_time: '2014-06-25T11:52:34.686+02:00'
+thumbnail: http://lh6.ggpht.com/-TCRq4lU4kQ8/U6qb0hMZ6KI/AAAAAAAAMYk/X9VP_oPaA_0/s72-c/image_thumb6.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4922980086659367028
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/06/building-multi-resolution-popups-in.html
+---
+
+<p>With the advent of <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> 8.1 multiple resolution are now also becoming a fact of life for Windows Phone developers (as they already were for Windows Store developers). This has a few side effects, which will require you to think about the size of things that need to cover part of the screen. Particularly you can get into trouble with animations built with visual states, which tend to have fixed number in them. I already dabbled into this when I ported <a href="http://www.windowsphone.com/en-us/store/app/2-phone-pong/ed077cc6-21ce-4e99-8e19-c5b119646016" target="_blank">Two Phone Pong</a> to <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a>.1 and had to make a <a href="http://dotnetbyexample.blogspot.com/2014/04/a-screen-size-independent-scroll-into.html" target="_blank">screen-size independent scroll-into-view pane</a>.</p> <p>Now, for a demo app I have been working on, I wanted to make a popup that always used 1/3th of the screen. That used to be easy, as we had only one resolution, more or less, and for the rest Windows Phone 8 did some auto scaling. Now it needs a little more work. Very little, as it turned out I almost had all the pieces in place:</p> <ul> <li>I already had the <a href="http://dotnetbyexample.blogspot.com/2013/08/a-behavior-to-animate-folding-in-and.html" target="_blank">UnfoldBehavior</a>, which can be used to let UI elements appear and disappear by ‘folding’ them in or out.  <li>I already had the <a href="http://dotnetbyexample.blogspot.com/2014/04/a-screen-size-independent-scroll-into.html" target="_blank">SizeListenerBehavior</a>, which allows me to data bind to the actual width and height of an element </li></ul> <p>The only thing that was missing was this very simple converter:</p><pre>using System;
+using System.Globalization;
+
+namespace WpWinNl.Converters
+{
+  public class PercentageConverter : BaseValueConverter
+  {
+    public override object Convert(object value, Type targetType, 
+      object parameter, CultureInfo culture)
+    {
+      double parmValue;
+      if (value is double &amp;&amp; double.TryParse(parameter.ToString(), 
+                                            out parmValue))
+      {
+        value = (double)value * parmValue / 100;
+      }
+      return value;
+    }
+
+    public override object ConvertBack(object value, Type targetType, 
+      object parameter, CultureInfo culture)
+    {
+      if (value is double &amp;&amp; (parameter is double || parameter is int))
+      {
+        value = (double)value / 100 / (double)parameter;
+      }
+      return value;
+    }
+  }
+}
+</pre>
+<p>Basically all it does is dividing the incoming value by 100 and multiply it with the parameter value, so if you supply “33” as ConverterParameter is will multiply the incoming value by 0.33, effectively dividing it by 3 (ish).</p>
+<p>So now I can define a simple app with a map (for instance), and when the popup is displayed, it always takes the bottom third of the screen. Regardless of screen resolution.</p>
+<p>On the 4” WVGA (800x480) emulator this looks like this:</p>
+<p><a href="http://lh6.ggpht.com/-uiKnuff0-Mw/U6qbz38MWjI/AAAAAAAAMYg/QbF25Bs_SJk/s1600-h/image16.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://lh6.ggpht.com/-TCRq4lU4kQ8/U6qb0hMZ6KI/AAAAAAAAMYk/X9VP_oPaA_0/image_thumb6.png?imgmax=800" width="204" height="337"></a><a href="http://lh5.ggpht.com/-SGXZfPDe-VA/U6qb1PxSxxI/AAAAAAAAMYw/3f2HF8wrxW8/s1600-h/image17.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://lh6.ggpht.com/-_hPYBBC8Etk/U6qb1mT5cgI/AAAAAAAAMY0/g1mYpmcQkgg/image_thumb7.png?imgmax=800" width="337" height="204"></a></p>
+<p>While on a 1080p 6” emulator it looks like this:</p>
+<p><a href="http://lh6.ggpht.com/-6_x4y3kJUdg/U6qb2Kpz0XI/AAAAAAAAMZA/ZpHwWzLYUl8/s1600-h/image18.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://lh3.ggpht.com/-78M3Tg_qmbs/U6qb2wRd7vI/AAAAAAAAMZE/GMeytpOh5I8/image_thumb8.png?imgmax=800" width="204" height="360"></a><a href="http://lh6.ggpht.com/-rg1yaU9h2H0/U6qb3WS-8DI/AAAAAAAAMZQ/NLT81-yyL7w/s1600-h/image19.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://lh4.ggpht.com/-9p2pzN1hV84/U6qb4HlhOoI/AAAAAAAAMZU/KSJnwwsk1fs/image_thumb9.png?imgmax=800" width="360" height="204"></a></p>
+<p>Added bonus: the popup resizes automatically as you rotate the phone. It <em>always </em>takes the bottom third of the screen.</p>
+<p>The way to achieve this is pretty simple: </p><pre style="font-size: 12px">&lt;!-- some stuff snipped --&gt;
+&lt;Grid&gt;
+  &lt;interactivity:Interaction.Behaviors&gt;
+    <font color="#ff0000"><u>&lt;behaviors:SizeListenerBehavior x:Name="ContentRootListener"/</u></font>&gt;
+  &lt;/interactivity:Interaction.Behaviors&gt;
+  &lt;!-- some stuff snipped --&gt;
+  
+  &lt;Grid Grid.Row="1" Margin="19,9.5,19,0"&gt;
+    &lt;maps:MapControl&gt;
+    &lt;/maps:MapControl&gt;
+    &lt;!-- the Grid below is the actual popup window --&gt;
+    &lt;Grid Height="{<font color="#ff0000"><u>Binding WatchedObjectHeight</u>, 
+      ElementName=ContentRootListener</font>, <u><font color="#ff0000">Converter={StaticResource PercentageConverter},</font></u> 
+      <u><font color="#ff0000">ConverterParameter=33}</font></u>" VerticalAlignment="Bottom" Background="Blue" &gt;
+      &lt;interactivity:Interaction.Behaviors&gt;
+        &lt;behaviors:UnfoldBehavior RenderTransformY="1" Direction="Vertical" 
+                                  Activated="{Binding IsOpen}"/&gt;
+      &lt;/interactivity:Interaction.Behaviors&gt;
+      &lt;StackPanel&gt;
+        &lt;TextBlock Text="This is my popup" FontSize="22"&gt;&lt;/TextBlock&gt;
+        &lt;StackPanel Orientation="Horizontal"&gt;
+          &lt;TextBlock Text="It's height is:" FontSize="22"&gt;&lt;/TextBlock&gt;
+          &lt;TextBlock Text="{Binding WatchedObjectHeight, 
+            ElementName=ContentRootListener, Converter={StaticResource PercentageConverter}, 
+            ConverterParameter=33}" 
+            FontSize="22"&gt;&lt;/TextBlock&gt;
+        &lt;/StackPanel&gt;
+      &lt;/StackPanel&gt;
+    &lt;/Grid&gt;
+  &lt;/Grid&gt;
+&lt;/Grid&gt;</pre>
+<ul>
+<li>The top grid has a SizeListenerBehavior. This enables me to bind to the ActualHeight and of the top grid as it changes by binding to WatchedObjectHeight of the SizeListenerBehavior. 
+<li>The height of the popup is set like by actually binding to said value. By using the converter with a parameter of 33 it will – when activated – always use 1/3rd of the screen – or 1/3rd of whatever element your SizeListenerBehavior is sitting on. 
+<li>By setting the UnfoldBehavior’s RenderTransformY to 1 and the Direction to Vertical the popup will open from the bottom up. This is not new, that was already in <a href="http://dotnetbyexample.blogspot.com/2013/08/a-behavior-to-animate-folding-in-and.html" target="_blank">the original article about UnfoldBehavior</a>.</li></ul>
+<p>I have included a small demo solution to show off this little trick. It uses my pre-release version of <a href="http://wpwinnl.codeplex.com/" target="_blank">WpWinNl</a> 2.0.x and a little <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a>, but you could use this just as easy from a non-MVVM app. But I still think the beauty of this all is that can be initiated from a viewmodel ;) </p>
+<p>In addition, although <a href="http://www.schaikweb.net/dotnetbyexample/PopupDemo.zip" target="_blank">the demo solution</a> only contains a Windows Phone app, this trick works just as well as on Windows Store apps, as both UnfoldBehavior and SizeListenerBehavior are already in the new WpWinNl NuGet package.</p>  

@@ -1,0 +1,22 @@
+---
+layout: post
+title: 'Reflection in WinRT: DeclaredProperties vs GetRuntimeProperties caveat'
+date: '2012-06-20T11:05:00.001+02:00'
+author: Joost van Schaik
+tags:
+- reflection
+- dotnetmag
+- Windows 8
+- WinRt
+- Win8nl
+modified_time: '2012-06-20T13:26:43.873+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4452619061859520429
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/06/reflection-in-winrt-declaredproperties.html
+---
+
+<p>I <em>suppose</em> this is part of some FM I did not R, but I would like to point it out in case some other sod wastes just as much time on it as me.</p> <p>I embarked upon a journey to port <a href="http://whydoidoit.com/silverlight-serializer/" target="_blank">SilverlightSerializer</a> and some behaviors to <a href="http://msdn.microsoft.com/en-us/library/windows/apps/br211377.aspx?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">WinRT</a>. All stuff is heavily making use of reflection. Now reflection has been hugely overhauled in WinRT, so I knew I was in for an interesting ride. Recently I was convinced I managed to do it, but it turned out I did not.</p> <p>There are apparently two ways to use reflection in RT. What I <em>did </em>use for reading all properties of an object, was:</p><pre>var properties = MyObject.GetType().GetTypeInfo().DeclaredProperties;</pre>
+<p>But it turns out this returns only the properties <em>declared in the class itself. </em>What it does <em>not</em> return, are the properties of possible <em>parent</em> classes!</p>
+<p>What I <em>should</em> have used, apparently, is:</p><pre>var allproperties = MyObject.GetType().GetRuntimeProperties();</pre>
+<p>When I feed a Grid into “MyObject”,&nbsp; “properties” hold 6 properties, while “allproperties” holds 51.</p>
+<p>I don’t know why this distinction is made, and I understand even less how come I missed this the first time. On my first meeting as an MVP, <a href="www.twitter.com/dvroegop" target="_blank">Dennis Vroegop</a>, after welcoming me to the club, already warned me that the MVP award did not automatically come with super powers. Boy, was he right. </p>
+<p><img src="https://encrypted-tbn0.google.com/images?q=tbn:ANd9GcTdJslM1X9mpMaTg1AQGVviBDJ0xe1TgjG5Adp9w3YUpfaBf3gq"></p>  

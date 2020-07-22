@@ -1,0 +1,54 @@
+---
+layout: post
+title: Passing event arguments to the WinRT EventToCommandBehavior
+date: '2012-11-20T18:00:00.001+01:00'
+author: Joost van Schaik
+tags:
+- MVVM
+- Windows 8
+- WinRt
+- XAML
+- behavior
+- Win8nl
+modified_time: '2012-11-20T21:58:41.172+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6538955592077262268
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/11/passing-eventargs-to-winrt.html
+---
+
+<p>This week my fellow MVP <a href="http://www.twitter.com/@scottisafool" target="_blank">Scott Lovegrove</a> contacted me and asked if and how he could pass the result of an event to my WinRT <a href="http://dotnetbyexample.blogspot.nl/2012/07/a-winrt-behavior-to-mimic-eventtocommand.html" target="_blank">EventToCommandBehavior</a> and/or <a href="http://dotnetbyexample.blogspot.nl/2012/11/a-winrt-behavior-to-mimic.html" target="_blank">EventToBoundCommandBehavior</a>. I replied this was currently not supported, but that would not be hard to make. He acknowledged that, and asked if he could mail some code. Since I am not very possessive of ‘my’ libraries, and am a lazy as any programmer should be, I responded with giving him developer access to <a href="http://win8nl.codeplex.com/" target="_blank">Win8nl</a>. He actually took up the challenge, and submitted the code. </p> <p>Both EventToCommandBehavior and EventToBoundCommandBehavior now sport an extra property:</p><pre>public bool PassEventArgsToCommand { get; set; }</pre>
+<p>If you set this property to true and don’t use the CommandParameter property, the method firing the command will actually pass the captured event to the model. How this works, is pretty simple to see in EventToBoundCommandBehavior:</p><pre>private void FireCommand(RoutedEventArgs routedEventArgs)
+{
+  if (Command != null &amp;&amp; Command.CanExecute(CommandParameter))
+  {
+<font color="#ff0000">    if (PassEventArgsToCommand &amp;&amp; CommandParameter == null)
+    {
+      Command.Execute(routedEventArgs);
+    }
+    else
+    {</font>
+      Command.Execute(CommandParameter);
+<font color="#ff0000">    }</font>
+  }
+}</pre>
+<p>Red shows the additions. Usage of course is pretty simple:</p><pre>&lt;TextBlock Text="TextBlock" FontSize="48"&gt;
+  &lt;WinRtBehaviors:Interaction.Behaviors&gt;
+    &lt;Behaviors:EventToBoundCommandBehavior Event="Tapped" 
+      Command="{Binding TestCommand}" 
+      <font color="#ff0000">PassEventArgsToCommand="true"</font>/&gt;
+  &lt;/WinRtBehaviors:Interaction.Behaviors&gt;
+&lt;/TextBlock&gt;</pre>
+<p>And then you have to define a command TestCommand like this in your model:</p><pre>public ICommand TestCommand
+{
+  get
+  {
+    return new RelayCommand&lt;TappedRoutedEventArgs&gt;(
+      (p) =&gt;
+        {
+           Debug.WriteLine(p.PointerDeviceType);
+        });
+  }
+}</pre>
+<p>This will write '”Mouse”, “Touch” or “Pen” in your output window, depending on what you use to tap. Of course this is not a very useful application of this technique, but it proves the point. If you don’t use PassEventArgsToCommand both behaviors will work as before.</p>
+<p>Now as an architect I am not too fond of this technique, because it introduces user-interface related objects into the view model – I get a bit restless when I see something like “using Windows.UI.Xaml.Input” on top of a view model class. Be careful when you use this. On the other hand, a holier-than-thou attitude ain’t gonna help getting <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Window 8</a> apps shipped and so if this will help people, I am more than fine with that.;-)</p>
+<p>Scott tells me this code is derived from <a href="http://www.twitter.com/lbugnion" target="_blank">Laurent Bugnion</a>’s original code – I did not check, but I am going to take his word for it. At the time of this writing it’s part of Win8nl 1.0.6 and already available as Nuget package. Now I only have the problem that not every line of code comes from the Netherlands, so maybe I should indeed rename this package to Win8eu ;-) </p>
+<p>As (almost) always, <a href="http://www.schaikweb.net/dotnetbyexample/EventArg.zip" target="_blank">a demo solution can be found here</a></p>  

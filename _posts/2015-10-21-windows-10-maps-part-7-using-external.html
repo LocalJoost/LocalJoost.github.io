@@ -1,0 +1,195 @@
+---
+layout: post
+title: Windows 10 maps part 7 - using external maps with TMS/WMS
+date: '2015-10-21T17:51:00.000+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- Mapping
+- Windows 10
+modified_time: '2018-08-01T10:50:49.681+02:00'
+thumbnail: https://lh3.googleusercontent.com/-NZcbH38kBwA/W2FxPsJwJVI/AAAAAAAAQBg/zWpivUj714YT9stkeSsu30nSuLvoBP9JQCHMYCw/s72-c/image_thumb%255B2%255D?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6515201776881474399
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/10/windows-10-maps-part-7-using-external.html
+---
+
+<p><span style="font-size: medium;">Intro</span><br>In this final episode of the <em>planned</em> series, posted on "Back to the Future" day, I will show you how to use external map sources and how to use them with the <a href="http://www.windows.com/" target="_blank">Windows</a> 10 maps control. Specifically I will show you how to use Tile Map Services (TMS) - way of distributing digital maps designed by the <a href="https://en.wikipedia.org/wiki/OSGeo">Open Source Geospatial Foundation</a> and popularized by Google Maps - and Web Map Services (WMS), and older, more complex protocol designed by the <a href="https://en.wikipedia.org/wiki/Open_Geospatial_Consortium">Open Geospatial Consortium</a> in 1999. <br>
+I am using TMS in a loosely defined way here - I am defining it as a REST-based system that retrieves pre-rendered tiles of maps using fixed zoom levels based on zoom level and location (try to say that without stuttering). A TMS basically is a take-it-or-leave-it approach - you get a map rendered as the maker saw fit, whereas WMS offers you the possibility to select layers and determine the order in which those layers are retrieved - and sometimes they even support custom styling. In addition, it allows for arbitrary image sizes, whereas TMS typically services 256x256 images. TMS typically comes from a file system containing a very large number of small files, whereas a WMS is typically served from a spatial database. Consequently, WMS, while being more versatile, usually is a lot slower. </p><p><br>
+<span style="font-size: medium;">So what is this all about?</span><br>The are a very large number of servers out there that offer you maps that you can use - OpenStreetmaps, Google, NOAA, but also our own Dutch Rijkswaterstaat - a government agency that maintains the Dutch main road and water transport infrastructure. You can search for public endpoints of those servers, and when you implement a little code to translate the requests of you Windows 10 map control into the right URLs, maps will show up.<br>
+The <a href="https://github.com/LocalJoost/Manipulation_Drawing" target="_blank">sample code</a> will show you how to use the following data:<br>
+</p><ul>
+<li>Google Maps  </li>
+<li>OpenStreetMaps (a non-profit organization that has insanely detailed maps) - I use it often when I go on hiking holidays in Germany or the like, as even the most obscure hiking trails are displayed in more detail than any tourist map you can buy.  </li>
+<li>Dutch Rijkswaterstaat maps  </li>
+<li>NOAA weather and cloud maps</li>
+</ul><p>
+<strong><span style="color: red;">Be sure to read up on the terms of services of the map providers.</span></strong> Not every one of those providers have unlimited bandwidth or CPU power to serve up the needs of your app, or they may require you to pay for that. OpenStreetMaps is a non-profit organization that does not like you to let their servers burn. Some, like Google, require you to use their API in stead of directly accessing the URLs where their data reside. <em>The sample code used in this project violates this TOS of Google, and is intended as an educational sample only</em>. I strongly advise you not to use this in production environments - and to be honest, the HERE maps data is so good in most of the cases there is little need for doing that.</p><p><br>
+<span style="font-size: medium;">Viewing the demos</span><br>Start the app, click "Initial location". You will see this. <br><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image.png"><img width="644" height="472" title="image" style="border-width: 0px; padding-top: 0px; padding-right: 0px; padding-left: 0px; display: inline; background-image: none;" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_thumb.png" border="0"></a><br>Now select "None" for Map style (the map will turn black), then select "OpenStreetMap" for Tile Map. The map will turn into as displayed below, and already shows some blue dotted hiking trails - even through the very neck of the woods where I live.<br>
+<a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_3.png"><img width="644" height="472" title="image" style="border-width: 0px; padding-top: 0px; padding-right: 0px; padding-left: 0px; display: inline; background-image: none;" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_thumb_3.png" border="0"></a><br>
+If you select Google Hybrid you will get the Google Satellite imagery with street labels on top of it. Once again, this is illegal, but it proves my point:<br>
+<a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_4.png"><img width="644" height="472" title="image" style="border-width: 0px; padding-top: 0px; padding-right: 0px; padding-left: 0px; display: inline; background-image: none;" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_thumb_4.png" border="0"></a><br>
+And why this might be useful... if you zoom all the way in and put the Google and Here imagery next to each other you will see that Google imagery in some places still has some more detail, although it's very outdated - my neighbor's house extension is not visible yet (it is on Here Maps) and I am now driving the 2nd car after the car that is still in front of my house - putting this back to the early days of 2009 at the very latest. <br>
+<a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_5.png"><img width="644" height="472" title="image" style="border-width: 0px; padding-top: 0px; padding-right: 0px; padding-left: 0px; display: inline; background-image: none;" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_thumb_5.png" border="0"></a><br>
+If you zoom out a little again, and select "RWS NWB" you will see the national road grid map from the Dutch Rijkswaterstaat, a simple line map for secondary roads, the major highway depicted as double red lines, with black dots showing the location of hectometer signs - the little signs that show you where you are on the roads, and that can be used to specify your location when your cars breaks down and you need to call for help. Amongst other things :)<br>
+<a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_6.png"><img width="644" height="472" title="image" style="border-width: 0px; padding-top: 0px; padding-right: 0px; padding-left: 0px; display: inline; background-image: none;" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_thumb_6.png" border="0"></a><br>
+Set style back to "Roads", and zoom out more or less the USA, the select NOAA Radar. This shows the rain radar of the USA, as observed by the NOAA<br><br><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_7.png"><img width="644" height="472" title="image" style="border-width: 0px; padding-top: 0px; padding-right: 0px; padding-left: 0px; display: inline; background-image: none;" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_thumb_7.png" border="0"></a><br>
+Looks like my friend <a href="http://twitter.com/winobs" target="_blank">Richard Hay</a> is in for some rain over in Jacksonville. Or maybe it is just past him ;). Anyhow, if you select "Visible Img" you will get some real-time (or as near as real time as possible) weather satellite imagery in the visible light.<br>
+<a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_8.png"><img width="644" height="472" title="image" style="border-width: 0px; padding-top: 0px; padding-right: 0px; padding-left: 0px; display: inline; background-image: none;" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_thumb_8.png" border="0"></a><br>
+Now <em>this</em> is what I call a cloud service&nbsp; ;)<br>
+Now believe it or not, but all those beautiful maps are created by these simple methods way down in MainPage.Xaml.cs<br>
+</p><pre style="font-size: 10px;">private void TileComboChanged(object sender, SelectionChangedEventArgs e)
+{
+  MyMap.TileSources.Clear();
+  var tileSource = TileCombo.SelectedItem as ITileSource;
+  if (tileSource != null)
+  {
+    MyMap.TileSources.Add(new MapTileSource(tileSource.TileSource));
+  }
+}
+
+private void InitTileComboBox()
+{
+  TileCombo.Items.Add("None");
+  TileCombo.Items.Add(new OpenStreetMapSource());
+  TileCombo.Items.Add(new GoogleMapSource("y", "Google Hybrid"));
+  TileCombo.Items.Add(new WmsTileSource("NOAA Radar",
+   "http://nowcoast.noaa.gov/arcgis/services/nowcoast/radar_meteo_imagery_nexrad_time/MapServer/WmsServer?", 
+    new[] { "1" }, "1.3.0", "CRS"));
+  TileCombo.Items.Add(new WmsTileSource("NOAA Visible Img",
+   "http://nowcoast.noaa.gov/arcgis/services/nowcoast/sat_meteo_imagery_goes_time/MapServer/WMSServer?", 
+   new[] { "9" }, "1.3.0", "CRS"));
+  TileCombo.Items.Add(new WmsTileSource("RWS NWB", 
+    "http://geodata.nationaalgeoregister.nl/nwbwegen/ows?service=WMS", 
+      new[] { "wegvakken", "hectopunten" }));
+  TileCombo.Items.Add(new WmsTileSource("RWS NWB 4326", 
+    "http://geodata.nationaalgeoregister.nl/nwbwegen/ows?service=WMS", 
+    new[] { "wegvakken", "hectopunten"},"1.3.0", "CRS", 4326));
+
+  TileCombo.SelectedIndex = 0;
+}</pre><p>
+And, of course, 'the supporting act' of some classes I wrote myself.</p><p>&nbsp;<br>
+<span style="font-size: medium;">Tile sources</span><br>Welcome to the wonderful world of tile maps. Our friends of the Maps develop team have created a small class hierarchy to serve up tile maps to a Windows app map. Add any child of MapTileSource to your map's TileSource collection and you have created a new map. It's as simple as that. There are three kinds of map tiles sources, as depicted in the diagram below:<br>
+<a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_11DF8/image.png"><img width="640" height="156" title="image" style="border-width: 0px; padding-top: 0px; padding-right: 0px; padding-left: 0px; display: inline; background-image: none;" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_11DF8/image_thumb.png" border="0"></a><br>
+</p><ul>
+<li>HttpMapTileDataSource is meant to serve up map tiles via an URI to the web and download them on the fly 
+</li>
+<li>LocalMapTileDataSource is meant to serve up map tiles via an URI to titles that are downloaded to local storage 
+</li>
+<li>CustomMapTileDataSource is meant to cover all other cases - it does not ask for a remote or a local URI to a map tile, but asks you to return a 256x256 bitmap and it's up to you to determine where it comes from or how it's created.</li>
+</ul>
+My samples use HttpMapTileDataSource only, but of course the other classes are very interesting too, specifically LocalMapTileDataSource, as it opens the possibility to download and use tiles from any map to your device and use it from there, thereby creating your own Here-Maps-like offline experience.<br>
+HttpMapTileDataSource has a UriRequested event. You will need to attach a listener to it with this signature:<br>
+<pre>void MapUriRequested(
+     HttpMapTileDataSource sender, 
+     MapTileUriRequestedEventArgs args);</pre>
+MapTileUriRequestedEventArgs has a Request property with four parameters:<br>
+<ul>
+<li>Request 
+</li>
+<li>X 
+</li>
+<li>Y 
+</li>
+<li>Zoomlevel</li>
+</ul>
+The last three are input, based upon which the event listener must calculate a Uri, which needs to be put in Request - the output property. How this works in practice can be seen in for instance the OpenStreetMapSource:<br>
+<pre style="font-size: 10px;">private readonly static string[] TilePathPrefixes = { "a", "b", "c" };
+
+protected override void MapUriRequested(HttpMapTileDataSource sender, MapTileUriRequestedEventArgs args)
+{
+  var deferral = args.Request.GetDeferral();
+  // TilePathPrefixes - load balancing + caching
+  args.Request.Uri = new Uri(
+    $"http://{TilePathPrefixes[args.Y % 3]}.tile.openstreetmap.org/{args.ZoomLevel}/{args.X}/{args.Y}.png");
+  deferral.Complete();
+}</pre>
+Where do you get this wisdom? You can be a GIS expert, or just look for these kinds of tricks on the internet, and mostly they can be found on the tile provider's site itself. Sufficient to say OpenStreetMaps has 3 servers, and then the X, Y and Zoomlevel are simply in the path and the filename. <br>
+The MapTileDataSource and it's children sport a weird oddity, though. The most logical approach would be to subclass HttpMapTileDataSource, right? This is possible, as they are not sealed. All is well, up until the moment you actually try to use such a child class in real life by adding it to the map TileSources collection and have the map display itself. Then you are greeted by<br>
+<strong>An exception of type 'System.Runtime.InteropServices.InvalidComObjectException' occurred in Manipulation_Drawing.exe but was not handled in user code</strong><br>
+<strong>WinRT information: The text associated with this error code could not be found.</strong><br>
+And good luck to you. Fortunately, where's a need, there's a workaround. I made a class <em>containing</em> a HttpMapTileDataSource, implementing an interface exposing that HttpMapTileDataSource. Meet BaseHttpTIleSource and it's friends.<br>
+<a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_11DF8/image_3.png"><img width="640" height="312" title="image" style="border-width: 0px; padding-top: 0px; padding-right: 0px; padding-left: 0px; display: inline; background-image: none;" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_11DF8/image_thumb_3.png" border="0"></a><br>
+ITileSource is pretty simple, as I alluded to:<br>
+<pre>interface ITileSource
+{
+  MapTileDataSource TileSource { get; }
+}
+</pre>
+It basically allows you to add YourTileSource.TileSource to the map's TileSource's collection without having aforesaid crash. BaseHttpTileSource is pretty simple, too.<br>
+<pre>public abstract class BaseHttpTileSource : ITileSource
+{
+  protected BaseHttpTileSource()
+  {
+    var t = new HttpMapTileDataSource();
+    t.UriRequested += MapUriRequested;
+    TileSource = t;
+  }
+
+  public MapTileDataSource TileSource { get; private set; }
+
+  protected abstract void MapUriRequested(HttpMapTileDataSource sender, 
+    MapTileUriRequestedEventArgs args);
+}</pre>
+It takes away most of the plumbing of using a HttpMapTileDataSource and the only thing you need to do is subclass this and override the MapUriRequested method. As shown for OpenStreetMaps, and there is also such an override for Google:<br>
+<pre style="font-size: 9px;">protected override void MapUriRequested(HttpMapTileDataSource sender, MapTileUriRequestedEventArgs args)
+{
+  var deferral = args.Request.GetDeferral();
+  args.Request.Uri = 
+    new Uri($"http://mt{(args.X%2)+(2*(args.Y%2))}.google.com/vt/lyrs={mapPrefix}&amp;z={args.ZoomLevel}&amp;x={args.X}&amp;y={args.Y}");
+  deferral.Complete();
+}</pre><p>
+Once again, this violates Google's TOS, <a href="http://dotnetbyexample.blogspot.com/2010/10/google-maps-for-windows-phone-7.html" target="_blank">but the trick is very old and I wrote first about it almost exactly five years ago</a>. I still wait for Google's lawyers to turn up on my doorstep, at which point I will gladly discuss the lack of a decent API for Windows apps which enables us to use the data in a <em>legitimate </em>way.</p><p>
+<span style="font-size: medium;">WMS maps</span><br>Web Map Services is a prime example of the age-old wisdom stating a camel is a horse designed by a committee - the committee in this case being the Open Geo Consortium. OGC is - or at least was in that time - a group op GIS professionals of academic origin and they have clearly tried to a design a protocol that catered for a wide variety of analytic needs - of course using XML, which was the hot rage in the days it was designed. What they did not do was taking into account banal things like consistency, ease of use, performance, and other things that are valued by mere mortals who just want to have a bloody map in their web page or app. And if you think this is bad, try to read the specifications for <em>vector</em> data (WFS or Web Feature Service), a format so convoluted, bloated, with so much versions, inconsistencies and complexities that it almost requires a PhD to get a basic understanding of how it works - let alone <em>use</em> it. WMS servers used to be slow, bandwidth and processing power gorging monsters. And this in the early 2000s, the year where most web access was served over 56k6 dial up lines, and a top of the line computer had a Pentium 4 processor. No wonder it never gained much use outside of the specialist realm.<br>
+But I digress. I wrote a small class that will serve as a WMS <em>client</em> for the limited scenarios that play nice with the Windows map control, which require little knowledge of the actual plumbing for using it. This class is called WmsTileSource, How it's used, you can see in InitTileComboBox, where I initialize four instances of it. To explain how you get to such parameters, I will need to explain a bit first. The next paragraph is me getting on my GIS hobby horse. If you do not care about that, at least read the two bullet points halfway and the first sentence of the paragraph below the Africa picture.</p><p><br>
+<span style="font-size: medium;">Projections (and coordinate systems)</span></p><p><img width="294" height="231" align="left" style="margin: 0px 8px 0px 0px; border: 0px currentcolor; border-image: none; float: left; display: inline; background-image: none;" alt="See the source image" src="https://ancient-code.com/wp-content/uploads/2017/12/Flat-Earth-illustration.jpg" border="0">This may come as a surprise, but the Earth is not flat, yet every map since the beginning of map making pretends it is. This has various, mostly historical reasons, the most notable being the fact it's much easier to roll up a flat map of the of Earth's pieces you are interested in (or put a lot of them in a book) and take those along for the trip, than to lug around a true representation of the Earth - which most likely would contain a lot of details on stuff you don't need, and too little of the stuff you do. Yes kids, people used to lug atlases around, books with maps. They have the added bonus of never running out of battery. </p><p><br>
+<br>
+<img width="294" height="369" align="left" style="margin: 0px 8px 0px 0px; border: 0px currentcolor; border-image: none; float: left; display: inline; background-image: none;" src="http://www.schaikweb.net/dotnetbyexample/projections.jpg" border="0">
+So a map needs (or needed) to be flat, which makes it necessary to put the outside of what is essentially a sphere on a flat surface. That cannot be done without some dire consequences. Peel an orange and try to make the outside a continuous flat surface - and you will understand what I mean.<br>
+This is where <em>projections</em> come into play. These are ways to fit the sphere's outside on a flat surface. There are literally thousands of projections in use, both for the whole planet and for parts of it - so much they are mostly designated by <em>numbers</em> - so called <a href="http://www.epsg.org/" target="_blank">EPSG</a> numbers - not by name. To the left I show only a few ways to project Earth. The most well-known version is the Mercator projection, shown top-left. It is also known as WGS84 or EPSG:4326 (that is the number I meant). There is also a variant of this, hated by professional cartographers everywhere, but it became instantly and overnight the most used projection worldwide as it is used by Google Maps. It is referred to as 'popular Mercator', initially had the tongue-in-cheek designation EPSG:900913 (900913 being 'Google in <a href="https://en.wikipedia.org/wiki/Leet" target="_blank">"leet speak"</a>), later officially adopted as EPSG:3857. <br>
+The point of this whole rambling paragraph is two-fold:<br>
+</p><ul>
+<li>The Windows 10 Maps control uses the EPSG:3857 projection. This means that only WMS servers that support delivering maps in EPSG:3857 / EPSG:900913 will correctly show data (that is, roads and stuff will appear on exactly the same places as your standard Here Maps data). EPSG:4326 will give 'mostly correct' results, provided you don't zoom out too much. <em>All other projection systems won't work at all</em>. At best they will show stuff in the wrong place, most likely it will appear to be wildly distorted as well. 
+</li>
+<li>The Popular Mercator projection comes with some severe consequences. One of them is that the further you go from the equator (move closer to the poles), the more stuff gets stretched. A whole generation now has grown up believing Greenland is about the size of Canada (the biggest country in the world bar Russia), and the northern American continent is about the size of Africa. Well, have a look at this map - and have a reality check, too. Cheers!</li>
+</ul><p>
+<a href="https://lh3.googleusercontent.com/-MNPZjElr0n0/W2FxOvnck8I/AAAAAAAAQBc/SK8TH9Q7OxIOsIJaRImJPRTVosfredVywCHMYCw/s1600-h/image%255B4%255D"><img width="650" height="706" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-NZcbH38kBwA/W2FxPsJwJVI/AAAAAAAAQBg/zWpivUj714YT9stkeSsu30nSuLvoBP9JQCHMYCw/image_thumb%255B2%255D?imgmax=800" border="0"></a><br>
+One minor detail: another thing Google made us do was using the WGS84 <em>coordinate system</em> (aka "lat/lon", standing for latitude and longitude) for a projection is was not intended to, because that is so convenient when using it in conjunction with satellite navigation. There are also a lot of ways to designate locations on Earth other than just latitude and longitude, but outside the GIS inner circle hardly anybody knows - and even less people care. There is a lesson to be learned: if you design too academically oriented standards, they will be wiped out or at least bastardized by market parties more interested in practical appliances than scientific correct approaches.</p><p><br>
+<span style="font-size: medium;">Finding the right parameters for the WmsTileSource</span><br>Enough theory (and rambling) - we will now get down to business and actually use the WmsTileSource. First, you will need to know where the WMS server you want to use is actually located. This can be quite a challenge, but some institutions are really helpful. If you enter "noaa wms server" in Bing or Google and search a little around you will quite readily get to <a href="http://nowcoast.noaa.gov/help/#!section=mapservices" target="_blank">this site</a> that shows you a whole range of interesting servers.<br>
+<a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_9.png"><img width="644" height="366" title="image" style="border-width: 0px; padding-top: 0px; padding-right: 0px; padding-left: 0px; display: inline; background-image: none;" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_thumb_9.png" border="0"></a><br>
+The important thing to know is that a WMS server can provide you with metadata about what it can and cannot do. These are called "capabilities" and you can get them but getting adding "?service=WMS&amp;request=getcapabilities to the WMS URL. NOAA already has provided those links in their page - how thoughtful of them. You can click those links best using *cough*Google Chrome*cough* as that readily displays XML rather than trying to download it. So I clicked the third link (for "Recent GOES Weather Satellite Imagery", not visible in the image above) and then you get a rather depressingly long and hard to read XML potpourri. But don't despair, I will learn you a few tricks to quickly distill the things you need. We will need to find out:<br>
+</p><ol>
+<li>Does this thing support ESPG:3857, EPSG:900913 or EPSG:4326? 
+</li>
+<li>What coordinate system tag is it using? 
+</li>
+<li>What layers are available? 
+</li>
+<li>What version of WMS is it running?</li>
+</ol><p>
+<span style="font-size: small;"><font size="3">Find the EPSG</font></span><br>This one is easy. Just search for the number 3857, if you don't find that try 900913, then 4326. If you don't find anything, you're out of luck and the server is unusable. But good old NOAA does not fail us<br><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_10.png"><img width="413" height="169" title="image" style="border-width: 0px; padding-top: 0px; padding-right: 0px; padding-left: 0px; display: inline; background-image: none;" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_thumb_10.png" border="0"></a><br>So yes, we can use this server, it supports even the most optimal projection (and 4326 as well, but why use good if you can get perfect).</p><p>
+<span style="font-size: small;"><font size="3">Find the coordinate tag</font></span><br>
+Over time the WMS standard has 'evolved'. In ye olden days the coordinate system was designated using the SRS tag, now it's mostly using the CRS tag. I think - but I am not sure - in WMS version 1.1.1 it was SRS, in 1.3.0 it's CRS. Anyway - you can quite easily find this by first searching for CRS, and if you cannot find that, SRS. See the image above - this one is clearly using CRS. </p><p>
+<br>
+<span style="font-size: small;"><font size="3">Find available layers</font></span></p><p><span style="font-size: small;"></span>Guess what - you search for the text "Layer". Inside that Layer you will find a Title describing what it is and a Name that you will need to refer to it. NOAA have made this a bit complicated, but the important thing is to hunt for the Layer/Name. <br>
+<a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_11.png"><img width="493" height="457" title="image" style="border-width: 0px; margin: 0px 8px 0px 0px; padding-top: 0px; padding-right: 0px; padding-left: 0px; display: inline; background-image: none;" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-7---using-external-_F789/image_thumb_11.png" border="0"></a><br>
+So for Visible Imagery you will need a layer with the name "9". Usually a more descriptive name is used, but whatever.</p><p><br>
+<span style="font-size: small;"><font size="3">Find the WMS version</font> </span></p><p><span style="font-size: small;"></span>Sometimes you can get this out of the URL, but if you cannot - well, you guessed it. Find the word "version" and that will give you give you most likely two possible outcomes: 1.3.0 or 1.1.1</p><p><br>
+<span style="font-size: small;"><font size="3">Putting it all together</font></span><br>So know we have:<br>
+</p><ul>
+<li>EPSG = 3857 
+</li>
+<li>Coordinate system tag = "CRS" 
+</li>
+<li>Layer = "9" 
+</li>
+<li>WMS version is "1.3.0"</li>
+</ul>
+This will allow us to construct a WMS layer like this:<br>
+<pre style="font-size: 10px;">new WmsTileSource("NOAA Visible Img",
+"http://nowcoast.noaa.gov/arcgis/services/nowcoast/sat_meteo_imagery_goes_time/MapServer/WMSServer?", 
+ new[] { "9" }, "1.3.0", "CRS"));</pre><p>
+Notice that the layers are actually constructed as an <em>array</em>, as you can request for multiple layers on top of each other. This only makes sense when the layers are partially transparent, and visible imagery is not - so in this case it doesn't make sense. But if you want to use radar rain images on top of cloud data (see code inside InitTileComboBox) that makes perfect sense. Be aware that layers a drawn in order of appearance, so the <em>last</em> layer in the array will appear <em>on top.</em><br>
+Also notice I did not provide any data for the EPSG. That is because that's the last parameter, and it's default value is 3857.</p><p><br>
+<span style="font-size: medium;">One more thing</span><br>In all cases - be it WMS to TMS - the device you are using goes out to the web to get tiles. That is why a HttpMapTileDataSource has an "AllowCaching" property, that is default set to true. So even if you don't download map tiles to your device, it still caches them - a nice feature for both your users and the map providers.</p><p><br>
+<span style="font-size: medium;">Conclusion</span><br>I have shown you the amazing versatility of the Windows Maps control in nearly all aspects in this series, and hope to have inspired you to look beyond the data that is offered by default with this last post. The world of geo data is a fascinating one, it is a shame so much is locked up behind the complexities of confusing, convoluted and/or outdated protocols. <br>
+Enjoy mapping! And let me know if you have found a cool map server to use in your app.</p>

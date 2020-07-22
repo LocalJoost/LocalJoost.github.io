@@ -1,0 +1,350 @@
+---
+layout: post
+title: Windows Phone 8 navigation part 3–assembling the MVVMLight app
+date: '2013-05-10T13:34:00.000+02:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- Mapping
+- wpnl
+- wpdev
+- dotnetmag
+- MVVM
+- MVVM Light
+modified_time: '2013-05-10T13:43:39.020+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2494881555407877252
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/05/windows-phone-8-navigation-part.html
+---
+
+<p><font size="4">Last time on, on Dotnetbyexample…</font>  <p>In <a href="http://dotnetbyexample.blogspot.nl/2013/04/windows-phone-8-navigation-part.html">the first post</a> I described how to write the business logic to find a location by searching for an address by text, and in the <a href="http://dotnetbyexample.blogspot.nl/2013/04/windows-phone-8-navigation-part_29.html">second post</a> I described how to do some actual routing – still, only business logic and viewmodels. And we kept in mind all the results should be tombstonable, and how to make sure this all worked by using simple unit/integration tests.  <p>Today, it’s time for the actual app. Bear in mind this post will actually refer to a lot of earlier other posts – from even outside this series. In this post I am also going to show you that working with you designer sometimes means you need to make little tweaks to your viewmodels to make it work the way you want, or make life easier on the designer. Remember, you are the technician, the person who needs to make it finally work.  <p><font size="4">GUI and interaction design</font>  <p>So, after conferring with the designer we have agreed the app should work like this: </p> <div id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:d0192090-9236-4a65-be30-489e14286cfe" class="wlWriterEditableSmartContent" style="float: none; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px"><div><object width="448" height="277"><param name="movie" value="http://www.youtube.com/v/Yjcjg6_DpFc?hl=en&amp;hd=1"></param><embed src="http://www.youtube.com/v/Yjcjg6_DpFc?hl=en&amp;hd=1" type="application/x-shockwave-flash" width="448" height="277"></embed></object></div><div style="width:448px;clear:both;font-size:.8em">Windows Phone 8 navigate by MVVMLight</div></div> <p>The route is displayed as a line, every maneuver as a star, and when you tap that star it should show a panel showing the maneuver description. For interested parties – this is a car route I could take to my home to my work at <a href="http://www.vicrea.nl" target="_blank">Vicrea</a> ;-) <p>Well – the moving panels are easy to solve <a href="http://dotnetbyexample.blogspot.nl/2013/04/viewmodel-driven-multi-state-animations.html" target="_blank">with some View States and DataTriggers – I’ve been down that road before</a>. Showing a <a href="http://dotnetbyexample.blogspot.nl/2012/10/data-binding-shapes-to-new-windows.html" target="_blank">line and points on a map from the view model – been there done that</a>, wrote behaviors for that and those are snugly in the <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library</a> which is, not quite coincidental, part of this solution already.  <p>So, we need to do the following:&nbsp; <ul> <li>Define the app user interface, that is: </li> <ul> <li>Two panels enabling the user to input text and select a route, e.g. a user interface for both the GeocodeViewModels in RoutingViewmodel. We’ll make a user control from that  <li>A panel with From/To info making showing the address from an to, and making it possible to let the From and To panel into view. This will be a user control as well  <li>A button firing off the RoutingViewmodel’s DoRoutingCommand  <li>A panel that’s shown as the user taps a maneuver. This, too, will be a user control.  <li>A Map </li></ul> <li>A MainViewModel that’s acting as a kind of locator and a serialization root point, like I always do.  <li>Something to handle the view state. </li></ul> <p><font size="4">Adding ViewState management</font></p> <p><a href="http://dotnetbyexample.blogspot.nl/2013/04/viewmodel-driven-multi-state-animations.html" target="_blank">Just like I did before in this post</a>, I added a DisplayState enumeration in de NavigationDemo.Logic project, like this:</p><pre>namespace NavigationDemo.Logic.States
+{
+  public enum DisplayState
+  {
+    Normal = 0,
+    SearchFrom = 1,
+    SearchTo = 2,
+    ShowManeuver = 3
+  }
+}</pre>one state for every panel, and a “Normal” state for every other panel. And then I decided to take the easy way out and add the state control to the RoutingViewmodel, basically to make data binding easier. Of course I could have made a separate view model for this, but what the heck, it’s only a few lines of code anyway: <pre>[DoNotSerialize]
+public ICommand DisplayPopupCommand
+{
+  get
+  {
+    return new RelayCommand&lt;string&gt;(
+        p =&gt;
+        {
+          DisplayState = (DisplayState)Enum.Parse(typeof(DisplayState), p);
+        });
+  }
+}
+
+private DisplayState displayState;
+public DisplayState DisplayState
+{
+  get { return displayState; }
+  set
+  {
+    if (displayState != value)
+    {
+      displayState = value;
+      RaisePropertyChanged(() =&gt; DisplayState);
+    }
+  }
+}    
+</pre>
+<p>It makes life easier on the designer, he does not have mess around with data context so much. The property is the actual storage for the DisplayState, and the command sets the display state to it's parameter. All described before. The final piece is a little adaption in the SelectedManeuver property, there we need to add in the setter: </p><pre>DisplayState = SelectedManeuver != null ? DisplayState.ShowManeuver : DisplayState.Normal;</pre>directly behind the RaisePropertyChanged. This will have the panel showed automatically when a non-null value is detected after the setter has been accessed.&nbsp; <p><font size="4"><a href="http://www.schaikweb.net/dotnetbyexample/Windows-Phone-8-navigation-part-3assembl_D878/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/Windows-Phone-8-navigation-part-3assembl_D878/image_thumb.png" width="244" height="114"></a>GeocodeViewModel ui</font></p>
+<p>I tend to put user controls into a separate folder UserControls (never been one for original naming conventions anyway). The design of the GeocodeControl looks like this:</p>
+<p>And I’ve put it in XAML like this:</p><pre style="font-size: 7pt">&lt;UserControl.Resources&gt;
+  &lt;DataTemplate x:Key="AddressTemplate"&gt;
+    &lt;Grid&gt;
+      &lt;TextBlock HorizontalAlignment="Left" TextWrapping="Wrap" Text="{Binding Address}"<br>       VerticalAlignment="Top"/&gt;
+    &lt;/Grid&gt;
+  &lt;/DataTemplate&gt;
+&lt;/UserControl.Resources&gt;
+
+&lt;Grid x:Name="LayoutRoot" Background="{StaticResource PhoneChromeBrush}"&gt;
+  &lt;Grid Margin="12,0" &gt;
+    &lt;!-- Definitions omitted --&gt;
+
+    &lt;Button Grid.Column="2"  Style="{StaticResource <font color="#ff0000"><u>RoundButton</u></font>}" 
+        Command="{Binding SearchLocationCommand, Mode=OneWay}"
+        VerticalAlignment="Bottom" HorizontalAlignment="Left" Height="72" Width="72"<br>        Margin="0,0,-5,0" &gt;
+      &lt;Rectangle Fill="{StaticResource PhoneForegroundBrush}" Width="44" Height="44" &gt;
+        &lt;Rectangle.OpacityMask&gt;
+          &lt;ImageBrush ImageSource="<font color="#ff0000"><u>/images/feature.search.png</u></font>" Stretch="Fill"/&gt;
+        &lt;/Rectangle.OpacityMask&gt;
+      &lt;/Rectangle&gt;
+    &lt;/Button&gt;
+    &lt;TextBlock TextWrapping="Wrap" Text="Search" VerticalAlignment="Center" <br>               Height="27" Margin="0,23,0,22" /&gt;
+    &lt;TextBlock TextWrapping="Wrap" Text="Found" Grid.Row="1" <br>       VerticalAlignment="Center" Height="27"/&gt;
+    &lt;TextBox Grid.Column="1" TextWrapping="NoWrap" <br>        Text="{Binding SearchText, Mode=TwoWay}"&gt;
+      &lt;i:Interaction.Behaviors&gt;
+        &lt;Behaviors:TextBoxChangeModelUpdateBehavior/&gt;
+      &lt;/i:Interaction.Behaviors&gt;
+    &lt;/TextBox&gt;
+    &lt;ListBox Grid.Column="1" Grid.Row="1" Margin="12" ItemsSource="{Binding MapLocations}" 
+      SelectedItem="{Binding SelectedLocation,Mode=TwoWay}" 
+      ItemTemplate="{StaticResource AddressTemplate}"/&gt;
+    &lt;Button Content="Done" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" 
+       Margin="0,23,0,22" Height="71" Command="{Binding <font color="#ff0000"><u>DoneCommand</u></font>}"/&gt;     
+  &lt;/Grid&gt;
+&lt;/Grid&gt;
+</pre>
+<p>There will be two instances of this user control – one to determine the “From” address, and one for the “”To” address.</p>
+<p>There are some things to note here, <font color="#ff0000"><u>all underlined in red</u></font>:</p>
+<ul>
+<li>I am using a RoundButton style to get a round button, to show an standard image feature_search.png. I pulled this ages ago from <a href="http://blogs.msdn.com/b/priozersk/archive/2010/08/13/creating-round-button-for-wp7-part-1.aspx" target="_blank">this post</a> by Alex Yakhnin if I am not mistaken. 
+<li>There is no data context set, therefore, the data context – a GeocodeViewModel – should be set in the parent element. No problem. But the DoneCommand, which should dismiss the panel, is therefore also in the GeocodeViewModel, and there is no code for that. Worse, the actual state control logic is in a totally different view model – in this case the RoutingViewmodel. Two view models, having no real knowledge of each other, yet needing to get some data across – that spells m-e-s-s-e-n-g-e-r.</li></ul>
+<p><font size="4">Adding some Messenger magic</font></p>
+<p>We define a simple message “DoneMessage” that, when received by the RoutingViewmodel (that also keeps the view state) will dismiss all popups. It’s pretty easy to implement:</p><pre>namespace NavigationDemo.Logic.Messages
+{
+  public class DoneMessage{ }
+}</pre>
+<p>And in the RoutingViewmodel, in the constructor, just one line:</p><pre>Messenger.Default.Register&lt;DoneMessage&gt;(this, <br>    msg =&gt; DisplayState = DisplayState.Normal);</pre>
+<p>Well, okay, one line split in two ;). But anyway, this allows to add a DoneCommand in GeocodeViewModel simply like this: </p><pre>[DoNotSerialize]
+public ICommand DoneCommand
+{
+  get
+  {
+    return new RelayCommand(() =&gt; Messenger.Default.Send(new DoneMessage()));
+  }
+}</pre>
+<p>And boom – executing the DoneCommand in RoutingViewmodel will reset the DisplayState to Normal, dismissing all popups. That is, as soon as we have implemented the DataTriggers and the ViewStates ;-)</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Windows-Phone-8-navigation-part-3assembl_D878/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/Windows-Phone-8-navigation-part-3assembl_D878/image_thumb_3.png" width="244" height="87"></a><font size="4">LocationPanel</font></p>
+<p>This is the thing used to scroll the GeocodeControls into view, looking like this</p><pre style="font-size: 7pt">&lt;Grid Height="144" VerticalAlignment="Top" Background="#7F000000"&gt;
+  &lt;Grid Margin="12,0"&gt;
+    &lt;Grid &gt;
+      &lt;!-- Definitions omitted --&gt;
+      &lt;TextBlock TextWrapping="Wrap" Text="From" VerticalAlignment="Top"<br>         Margin="0,12,0,0" Height="27"  /&gt;
+      &lt;TextBlock TextWrapping="Wrap" Text="To" Grid.Row="1" VerticalAlignment="Top"<br>         Margin="0,12,0,0" Height="27"/&gt;
+      
+      &lt;TextBlock TextWrapping="Wrap" <font color="#ff0000"><u>Text="{Binding FromViewModel.SelectedLocation.Address</u></font>, 
+        Mode=TwoWay}" Grid.Column="1" VerticalAlignment="Top" Margin="0,12,0,0" /&gt;
+      &lt;TextBlock  TextWrapping="Wrap" <u><font color="#ff0000">Text="{Binding ToViewModel.SelectedLocation.Address</font></u>, 
+        Mode=TwoWay}" Grid.Row="1" Grid.Column="1" VerticalAlignment="Top" Margin="0,12,0,0"  /&gt;
+        
+      &lt;Button Grid.Column="2"  Style="{StaticResource RoundButton}" 
+          <font color="#ff0000"><u>Command="{Binding DisplayPopupCommand, Mode=OneWay}" CommandParameter="SearchFrom"</u></font>
+          VerticalAlignment="Center" HorizontalAlignment="Left" Height="72" <br>          Width="72" Margin="0,0,-10,0" &gt;
+        &lt;!-- Rounded button stuff omitted --&gt;
+      &lt;/Button&gt;
+      &lt;Button Grid.Column="2"  Grid.Row="1" Style="{StaticResource RoundButton}" 
+          <font color="#ff0000"><u>Command="{Binding DisplayPopupCommand, Mode=OneWay}" CommandParameter="SearchTo"</u></font>
+          VerticalAlignment="Center" HorizontalAlignment="Left" Height="72" Width="72"<br>           Margin="0,0,-10,0"&gt;
+        &lt;!-- Rounded button stuff omitted --&gt;
+      &lt;/Button&gt;
+    &lt;/Grid&gt;
+  &lt;/Grid&gt;
+&lt;/Grid&gt;
+</pre>
+<p>for the sake of brevity I cut some things out of the XAML. Most interesting to note here, once again <font color="#ff0000"><u>red and underlined</u></font>:</p>
+<ul>
+<li>The 3nd and the 4th TextBlock show the Address of the Selected location of the From and the To GeocodeViewModel 
+<li>The buttons both call the same command, but with a parameter – this will determine which popup appears. Or actually, the viewstate which will be selected, but that amounts to the same</li></ul>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Windows-Phone-8-navigation-part-3assembl_D878/image_4.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; float: right; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/Windows-Phone-8-navigation-part-3assembl_D878/image_thumb_4.png" width="194" height="128"></a><font size="4">ManeuverPopup</font></p>
+<p>This is the popup that appears from the side, as the user has tapped on a start. </p>
+<p>It’s a pretty simple piece, both how it looks and in XAML:</p><pre style="font-size: 7pt">&lt;Grid x:Name="LayoutRoot" Background="{StaticResource PhoneChromeBrush}" Opacity="0.9"&gt;
+  &lt;Grid Margin="12,0" &gt;
+    &lt;Grid.RowDefinitions&gt;
+      &lt;RowDefinition Height="*"/&gt;
+      &lt;RowDefinition Height="76"/&gt;
+    &lt;/Grid.RowDefinitions&gt;
+    &lt;Grid.ColumnDefinitions&gt;
+    &lt;/Grid.ColumnDefinitions&gt;
+    &lt;TextBlock Grid.Row="0" TextWrapping="Wrap" Text="{Binding Description}" 
+      HorizontalAlignment="Center"/&gt;
+    &lt;Button Content="Close" Grid.Row="1" VerticalAlignment="Center"     
+      Height="71" Width="313" Command="{<font color="#ff0000">Binding DoneCommand</font>}" /&gt;
+  &lt;/Grid&gt;
+&lt;/Grid&gt;</pre>
+<p>With only one thing really to note – this popup needs to be able to be dismissed to – so we can implement the exact same DoneCommand as in GeocodeViewModel and put it into ManeuverViewModel. Copy – paste – done. Of course you can also make a base class for both viewmodels and making both GeocodeViewModel ManeuverViewModel child classes of it. This won’t save you much code in this case though.</p>
+<p><font size="4">MainViewModel</font></p>
+<p>This is kinda not very interesting – <a href="http://dotnetbyexample.blogspot.nl/2011/01/tombstoning-mvvmlight-viewmodels-with.html" target="_blank">see for an explanation on usage this post</a>, that’s quite old already. MainViewModel is the root for all view model, used as a starting point for data binding and tomb stoning But this is what we are going to use a binding root. How the initialization and tombstoning from App.xaml.cs is working is described in the same post, some I am not going to repeat that. This particular MainViewModel looks like this:</p><pre>using GalaSoft.MvvmLight;
+using NavigationDemo.Logic.Models;
+
+namespace NavigationDemo.Logic.ViewModels
+{
+  public class MainViewModel : ViewModelBase
+  {
+    public NavigationModel Model { get; set; }
+
+    public MainViewModel()
+    {
+    }
+
+    public MainViewModel(NavigationModel model)
+    {
+      Model = model;
+    }
+
+    private RoutingViewmodel routingViewModel;
+    public RoutingViewmodel RoutingViewModel
+    {
+      get
+      {
+        if (routingViewModel == null)
+        {
+          routingViewModel = new RoutingViewmodel(Model);
+        }
+        return routingViewModel;
+      }
+      set
+      {
+        if (routingViewModel != value)
+        {
+          routingViewModel = value;
+          RaisePropertyChanged(() =&gt; RoutingViewModel);
+        }
+      }
+    }
+
+    private static MainViewModel instance;
+    public static MainViewModel Instance
+    {
+      get
+      {
+        return instance;
+      }
+      set { instance = value; }
+    }
+
+    public static MainViewModel CreateNew()
+    {
+      if (instance == null)
+      {
+        instance = new MainViewModel(new NavigationModel());
+      }
+      return instance;
+    }
+  }
+}</pre>
+<p>We define it as a data source in App.Xaml</p><pre style="font-size: 7pt">&lt;ViewModels:MainViewModel x:Key="MainViewModelDataSource"/&gt;</pre>Which requires the following definition in your App.xaml header: <pre style="font-size: 7pt">xmlns:ViewModels="clr-namespace:NavigationDemo.Logic.ViewModels;assembly=NavigationDemo.Logic"</pre>
+<p><font size="4">MainPage.xaml – the main gui</font></p>
+<p>Initially, this has four major parts:</p>
+<ul>
+<li>The header 
+<li>The Map 
+<li>The three routing panels (2x GeocodeControl + 1x&nbsp; LocationPanel) 
+<li>The ManeuverPopup 
+<li>The search button.</li></ul>
+<p>Now the header is simple enough:</p><pre style="font-size: 7pt">&lt;Grid x:Name="LayoutRoot" Background="Transparent" 
+  <font color="#ff0000"><u>DataContext="{Binding Instance, Source={StaticResource MainViewModelDataSource}}"</u></font>&gt;
+  &lt;Grid.RowDefinitions&gt;
+    &lt;RowDefinition Height="Auto"/&gt;
+    &lt;RowDefinition Height="*"/&gt;
+  &lt;/Grid.RowDefinitions&gt;
+
+  &lt;StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,17,0,28"&gt;
+    &lt;TextBlock Text="NAVIGATE BY MVVMLIGHT" 
+      Style="{StaticResource PhoneTextNormalStyle}" Margin="12,0"/&gt;
+  &lt;/StackPanel&gt;</pre>
+<p>The only more or less interesting part is the data binding. Then comes the map. This uses my <a href="http://dotnetbyexample.blogspot.nl/2012/10/data-binding-shapes-to-new-windows.html" target="_blank">MapShapeDrawBehavior</a> to bind the shapes to map:</p><pre style="font-size: 7pt">&lt;Grid x:Name="ContentPanel" Grid.Row="1" Margin="12,0,12,0" 
+   <font color="#ff0000"><u>DataContext="{Binding RoutingViewModel}"</u></font>&gt;
+  &lt;maps:Map Wp8nl_MapBinding:<font color="#ff0000"><u>MapBindingHelpers.MapArea</u></font>="{Binding ViewArea}"
+              <u><font color="#ff0000">Center</font></u>="{Binding MapCenter, Mode=TwoWay}"
+              <font color="#ff0000"><u>ZoomLevel</u></font>="{Binding ZoomLevel, Mode=TwoWay}"&gt;
+    &lt;i:Interaction.Behaviors&gt;
+      &lt;MapBinding:MapShapeDrawBehavior LayerName="Route" ItemsSource="{<font color="#ff0000"><u>Binding RouteCoordinates</u></font>}" 
+        PathPropertyName="Geometry"&gt;
+        &lt;MapBinding:MapShapeDrawBehavior.ShapeDrawer&gt;
+          &lt;MapBinding:<font color="#ff0000"><u>MapPolylineDrawer Color="Green"</u></font> Width="10"/&gt;
+        &lt;/MapBinding:MapShapeDrawBehavior.ShapeDrawer&gt;
+      &lt;/MapBinding:MapShapeDrawBehavior&gt;
+      &lt;MapBinding:MapShapeDrawBehavior LayerName="Maneuvers" ItemsSource="{<u><font color="#ff0000">Binding Maneuvers</font></u>}" 
+        PathPropertyName="Location"&gt;
+        &lt;MapBinding:MapShapeDrawBehavior.ShapeDrawer&gt;
+          &lt;MapBinding:<font color="#ff0000"><u>MapStarDrawer Color="Red"</u></font> Arms="8" InnerRadius="25" OuterRadius="50"/&gt;
+        &lt;/MapBinding:MapShapeDrawBehavior.ShapeDrawer&gt;
+        &lt;MapBinding:MapShapeDrawBehavior.EventToCommandMappers&gt;
+          &lt;MapBinding:EventToCommandMapper EventName="Tap" CommandName="<font color="#ff0000"><u>SelectCommand</u></font>"/&gt;
+        &lt;/MapBinding:MapShapeDrawBehavior.EventToCommandMappers&gt;
+      &lt;/MapBinding:MapShapeDrawBehavior&gt;
+  &lt;/maps:Map&gt;</pre>
+<p>Things of notice here: </p>
+<ul>
+<li>The grid where the map is in (and incidentally, almost the whole user interface, has the RoutingViewModel as it’s data context. 
+<li>Map view area is not bindable so that’s bound using a simple attached dependency property, I will include this in the coming version for the <a href="http://wp7nl.codeplex.com/" target="_blank"><a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a></a> but skip it for now. Center and ZoomLevel are simple direct property bindings 
+<li>The actual route is a green line, bound to RouteCoordinates. TheMapShapeDrawBehavior actually expects a list of objects, so we <em>gave</em> it a list, remember from the previous post? 
+<li>The Maneuvers are display as red stars, by binding a MapShapeDrawBehavior to the Maneuvers list. If one is tapped, the SelectCommand on the ManeuverViewModel is fired, causing the the selected maneuver to be sent over the Messenger</li></ul>
+<p>Next, are the three panels:</p><pre style="font-size: 7pt">&lt;UserControls:LocationsPanel VerticalAlignment="Top"/&gt;
+&lt;UserControls:GeocodeControl <font color="#ff0000"><u>x:Name="GeocodeFrom"</u></font> VerticalAlignment="Top" 
+        RenderTransformOrigin="0.5,0.5" 
+        <u><font color="#ff0000">DataContext="{Binding FromViewModel}</font></u>"&gt;
+  &lt;UserControls:GeocodeControl.RenderTransform&gt;
+    &lt;CompositeTransform TranslateY="-326"/&gt;
+  &lt;/UserControls:GeocodeControl.RenderTransform&gt;
+&lt;/UserControls:GeocodeControl&gt;
+&lt;UserControls:GeocodeControl <u><font color="#ff0000">x:Name="GeocodeTo"</font></u> VerticalAlignment="Top" 
+       RenderTransformOrigin="0.5,0.5"
+       <font color="#ff0000"><u>DataContext="{Binding ToViewModel}</u></font>"&gt;
+  &lt;UserControls:GeocodeControl.RenderTransform&gt;
+    &lt;CompositeTransform TranslateY="-326"/&gt;
+  &lt;/UserControls:GeocodeControl.RenderTransform&gt;
+&lt;/UserControls:GeocodeControl&gt;
+&lt;UserControls:ManeuverPopup <font color="#ff0000"><u>x:Name="maneuverPopup"</u></font> VerticalAlignment="Bottom" 
+     Height="151" RenderTransformOrigin="0.5,0.5" Margin="0,0,0,72"
+     <font color="#ff0000"><u>DataContext="{Binding SelectedManeuver}</u></font>"&gt;
+  &lt;UserControls:ManeuverPopup.RenderTransform&gt;
+    &lt;CompositeTransform TranslateX="470"/&gt;
+  &lt;/UserControls:ManeuverPopup.RenderTransform&gt;
+&lt;/UserControls:ManeuverPopup&gt;</pre>
+<p>Actually rather straightforward. From panel binds to FromViewModel, To panel to ToViewModel, and the maneuverPopup to SelectedManeuver. </p>
+<p>The last part ain’t rocket sciece: just a simple BindableApplicationBar with one button executing the actual routing command:</p><pre style="font-size: 7pt">&lt;phone7Fx:BindableApplicationBar BarOpacity="0.9" &gt;
+  &lt;phone7Fx:BindableApplicationBarIconButton Command="{Binding <font color="#ff0000"><u>RoutingViewModel.DoRoutingCommand</u></font>}"
+                                             IconUri="/images/feature.search.png"
+                                             Text="Route" /&gt;
+&lt;/phone7Fx:BindableApplicationBar&gt;
+</pre>
+<p>The only thing to notice is that since it’s sitting outside the content panel, in the main grid, it’s data content is het MainViewModel to I have to prepend the RoutingViewModel again.</p>
+<p><font size="4">DataTrigger Animation Magic</font></p>
+<p>I am going to keep this simple: if you want to know how to create this, I suggest you read my article on <a href="http://dotnetbyexample.blogspot.nl/2013/04/viewmodel-driven-multi-state-animations.html">ViewModel driven multi-state animations using DataTriggers and Blend on Windows Phone</a>. I have created the following visual states:</p><pre style="font-size: 7pt">&lt;VisualStateManager.CustomVisualStateManager&gt;
+  &lt;ei:ExtendedVisualStateManager/&gt;
+&lt;/VisualStateManager.CustomVisualStateManager&gt;
+&lt;VisualStateManager.VisualStateGroups&gt;
+  &lt;VisualState x:Name="<font color="#ff0000"><u>Normal</u></font>"/&gt;
+  &lt;VisualStateGroup x:Name="<font color="#ff0000"><u>Search</u></font>"&gt;
+    &lt;VisualStateGroup.Transitions&gt;
+      &lt;VisualTransition GeneratedDuration="0:0:0.5"/&gt;
+    &lt;/VisualStateGroup.Transitions&gt;
+    &lt;VisualState x:Name="SearchFrom"&gt;
+      &lt;Storyboard&gt;
+        &lt;DoubleAnimation To="0" 
+          Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" 
+          Storyboard.TargetName="<font color="#ff0000"><u>GeocodeFrom</u></font>"/&gt;
+      &lt;/Storyboard&gt;
+    &lt;/VisualState&gt;
+    &lt;VisualState x:Name="<font color="#ff0000"><u>SearchTo</u></font>"&gt;
+      &lt;Storyboard&gt;
+        &lt;DoubleAnimation To="0" 
+          Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" 
+          Storyboard.TargetName="<font style="background-color: #ff0000" color="#ffc000"></font><u><font color="#ff0000">GeocodeTo</font><font style="background-color: #ff0000" color="#ffc000"></font></u>"/&gt;
+      &lt;/Storyboard&gt;
+    &lt;/VisualState&gt;
+     &lt;VisualState x:Name="<font style="background-color: #ff0000"></font><u><font color="#ff0000">ShowManeuver</font><font style="background-color: #ff0000"></font></u>"&gt;
+      &lt;Storyboard&gt;
+        &lt;DoubleAnimation Duration="0" To="0" 
+          Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" 
+          Storyboard.TargetName="<font color="#ff0000">maneuverPopup</font>" /&gt;
+      &lt;/Storyboard&gt;
+    &lt;/VisualState&gt;
+  &lt;/VisualStateGroup&gt;
+&lt;/VisualStateManager.VisualStateGroups&gt;</pre>You can see “Search” moves “GeocodeFrom”&nbsp; into view, “SearchTo” moves GeocodeTo into view, and “ShowManeuver”&nbsp; shows the maneuverPopup. And Normal is the base state, basically moving everything back to it’s base place, i.e. out of the screen. I also created these data triggers.<pre style="font-size: 7pt"> &lt;i:Interaction.Triggers&gt;
+  &lt;ei:DataTrigger Binding="{Binding DisplayState}" Value="0"&gt;
+    &lt;ei:GoToStateAction StateName="Normal" /&gt;
+  &lt;/ei:DataTrigger&gt;
+  &lt;ei:DataTrigger Binding="{Binding DisplayState}" Value="1"&gt;
+    &lt;ei:GoToStateAction StateName="SearchFrom" /&gt;
+  &lt;/ei:DataTrigger&gt;
+  &lt;ei:DataTrigger Binding="{Binding DisplayState}" Value="2"&gt;
+    &lt;ei:GoToStateAction StateName="SearchTo" /&gt;
+  &lt;/ei:DataTrigger&gt;
+  &lt;ei:DataTrigger Binding="{Binding DisplayState}" Value="3"&gt;
+    &lt;ei:GoToStateAction StateName="ShowManeuver" /&gt;
+  &lt;/ei:DataTrigger&gt;
+&lt;/i:Interaction.Triggers&gt;
+</pre>
+<p>These are all sitting inside the contentpanel, right above the map.</p>
+<p><font size="4">And finally… well… not really</font></p>
+<p>If you run the app now – or download the sample solution, lo and behold – the app works as designed. That is … until you press the start button and start the app anew. You will notice the fact that although the right location is displayed, the route is not, the LocationPanel is empty again, but the search text is not. How the hell is this possible? We have written test till the cows came home! </p>
+<p>Well, I can tell you we have run in some very subtle serialization bugs. Fixing those bugs is what we are going to do in the next and last episode. Like I said in the previous episode, no amount of unit and/or integration testing is going to free you from manually testing your app – is just a tool to increase, maintain and guarantee the quality of some parts of your app.</p>
+<p>Anyway – <a href="http://www.schaikweb.net/dotnetbyexample/NavigationDemo3.zip" target="_blank">the solution so far can be downloaded here</a>.</p>  

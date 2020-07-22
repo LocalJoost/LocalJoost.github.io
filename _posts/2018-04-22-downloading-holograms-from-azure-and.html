@@ -1,0 +1,89 @@
+---
+layout: post
+title: Downloading holograms from Azure and using them in your Mixed Reality application
+date: '2018-04-22T21:09:00.000+02:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Windows Mixed Reality
+- Unity3D
+- Azure
+modified_time: '2018-04-25T10:54:29.207+02:00'
+thumbnail: https://lh3.googleusercontent.com/-6j0b_u25EA4/WtzdxXrDpeI/AAAAAAAAPuQ/rtpbUELdRJIte1BPK2LrViCrfcfnAL-CwCHMYCw/s72-c/image_thumb%255B3%255D?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7515080634656640290
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2018/04/downloading-holograms-from-azure-and.html
+---
+
+<h2>Intro</h2><p>In <a href="http://dotnetbyexample.blogspot.com/2018/04/preparing-and-uploading-holograms-into.html" target="_blank">my previous post</a> I explained two ways of preparing holograms and uploading them to Azure: using a whole scene, and using just a prefab. In this post I am going to explain how you can download those holograms in a running <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality</a> or <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> app and an show them.</p><p><a href="https://lh3.googleusercontent.com/-GFv3O6Kbl6g/WtzdwRqvhfI/AAAAAAAAPuM/DXBFjsPZFqwxOEq9R71J7He1eVO0UqiKQCHMYCw/s1600-h/image%255B11%255D"><img width="240" height="172" title="image" align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-6j0b_u25EA4/WtzdxXrDpeI/AAAAAAAAPuQ/rtpbUELdRJIte1BPK2LrViCrfcfnAL-CwCHMYCw/image_thumb%255B3%255D?imgmax=800" border="0"></a></p><h2>Setting the stage </h2><p><a></a>We uploaded two things: a single prefab of an airplane, with a behavior attached, and a scene containing a prefab – a house, also with a behavior attached. The house rotates, the airplane follows quite an erratic path. To access both we created a Shared Access Signature using the <a href="https://azure.microsoft.com/en-us/features/storage-explorer/" target="_blank">Azure Storage Explorer</a>. </p><p>In the demo code there’s a Unity project called RemoteAssets. We have used that before in earlier posts. The third scene (Assets/App/Demo3/3RemoteScenes) is the scene that actually tries to load the holograms</p><p>If you open that scene, you will see two buttons: “Load House” and “Load Plane”</p><p><a href="https://lh3.googleusercontent.com/-Xi80tTBRsGc/WtzdyKBY9UI/AAAAAAAAPuU/-VSBy5XxsAIlsNC3ZS1TtbieeIiUieZngCHMYCw/s1600-h/image%255B16%255D"><img width="659" height="193" title="image" style="border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-X9_3ebBJ4AU/WtzdzNbUNCI/AAAAAAAAPuY/DMHIplsf3g0095NrYB_ZrXzCQNlXaq0MQCHMYCw/image_thumb%255B6%255D?imgmax=800" border="0"></a></p><p>nicked from <a href="http://dotnetbyexample.blogspot.nl/2018/01/push-buttons-in-mixed-reality.html" target="_blank">the Mixed Reality Toolkit Examples I nicked these buttons</a>. The left button, “Load House”, actually loads the house. It does so because it’s Interactive script’s OnDownEvent calls SceneLoader.StartLoading</p><p><a href="https://lh3.googleusercontent.com/-g_KsmnojEiY/Wtzdz2VIMKI/AAAAAAAAPuc/kf6NYKi8a9M1Mz0Jr34vhXBQGivR69FawCHMYCw/s1600-h/image%255B21%255D"><img width="300" height="245" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-sbGmxZtbBrw/Wtzd0mrSWvI/AAAAAAAAPug/7-jnbDXKOXAx48bHnSKXkzjGkee1sD5pgCHMYCw/image_thumb%255B9%255D?imgmax=800" border="0"></a>&nbsp;</p><h2>Loading a remote scene</h2><p>This SceneLoader is not a lot of code and does a lot more than is strictly necessary:</p><pre style="font-size: 12px;">using System.Collections;
+using UnityEngine;
+using UnityEngine.Networking;
+using UnityEngine.SceneManagement;
+
+public class SceneLoader : MonoBehaviour
+{
+    public string SceneUrl;
+
+    public GameObject Container;
+
+    private bool _sceneIsLoaded;
+
+    public void StartLoading()
+    {
+        if (!_sceneIsLoaded)
+        {
+            StartCoroutine(LoadScene(SceneUrl));
+            _sceneIsLoaded = true;
+        }
+    }
+
+    private IEnumerator LoadScene(string url)
+    {
+        var request = UnityWebRequest.GetAssetBundle(url, 0);
+        yield return request.SendWebRequest();
+        var bundle = DownloadHandlerAssetBundle.GetContent(request);
+        var paths = bundle.GetAllScenePaths();
+        if (paths.Length &gt; 0)
+        {
+            var path = paths[0];
+            yield return SceneManager.LoadSceneAsync(path, LoadSceneMode.Additive);
+            var sceneHolder = GameObject.Find("SceneHolder");
+            foreach (Transform child in sceneHolder.transform)
+            {
+                child.parent = Container.transform;
+            }
+            SceneManager.UnloadSceneAsync(path);
+        }
+    }
+}</pre>
+<p><a href="https://lh3.googleusercontent.com/-0wE808s9tMs/Wt4Xufj6xpI/AAAAAAAAPvM/1zheBrajNvwvmdbf0inpkMyTm12NUkJlwCHMYCw/s1600-h/image%255B7%255D"><img width="240" height="218" title="image" align="right" style="margin: 0px 0px 0px 5px; border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-71kgoBItfSI/Wt4XvdeKSVI/AAAAAAAAPvQ/HXXSwvvmQOMEY62wcX6REpQxFpPBm_j4ACHMYCw/image_thumb%255B2%255D?imgmax=800" border="0"></a>It downloads the actual AssetBundle using a GetAssetBundle request, then proceeds to extract that bundle using a DownloadHandlerAssetBundle. I already wrote about the the whole rigmarole of specialized requests and accompanying handlers <a href="http://dotnetbyexample.blogspot.com/2018/02/downloading-audio-files-from-azure-blob.html" target="_blank">in an earlier post</a>. Then it proceeds to find all scenes in the bundle, picks the first once, and loads this one <em>additive</em> to the current scene. If you comment out all lines after the LoadSceneAsync and run the code, you will be actually able to see what’s happening – a second scene inside the current scene is created. </p><p>If you however run the full code, the SubUrb house will appear inside the HologramCollection and no trace of the BuildScene will remain. That’s because the code tries to find a “SceneHolder” object (and you can see that’s the first object in the BuildScene), moves all children (one, the house) to the <a href="https://lh3.googleusercontent.com/-hCK1UgJH2es/Wt4XwMjjObI/AAAAAAAAPvU/dDs3FnBCrqwXn2fOhI28eoB9CgVa02mxwCHMYCw/s1600-h/image%255B19%255D"><img width="240" height="178" title="image" align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-r3SpcrQubJE/Wt4XwqNnD7I/AAAAAAAAPvY/wMBCMmFHZL4kRH95-c7ADzTgByVRBsTYgCHMYCw/image_thumb%255B7%255D?imgmax=800" border="0"></a>Container object and once that is done, the additional scene will be unloaded again. But the hologram that we nicked from it still remains, and it even rotates. If you look very carefully in the editor if you click the button, you can actually see the scene appear, see the house being moved from it, and then disappear again.</p><p>The result: when you click “Load House” you will see the rotating house, 2 meters before you.</p><p><a href="https://lh3.googleusercontent.com/-KBzz5xaQkfM/WuBCMPdbCRI/AAAAAAAAPwE/06r56a97Jo40ojSy5hDUQ8cI1m6PFjduwCHMYCw/s1600-h/image%255B27%255D"><img width="303" height="233" title="image" style="display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-hRCKjUYXJPs/WuBCM55y0wI/AAAAAAAAPwI/JgRraN0CouISYT0kIVRYmHVCFNR6LafCgCHMYCw/image_thumb%255B12%255D?imgmax=800" border="0"></a></p><p>Success. Now on to the airplane.</p><h2>Loading a remote prefab</h2><p>This is actually less code, or at least – less code than the way I chose to handle scenes:</p><pre style="font-size: 12px;">using System.Collections;
+using UnityEngine;
+using UnityEngine.Networking;
+
+public class PrefabLoader : MonoBehaviour
+{
+
+    public string AssetUrl;
+
+    public GameObject Container;
+
+    private bool _isLoaded;
+
+    public void StartLoading()
+    {
+        if (!_isLoaded)
+        {
+            StartCoroutine(LoadPrefab(AssetUrl));
+            _isLoaded = true;
+        }
+    }
+
+    private IEnumerator LoadPrefab(string url)
+    {
+        var request = UnityWebRequest.GetAssetBundle(url, 0);
+        yield return request.SendWebRequest();
+        var bundle = DownloadHandlerAssetBundle.GetContent(request);
+        var asset = bundle.LoadAsset&lt;GameObject&gt;(bundle.GetAllAssetNames()[0]);
+        Instantiate(asset, Container.transform);
+    }
+}
+</pre><p>The first part is the same, then we proceed to use bundle.LoadAsset to extract the first asset by name from the bundle as a game object (there is only one, so that’s always correct for this bundle). And then we instantiate the asset – a prefab, which is a game object, into the hologram collection.</p><p>If you click the “Load Plane” button the result is not what you might expect:</p><p><a href="https://lh3.googleusercontent.com/-tyYicWyF96U/WuBCNt-jl1I/AAAAAAAAPwM/_224d7sx_2seAko7_jQ98VgKK0XaweClQCHMYCw/s1600-h/image%255B13%255D"><img width="640" height="97" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-Ta5jJ6T0c3o/WuBCOFio9FI/AAAAAAAAPwQ/Kw_Bw-GAXNwX0UbzDpldFR9GZeqnAKGKACHMYCw/image_thumb%255B6%255D?imgmax=800" border="0"></a></p><p>Uhm, what? We basically did the same as before, actually less. It turns out, the only reason the house rotated fine, was because I used the Horizontal Animator from my own HoloToolkitExtensions. That script is present in both the SceneBuilder project (that I used to create the bundles uploaded to Azure) <em>and the target app</em>, RemoteAssets, that downloads the assets bundles and tries to use them.</p><p>But for the airplane to move around, I created a script “MoveAround” <em>that is only present in the SceneBuilder</em>. It does not happen often, dear reader, but I intentionally checked in code that <em>fails</em>, to hammer home the following very important concept:</p><p><strong>In an Asset Bundle you can put about anything – complete scenes, prefabs, images, materials and whatnot – <em>everything but scripts.</em></strong></p><p>In order to get this to work, the script and its meta file need to be copied to the target project. Manually. </p><p><a href="https://lh3.googleusercontent.com/-v4ZxQoadUPA/WuBCO_bmF_I/AAAAAAAAPwU/gSiAQ5mlT_4Eu2pG5IQ4jThAhDzOf9HFwCHMYCw/s1600-h/Untitled%255B9%255D"><img width="663" height="212" title="Untitled" style="display: inline; background-image: none;" alt="Untitled" src="https://lh3.googleusercontent.com/-XZF4zrp_PUw/WuBCPs6fthI/AAAAAAAAPwY/iB5B19HheCsZV9YxFZHHLLiRtVuHhWsjgCHMYCw/Untitled_thumb%255B7%255D?imgmax=800" border="0"></a></p><p><a href="https://lh3.googleusercontent.com/-Nk-gaG7BMmk/WuBCQHenTyI/AAAAAAAAPwc/KEvXb2bAxdQtOmkZx0IHw_JLzsIHkuXXACHMYCw/s1600-h/image%255B28%255D"><img width="344" height="169" title="image" align="right" style="border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-AWHiOywf0yU/WuBCQ9S2d1I/AAAAAAAAPwg/CkW9LNDT6TYEr1g8e7msYzoKWy-EnWPXwCHMYCw/image_thumb%255B13%255D?imgmax=800" border="0"></a>It does not matter much <em>where</em> in the target project it comes, Unity will pick it up, resolve the script reference, the bundle will load successfully if you press the “Load Plane” button. I tend to place it next to the place where it’s used.</p><p> And lo and behold: and airplane moving once again like a drunken magpie.</p><h2>Concluding words</h2><p>I have shown you various ways to upload various assets – JSON data, images, videos and finally holograms to Azure, how to download them from you app, and what limitations you will need to consider. </p><p>Important takeaways from this and previous posts:</p><ul><li>Yes, I could have downloaded earlier assets using an Unity Asset Bundle as well, in stead of downloading images etc. via a direct URL. Drawback of using an Asset Bundle is you will <em>always need Unity to <strong>build</strong> it</em>. If you are building an app for a customer that wants to update training images or videos, it’s a big plus if you can just have them uploaded to Azure using the Storage Explorer or some custom (web) app. Whatever the customer can change or maintain themselves, the better it is.</li><li>You can’t download <em>dynamic behavior, only (static) assets</em>. The most ‘dynamics’ a downloaded asset can have is <em>referring to a script</em> that exists <em>both in the building and the target app</em>. I have seen complex frameworks that tried to achieve downloadable behavior by storing properties into the project file but that usually is a lot of work to achieve only basic functionalities (like moving some parts or changing colors and stuff) but while that may for simple applications, approaches like that are complex to maintain, a lot of work to ‘program’ into your asset, brittle and hard to transfer between project. Plus, it still needs Unity, and your customer is not going to use that. <br>Rule of thumb is always: if you want to change the way things <em>look</em>, you can download assets dynamically. If you need new <em>behavior, </em>you will need to update the app. </li></ul><p>I hope you enjoyed this brain dump. The project can (still) be <a href="https://lh3.googleusercontent.com/-Nk-gaG7BMmk/WuBCQHenTyI/AAAAAAAAPwc/KEvXb2bAxdQtOmkZx0IHw_JLzsIHkuXXACHMYCw/s1600-h/image%255B28%255D"><a href="https://github.com/LocalJoost/RemoteAssetsMixUg">found here</a>. </a></p>

@@ -1,0 +1,190 @@
+---
+layout: post
+title: A behavior to show a MessageDialog from a MVVMLight viewmodel in Universal
+  apps–with callbacks
+date: '2014-12-22T21:17:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Windows phone 8.1
+- wpnl
+- wpdev
+- MVVM
+- Universal Apps
+- windows 8.1
+- behavior
+- MVVM Light
+modified_time: '2014-12-24T11:08:34.137+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6923828833048130540
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/12/a-behavior-to-show-messagedialog-from.html
+---
+
+<p><em>Of course</em> you are now all writing MVVM based apps, after all I have been advocating that for years, and you are listening this here <strike>old</strike> venerable MVP, right? ;). Anyway, some UI interactions between UI and viewmodel can seem to be a bit complicated, but these kinds of problems are usually pretty simple to solve with a combination of a behavior, the <a href="http://mvvmlight.codeplex.com/">MVVMLight</a> messenger, and a message containing a callback. And as I hate to write things more than once, I&nbsp; made this into a reusable behavior. It ain’t rocket science, but it’s nice and clean.</p> <p>I start with a class holding the actual message, and in this class file I have defined a callback delegate as well:</p><pre>using System.Threading.Tasks;
+using GalaSoft.MvvmLight.Messaging;
+
+namespace WpWinNl.Behaviors
+{
+  public class MessageDialogMessage : MessageBase
+  {
+    public MessageDialogMessage(string message, string title,
+                                string okText, string cancelText,
+                                MessageDialogCallBack okCallback = null,
+                                MessageDialogCallBack cancelCallback = null,
+                                object sender = null, object target = null)
+                                : base(sender, target)
+    {
+      Message = message;
+      Title = title;
+      OkText = okText;
+      CancelText = cancelText;
+      OkCallback = okCallback;
+      CancelCallback = cancelCallback;
+    }
+
+    public MessageDialogCallBack OkCallback { get; private set; }
+    public MessageDialogCallBack CancelCallback { get; private set; }
+    public string Title { get; private set; }
+    public string Message { get; private set; }
+    public string OkText { get; private set; }
+    public string CancelText { get; private set; }
+  }
+
+  public delegate Task MessageDialogCallBack();
+}</pre>
+<p>It’s a basic MVVMLight BaseMessage child class, with properties for various texts, and two optional callbacks for OK and cancel actions.</p>
+<p>The behavior itself is, as behaviors go, pretty simple:</p><pre>using System;
+using System.Diagnostics;
+using Windows.UI.Popups;
+using Windows.UI.Xaml;
+using GalaSoft.MvvmLight.Messaging;
+
+namespace WpWinNl.Behaviors
+{
+  public class MessageDialogBehavior : SafeBehavior&lt;FrameworkElement&gt;
+  {
+    protected override void OnSetup()
+    {
+      Messenger.Default.Register&lt;MessageDialogMessage&gt;(this, ProcessMessage);
+      base.OnSetup();
+    }
+
+    private async void ProcessMessage(MessageDialogMessage m)
+    {
+      bool result = false;
+      var dialog = new MessageDialog(m.Message, m.Title);
+
+      if (!string.IsNullOrWhiteSpace(m.OkText))
+      {
+        dialog.Commands.Add(new UICommand(m.OkText, cmd =&gt; result = true));
+      }
+
+      if (!string.IsNullOrWhiteSpace(m.CancelText))
+      {
+        dialog.Commands.Add(new UICommand(m.CancelText, cmd =&gt; result = false));
+      }
+
+      try
+      {
+        await dialog.ShowAsync();
+        if (result &amp;&amp; m.OkCallback != null)
+        {
+          await m.OkCallback();
+        }
+
+        if (!result &amp;&amp; m.CancelCallback != null)
+        {
+          await m.CancelCallback();
+        }
+      }
+      catch (Exception ex)
+      {
+        Debug.WriteLine("double call - ain't going to work");
+      }
+    }
+  }
+}</pre>
+<p>This being once again a <a href="http://dotnetbyexample.blogspot.com/2011/11/safe-event-detachment-base-class-for.html">SafeBehavior</a>, it simply starts to listen to MessageDialogMessage messages. When one is received, a MessageDialog is constructed with the message and title to display, as well as an optional Ok and Cancelbutton – <em>and callback</em>. If you send a message, you can provide optionally provide simple method from your viewmodel to be called by the behavior when Ok or Cancel is called, thus providing a two-way communication channel. Mind, though, all this is async, which has a curious side effect: if you send another message before the user has clicked Ok or Cancel, this will raise an exception.This will be displayed in the Visual Studio output window while you debug, but it won’t show up in release, and your message won’t be displayed either – so you need to carefully control sending messages, and not throw them out like there’s no tomorrow.</p>
+<p>I have made a little sample app – a Universal app of course, <a href="http://blogs.windows.com/buildingapps/2014/09/30/universal-windows-apps-get-better-with-windows-10/" target="_blank">because there have been some pretty clear hints by Microsoft this is the way to go forward</a>. You will notice everything worthwhile is the shared project, up to the MainPage.xaml. People who were present at the latest <a href="http://www.dotned.nl/register/77/windows-phone-hackers-day.aspx" target="_blank">Lowlands WpDev day last October</a> will remember my fellow MVP <a href="http://www.twitter.com/nicovermeir" target="_blank">Nico Vermeir</a> saying in his talk “don’t do that, there’s pain in there”, and while this is true, it’s an ideal thing for lazy demo writers.</p>
+<p>I started out with a blank Universal app, and moved the MainPage.Xaml and it’s companion MainPage.Xaml.cs to the shared project. Then I brought in my <a href="http://wpwinnl.codeplex.com/" target="_blank">WpWinNl</a> project that, amongst other things, drags in MVVMLight and everything else you need. Then I created this whopping complex viewmodel:</p><pre>using System.Threading.Tasks;
+using System.Windows.Input;
+using GalaSoft.MvvmLight;
+using GalaSoft.MvvmLight.Command;
+using GalaSoft.MvvmLight.Messaging;
+using WpWinNl.Behaviors;
+
+namespace SampleMessagePopup
+{
+  public class MainViewModel : ViewModelBase
+  {
+    public ICommand MessageCommand
+    {
+      get
+      {
+        return new RelayCommand(
+          () =&gt; 
+            Messenger.Default.Send(new MessageDialogMessage(
+              "Do you really want to do this?", "My Title", 
+              "Hell yeah!", "No way", 
+              HellYeah, Nope)));
+      }
+    }
+
+    private async Task HellYeah()
+    {
+      Result = "Hell yeah!";
+    }
+
+    private async Task Nope()
+    {
+      Result = "NOOOO!";
+    }
+
+
+    private string result = "what?";
+    public string Result
+    {
+      get { return result; }
+      set { Set(() =&gt; Result, ref result, value); }
+    }
+  }
+}</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-show-a-MessageDialog-from-_86AD/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-show-a-MessageDialog-from-_86AD/image_thumb.png" width="173" align="right" height="304"></a><a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-show-a-MessageDialog-from-_86AD/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; margin: 0px 6px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-show-a-MessageDialog-from-_86AD/image_thumb_3.png" width="173" align="right" height="304"></a>If you fire the command, it will show a dialog that looks like the left on these two screens (on <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a>) and if you press the “no way” button it will show the very right screen. A few things are noticeable:</p>
+<ul>
+<li>Both methods are async, although they don’t implement anything asynchronous. That’s because I wanted to be able do awaitable things in the callback and a contract is a contract – were not making JavaScript here. Only tools like <a href="http://www.jetbrains.com/resharper/" target="_blank">ReSharper</a> (highly recommended) will make you notice it, but you can ignore it for now. 
+<li>You might notice the callback methods are <em>private</em> but still the behavior is apparently able to call these methods. This, my dear friends who grew up in the nice era of managed OO languages that shield you from the things that move below you in the dark dungeons of your processor, is because you basically give a <a href="http://en.wikipedia.org/wiki/Pointer_(computer_programming)" target="_blank">pointer</a><em></em> to a method – and that’s accessible anywhere. Your compiler may tell you it’s a private method, but that’s more like it has a secret telephone number – if you got that, you can access it anywhere ;-). Us oldies who grew up with C or Assembler can tell you all about the times when boats were made of wood and men were made of steel and the great ways you can shoot yourself in the foot with this kind of things. If you want to make you app testable it makes more sense to make the methods public, by the way, but I could not let the opportunity to show this great example of the <a href="http://www.joelonsoftware.com/articles/LeakyAbstractions.html" target="_blank">law of leaky abstractions</a> pass.</li></ul>
+<p>But I digress, I know, that is also a sign of age ;)</p>
+<p>The Xaml is of course also pretty simple – as this app does not do much:</p><pre>&lt;Page
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:Interactivity="using:Microsoft.Xaml.Interactivity" 
+    xmlns:Behaviors="using:WpWinNl.Behaviors"
+    x:Class="SampleMessagePopup.MainPage"
+    DataContext="{StaticResource MainViewModel}"&gt;
+  &lt;Interactivity:Interaction.Behaviors&gt;
+    &lt;Behaviors:MessageDialogBehavior/&gt;
+  &lt;/Interactivity:Interaction.Behaviors&gt;
+  &lt;Page.BottomAppBar&gt;
+    &lt;CommandBar&gt;
+      &lt;AppBarButton Icon="Accept" Label="go ask!" 
+                    Command="{Binding MessageCommand}"/&gt;
+    &lt;/CommandBar&gt;
+  &lt;/Page.BottomAppBar&gt;
+
+  &lt;Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" &gt;
+  	&lt;TextBlock Text="{Binding Result}" HorizontalAlignment="Center" 
+                   VerticalAlignment="Center" FontSize="56"/&gt;
+  &lt;/Grid&gt;
+&lt;/Page&gt;</pre>
+<p>Notice the behavior sitting on the page itself. For obvious reasons, it’s the logical place to put. You can also put it on the top grid. But whatever you do, <em>use only one per page</em>. They all listen to the same message, and if you put more of them on one page you will get an interesting situation where multiple behaviors will try to show the same MessageDialog. I have not tried this, but I assume it won’t be very useful.</p>
+<p>To make this work, by the way, you need of course to declare your viewmodel in App.Xaml. You have no other choice here, as the App Bar sits at the top level of the page, the button calls the command and thus the resource must be one level higher, i.e. the app itself.</p><pre>&lt;Application
+    x:Class="SampleMessagePopup.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:SampleMessagePopup"
+    xmlns:system="using:System"&gt;
+
+  &lt;Application.Resources&gt;
+    &lt;local:MainViewModel x:Key="MainViewModel" /&gt;
+  &lt;/Application.Resources&gt;
+&lt;/Application&gt;</pre>
+<p>Again, if you use something like ReSharper a simple click on the declaration in MainPage.Xaml will make this happen.</p>
+<p>So, that’s all there is to it. You won’t find the code for this behavior in the solution, as it is already in WpWinNl. Just like the <a href="http://dotnetbyexample.blogspot.com/2014/12/a-behavior-to-deal-with-ui-consequences.html" target="_blank">previous one</a> ;). As usual, <a href="https://github.com/LocalJoost/SampleMessagePopup" target="_blank">a sample solution</a> is provided, but in inspired by my fellow MVP <a href="http://twitter.com/diederikkrols" target="_blank">Diederik Krols</a> I’ve have decided that going forward I will publish those on GitHub. </p>  

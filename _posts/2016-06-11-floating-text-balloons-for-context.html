@@ -1,0 +1,241 @@
+---
+layout: post
+title: Floating ‘text balloons’ for context relevant information in Xamarin Forms
+date: '2016-06-11T09:28:00.000+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- Xamarin Forms
+- XAML
+- behavior
+modified_time: '2016-07-26T13:03:59.361+02:00'
+thumbnail: https://i.ytimg.com/vi/rmO0SQ4K8fM/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8731447899003631315
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/06/floating-text-balloons-for-context.html
+---
+
+<h2>Picking the challenge apart</h2> <p>An Italian proverb says that a fool can ask more questions than seven wise men can answer – a modern variant could be that a designer can think up more things than a developer can build. I don’t pretend to be the proverbial wise man, and neither do I want to call my designer colleague a fool, and when he came up with the idea of introducing text balloons with context relevant information, floating on top on the rest of the UI, cross-platform, and preferably appearing with a nice animation, I indeed had to do some head scratching. </p> <p>What he meant was this, and this is exactly how I created it</p><iframe height="367" src="https://www.youtube.com/embed/rmO0SQ4K8fM" frameborder="0" width="650" allowfullscreen></iframe> <p>The issues I had to tackle, were:</p> <ol> <li>How do I create a text balloon in the first place, with a kind of pointy bit pointing to the UI element it belongs to?  <li>How do I get the absolute position of a UI element - that is, the one the user taps?  <li>How do I show the text balloon <em>in situ?</em></li></ol> <h2>Text balloon 101</h2> <p><img alt="tekstballon" src="http://www.wortell.nl/wp-content/uploads/2016/06/tekstballon.png" width="333" height="107"></p> <p>This text balloon consists of a translucent grid that ties the components together. It contains two grids, one of them containing the label. The first grid is the bit that points up. This actually is a 15 by 15 square, rotated 45⁰, and moved a little bit to the left using the new Margins property that has <em>finally</em> made it to Xamarin Forms. The second and biggest grid is the green rectangle actually containing the text you want to show. Because it’s in XAML after the square, drawing precedence rules make that it be drawn <em>on top of the first one.</em> You would not see it at all, if is wasn’t for the fact this grid <em>also </em>has a margin - of 7 on the top so about <em>half of the rotated square</em>. The net result, as you can see, is a triangle sticking out of the rectangle, making the optical illusion of a kind of text balloon. In XAML, this looks like this</p><pre style="font-size: 11px">&lt;Grid x:Name="MessageGridContainer" xmlns="http://xamarin.com/schemas/2014/forms"
+           xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+           x:Class="XamarinFormsDemos.Views.Controls.FloatingPopupControl" 
+           BackgroundColor="#01000000"&gt;
+  &lt;Grid.ColumnDefinitions&gt;
+    &lt;ColumnDefinition Width="75*"&gt;&lt;/ColumnDefinition&gt;
+    &lt;ColumnDefinition Width="25*"&gt;&lt;/ColumnDefinition&gt;
+  &lt;/Grid.ColumnDefinitions&gt;
+  &lt;Grid x:Name="MessageGrid" HorizontalOptions="Start" VerticalOptions="Start" &gt;
+    <font color="#ff0000"><u>&lt;Grid BackgroundColor="{StaticResource  AccentColor}" HeightRequest="15" WidthRequest="15"</u> 
+          <u>HorizontalOptions="End" VerticalOptions="Start" Rotation="45"</u> 
+          <u>Margin="0,0,4,0" InputTransparent="True"/&gt;</u></font>
+    &lt;Grid Padding="10,10,10,10" BackgroundColor="{StaticResource AccentColor}" Margin="0,7,0,0" 
+          HorizontalOptions="FillAndExpand" InputTransparent="True"&gt;
+      &lt;Label  x:Name="InfoText" TextColor="{StaticResource ContrastColor}" 
+             HorizontalOptions="Center" VerticalOptions="Center" 
+             InputTransparent="True"/&gt; 
+    &lt;/Grid&gt;
+  &lt;/Grid&gt;
+&lt;/Grid&gt;
+</pre>
+<p>The complete text balloon is contained in the “MessageGrid” grid; the pointy bit upward is emphasized using <u><font color="#ff0000">red and underlining</font></u>. The complete control is contained within yet <em>another</em> grid “MessageGridContainer”, that fills the whole screen – or at least the part in which the text balloons appear. Is has three functions:</p>
+<ul>
+<li>It provides a canvas to place the actual text balloons on 
+<li>It is an event catcher – as the user taps ‘anywhere on the screen’ the text balloon disappears 
+<li>It makes sure the text balloon never gets wider than 75% of the screen (this was a designer requirement) – hence the columns. </li></ul>
+<p>Some important details to take note of:</p>
+<ul>
+<li>A few elements have set the property “InputTransparent”&nbsp; to true. This means they will never receive any events (like tap) but those will be received by the elements lying ‘below’ them. In other words, they don’t <em>block</em> events. This makes the text balloon disappear even when you tap on the text balloon itself, as the events goes downwards and is processed by MessageGridContainer 
+<li>MessageGridContainer itself is not opaque but has BackgroundColor "#01000000", that is, 1% black. For all intents and purposes it <em>is</em> opaque in the sense that you don’t see it, but if you leave it <em>totally </em>opaque is will <em>also </em>be opaque to <em>events - </em>on Windows 10 UWP. A little concession to a cross platform issue. 
+<li>This whole contraption is called “FloatingPopupControl” – this is the control that handles showing, displaying and eventually removing the text balloon. ‘Something’ has to call it’s ShowMessageFor method to tell it what the balloon should contain, and under which control it should appear.We will come to that later</li></ul>
+<h2>Determining absolute position of the ‘anchor element’</h2>
+<p>The anchor-element is the element under which the text balloon appear should appear when it’s tapped – in this sample, the i-symbol. It is actually pretty to simple to find the absolute position of a relatively placed element: this is achieved by going recursively upwards via the “Parent” propertie and get the sum of all X values and the sum of all Y values. You can actually find hints to this <a href="https://forums.xamarin.com/discussion/24042/how-can-i-get-absolute-position-of-element-view-in-xamarin-forms" target="_blank">in the Xamarin developer forums</a>in the Xamarin developer forums, and I have put this into the following extension method:</p><pre style="font-size: 11px">using Xamarin.Forms;
+
+namespace Wortell.XamarinForms.Extensions
+{
+  public static class ElementExtensions
+  {
+    public static Point GetAbsoluteLocation(this VisualElement e)
+    {
+      var result = new Point();
+      var parent = e.Parent;
+      while (parent != null)
+      {
+        var view = parent as VisualElement;
+        if (view != null)
+        {
+          result.X += view.X;
+          result.Y += view.Y;
+        }
+        parent = parent.Parent;
+      }
+      return result;
+    }
+  }
+}</pre>
+<h2>Positioning, showing, animating and removing text balloons</h2>
+<p>If you look at the code in the ShowMessageFor method - in the FloatingPopupControl code behind – you’ll see the code is only deferring to <em>FloatingPopupDisplayStrategy. </em>This is done because it’s not wise to put much code into a user control if you want to re-use part of that intelligence easily. It also makes adapting and changing animations easier. FloatingPopupDisplayStrategy has the following constructor:</p><pre style="font-size: 11px">public class FloatingPopupDisplayStrategy
+{
+  private readonly Label _infoText;
+  private readonly View _overallView;
+  private readonly View _messageView;
+
+  public FloatingPopupDisplayStrategy(Label infoText, View overallView, View messageView)
+  {
+    _infoText = infoText;
+    _overallView = overallView;
+    _messageView = messageView;
+
+    _overallView.GestureRecognizers.Add(new TapGestureRecognizer
+    { Command = new Command(ResetControl) });
+    _overallView.SizeChanged += (sender, args) =&gt; { ResetControl(); };
+  }
+}</pre>
+<ul>
+<li>infoText the text balloon name&nbsp; <li>overallView is the canvas in which the text ballon is placed; it also receives the tap to remove the text balloon again 
+<li>messageView is het containing grid of the text balloon itself</li></ul>
+<p>ShowMessageFor, and it’s little helper ExecuteAnimation, are implemented like this:</p><pre style="font-size: 11px">public virtual async Task ShowMessageFor(
+  VisualElement parentElement, string text, Point? delta = null)
+{
+  _infoText.Text = text;
+  _overallView.IsVisible = true;
+
+  // IOS apparently needs to have some time to layout the grid first
+  // Windows needs the size of the message to update first
+  if (Device.OS == TargetPlatform.iOS || 
+      Device.OS == TargetPlatform.Windows) await Task.Delay(25);
+  _messageView.Scale = 0;
+
+  var gridLocation = _messageView.GetAbsoluteLocation();
+  var parentLocation = parentElement.GetAbsoluteLocation();
+
+  _messageView.TranslationX = parentLocation.X - gridLocation.X -
+                              _messageView.Width + parentElement.Width +
+                              delta?.X ?? 0;
+  _messageView.TranslationY = parentLocation.Y - gridLocation.Y +
+                              parentElement.Height + delta?.Y ?? 0;
+
+  _messageView.Opacity = 1;
+  ExecuteAnimation(0, 1, 250);
+}
+
+private void ExecuteAnimation(double start, double end, uint runningTime)
+{
+  var animation = new Animation(
+    d =&gt; _messageView.Scale = d, start, end, Easing.SpringOut);
+
+  animation.Commit(_messageView, "Unfold", length: runningTime);
+}</pre>
+<ul>
+<li>First the text that should be displayed in the text balloon is set 
+<li>Next, the canvas in which the text balloon is placed is made visible. As stated before, it’s nearly invisible, but effectively it intercepts a tap 
+<li>Windows and iOS now need a short timeout for some layout events. This feels a bit VB6’ey, doevents, right? 
+<li>The text balloon is scaled to 0, effectively making it infinitely small (and invisible)&nbsp; <li>Next, we calculate the text balloon’s <em>current</em> absolute location, as well as the anchor element’s(‘parentElement’) absolute location. 
+<li>X and Y translation of the text balloon are calculated to position the text balloon at a location that will make the pointy bit end up just under the blue i-symbol 
+<li>De message grid’s opacity is set to 1, so now the text balloon is visible (but still infinitely small) 
+<li>A 250 ms bouncy animation (Easing.SpringOut) blows up the text balloon to scale 1 – it’s normal size.</li></ul>
+<p>Note: the delta uses in the calculation is a value intended to use as a correction value, in case the standard calculation does not yield the desired result (i.e. location). This will be explained later on. </p>
+<p>And finally, the user must be able to dismiss the text balloon. This is done using the ResetControl methods. As we have seen in de constructor, this method gets called in case the user types at the invisible canvas, or if the canvas’ size changes. </p><pre style="font-size: 11px">private void ResetControl()
+{
+    if (_messageView.Opacity != 0)
+    {
+      _messageView.Opacity = 0;
+      _overallView.IsVisible = false;
+    }
+}</pre>
+<p>This method does not need to be called explicitly at initialization, since he invisible grid changes size at the start of the app (because it gets child elements – the MessageGrid and <em>its</em> children), and the event wiring makes this call happen anyway. Another important reason to attach this method to the SizeChanged event is that in Windows 10 UWP apps windows sizes actually can be changed by the user. This may cause text balloons ending up in what is no longer being the right place, so they need to be removed as well. After all, as long as the text balloon is visible, the invisible background blocks any input, so as soon as the user starts working with the app, in any way, the text balloon needs to disappear and the app needs to be ready again.</p>
+<h2>Behavior intercepting tap event and relay to control</h2>
+<p>The only thing missing now is something to get the whole process going – respond to the tap on the i-symbol, providing the text balloon contents, and provide some optional positioning correcting for the text balloon. This is done by FloatingPopupBehavior: </p><pre style="font-size: 11px; color: black; line-height: 1.1">using Wortell.XamarinForms.Behaviors.Base;
+using Wortell.XamarinForms.Controls;
+using Xamarin.Forms;
+
+namespace Wortell.XamarinForms.Behaviors
+{
+  public class FloatingPopupBehavior : BindableBehaviorBase&lt;View&gt;
+  {
+    private IGestureRecognizer _gestureRecognizer;
+
+    protected override void OnAttachedTo(View bindable)
+    {
+      base.OnAttachedTo(bindable);
+      _gestureRecognizer = new TapGestureRecognizer {Command = new Command(ShowControl)};
+      AssociatedObject.GestureRecognizers.Add(_gestureRecognizer);
+    }
+
+    protected override void OnDetachingFrom(View bindable)
+    {
+      base.OnDetachingFrom(bindable);
+      AssociatedObject.GestureRecognizers.Remove(_gestureRecognizer);
+    }
+
+    private void ShowControl()
+    {
+      if (AssociatedObject.IsVisible &amp;&amp; AssociatedObject.Opacity &gt; 0.01)
+      {
+        PopupControl?.ShowMessageFor(AssociatedObject, MessageText, new Point(Dx, Dy));
+      }
+    }
+
+    #region PopupControl Attached Dependency Property      
+    public static readonly BindableProperty PopupControlProperty =
+      BindableProperty.Create(nameof(PopupControl), 
+      typeof (IFloatingPopup), typeof (FloatingPopupBehavior),
+        default(IFloatingPopup));
+
+
+    public IFloatingPopup PopupControl
+    {
+      get { return (IFloatingPopup) GetValue(PopupControlProperty); }
+      set { SetValue(PopupControlProperty, value); }
+    }
+    #endregion
+
+    //MessageText Attached Dependency Property omitted
+
+    //region Dx Attached Dependency Property omitted     
+
+    //region Dy Attached Dependency Property omitted     
+
+  }
+}
+</pre>
+<p>This behavior is actually rather simple – as soon as the control tot which is attached is tapped, it calls the ShowMessageFor method of the control referenced in de PopupControl property. There are three additional property for determining which text is actually displayed, and two optional properties for a delta X and delta Y which, as we have seen, are included by the control when it actually places the text balloon on the right place.</p>
+<h2>Bringing it together in XAML</h2>
+<p>A simplified excerpt from FloatingPopupPage :</p><pre style="font-size: 11px; color: black; line-height: 1.1">&lt;ScrollView Grid.Row="1"  VerticalOptions="Fill" 
+   HorizontalOptions="Fill" Margin="10,0,10,0" &gt;
+  &lt;Grid&gt;
+    &lt;Grid VerticalOptions="Start"&gt;
+      &lt;Grid.RowDefinitions&gt;
+        &lt;RowDefinition Height="Auto"&gt;&lt;/RowDefinition&gt;
+        &lt;RowDefinition Height="Auto"&gt;&lt;/RowDefinition&gt;
+        &lt;RowDefinition Height="*"&gt;&lt;/RowDefinition&gt;
+      &lt;/Grid.RowDefinitions&gt;
+      &lt;StackLayout Orientation="Horizontal" HorizontalOptions="Fill" &gt;
+        &lt;ContentView  HorizontalOptions="FillAndExpand" VerticalOptions="Start"&gt;
+          &lt;Entry x:Name="NameEntry" Placeholder="Name" 
+                  TextColor="{StaticResource AccentColor}" 
+                  PlaceholderColor="{StaticResource SoftAccentColor}" /&gt;
+        &lt;/ContentView&gt;
+        &lt;ContentView&gt;
+<span style="color: #ff0000">          &lt;Image Source="{extensions:ImageResource info.png}" VerticalOptions="Center"
+                 HorizontalOptions="End" 
+                 HeightRequest="{Binding Height, Source={x:Reference NameEntry}}"&gt;
+            &lt;Image.Behaviors&gt;
+              &lt;behaviors:FloatingPopupBehavior MessageText="Fill in your name here"
+                                               PopupControl="{x:Reference PopupControl}" 
+                                               Dx="-6" Dy="4"/&gt;
+            &lt;/Image.Behaviors&gt;
+          &lt;/Image&gt;</span>
+        &lt;/ContentView&gt;
+      &lt;/StackLayout&gt;
+
+    &lt;/Grid&gt;
+<span style="color: #339966">    &lt;controls:FloatingPopupControl x:Name="PopupControl" VerticalOptions="Fill" 
+                                   HorizontalOptions="Fill" /&gt;</span>
+  &lt;/Grid&gt;
+&lt;/ScrollView&gt;
+</pre>
+<p>In <span style="color: #ff0000">red</span> the actual i-symbol with the behavior attached to it, in <span style="color: #339966">green </span>the popup control (including the label) itself. In the behavior’s properties we actually specify the text to be displayed as well the PopupControl reference, indicating this is the UI control that should actually handle the displaying of the text balloon. In addition it sports an optional extra delta x and delta y. Of course this could be hard coded into the control, but to have this extra flexibility in design time makes for an easier ‘constructable ’UI. As you can see, as soon as the parts are in place, actually using and re-using the components is pretty easy, making adding floating text balloons with contextual relevant information very easy indeed.</p>
+<p>Also notice a neat trick to make sure that especially nice in Android, that sports a great rage of resolutions. I took an intentionally too big picture for the i-symbol, which is automatically sized to the height of the entry by using&nbsp; <strong>HeightRequest="{Binding Height, Source={x:Reference NameEntry}}"</strong> </p>
+<h2>Some consequences of this approach</h2>
+<p>As stated repeatedly, a (nearly) invisible grid covers the whole screen, or at least part of the screen, while a text balloon is displayed – to give the text balloon space to be placed in, and to intercept a tap so it will be removed as soon as the user starts interacting with the app. The flip side is that the app is effectively blocked <em>until</em> the user taps, and this tap will not do anything <em>but</em> removing the text balloon. A plainly visible button will not respond while the text balloon is visible – that requires yet another tap. This may seem annoying, but I don’t think this will put off the user in any significant amount, as it;s likely he will stop using this functionality pretty soon as he/she has gotten the hang of the app. This is only an onboarding/adopting thing. You read the car’s manual only once (if you do it at all, and then never again unless in very extraordinary circustances)</p>
+<h2>Conclusion</h2>
+<p>Using only some pretty basic means, a few nifty tricks and a clear architectural approach it appears to be pretty simple to build a kind of re-usable infrastructure enabling the fast and flexible addition of context relevant information, which is displayed in a visually attractive way. It’s very easy to add text balloons this way, and it’s a useful tool to make onboarding and adoption of an app easier.</p>
+<p>As usual, a sample project containing this (and previous code) can be found <a href="https://github.com/LocalJoost/XamarinFormsDemos/tree/blog3" target="_blank">on GitHub</a></p>

@@ -1,0 +1,144 @@
+---
+layout: post
+title: Visualizing geofences as circles on the map in Universal Apps
+date: '2014-10-01T13:00:00.000+02:00'
+author: Joost van Schaik
+tags:
+- Windows phone 8.1
+- Mapping
+- windev
+- wpdev
+- Bing Map Control
+- Windows 8
+modified_time: '2014-10-01T14:14:23.633+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3037603182380013270
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/09/visualizing-geofences-as-circles-on-map.html
+---
+
+<h3>Intro</h3> <p>If you tried to work with geofences, you may have encountered this problem. You want to have an easy way to show where the darn things are on the map, so you can test the application. This is actually pretty simple, building upon stuff to draw circles on <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 8 I <a href="http://dotnetbyexample.blogspot.nl/2014/02/drawing-circle-shapes-on-windows-phone.html" target="_blank">wrote earlier</a>. </p> <p>What is important to know – there are now more or universally applicable objects to depict a location. The first one is <a href="http://msdn.microsoft.com/en-us/library/windows/apps/windows.devices.geolocation.basicgeoposition.aspx" target="_blank">BasicGeoposition</a> – this is a struct – that basically only holds latitude, longitude and elevation. The second one is <a href="http://msdn.microsoft.com/en-us/library/windows/apps/windows.devices.geolocation.geopoint.aspx" target="_blank">Geopoint</a>. You create a Geopoint from a BasicGeoposition. This kind of wrapper class that allows for setting of some additional location settings – like how coordinates and height should be interpreted. I don’t think any of this stuff is really used yet, but I have the feeling Geopoint is going to get more important over time, and anyway as a GIS person I tend to go with the fullest set of location designation. But you might as just well use just BasicGeoposition as a way to pass on coordinates in a universal app.</p> <h3>Do the math!</h3> <p>This is essentially the same method as I wrote before, but adapted for Geopoint. Some other changes come from my former colleague <a href="www.twitter.com/peshir" target="_blank">Jarno Peschier</a>, who in his typical way saw possibilities to optimize speed up the circle calculation code (and optimizations actually work – I tested). </p><pre>using System;
+using System.Collections.Generic;
+using Windows.Devices.Geolocation;
+
+namespace MappingUtilities
+{
+  public static class GeopointExtensions
+  {
+    private const double circle = 2 * Math.PI;
+    private const double degreesToRadian = Math.PI / 180.0;
+    private const double radianToDegrees = 180.0 / Math.PI;
+    private const double earthRadius = 6378137.0;
+    
+    public static IList&lt;Geopoint&gt; GetCirclePoints(this Geopoint center,
+                                   double radius, int nrOfPoints = 50)
+    {
+      var locations = new List&lt;Geopoint&gt;();
+      double latA = center.Position.Latitude * degreesToRadian;
+      double lonA = center.Position.Longitude * degreesToRadian;
+      double angularDistance = radius / earthRadius;
+
+      double sinLatA = Math.Sin(latA);
+      double cosLatA = Math.Cos(latA);
+      double sinDistance = Math.Sin(angularDistance);
+      double cosDistance = Math.Cos(angularDistance);
+      double sinLatAtimeCosDistance = sinLatA * cosDistance;
+      double cosLatAtimeSinDistance = cosLatA * sinDistance;
+
+      double step = circle / nrOfPoints;
+      for (double angle = 0; angle &lt; circle; angle += step)
+      {
+        var lat = Math.Asin(sinLatAtimeCosDistance + cosLatAtimeSinDistance * 
+                            Math.Cos(angle));
+        var dlon = Math.Atan2(Math.Sin(angle) * cosLatAtimeSinDistance, 
+                              cosDistance - sinLatA * Math.Sin(lat));
+        var lon = ((lonA + dlon + Math.PI) % circle) - Math.PI;
+
+        locations.Add(new Geopoint(new BasicGeoposition { 
+        Latitude = lat * radianToDegrees, Longitude = lon * radianToDegrees }));
+      }
+      return locations;
+    }
+  }
+}</pre>
+<p>I think this is the <a href="http://en.wikipedia.org/wiki/Haversine_formula" target="_blank">Haversine formula</a> but I am not sure and the point is – it gives list of points that, when drawn on a map, gives a reasonable approximation of a circle, where ever you draw it. And that’s what this is about. The radius is the radius in meters, and the numberOfPoints is still the number of points that is used to draw the polygon. For that’s what we are making – as long as there are enough points, our eyes will see this as a circle.</p>
+<p>The method is implemented as an extension method to Geopoint, and while I was at it, I added a helper method for BasicGeoposition as well, which was not quite rocket science.</p><pre>public static IList&lt;Geopoint&gt; GetCirclePoints(this BasicGeoposition center,
+                              double radius, int nrOfPoints = 50)
+{
+  return new Geopoint(center).GetCirclePoints(radius, nrOfPoints);
+}</pre>
+<h2>Geofences you said sir?</h2>
+<p>So far, I have been mumbling only about coordinates – stuff I tend to talk about a lot – but how do I go from geofences to things on a map? Well, pretty easily, actually. It turns out that a geofence has a property Geoshape of type <a href="http://msdn.microsoft.com/en-us/library/windows/apps/xaml/windows.devices.geolocation.igeoshape.aspx" target="_blank">IGeoshape</a>, but since a geofence can only be a circle right now, you can try to cast it to a <a href="http://msdn.microsoft.com/en-us/library/windows/apps/windows.devices.geolocation.geocircle.aspx" target="_blank">Geocircle</a>. And a Geocircle has a Center property of type BasicGeoposition, and a Radius property in meters. And that’s what we needed to use the GetCirclePoints extension method. So it’s actually pretty easy to define a new extension method </p><pre>using System.Collections.Generic;
+using Windows.Devices.Geolocation.Geofencing;
+using Windows.Devices.Geolocation;
+
+namespace MappingUtilities.Geofencing
+{
+  public static class GeofenceExtensions
+  {
+    public static IList&lt;Geopoint&gt; ToCirclePoints(this Geofence fence, 
+      int nrOfPoints = 50)
+    {
+      var geoCircle = fence.Geoshape as Geocircle;
+
+      if (geoCircle != null)
+      {
+        return geoCircle.Center.GetCirclePoints(geoCircle.Radius, nrOfPoints);
+      }
+      return null;
+    }
+  }
+}</pre>
+<p>I always do the as-and-if-null check. I could have make a hard cast, but I am all for defensive programming.</p>
+<p>Now the thing is, the <a href="http://msdn.microsoft.com/en-us/library/windows/apps/windows.devices.geolocation.geofencing.geofencemonitor.aspx" target="_blank">GeofenceMonitor</a> has a Geofences collection that can be used to add geofences (duh) but of course you can also retrieve them. And thus you can make yet another simple extension method to retrieve a list of list of points of your current GeoFenceMonitor</p><pre>using System.Collections.Generic;
+using System.Linq;
+using Windows.Devices.Geolocation;
+using Windows.Devices.Geolocation.Geofencing;
+
+namespace MappingUtilities.Geofencing
+{
+  public static class GeofenceMonitorExtensions
+  {
+    public static IList&lt;IList&lt;Geopoint&gt;&gt; GetFenceGeometries(this GeofenceMonitor monitor)
+    {
+      return monitor.Geofences.Select( p=&gt; p.ToCirclePoints()).ToList();
+    }
+  }
+}</pre>
+<p>And since the GeofenceMonitor is a static class with a singleton instance, getting all the points of all the geofences in you app in a handy list by one simple call goes like this:</p><pre>GeofenceMonitor.Current.GetFenceGeometries();</pre>
+<p>And by iterating over them, you can draw shapes on the map. The fun thing is, since we now have Universal Apps, you can define all this code in a PCL and use it both on Windows Phone and Windows ,and reference this as a Binary. Today. No need to wait for Windows 10. So I put these methods in a PCL called MappingUtilities. And because the current GeofenceMonitor is a singleton, you can use this code in some button method in your app to just get a quick list of the active geofences and draw them on a map, without having to retrieve data from your models or viewmodels, or however you choose to implement your logic.</p>
+<p>But there is a tiny detail though. Bing Maps does not using Geopoint or BasicGeoposition, but still the Location class, and that does not exist on Windows Phone. </p>
+<h2>One more thing to extend</h2>
+<p>Since I was creating extension methods anyway, I made a new assembly, this time Windows specific, called MappingUtilities.Windows - I bet you did not see that one coming :) – and added the following two extension methods:</p><pre>using System.Linq;
+using Bing.Maps;
+using System.Collections.Generic;
+using Windows.Devices.Geolocation;
+
+namespace MappingUtilities
+{
+  public static class PointHelpers
+  {
+    public static LocationCollection ToLocationCollection(
+      this IList&lt;Geopoint&gt; pointList)
+    {
+      var locations = new LocationCollection();
+      foreach (var p in pointList)
+      {
+        locations.Add(p.ToLocation());
+      }
+      return locations;
+    }
+
+    public static Location ToLocation(this Geopoint location)
+    {
+      return new Location(location.Position.Latitude, 
+                          location.Position.Longitude);
+    }
+  }
+}</pre>
+<p>And these you can simply use to quickly turn a Geopoint into a Location, or a list of Geopoints into a LocationCollection. How this is used is displayed in <a href="http://www.schaikweb.net/dotnetbyexample/ShowGeofences.zip" target="_blank">the demo solution</a>.</p>
+<h2>Wrapping it up</h2>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/ShowGeofences.zip" target="_blank">The demo solution</a> creates two geofences, and shows how the location of said fences can be displayed pretty easily by calling the GetFenceGeometries extension method, both on Windows Phone and Windows. </p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Visualizing-geofences-as-circles-on-the-_812D/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Visualizing-geofences-as-circles-on-the-_812D/image_thumb.png" width="404" align="left" height="246"></a> <a href="http://www.schaikweb.net/dotnetbyexample/Visualizing-geofences-as-circles-on-the-_812D/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: none; padding-top: 0px; padding-left: 0px; margin-left: auto; display: block; padding-right: 0px; border-top-width: 0px; margin-right: auto" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Visualizing-geofences-as-circles-on-the-_812D/image_thumb_3.png" width="138" height="244"></a></p>
+<p>The drawing on the map is done by a simple method that I won’t go into here. I wish to stress the fact that the creation of geofences is in the Shared portion of the app, as well as the facts that these geofences are pretty minimal – I just create them with the default settings - and that I don’t do anything <em>with</em> these geofences apart from creating them. The only thing what this app shows is how easy it is to display geofences using this extension methods, if you <em>have</em> geofences. </p>
+<p>If you want to know more about using geofences in Universal Apps and how you could actually be doing something <em>useful</em> with them, please visit my talk on October 18th 2014 where I will be doing a session about this subject on the <a href="http://www.dotned.nl/register/77/windows-phone-hackers-day.aspx" target="_blank">Lowland Windows Phone Hacker day</a>. This day is organized in a joint effort by both the Dutch and Belgian developer communities in Tilburg, the Netherlands, a place very near the Belgian-Dutch border. Apart from great content - we also have some prizes you may be interested in</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Visualizing-geofences-as-circles-on-the-_812D/image_4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Visualizing-geofences-as-circles-on-the-_812D/image_thumb_4.png" width="644" height="364"></a></p>
+<p>Just saying :)</p>  

@@ -1,0 +1,34 @@
+---
+layout: post
+title: Migrating to MRTK2–NewtonSoft.JSON (aka JSON.Net) is gone
+date: '2019-05-10T09:48:00.000+02:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Unity
+- Windows Mixed Reality
+- MRTK2
+- HoloLens2
+modified_time: '2019-05-15T15:27:53.474+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-573331240578314375
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2019/05/migrating-to-mrtk2newtonsoftjson-aka.html
+---
+
+<h2>Intro</h2><p>In ye olde days, if you set up a project using the <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank"><a href="https://github.com/Microsoft/MixedRealityToolkit-Unity" target="_blank">Mixed Reality Toolkit</a> 1, NewtonSoft.JSON (aka JSON.Net) was automatically included. This was because part of the MRTK1 had a dependency on it –something related to the gLTF stuff used it. This is (apparently) no longer the case. So if you had a piece of code that previously used something like this</p><pre style="font-size: 12px;">public class DeserializeJson : MonoBehaviour
+{
+    [SerializeField]
+    private TextMeshPro _text;
+
+    void Start()
+    {
+        var jsonstring = @"
+{
+   ""Property1"" : ""Hello"",
+   ""Property2"" : ""Folks""
+}";
+        var deserializedObject = JsonConvert.DeserializeObject&lt;DemoJson&gt;(jsonstring);
+
+        _text.text = string.Concat(deserializedObject.Property1,
+            Environment.NewLine, deserializedObject.Property2);
+    }
+}</pre><p>It will no longer compile when you use the MRTK2. You will need to get it elsewhere. There are two ways to solve this: the right way and the wrong way.</p><h2>The wrong way</h2><p>The wrong way, that I was actually advised to do, is to get a copy of an MRTK1 and drag the JSON.Net module from there into your project. It's under HoloToolkit\Utilities\Scripts\GLTF\Plugins\JsonNet. And it will appear to work, too. In the editor. And as long as you use the .NET scripting backend. Unity has announced, though, <a href="https://forum.unity.com/threads/deprecation-of-support-for-the-net-scripting-backend-used-by-the-universal-windows-platform.539685/" target="_blank">the .NET backend will disappear</a> – you will need to use IL2CPP soon. And when you do so, you will notice your app will mysteriously fail to deserialize JSON. If you run the C++ app in debug mode from Visual Studio you will see something cryptic like this:</p><p><img src="https://www.schaikweb.net/blog/20190510/BrokenJsonNet.png"></p><p>The reason why is not easy to find. If you dig deeper, you will see it complaining about it trying to use Reflection.Emit and this apparently is not allowed in the C++ world. Or not in the way it's done. Whatever.</p><h2><img width="240" height="132" align="right" style="margin: 0px 20px 0px 10px; border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" src="https://www.schaikweb.net/blog/20190510/JSONNET.png" border="0">The right way</h2><p>Fortunately there is an another way - and a surprisingly one to boot. There is <a href="https://assetstore.unity.com/packages/tools/input-management/json-net-for-unity-11347">a free JSON.Net package in the Unity store</a>, and it seems to do the trick for me – I can compile the C++ app, deploy it on the HoloLens 2 emulator and it actually parses JSON.</p><p>QED:</p><p><img width="640" height="427" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20190510/OnHlEmulator.png" border="0"></p><h2>But will this work on a <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> 2?</h2><p>The fun thing is of course the HoloLens 2 has an ARM processor, so the only way to test if this really works is to run in on an HoloLens 2. Unlike a few very lucky individuals, I don't have access to the device. But I do have something else - <a href="https://dotnetbyexample.blogspot.com/2018/03/windows-10-on-arm-and-deviceshang-on-to.html" target="_blank">an ARM based PC that I was asked to evaluate in 2018</a>.&nbsp; I compiled for ARM, made a deployment package, powered up the ARM PC and wouldn't you know it...</p><p><img width="640" height="427" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20190510/Screenshot.png" border="0"></p><p>So. I think we can be reasonably sure this will work on a HoloLens 2 as well.</p><p>Update - this has been verified.</p><h2>Conclusion</h2><p>I don't know whether all the arcane and intricate things JSON.Net supports are supported by this package, but it seems to do the trick as far as my simple needs are concerned. I guess you should switch to this package to prepare for HoloLens 2.</p><p>Code as usual on GitHub: </p><ul><li>Branch <a href="https://github.com/LocalJoost/JSONDownload/tree/BrokenJsonNet" target="_blank">BrokenJsonNet</a> demonstrates the problem</li><li>Branch <a href="https://github.com/LocalJoost/JSONDownload/tree/FixedJsonNet" target="_blank">FixedJsonNet</a> shows the fixed setup</li></ul><p>And yes, the master is still empty but I intend to use that for demonstrating a different issue.</p>

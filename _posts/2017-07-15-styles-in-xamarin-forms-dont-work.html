@@ -1,0 +1,74 @@
+---
+layout: post
+title: Styles in Xamarin Forms don't work properly in UWP .NET Native - here is how
+  to fix it
+date: '2017-07-15T13:15:00.000+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- Xamarin Forms
+modified_time: '2017-07-17T09:55:05.227+02:00'
+thumbnail: https://lh3.googleusercontent.com/-3LgkRegYy8w/WWn5GBDCI2I/AAAAAAAAPHI/WKXI_MuKRig5COHc-ktatwtKB6Okq4RGQCHMYCw/s72-c/image_thumb%255B4%255D?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-131842386141738117
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2017/07/styles-in-xamarin-forms-dont-work.html
+---
+
+<h2>Intro</h2><p>Xamarin Forms is awesome. If you have learned XAML from WPF, Silverlight, Windows Phone, Universal Windows Apps or UWP, you can jump right in using the XAML you know (or at least something that looks remarkably familiar) and start to make apps that will run cross platform on iOS, Android and UWP. So potentially your app cannot only run on phones but also on XBox, HoloLens and PCs. </p><h2>OnPlatform FTW!</h2><p>One of the coolest thing is the OnPlatform construct. For instance, you can have something this:</p><pre style="font-size: 11px;">&lt;Style TargetType="Label" x:Key="OtherTextStyle" &gt;
+    &lt;Setter Property="FontSize"&gt;
+        &lt;OnPlatform x:Key="FontSize" x:TypeArguments="x:Double" &gt;
+            &lt;On Platform="Windows" Value="100"&gt;&lt;/On&gt;
+            &lt;On Platform="Android" Value="30"&gt;&lt;/On&gt;
+            &lt;On Platform="iOS" Value="30"&gt;&lt;/On&gt;
+        &lt;/OnPlatform&gt;
+    &lt;/Setter&gt;
+&lt;/Style</pre><p>This indicates the label that has this style applied to it, should have a font size of 100 on Windows, 30 on Android, and 30 on iOS. In the <a href="https://github.com/LocalJoost/UWPStyleIssue" target="_blank">demo project</a> I have defined some styles in the App.xaml, and the net result is that is looks like this on Android (left), iOS(right) and Windows (below).</p><p><a href="https://lh3.googleusercontent.com/-D6yV-_ow35o/WWn5FtfwAmI/AAAAAAAAPHE/rdZ_V2YQj-w0puGeSwx9tsv9MFhJ-0MVgCHMYCw/s1600-h/image%255B8%255D"><img width="200" height="333" title="image" style="margin: 0px 0px 0px 39px; border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-3LgkRegYy8w/WWn5GBDCI2I/AAAAAAAAPHI/WKXI_MuKRig5COHc-ktatwtKB6Okq4RGQCHMYCw/image_thumb%255B4%255D?imgmax=800" border="0"></a><a href="https://lh3.googleusercontent.com/-PMf2_fiP1dc/WWn5Ga5QcQI/AAAAAAAAPHM/aM3WGVCCr6wdYZxHMVsbfdFgZ0oTP7U8gCHMYCw/s1600-h/image%255B11%255D"><img width="182" height="333" title="image" align="left" style="border: 0px currentcolor; border-image: none; float: left; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-uf2mCjBtFhk/WWn5G45cRaI/AAAAAAAAPHQ/4RZGo7kjg-QSmJJ3UoF07lYltAaXb3hvwCHMYCw/image_thumb%255B7%255D?imgmax=800" border="0"></a></p><p><a href="https://lh3.googleusercontent.com/-xV2YtWnI_20/WWn5IkqJpUI/AAAAAAAAPHU/53hc68P4J9YwDyYPIrwYXAEyfuRU2nYhgCHMYCw/s1600-h/image%255B63%255D"><img width="442" height="287" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-BYvi7StPscg/WWn5JJ5O6yI/AAAAAAAAPHY/k_u-WJacCtkoS-PrXGWYhvL2Bvc090SxwCHMYCw/image_thumb%255B55%255D?imgmax=800" border="0"></a></p><p>The result is not necessarily very beautiful, but if you look in the MainPage.xaml you will see everything has a style and no values are hard coded. You can also see that although the Android and iOS apps are mobile apps and the Windows app is essentially an app running on a tablet or a PC (the demarcation line between these is becoming hazier with the day) it will still work out using OnPlatform.</p><p> I have used various constructs. Apart from the inline construct as I showed above, there's also this one</p><pre style="font-size: 11px;">&lt;OnPlatform x:Key="ImageSize" x:TypeArguments="x:Double" &gt;
+    &lt;On Platform="Windows" Value="150"&gt;&lt;/On&gt;
+    &lt;On Platform="Android" Value="100"&gt;&lt;/On&gt;
+    &lt;On Platform="iOS" Value="90"&gt;&lt;/On&gt;
+&lt;/OnPlatform&gt;
+
+&lt;Style TargetType="Image" x:Key="ImageStyle" &gt;
+    &lt;Setter Property="HeightRequest" Value="{StaticResource ImageSize}" /&gt;
+    &lt;Setter Property="WidthRequest" Value="{StaticResource ImageSize}" /&gt;
+    &lt;Setter Property="VerticalOptions" Value="Center" /&gt;
+    &lt;Setter Property="HorizontalOptions" Value="Center" /&gt;
+&lt;/Style</pre><p>A construct I would very much recommend, as it enables you to re-use the ImageSize value for other things, for instance the height of button, in another style. You can also use these doubles directly in Xaml, like I did with SomeOtherTextFontSize in the last label in MainPage.xaml</p><pre style="font-size: 11px;">&lt;?xml version="1.0" encoding="utf-8" ?&gt;
+&lt;ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="UWPStyleIssue.MainPage"&gt;
+    &lt;Grid VerticalOptions="Center" HorizontalOptions="Center" &gt;
+        &lt;Grid.RowDefinitions&gt;
+            &lt;RowDefinition Height="*"&gt;&lt;/RowDefinition&gt;
+            &lt;RowDefinition Height="*"&gt;&lt;/RowDefinition&gt;
+            &lt;RowDefinition Height="*"&gt;&lt;/RowDefinition&gt;
+            &lt;RowDefinition Height="*"&gt;&lt;/RowDefinition&gt;
+        &lt;/Grid.RowDefinitions&gt;
+        &lt;Image Grid.Row="0"
+            Source=
+               "https://media.licdn.com/mpr/mpr/shrinknp_400_400/[abbreviated]jpg"
+           Style="{StaticResource ImageStyle}"&gt;&lt;/Image&gt;
+        &lt;Label Text="Welcome to                       Xamarin Forms!" Grid.Row="1"<br>             Style="{StaticResource TextStyle}"/&gt;
+        &lt;Label Text="Yet another line" Grid.Row="2" Style="{StaticResource OtherTextStyle}"/&gt;
+        &lt;Label Text="Last Line" Grid.Row="3" <font color="#ff0000"><strong>FontSize="{StaticResource SomeOtherTextFontSize}"</strong></font>/&gt;
+    &lt;/Grid&gt;
+&lt;/ContentPage<br></pre><p>
+Although I do not recommend this practice - styles are much cleaner - sometimes needs must and this can be handy. <p>I can hear you think by now: "your point please, kind sir?" (or most likely something less friendly). Well... it works great on Android, as you have seen. It also works great on iOS. And yes, on Windows too...<p><h2>OnPlatform WTF?</h2><p>... until you think "let's get this puppy into the Windows Store". As every Windows Developer knows, if you compile for the Store, you compile for Release, which kicks off the .NET Native toolchain. This is very easy to spot as the compilation process takes <em>much</em> longer. The result is not Intermediary Language (IL),&nbsp; but binary code - an exe - which makes UWP apps so much faster than their predecessors. Unfortunately, it also means the release build is an entirely different beast than a debug build, which can have some unexpected side effects. In our application, if you run the Release build, you will end up with this.</p><p><a href="https://lh3.googleusercontent.com/-lc1Og0bbJVQ/WWn5Jb9zrJI/AAAAAAAAPHc/CWd1SualVy8lBpnTljdA2US3NovJMQ8AACHMYCw/s1600-h/image%255B67%255D"><img width="446" height="291" title="image" style="display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-DoH3ubhWx78/WWn5J-krFaI/AAAAAAAAPHg/txNxXQUR7v8FdNUKK4zoK0jJ8ZSNRbu7QCHMYCw/image_thumb%255B57%255D?imgmax=800" border="0"></a></p><p>That is quite some 'side effect'. No margin to pull the first text up, no font size (just default), no image... WTF indeed.</p><h2>Analysis</h2><p>Unfortunately I had some issues with another library (<a href="https://github.com/luberda-molinet/FFImageLoading" target="_blank">FFImageLoading</a>) which took me on the wrong track for quite a while, but after <a href="https://github.com/luberda-molinet/FFImageLoading/pull/651" target="_blank">I had fixed that</a> I noticed that when I changed the styles from Onplatform to hard coded values the styling started to work again - even in .NET Native. So if I did this</p><pre style="font-size: 11px;"><strong><font color="#ff0000">&lt;x:Double x:Key="ImageSize"&gt;150&lt;/x:Double&gt;</font></strong>
+&lt;!--&lt;OnPlatform x:Key="ImageSize" x:TypeArguments="x:Double"  &gt;
+    &lt;On Platform="Windows" Value="150"&gt;&lt;/On&gt;
+    &lt;On Platform="Android" Value="100"&gt;&lt;/On&gt;
+    &lt;On Platform="iOS" Value="90"&gt;&lt;/On&gt;
+&lt;/OnPlatform&gt;--&gt;</pre><p>at least my image showed up again:<p><a href="https://lh3.googleusercontent.com/-jPquFIYlEdE/WWn5KIhYUXI/AAAAAAAAPHk/yXtKgY2EJiAqGV2tCnYubj_2O54InsDKQCHMYCw/s1600-h/image%255B78%255D"><img width="442" height="287" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-UQthNUzfDYA/WWn5KjjfcUI/AAAAAAAAPHo/Uirg6sWQLr0iT5wrnWXX9uxb81Gua6QggCHMYCw/image_thumb%255B64%255D?imgmax=800" border="0"></a></p><p>With a deadline looming and an ginormous style sheet in my app I really had no time to make a branch with separate styles for Windows. We had to go to the store and we had to go <em>now</em>. Time for a cunning plan. I came up with this:</p><h2>A solution/workaround/hack/fix ... sort of</h2><p>So it works when the styles do contain <em>direct</em> values, <em>not</em> OnPlatform, right... ? If you look at App.xaml.cs in the portable project you will see a line in the constructor that's usually not there, and it's commented out</p><pre style="font-size: 11px;">public App()
+{
+    InitializeComponent();
+    <strong><font color="#ff0000">//this.FixUWPStyling();</font></strong>
+
+    MainPage = new UWPStyleIssue.MainPage();
+}</pre><p>If you remove the slashes and run the app again in Release....</p><p><a href="https://lh3.googleusercontent.com/-iGCcPHn6Xnw/WWn5LJYPIlI/AAAAAAAAPHs/9yplkHy0U7gKvoqh6fEGNQcTX_C10jQkQCHMYCw/s1600-h/image%255B71%255D"><img width="446" height="291" title="image" style="display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-GKwqBN5KUG8/WWn5LZnerAI/AAAAAAAAPHw/nsAGh0WvJFsg1RoJADf0uUHcvLmQS_q-wCHMYCw/image_thumb%255B59%255D?imgmax=800" border="0"></a></p><p>magic happens. All styles seem to work again. This is because of an extension method that's in the file ApplicationExtensions, that you will find in the Portable project in de Extensions folder</p><pre style="font-size: 11px;">public static void FixUWPStyling(this Application app)
+{
+    if (Device.RuntimePlatform == Device.Windows)
+    {
+        app.ConvertAllOnPlatformToExplict();
+        app.ConvertAllOnDoubleToPlainDouble();
+    }
+}</pre><p>The first method, ConvertAllOnPlatformToExplict, does the following:</p><ul><li>Loop trough all the styles</li><li>Loop through all the setters in a style</li><li>Check if the setters 's property name is either "HeightRequest", "WidthRequest", or "FontSize"</li><li>If so, extract the Windows value from the OnPlatform struct</li><li>Set the setter's value to a plain double with as value the extracted Windows value</li></ul><p>It's crude, it requires about everything to be in OnPlatform, but it does the trick. I am not going to write it all out here, it's not very great code, and you can see it all <a href="https://github.com/LocalJoost/UWPStyleIssue/blob/master/UWPStyleIssue/UWPStyleIssue/Extensions/ApplicationExtensions.cs" target="_blank">on GitHub</a> anyway.</p><p>Then, for good measure it calls ConvertAllOnDoubleToPlainDouble, which loops trough the all the doubles, like</p><pre style="font-size: 11px;">&lt;OnPlatform x:Key="ImageSize" x:TypeArguments="x:Double" &gt;...&lt;/OnPlatform&gt;
+</pre><p>It extracts the Windows value, removes the OnPlatform from the resource dictionary and adds a new plain double with the Windows style only to the resource dictionary. For some reason, replacement is not possible.</p><h2>Conclusion</h2><p>There is apparently a bug in the Xamarin Forms .NET Native UWP tooling, which causes OnPlatform values being totally ignored. With my dirty little trick, you can at least get your styles to work without having to rewrite the whole shebang for Windows or have a separate style file for it. Note this does not fix <em>everything</em>, if you have other value types (like GridHeights) you will need to add your own conversion to ConvertAllOnPlatformToExplict&nbsp; What I have given you was enough to fix my problems, but not all potential issues that may arise from this bug. </p><p>I hope this drives the Xamarin for UWP adoption forward, and I also hopes this helps the good folks in Redmond fix the bug. I've pretty much identified <em>what</em> goes wrong, now they 'only' have to take are of the <em>how</em> ;)</p><p>Demo project with fix can be found <a href="https://github.com/LocalJoost/UWPStyleIssue" target="_blank">here</a>.</p>

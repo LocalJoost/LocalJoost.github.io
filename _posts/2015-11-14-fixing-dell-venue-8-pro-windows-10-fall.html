@@ -1,0 +1,13 @@
+---
+layout: post
+title: Fix - Dell Venue 8 Pro Windows 10 Fall update gets stuck at 40%
+date: '2015-11-14T13:24:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Windows 10
+modified_time: '2015-11-15T09:25:26.284+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6225049329591854754
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/11/fixing-dell-venue-8-pro-windows-10-fall.html
+---
+
+<p>My Dell Venue 8 Pro that I primarily use as an e-reader was the last of the flock to get the update... so after gone trough the plight of getting about 8GB of data free to be able to actually <em>start </em>the Fall update... it got stuck at 40%. Twice, actually. It was installing a whole night but never passed 40%.</p> <p>The root cause appeared to be an SD card. The fix is pretty easy.</p> <ol> <li>Hold the power button till your DV8P powers down  <li>Once it has shut down, pop out the SD card  <li>Power it up again.  <li>It will now restore your previous version of <a href="http://www.windows.com" target="_blank">Windows</a>, that is, the Windows 10 RTM 10240. Wait for that complete (should be a few minutes)  <li>Follow <a href="http://winsupersite.com/windows-10/installing-windows-10-november-release-after-it-failed" target="_blank">this procedure</a> as described by Rod Trent on the SuperSite for Windows  <li>The update will now complete (fingers crossed)  <li>Once it's done, login and pop in your SD card again.</li></ol> <p>At the original writing of this article I was thinking "I have read this somewhere before, but where"? Neither Google or Bing yielded any results. The odd thing is my Surface Pro 1 upgraded flawlessly, although it does have SD card too.</p> <p>Maybe I did not search thoroughly enough, because a day later the writer of <a href="https://wow365.nl/platform/win10/fix-windows-10-update-sd-bug/" target="_blank">this blog</a> (in Dutch) pointed out he posted the same thing before I did. The post recounts a twitter conversation between Gabe Aul and Mary Jo Foley about popping the SD card on upgrade. I probably have seen the&nbsp; conversation in my timeline and subconsciously registered it. I admit prior art ;) but I will leave this post up because I think it makes the solution easier to find.</p>  

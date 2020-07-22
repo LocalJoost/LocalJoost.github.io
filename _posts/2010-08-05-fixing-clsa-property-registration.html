@@ -1,0 +1,157 @@
+---
+layout: post
+title: Fixing CLSA property registration issues in child objects
+date: '2010-08-05T20:00:00.001+02:00'
+author: Joost van Schaik
+tags:
+- refactoring
+- CSLA
+- dotnetmag
+- inheritance
+- C#
+- Generics
+modified_time: '2010-10-04T21:05:57.582+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6629226472323806495
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/08/fixing-clsa-property-registration.html
+---
+
+<p><strong><em>AKA ‘avoiding the dreaded “Can not register property</em> YourProperty <em>after containing type (YourBaseType) has been instantiated” error message’</em></strong></p>  <p>Somewhere between <a href="http://www.lhotka.net/cslanet/" target="_blank">CSLA</a> 3.0 en 3.6 a new way of registering properties has become into being: </p>  <pre>// old skool CSLA
+private string _oldProp = string.Empty;
+public string OldProp
+{
+  get
+  {return _oldProp;}	 
+  set
+  { if (value == null) value = string.Empty;
+    if (!_oldProp.Equals(value))
+    {
+      _oldProp = value;
+      PropertyHasChanged(&quot;OldProp&quot;);
+    }
+  }
+}
+
+//new skool CSLA
+private static PropertyInfo NewPropProperty = 
+  RegisterProperty(c =&gt; c.NewProp);
+public string NewProp
+{
+	get { return GetProperty(NewPropProperty); }
+	set { SetProperty(NewPropProperty, value); }
+}</pre>
+
+<p>In <a href="http://www.lhotka.net/files/csla40/Csla-4.0.0-100723.msi" target="_blank">CSLA 4.0</a> the last style is mandatory, so I started upgrading some objects (while currently using CSLA 3.8.3) in anticipation. So I upgraded my base object</p>
+
+<pre>using Csla;
+
+namespace CslaInheritance
+{
+  public abstract class MyBaseClass : BusinessBase&lt;MyBaseClass&gt;
+  {
+
+    protected static PropertyInfo&lt;string&gt; MyProp1Property = 
+        RegisterProperty&lt;string&gt;(c =&gt; c.MyProp1);
+    public string MyProp1
+    {
+      get { return GetProperty(MyProp1Property); }
+      set { SetProperty(MyProp1Property, value); }
+    }
+
+    protected static PropertyInfo&lt;string&gt; MyProp2Property = 
+        RegisterProperty&lt;string&gt;(c =&gt; c.MyProp2);
+    public string MyProp2
+    {
+      get { return GetProperty(MyProp2Property); }
+      set { SetProperty(MyProp2Property, value); }
+    }
+  }
+}</pre>
+and then my child object 
+
+<pre>using Csla;
+
+namespace CslaInheritance
+{
+  public abstract class MyConcreteClass1 : MyBaseClass
+  {
+    protected static PropertyInfo&lt;string&gt; ConcreteProp1Property = 
+      RegisterProperty&lt;string&gt;(c =&gt; c.<font color="#ff0000">ConcreteProp1</font>);
+    public string ConcreteProp1
+    {
+      get { return GetProperty(ConcreteProp1Property); }
+      set { SetProperty(ConcreteProp1Property, value); }
+    }
+
+    protected static PropertyInfo&lt;string&gt; ConcreteProp2Property =
+      RegisterProperty&lt;string&gt;(c =&gt; c.<font color="#ff0000">ConcreteProp2</font>);
+    public string ConcreteProp2
+    {
+      get { return GetProperty(ConcreteProp2Property); }
+      set { SetProperty(ConcreteProp2Property, value); }
+    }
+  }
+}</pre>
+
+<p>And then I noticed something odd: according to the compiler, ConcreteProp1 and ConcreteProp2 were not defined. Even worse is the situation when you choose to upgrade your properties not using lambda expressions, but PropertyInfo objects, like this:</p>
+
+<pre>    protected static PropertyInfo&lt;string&gt; ConcreteProp3Property =
+      new PropertyInfo&lt;string&gt;(&quot;ConcreteProp3Property&quot;);
+    public string ConcreteProp3
+    {
+        get { return GetProperty(ConcreteProp3Property); }
+        set { SetProperty(ConcreteProp3Property, value); }
+    }</pre>
+because this will compile - and run. Until you create a second child class MyConcreteClass2, instantiate it, <em>then</em> instantiate a MyConcreteClass1 – and then you will get a cryptical runtime error message saying “Can not register property ConcreteProp1Property after containing type MyBaseClass has been instantiated”. 
+
+<p>Fortunately the CSLA framework comes with sources, and after some rooting around I found the culprit, if you can call it that, in Csla.BusinessBase:</p>
+
+<pre>protected static PropertyInfo&lt;P&gt; 
+  RegisterProperty&lt;P&gt;(Expression&lt;Func&lt;T, object&gt;&gt; propertyLambdaExpression)
+{
+  PropertyInfo reflectedPropertyInfo = 
+    Reflect&lt;T&gt;.GetProperty(propertyLambdaExpression);
+
+  return RegisterProperty(Csla.Core.FieldManager.PropertyInfoFactory.Factory.Create&lt;P&gt;(
+    typeof(T), reflectedPropertyInfo.Name));
+}</pre>
+
+<p>Although MyConcreteClass1 inherits from MyBaseClass, MyBaseClass inherits in turn from templated class BusinessBase&lt;MyBaseClass&gt;. Therefore, in <strong>RegisterProperty</strong> called from MyConcreteClass1 <em>T is still MyBaseClass. </em>It does not matter that I actually called it from a <em>child</em> class. So what happens is that all the statics are defined in the <em>base</em> class MyBaseClass. If you are using the lambda variant to register, the compiler saves your *ss, but if you use the PropertyInfo method something weird happens. Remember, statics in a class are initialized as soon as you touch any one of statics. So what happens is: you instantiate your concrete child class, immediately the statics of both the concrete and the base class are initialized, <em>and all the properties are registered in the base class</em>. If you try to instantiate a second concrete child class, Csla finds that your base class properties are already initialized, and the dreaded “Can not register property ConcreteProp1Property after containing type MyBaseClass has been instantiated” error message appears.</p>
+
+<p>Now you can of course change the way you implement classes. I might make MyBaseClass generic as well, then T changes along. But when upgrading an existing API out of a situation in which direct inheritance used to be perfectly legal, it’s a different story.</p>
+
+<p>There are actually two ways out of this. The first one is: use PropertyInfo, but explicitly name the object type to which the property belongs </p>
+
+<pre>protected static PropertyInfo&lt;string&gt; ConcreteProp3Property =
+  RegisterProperty(typeof(MyConcreteClass1), 
+  new PropertyInfo&lt;string&gt;(&quot;ConcreteProp3Property&quot;));
+public string ConcreteProp3
+{
+    get { return GetProperty(ConcreteProp3Property); }
+    set { SetProperty(ConcreteProp3Property, value); }
+}</pre>
+
+<p>This works, but I like the solution below better, because that uses lambda expressions again and so your friend the compiler ;-) can help you catch typo’s. The only way I see to realize <em>that</em> is to add a static method at the bottom of your class </p>
+
+<pre>private static PropertyInfo&lt;T&gt; RegisterPropertyLocal&lt;T&gt;(
+  Expression&lt;Func&lt;MyConcreteClass1, object&gt;&gt; propertyLambdaExpression)
+{
+  var reflectedPropertyInfo = 
+  Reflect&lt;MyConcreteClass1&gt;.GetProperty(propertyLambdaExpression);
+  return RegisterProperty(typeof(MyConcreteClass1),
+    Csla.Core.FieldManager.PropertyInfoFactory.Factory.Create&lt;T&gt;(
+    typeof(MyConcreteClass1),
+    reflectedPropertyInfo.Name);
+}</pre>
+and then register your properties like this from now on:
+
+<pre>protected static PropertyInfo&lt;string&gt; ConcreteProp1Property = 
+  <strong><em>RegisterPropertyLocal</em></strong>&lt;string&gt;(c =&gt; c.ConcreteProp1);
+public string ConcreteProp1
+{
+  get { return GetProperty(ConcreteProp1Property); }
+  set { SetProperty(ConcreteProp1Property, value); }
+}</pre>
+
+<p>The drawback of this solution is, of course, that you have to define a static RegisterPropertyLocal in <em>every</em> inherited class you define. But at least you will be saved from typos and weird runtime errors.</p>
+
+<p>Now you are ready to upgrade, but I would recommend recording some macros to do the actual syntax change, unless you are very fond of very dull repetitive typing jobs ;-)</p>  

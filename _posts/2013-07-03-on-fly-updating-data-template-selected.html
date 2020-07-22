@@ -1,0 +1,51 @@
+---
+layout: post
+title: On-the-fly updating of a data template selected by a DataTemplateSelector
+date: '2013-07-03T10:29:00.001+02:00'
+author: Joost van Schaik
+tags:
+- DataBinding
+- Windows Phone 8
+- wpdev
+- dotnetmag
+- Windows Phone 7
+modified_time: '2013-07-03T13:30:48.971+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7554977870925517261
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/07/on-fly-updating-data-template-selected.html
+---
+
+<p>It’s really fun when someone contacts you with a <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> development problem and you have already something standing by to solve it – even if it was intended for something completely different. Last week fellow MVP <a href="http://www.twitter.com/mark_monster" target="_blank">Mark Monster</a> contacted me with the following situation:</p> <ul> <li>He had several objects in an ObservableCollection  <li>He was using a DataTemplateSelector to determine which template was to be used for an object – I assume he used <a href="http://www.windowsphonegeek.com/articles/Implementing-Windows-Phone-7-DataTemplateSelector-and-CustomDataTemplateSelector" target="_blank">something like this</a>.</li></ul> <p>This worked very fine when initially binding the list of objects to the LongListSelector, but he ran into the following problem: the template to be used was determined by an attribute that could be changed while the object was visible. Like, in the example by the article on geekchamp.com that I referred to, you could change the Food Type from healthy to unhealthy after the list was displayed. But if Mark did that, the template stayed the same. The new template was not selected.</p> <p>This is of course perfectly understandable – the template selector, being a ContentControl, just has as OnContentChanged you can override - but has no knowledge about what is going on in the collection from which its instances are created.</p> <p>The solution is very simple, albeit a bit crude – <a href="http://dotnetbyexample.blogspot.nl/2013/05/windows-phone-8-navigation-part_13.html" target="_blank">reaching back into the last post of my 4-part mapping series,</a> I pulled out this brilliant *cough* piece of coding, originally cobbled together to compensate for a bug I in my own CodePlex library:</p><pre>using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+
+namespace Wp7nl.Utilities
+{
+  public class ResettableObservableCollection&lt;T&gt; : ObservableCollection&lt;T&gt;
+  {
+    public ResettableObservableCollection()
+    {
+    }
+
+    public ResettableObservableCollection(List&lt;T&gt; list)
+      : base(list)
+    {
+    }
+
+    public ResettableObservableCollection(IEnumerable&lt;T&gt; list)
+      : base(list)
+    {
+    }
+
+    public void ForceReset()
+    {
+      OnCollectionChanged(
+       new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+    }
+  }
+}</pre>
+<p>The only thing Mark needed to do was:</p>
+<ul>
+<li>Change his standard ObservableCollection into a ResettableObservableCollection, </li>
+<li>Call “ForceReset” on the collection after he had changed the attribute that should trigger the template change.</li></ul>
+<p>This will work on Windows Phone 8 as well on Windows Phone 7. It’s crude, but effective. Sometimes life is so simple - so simple in fact that that I hope you will forgive me for omitting a demo solution this time. I hope this helps more people wrestling with the same problem. </p>
+<p>Which reminds me I should update my <a href="http://wp7nl.codeplex.com/">wp7nl library on CodePlex</a> again. The additions are backing up again ;-)</p>  

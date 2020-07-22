@@ -1,0 +1,189 @@
+---
+layout: post
+title: Creating a geographical map on the floor in your Hololens / Windows MR app
+date: '2017-07-22T14:22:00.001+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- HoloLens
+- Windows Mixed Reality
+- Mapping
+modified_time: '2017-08-02T11:29:28.923+02:00'
+thumbnail: https://lh3.googleusercontent.com/-oGUwXwwdhGk/WWzpWa6OAvI/AAAAAAAAPIM/5bA9SkufW3UikfGMmffgju33cM2szKQiQCHMYCw/s72-c/image_thumb%255B7%255D?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3198924645477729823
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2017/07/create-geographical-map-on-floor-in.html
+---
+
+<h2>Intro</h2><p>If you make an awesome app like <a title="Walk the World" href="https://www.microsoft.com/store/productid/9P6SVQQCP2SQ">Walk the World</a>, of course you are not going to spill the beans on how you built it, right? Well – wrong, because I think sharing knowledge is the basis of any successful technical community, because I like doing it, and last but not least – I feel it is one the primary things that makes an MVP an MVP. I can’t show you <em>all</em> the details, if only because the app is humongous and is badly in need of some overhaul / refactoring, but I <em>can</em> show you some basic principles that will allow you to make your own map. And that’s exactly what I am going to do.</p><h2>‘Slippy map’?</h2><p>Getting on my GIS hobby horse here :) Gather around the fire ye youngsters and let this old GIS buff tell you all about it. ;)</p><p>Slippy maps are maps made out of pre rendered square images that together form a continuous looking map. Well-known examples are Bing Maps and Google Maps, as well as the open source map <a href="http://www.openstreetmap.org" target="_blank">Open Street Maps</a> – that we use for this example, The images are usually 256x256 pixels. Slippy maps have a fixed number of discrete zoom levels. For every zoom level there is a number of tiles. Zoom level 0 is typically 1 image showing the whole world. Zoom level 1 is 4 tiles each showing 1/4th of the world. Zoom level 2 is 16 tiles each showing 1/16th of the world. You get the idea. Generally speaking a zoom level has 2<sup>zoomlevel</sup> x 2<sup>zoomlevel</sup> tiles. </p><p>You can see the number of tiles (and the amount of data servers need to store those) go up <em>very</em> quickly. Open Street Maps’ maximum zoom level is 19 – which all by itself is 274.9 <em>billion</em> tiles, and that is <em>on top of all the other levels</em>. Google Map’s maximum zoom level is 21 at some places and I think Bing Maps goes even further. The amount of tiles of level 21 alone would be 4398046511104, a little short of 5 <em>trillion. </em>And that is not all - they even have <em>multiple layers</em> – map, terrain, satellite. Trillions upon trillions of tiles - that is even too much to swallow for Microsoft and Google, which is why they vary the maximum zoom level depending on the location – in the middle of the ocean there’s considerable less zoom levels available ;). But still: you need really insane amounts of storage and bandwidth to serve a slippy map of the whole world with some amount of detail, which is why you have so little parties actually meeting this challenge – mostly Google, Microsoft, and Open Street Maps. </p><p>Anyway - in a slippy map tiles are defined in rows and columns per zoom level. The takeaway from this is to realize that a map tile can be identified by three parameters and three parameters only: X, Y and zoom level. And those need to be converted into a unique URL per tile. The way these tiles are exactly organized depends on the actual map supplier. And if your starting point is a Lat/Lon coordinate, you will have to do some extra math. Basically all you need to know you can find <a href="http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames" target="_blank">here at the Open Streep Maps wiki</a>. But I am going to show in more detail anyway.</p><h2>Setting up the project</h2><p>For this project we will use <a href="https://unity3d.com/unity/whats-new/unity-2017.1.0" target="_blank">Unity 2017.1.0.f3</a>. Do not forget to install the Windows Store (.NET) Target Support as well. If you are finished, clone my basic setup from <a href="http://dotnetbyexample.blogspot.nl/2017/06/setting-up-hololens-project-with.html">Setting up a HoloLens project with the HoloToolkit - June 2017 edition</a>. Rename the folder to “SlippyMapDemo”, then</p><ul><li>
+Open the project in Unity 
+<li>Open the Build Settings window (CTRL+B)<li>Make sure it looks like this:</li></ul><p><a href="https://lh3.googleusercontent.com/-Mg7x9EPv8JI/WWzpWAGveCI/AAAAAAAAPII/KPOlf3L95jgjaVZjucZInwmw6dNu3YQAgCHMYCw/s1600-h/image%255B9%255D"><img width="350" height="337" title="image" style="margin: 0px 0px 0px 21px; border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-oGUwXwwdhGk/WWzpWa6OAvI/AAAAAAAAPIM/5bA9SkufW3UikfGMmffgju33cM2szKQiQCHMYCw/image_thumb%255B7%255D?imgmax=800" border="0"></a>&nbsp; </p><ul><li>Hit the "Player Settings..." button 
+<li>Change "June2017HoloLensSetup" in "SlippyMapDemo" where ever you see it. Initially you will see only one place, but please expand the "Icon" and "Publishing Settings" panels as well, there are more boxes to fill in.&nbsp; </li></ul><h2>Upgrading the <a href="https://github.com/Microsoft/HoloToolkit-Unity" target="_blank">HoloToolkit</a></h2><p><a href="https://lh3.googleusercontent.com/-4YQXSfZBUKw/WWzpWySNyLI/AAAAAAAAPIQ/BP5r8dyBWeQjaz3QvkBGgy9Yk9tzep4EQCHMYCw/s1600-h/image%255B17%255D"><img width="240" height="131" title="image" align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-igIvWqdmDK8/WWzpXTEihZI/AAAAAAAAPIU/vWmXqZYCFZQyZ2ubsHQUYuT8uk9ySwDAQCHMYCw/image_thumb%255B10%255D?imgmax=800" border="0"></a>To make a working app on the new Unity version, we will need a new HoloToolkit. So delete everything from the Assets/Holotoolkit <em>but do it from Unity, </em>as this will leave the .gitignore in place.</p><p>Select all items, press delete. Then, go to <a title="http://holotoolkit.download/" href="http://holotoolkit.download/">http://holotoolkit.download/</a> and download the latest HoloToolkit. If you click “Open” while downloading, Unity will automatically start to import it. I would once again suggest de-selecting Holotoolkit-Tests as they are not useful for an application project. </p><h2>Some basic stuff first</h2><p>We will need to have a simple class that can hold a Lat/Lon coordinate. UWP supplies those, but that means we cannot test in the editor and, well, we don’t need all what they can do. So we start off with this extremely simple class:</p><pre style="font-size: 11px;">public class WorldCoordinate
+{
+    public float Lon { get; set; }
+    public float Lat { get; set; }
+
+    public override string ToString()
+    {
+        return string.Format("lat={0},lon={1}", Lat, Lon);
+    }
+}
+</pre><h2>Lat/Lon to tile</h2><p>A map has a location – latitude and longitude, so that is our starting point. So we need to have a way to get the tile on which the desired location is. A tile is defined by X, Y and zoom level, remember? We start like this:</p><pre style="font-size: 11px;">using System;
+using UnityEngine;
+
+public class TileInfo : IEquatable&lt;TileInfo&gt;
+{
+    public float MapTileSize { get; private set; }
+
+    public TileInfo(WorldCoordinate centerLocation, int zoom, float mapTileSize)
+    {
+        SetStandardValues(mapTileSize);
+
+        var latrad = centerLocation.Lat * Mathf.Deg2Rad;
+        var n = Math.Pow(2, zoom);
+        X = (int)((centerLocation.Lon + 180.0)/360.0*n);
+        Y = (int)((1.0 - Mathf.Log(Mathf.Tan(latrad) + 1 / Mathf.Cos(latrad)) / Mathf.PI) / 2.0 * n);
+        ZoomLevel = zoom;
+    }
+
+    private void SetStandardValues(float mapTileSize)
+    {
+        MapTileSize = mapTileSize;
+    }
+
+    public int X { get;  set; }
+    public int Y { get;  set; }
+
+    public int ZoomLevel { get; private set; }
+
+}</pre><p>Via a simple constructor X and Y are calculated from latitude, longitude and zoomlevel, The MapTileSize is the apparent physical size of the map tile - that we will need in the future (it will be 0.5 meters, as we will see later). </p><p>Wow. That seems like some very high brow GIS calculation, that only someone like me understands, right? ;)Maybe, maybe not, but you find this formula on the Open Street Map wiki, more specifically, <a href="http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames#Tile_numbers_to_lon..2Flat._2" target="_blank">here</a>. </p><p>So now we have the center tile, and to calculate the tiles next to it, we simply need another constructor </p><pre style="font-size: 11px;">public TileInfo(int x, int y, int zoom, float mapTileSize)
+{
+    SetStandardValues(mapTileSize);
+    X = x;
+    Y = y;
+    ZoomLevel = zoom;
+}</pre><p>in a simple loop, as we also will see later, we can find the tiles next, above and below it and we can define a MapBuilder class that can loop over this information, and make map tiles <em>grid</em>. BTW, this class also has some equality logic, but that’s not very exiting in this context, so you can look that up in the <a href="https://github.com/LocalJoost/SlippyMapDemo" target="_blank">demo project.</a></p><h2>Tile to URL</h2><p>As I have explained, a tile can be identified by three numbers: X, Y and zoom level but to actually show the tile, you need to convert that to a URL. So I defined this interface to make the tile retrieval map system agnostic: </p><pre style="font-size: 11px;">public interface IMapUrlBuilder
+{
+    string GetTileUrl(TileInfo tileInfo);
+}</pre><p>and this single class implementing it for Open Street Map:</p><pre style="font-size: 11px;">using UnityEngine;
+
+public class OpenStreetMapTileBuilder : IMapUrlBuilder
+{
+    private static readonly string[] TilePathPrefixes = { "a", "b", "c" };
+
+    public string GetTileUrl(TileInfo tileInfo)
+    {
+        return string.Format("http://{0}.tile.openstreetmap.org/{1}/{2}/{3}.png",
+                   TilePathPrefixes[Mathf.Abs(tileInfo.X) % 3],
+                   tileInfo.ZoomLevel, tileInfo.X, tileInfo.Y);
+    }
+}</pre><p>this is not new code. Regular readers (or better – long time readers) of this blog <a href="http://dotnetbyexample.blogspot.com/2010/10/showing-open-source-maps-on-windows.html" target="_blank">may have seen it as early as 2010, when I showed how to do this for Window Phone 7</a>. </p><h2>Some (very little) re-use</h2><p>Basically we are going to download images from the web again, using the URL that the IMapUrlBuilder can calculate from the TileData. Downloading an showing images in a HoloLens app – been there, done that, and it fact, that’s what made the idea of Walk the World popup up in my mind in the first place. So I am going to reuse the <a href="http://dotnetbyexample.blogspot.com/2017/02/a-behaviour-for-dynamically-loading-and.html" target="_blank">DynamicTextureDownloader from this post</a>. In the <a href="https://github.com/LocalJoost/SlippyMapDemo" target="_blank">demo project</a>, it sits in the HolotoolkitExtensions. We make a simple child class:</p><pre style="font-size: 11px;">using HoloToolkitExtensions.RemoteAssets;
+using System.Collections;
+using UnityEngine;
+
+public class MapTile : DynamicTextureDownloader
+{
+    public IMapUrlBuilder MapBuilder { get; set; }
+
+    private TileInfo _tileData;
+
+    public MapTile()
+    {
+        MapBuilder = MapBuilder != null ? MapBuilder : new OpenStreetMapTileBuilder();
+    }
+
+    public void SetTileData(TileInfo tiledata, bool forceReload = false)
+    {
+        if (_tileData == null || !_tileData.Equals(tiledata) || forceReload)
+        {
+            TileData = tiledata;
+        }
+    }
+
+    public TileInfo TileData
+    {
+        get { return _tileData; }
+        private set
+        {
+            _tileData = value;
+            ImageUrl = MapBuilder.GetTileUrl(_tileData);
+        }
+    }
+}
+</pre><p>So what happens – if you set TileData using SetTileInfo, it will ask the MapBuilder to calculate the tile image URL, the result will be assigned to the parent class’ ImageUrl property, and the image will automatically be drawn as a texture on the Plane it’s supposed to be added to.</p><h2>Creating the MapTile prefab</h2><p>In HologramCollection, create a Plane and call it MapTile. Change it’s X and Z scale to 0.05 so the 10x10 meter plane will show as 0.5 meters indeed. Then add the MapTile <em>script</em> to it as a component. Finally, drag the MapTile <em>Plane </em>(with attached script) from the HologramCollection to the Prefabs folder in Assets.</p><p><a href="https://lh3.googleusercontent.com/-rKYvHZ0u2RU/WXMbAIbHpXI/AAAAAAAAPJA/q_uQuCxwO0UVBhDP1_51Jps8W-EfNFV4ACHMYCw/s1600-h/image%255B6%255D"><img width="600" height="362" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-Fp7awVSM6kM/WXMbA85kcLI/AAAAAAAAPJE/97kGiJNtCqwALQSrV8fv-XBMOTSA-s2yACHMYCw/image_thumb%255B3%255D?imgmax=800" border="0"></a></p><p>If you are done, remove the MapTile from the HologramCollection in the Hierarchy.</p><h2>A first test</h2><p>To the HologramCollection we add another empty element called “Map”. Set it’s Y position to –1.5, so the map will appear well below our viewpoint. To that Map game object that we add a first version of our MapBuilder script:</p><pre style="font-size: 11px;">using UnityEngine;
+
+public class MapBuilder : MonoBehaviour
+{
+    public int ZoomLevel = 12;
+
+    public float MapTileSize = 0.5f;
+
+    public float Latitude = 47.642567f;
+    public float Longitude = -122.136919f;
+
+    public GameObject MapTilePrefab;
+
+
+    void Start()
+    {
+        ShowMap();
+    }
+
+    public void ShowMap()
+    {
+        var mapTile = Instantiate(MapTilePrefab, transform);
+        var tile = mapTile.GetComponent&lt;MapTile&gt;();
+       tile.SetTileData(
+           new TileInfo(
+               new WorldCoordinate{ Lat = Latitude, Lon = Longitude }, 
+               ZoomLevel, MapTileSize)
+           );
+    }
+}</pre><p>This simple script basically creates one tile based upon the information you have provided. Since it does nothing with location, it will appear at 0,0,0 in the Map, which itself is at 1.5 meters below your viewpoint. If you were to run the result in the HoloLens, a 0.5x0.5m map tile map should appear right around your feet.</p><p>Anyway, drag the prefab we created in the previous step on the Map Tile Prefab property of the Map Tile Builder …</p><p><a href="https://lh3.googleusercontent.com/-VzDRdfw4CG8/WXMlnY04gTI/AAAAAAAAPJU/FxSftS0Sj6Mc_AkJWZw8FGAMpE093KP9gCHMYCw/s1600-h/image%255B14%255D"><img width="600" height="360" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-XOGjK5sbanQ/WXMln-twxmI/AAAAAAAAPJY/h7HDi43sdzo_0rTmnu_ejngoNlH7uCGtwCHMYCw/image_thumb%255B7%255D?imgmax=800" border="0"></a></p><p>… and press the Unity Play button.You will see nothing at all, but if you rotate the Hololens Camera 90 degrees over X (basically looking down) <em>while being in play mode</em> a map tile will appear, showing Redmond.</p><p><a href="https://lh3.googleusercontent.com/-cJ_3EAyXtaY/WXMlojqbGGI/AAAAAAAAPJc/7IMY8Wu5yBk6QAA_cBKsYsHA2kXxvTJiQCHMYCw/s1600-h/image%255B24%255D"><img width="650" height="401" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-rQobz51hp6g/WXMlpHgrYkI/AAAAAAAAPJg/xbzZv9mWhEcjtXyamIfEnVg7IoovN5O-ACHMYCw/image_thumb%255B13%255D?imgmax=800" border="0"></a></p><p>Only it will be upside down, thanks to the default way Unity handles Planes - something I still don't understand the reason for. <em>Exit play mode</em>, select  the Map game object and change it’s Y rotation to 180, hit play mode again and rotate the camera once again 90 over X.</p><p><a href="https://lh3.googleusercontent.com/-dfchj8uDJT0/WXMlp4M8bCI/AAAAAAAAPJk/Uez7nyBYSRYcc1lUutkSXaR_gZ8dou-2wCHMYCw/s1600-h/image%255B31%255D"><img width="340" height="183" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-xjWlLI6OmT4/WXMlqTcYEEI/AAAAAAAAPJo/ZXfMX1o4apU81uCp_-nud7mbNsb1v0gPgCHMYCw/image_thumb%255B18%255D?imgmax=800" border="0"></a></p><p>That’s more like it.</p><h2>The final step</h2><p>Yes, there is only one step left. In stead of making one tile, let’s make a <em>grid</em> of tiles.</p><p>We add three more properties to the MapBuilder script:</p><pre style="font-size: 11px;">public float MapSize = 12;
+
+private TileInfo _centerTile;
+private List&lt;MapTile&gt; _mapTiles;</pre><p>And then here’s the body of MapBuilder v2</p><pre style="font-size: 11px;">void Start()
+{
+    _mapTiles = new List&lt;MapTile&gt;();
+    ShowMap();
+}
+
+public void ShowMap()
+{
+    _centerTile = new TileInfo(new WorldCoordinate { Lat = Latitude, Lon = Longitude }, 
+        ZoomLevel, MapTileSize);
+    LoadTiles();
+}
+
+private void LoadTiles(bool forceReload = false)
+{
+    var size = (int)(MapSize / 2);
+
+    var tileIndex = 0;
+    for (var x = -size; x &lt;= size; x++)
+    {
+        for (var y = -size; y &lt;= size; y++)
+        {
+            var tile = GetOrCreateTile(x, y, tileIndex++);
+            tile.SetTileData(<br>                 new TileInfo(_centerTile.X - x, _centerTile.Y + y, ZoomLevel, MapTileSize),
+                 forceReload);
+            tile.gameObject.name = string.Format("({0},{1}) - {2},{3}", x, y, tile.TileData.X,
+                tile.TileData.Y);
+        }
+    }
+}
+
+private MapTile GetOrCreateTile(int x, int y, int i)
+{
+    if (_mapTiles.Any() &amp;&amp; _mapTiles.Count &gt; i)
+    {
+        return _mapTiles[i];
+    }
+
+    var mapTile = Instantiate(MapTilePrefab, transform);
+    mapTile.transform.localPosition = new Vector3(MapTileSize * x - MapTileSize / 2, 0, 
+                                                  MapTileSize * y + MapTileSize / 2);
+    mapTile.transform.localRotation = Quaternion.identity;
+    var tile = mapTile.GetComponent&lt;MapTile&gt;();
+    _mapTiles.Add(tile);
+    return tile;
+}</pre><p>In ShowMap we first calculate the center tile’s data, and then in LoadTiles we simply loop over a square matrix from –(MapSize/ 2) to +(MapSize/2) and yes indeed, if you define a MapSize of 12 you will actually get a map of 13x13 tiles because there has to be a center tile. If there is a center tile, the resulting matrix by definition has an uneven number of tiles.</p><p>In LoadTiles you see TileInfo’s second constructor in action: just X, Y, and Zoomlevel. Once you have the first center tile, calculating adjacent tiles is extremely easy. GetOrCreateTiles does the actual instantiation and <em>positioning in space</em> of the tiles – that’s what we need the MapTileSize for. Note, that for an extra performance gain (and a prevention of memory leaks), it actually keeps the instantiated game objects in memory once they are created, so if you call ShowMap from code after you have changed one of the MapBuilder’s parameters, it will re-use the existing tiles in stead of generating new ones. LoadTiles itself also creates a name for the MapTile but that’s only for debugging / educational purposes – that way you can see which tiles are actually downloaded in the Hierachy while being in Unity Play Mode.</p><p>If you deploy this into a HoloLens and look down you will see a map of 6.5x6.5 meters flowing over the floor. </p><p><a href="https://lh3.googleusercontent.com/-cuWEX8R_tqE/WXNDjM1H09I/AAAAAAAAPJ4/GhOC8NulghwTp3wjcPZYWR4AID5eEqS-gCHMYCw/s1600-h/image%255B38%255D"><img width="504" height="400" title="image" style="display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-icjiCGkISSg/WXNDjgemUDI/AAAAAAAAPJ8/3eaholJ2YDoqVQIHYzvro15aEjuCxNfuwCHMYCw/image_thumb%255B23%255D?imgmax=800" border="0"></a></p><p>To make this completely visible I had to move the camera up over 20 meters ;) but you get the drift. </p><h2>Some words of warning</h2><ul><li>The formula in TileInfo calculates a tile from Latitude and Longitude. That only guarantees that location will be on that tile but it doesn’t say anything about <em>where on the tile it is</em>. You can see Redmond on the center tile, but it’s not quite in the center of that center tile. It may have well been op the top left. The more you zoom out, the more this will be a factor.</li><li>This sample shows Open Street Map and Open Street Map only. You will need to build IMapUrlBuilder implementations yourself if you want to use other map providers. Regular readers of this blog know this very easy to do. But please be aware of the TOS of map providers.</li><li>Be aware that the MapBuilder with map setting of 12 downloads 13x13=169 tiles from the internet. <em>On every call. </em>This app is quite the bandwidth hog - and probably a power hog as well.</li></ul><h2>Conclusion and some final thoughts</h2><p>Building basic maps in Unity for use in your HoloLens / Windows Mixed Reality apps is actually pretty easy. I will admit I don’t understand all the fine details of the math either, but I do know how slippy maps are supposed to work, and once I had translated the formula to C#, the rest was actually not that hard, as I hope to have shown.</p><p>Almost all data somehow has a relation with a location, and being able to generate a birds’ eye environment in which you can collaborate with you peers, will greatly enhance productivity and correct interpretation of data. Especially if you add 3D geography and/or buildings to it. It looks like reality, it shows you what’s going on, and you less and less have to interpret 2D data into 3D data. We are 3D creatures, and it’s high time our data jumps off the screen to join us in 3D space. </p><p>I personally think GIS and geo-apps are one of the premier fields in which AR/VR/MR will shine – and this will kick off an awesome revolution in the GIS world IMHO. Watch this space. More to come!</p><p>Demo project <a href="https://github.com/LocalJoost/SlippyMapDemo" target="_blank">here</a>. Enjoy!</p>

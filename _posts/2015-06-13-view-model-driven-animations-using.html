@@ -1,0 +1,248 @@
+---
+layout: post
+title: View model driven animations using behaviors and MVVMLight in Xamarin Forms
+date: '2015-06-13T13:27:00.001+02:00'
+author: Joost van Schaik
+tags:
+- XPlat
+- C#
+- Xamarin Forms
+- Xamarin
+- behavior
+modified_time: '2015-06-15T08:59:41.547+02:00'
+thumbnail: https://i.ytimg.com/vi/E6PO73RDuDE/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4294956366165820425
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/06/view-model-driven-animations-using.html
+---
+
+<p><font size="4">Intro<br></font>For some time now I have been making a number of <a href="https://github.com/LocalJoost/WpWinNl/tree/master/portable-win81%2Bwpa81/WpWinNl/Behaviors" target="_blank">behaviors implementing animations driven by view models</a> for <a href="http://www.windows.com" target="_blank">Windows</a> and <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a>. Implementing animations in behaviors results into reusable animation building block without the need to copy and paste the functionality into code behind – or the need to remember how the internals exactly worked (you know they say a good programmer is a lazy programmer ;) ). I wanted to check if it would be possible to make animations for <a href="http://xamarin.com/" target="_blank">Xamarin</a> Forms in a similar way, and it turns out to be possible. I have created a proof-of-concept that allows you to animate a kind of popup using a behavior, a view model and a little bit of code-behind plumbing. The popup folds open in a vertical direction from the center of the screen. It looks like this:</p><iframe height="362" src="https://www.youtube.com/embed/E6PO73RDuDE" frameborder="0" width="645" allowfullscreen></iframe> <p><font size="4">Setting the stage</font><br>I started out with a standard Xamarin Forms Portable project, and brought in my favorite MVVM framework <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a>. Then I added an empty StartPage.xaml to the portable project, and modified the constructor of the default App class to start with that page, in stead of with the default code:</p><pre>public App()
+{
+  MainPage = new StartPage();
+}</pre>
+<p>This is quite a standard way to set up a Xamarin Forms application using a XAML-based start page. I did not make it up myself ;) .</p>
+<p><font size="4">Passing startup events to the view model</font><br>A behavior in Xamarin.Forms has two events you can trap – OnAttachedTo and OnDetachingFrom – by basically overriding the methods with that name. But those are fired apparently <em>before</em> the visual element to which the behavior is attached to is loaded and made part of a layout: the attached object has no size, and no parent. To make matters more complicated, there is also no OnLoaded event on the attached object, like in WinRT XAML. So when do you know when the layout is ready?</p>
+<p>It appears that on <em>page level</em> there is such an event: OnAppearing (and it’s counterpart OnDisppearing) which once again can be trapped by overriding those methods. What we need to do is pass the fact that these methods have been called to the view model. The more or less standard way to do that seems to be something like as follows. I first defined an interface:</p><pre>namespace AnimationBehaviorDemo.ViewModels
+{
+  public interface IPageViewModelBase
+  {
+    void OnViewAppearing();
+    void OnViewDisappearing();
+  }
+}
+</pre>
+<p>and then a base class implementing that interface. This is not strictly necessary, but I always feel compelled to make a base class for convenience, yet I don’t want to force myself or my fellow developers into always needing to use that base class. The interface allows me an escape route out of a possible undesirable inheritance kludge. I think that’s just good architecture.</p><pre>using GalaSoft.MvvmLight;
+
+namespace AnimationBehaviorDemo.ViewModels
+{
+  public class PageViewModelBase : 
+     ViewModelBase, IPageViewModelBase
+  {
+    public virtual void OnViewAppearing()
+    {
+      ViewHasAppeared = true;
+    }
+
+    public virtual void OnViewDisappearing()
+    {
+      ViewHasAppeared = false;
+    }
+
+    private bool viewHasAppeared;
+    public bool ViewHasAppeared
+    {
+      get { return viewHasAppeared; }
+      set { Set(() =&gt; ViewHasAppeared, ref viewHasAppeared, value); }
+    }
+  }
+}</pre>
+<p>And there we see the familiar MVVMLight syntax again. So great if you can use an awesome friend from the Windows ecosystem in a cross platform setting again (thanks <a href="http://twitter.com/lbugnion" target="_blank">Laurent</a>!).</p>
+<p>Anyway, now I can make a view model inheriting from PageViewModelBase (or at least implementing IPageViewModelBase), use it as binding context and pass the events to the view model using the code behind of the start page like this:</p><pre>public partial class StartPage : ContentPage
+{
+  public StartPage()
+  {
+    InitializeComponent();
+    BindingContext = new MyViewModel();
+  }
+
+  protected override void OnAppearing()
+  {
+    Context.OnViewAppearing();
+    base.OnAppearing();
+  }
+
+  protected override void OnDisappearing()
+  {
+    Context.OnViewDisappearing();
+    base.OnDisappearing();
+  }
+
+  private IPageViewModelBase Context
+  {
+    get { return (IPageViewModelBase)BindingContext; }
+  }
+}</pre>
+<p>In every page you make using this behavior then needs to have this kind of plumbing. Of course, you can define a nice base class for this as well, making the last three methods disappear again. Have a blast. I only have one page in this solution, so I leave it at this. The important thing is – we have now a way to pass the fact that the view is ready to the view model, a behavior can bind to this, and things can happen in the right order. </p>
+<p><font size="4">The view model</font><br>Using the PageViewModelBase as a starter, I add a simple command and a property for the behavior to bind to as well:</p><pre>using System.Windows.Input;
+using GalaSoft.MvvmLight.Command;
+
+namespace AnimationBehaviorDemo.ViewModels
+{
+  public class AnimationViewModel : PageViewModelBase
+  {
+    public AnimationViewModel()
+    {
+      TogglePopup = new RelayCommand(DoTogglePopup);
+    }<br>
+    public ICommand TogglePopup { get; private set; }
+
+    private void DoTogglePopup()
+    {
+      IsPopupVisible = !IsPopupVisible;
+    }
+
+    private bool isPopupVisible;
+
+    public bool IsPopupVisible
+    {
+      get { return isPopupVisible; }
+      set { Set(() =&gt; IsPopupVisible, ref isPopupVisible, value); }
+    }
+  }
+}</pre>
+<p>Nothing special here – standard MVVMLight view model and syntax. </p><font size="4">The animation behavior</font><br>I will be going through this step by step, to hopefully convey what I am doing here. The basics are the two methods I already have mentioned by name: OnAttachedTo and OnDetachingFrom<pre>using System;
+using Xamarin.Forms;
+
+namespace AnimationBehaviorDemo.Behaviors
+{
+  public class FoldingPaneBehavior: Behavior&lt;View&gt;
+  {
+    private View associatedObject;
+
+    private double desiredHeight;
+
+    protected override void OnAttachedTo(View bindable)
+    {
+      base.OnAttachedTo(bindable);
+      associatedObject = bindable;
+      bindable.BindingContextChanged += (sender, e) =&gt;
+          BindingContext = associatedObject.BindingContext;
+    }
+
+    protected override void OnDetachingFrom(View bindable)
+    {
+      associatedObject = null;
+      base.OnDetachingFrom(bindable);
+    }
+  }   
+}    
+</pre>
+<p>This basically sets up the behavior, keeping a reference to the object it’s bound to. In the OnAttachedTo there is an odd piece of code. Basically, if you don’t use this, binding to the Bindable Properties that I will show later on will not work. I have no idea why this is. It took me quite some nosing around in the Xamarin forums and eventually I found <a href="http://forums.xamarin.com/discussion/30666/xamarin-forms-1-3-behavior-binding-bug" target="_blank">this solution here in this thread</a>. I am not sure if this is a recommendable way. But it seems to work.</p>
+<p>Then we get to Bindable Properties, and I think of those as the Attached Dependency Properties of WinRT XAML (in fact, they have been in XAML since WPF). In fact, we need two: one to get notified of the view having appeared, and one for the popup needing to displayed (and hidden again). For the sake of brevity, I show only the property for the popup toggle:</p><pre>#region IsPopupVisible Attached Dependency Property
+public static readonly BindableProperty IsPopupVisibleProperty =
+   BindableProperty.Create&lt;SlidingPaneBehavior, bool&gt;(t =&gt; t.IsPopupVisible,
+   default(bool), BindingMode.OneWay,
+   propertyChanged: OnIsPopupVisibleChanged);
+
+public bool IsPopupVisible
+{
+  get
+  {
+    return (bool)GetValue(IsPopupVisibleProperty);
+  }
+  set
+  {
+    SetValue(IsPopupVisibleProperty, value);
+  }
+}
+
+private static void OnIsPopupVisibleChanged(BindableObject bindable, 
+                                            bool oldValue, bool newValue)
+{
+  var thisObj = bindable as SlidingPaneBehavior;
+  if (thisObj != null)
+  {
+    thisObj.AnimatePopup(newValue);
+  }
+}
+#endregion
+</pre>
+<p>Like Attached Dependecy Properties in Windows this is quite some code, a lot hinges on connecting the dots in the right way, and a part of it depends on naming conventions. To make life easier, I made a <a href="https://github.com/LocalJoost/AnimationXamarinBehaviorDemo/blob/master/xadp.snippet" target="_blank">Visual Studio snippet</a> for that. The whole purpose of this construct is to make sure the AnimatePopup method gets called with the right parameter whenever the bound property changes.</p>
+<p><font size="4">But first – initialization</font><br>The first Bindable Property – that I did not even show – is called OnViewHasAppeared, is bound to the OnViewHasAppeared of the view model, and fires a method that is (very originally) called Init:</p><pre>private double unfoldingHeight;
+private const double HeightFraction = 0.6;
+private const double WidthFraction = 0.8;
+
+private void Init()
+{
+  var p = associatedObject.ParentView;
+  unfoldingHeight = Math.Round(p.Height * HeightFraction, 2);
+  associatedObject.WidthRequest = Math.Round(p.Width * WidthFraction , 2);
+  associatedObject.HeightRequest = 0;
+  associatedObject.IsVisible = false;
+}</pre>
+<p>This sets the width of the popup to 0.8 times that of the parent view, it’s height to 0 and it’s visibility to false, effectively creating an invisible pane. It also calculates the height to which the panel should be unfolded, that is, <em>when</em> it is unfolded – 0.6 times the height of the parent. Mind you, these values are now constants, but could just as well be properties as well, with values you could set from XAML - thus creating a more customizable experience.</p>
+<p>The actual animation is done by these two methods and some more constants:</p><pre>private const int FoldOutTime = 750;
+private const int FoldInTime = 500;
+
+private void AnimatePopup(bool show)
+{
+  if (show)
+  {
+    associatedObject.IsVisible = true;
+    Animate(0, unfoldingHeight, FoldOutTime);
+  }
+  else
+  {
+    Animate(unfoldingHeight, 0, FoldInTime);
+  }
+}
+
+private void Animate(double start, double end, uint runningTime)
+{
+  var animation = new Animation(
+    d =&gt; associatedObject.HeightRequest = d, start, end, Easing.SpringOut);
+
+  animation.Commit(associatedObject, "Unfold", length: runningTime, 
+    finished: (d, b) =&gt;
+  {
+    if (associatedObject.Height.Equals(0))
+    {
+      associatedObject.IsVisible = false;
+    }
+  });
+}
+</pre>
+<p>If the popup should be displayed (triggered by the change on the IsPopupDisplayed property) it first sets the popup’s visibility to true (although it’s still effectively invisible, as it has zero height) and then it launches an animation that goes from 0 to the unfoldingHeight in about 750ms. The Animate method then creates the actual animation, that animates the HeightRequest using and easing method (also a familiar friend from our good old Storyboards). By calling the Commit on it, you actually launch the animation, and you can apparently also make some kind of callback running when the animation is finished – in this case, when it determines the height is 0 (thus the popup has been folding <em>in</em>) – it should make it invisible again. Take note that the folding back goes a bit faster than the unfolding – 500ms in stead of 750ms. They could be the same, of course. It’s just a nice touch.</p>
+<p><font size="4">Putting it all together</font><br>In Xamarin Forms XAML, it then looks like this:</p><pre style="font-size: 11px" font>&lt;Grid&gt;
+
+  &lt;StackLayout HorizontalOptions="StartAndExpand" VerticalOptions="StartAndExpand"&gt;
+    &lt;Button Text="Open Popup" HorizontalOptions="Center" VerticalOptions="Start"
+        IsEnabled="{Binding IsPopupVisible, Converter={StaticResource InverseBooleanConverter}}"
+        Command="{Binding TogglePopup}"&gt;&lt;/Button&gt;
+    &lt;Label Text="Here be some text" FontSize="25"&gt;&lt;/Label&gt;
+    &lt;Label Text="Some more text" FontSize="20"&gt;&lt;/Label&gt;
+  &lt;/StackLayout&gt;
+
+  &lt;ContentView BackgroundColor="Green" 
+               HorizontalOptions="CenterAndExpand" 
+               VerticalOptions="CenterAndExpand" &gt;
+    &lt;ContentView.Behaviors &gt;
+      &lt;<strong><font color="#ff0000">behaviors:FoldingPaneBehavior 
+        ViewHasAppeared ="{Binding ViewHasAppeared}" 
+        IsPopupVisible="{Binding IsPopupVisible}"/&gt;</font></strong>
+    &lt;/ContentView.Behaviors&gt;
+    &lt;StackLayout&gt;
+      &lt;Label Text="Here is my popup" FontSize="20"&gt;&lt;/Label&gt;
+      &lt;Button Text="Close popup" HorizontalOptions="Center"
+     IsEnabled="{Binding IsPopupVisible}"
+     Command="{Binding TogglePopup}"&gt;&lt;/Button&gt;
+    &lt;/StackLayout&gt;
+  &lt;/ContentView&gt;
+  
+&lt;/Grid</pre>
+<div style="width: 100%">
+<p><a href="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-animations-using-.Forms_11401/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-animations-using-.Forms_11401/image_thumb.png" width="148" align="left" height="244"></a><a href="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-animations-using-.Forms_11401/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; margin: 0px 7px 2px 5px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/ViewModel-driven-animations-using-.Forms_11401/image_thumb_3.png" width="148" align="left" height="244"></a></p>
+<p>First you have the StackLayout containing the initial user interface, then the ContentView that contains the ugly green popup and the behavior. Notice the button on the initial UI gets disabled by binding to IsPopupVisible too, using a <a href="https://forums.xamarin.com/discussion/22476/how-to-databind-with-a-converter-in-code" target="_blank">bog standard InverseBooleanConverter that I took from here.</a> I think it’s actually the same as the WinRT value converter but I was too lazy to check ;)</p></div>
+<p><font size="4">Caveat emptor</font><br>Warning – you mileage may vary with this approach. I am not very versed in Xamarin Forms yet and I have no idea what amount of rules I am now violating. I find the hack in OnAttachedTo a bit worrisome, and I wonder if is has side effects. In addition, Xamarin Forms is a <em>very</em> rapidly evolving platform so anything I write today may be obsolete tomorrow. Also, this behavior does not yet take into account any changes in screen size (or rotation) that may occur after the behavior is initialized. I don’t doubt though this could be added.</p>
+<p><font size="4">Conclusion</font><br>With this article I hope I have given you some thought about how to write reusable x-plat animation blocks that can be wired together using behaviors. I still think it’s very important to keep such stuff from code behind as much as possible (although never loosing track of practicality – if some effect can be created using two lines of code behind, it’s not very smart to write a bazillion lines of code just to avoid that). What is sorely missed in this environment is my old friend Blend, which in a Windows environment can be used to drag behaviors on top of elements and wire some properties together in a simple UI. In Xamarin, it’s hand coding XAML all the way. Still, it’s an improvement over putting all this stuff in code behind.</p>
+<p>As usual, a <a href="https://github.com/LocalJoost/AnimationXamarinBehaviorDemo" target="_blank">sample solution can be found on GitHub</a>. This includes the <a href="https://github.com/LocalJoost/AnimationXamarinBehaviorDemo/blob/master/xadp.snippet" target="_blank">snippet for creating Bindable Properties</a>.</p>
+<p><font size="4">Credits and thanks</font><br>I want to thank two of my fellow developers colleagues at <a href="http://wortell.nl/" target="_blank">Wortell</a> for being an inspiration to this blog post: <a href="https://nl.linkedin.com/pub/bruce-wilkins/13/912/940" target="_blank">Bruce Wilkins</a> for showing me the two events that occur when a Xamarin Forms page loads and unloads, and <a href="https://www.linkedin.com/in/edwinvanmanen" target="_blank">Edwin van Manen</a> for showing me the Xamarin Forms animation basics. They made me understand some parts that I needed to connect the dots and make this technique work.</p>  

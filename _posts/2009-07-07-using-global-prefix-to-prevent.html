@@ -1,0 +1,56 @@
+---
+layout: post
+title: Using the "global" prefix to prevent namespace clashes
+date: '2009-07-07T15:47:00.009+02:00'
+author: Joost van Schaik
+tags:
+- namespace clash
+- dotnetmag
+- C#
+- root
+- global
+modified_time: '2010-04-06T11:17:29.887+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3148985224277098769
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/07/using-global-prefix-to-prevent.html
+---
+
+I was running into a snag into the situation in which the compiler was accidentally  took my local namespace when I wanted it to use the root namespace of CSLA.
+
+I had defined a dll "LocalJoost.Utilities.Csla" with the following code:<pre>using Csla;
+using Csla.Validation;
+
+namespace LocalJoost.Utilities.Csla
+{
+  public static class LocalJoostCommonRules
+  {
+    public static bool NotNull(object target, RuleArgs args)
+    {
+      args.Description = string.Format("{0} is required", 
+        args.PropertyName);
+      var value = global::Csla.Utilities.CallByName(
+       target, args.PropertyName, CallType.Get);
+      return value != null;
+
+    }
+  }
+}</pre>and although I had referenced the Csla.dll nicely, it did not compile. The compiler errorred out telling me that "The type or namespace name 'Utilities' does not exist in the namespace 'LocalJoost.Utilities.Csla' (are you missing an assembly reference?)"
+
+Well of course does the namespace "LocalJoost.Utilities.Csla.Utilities" not exist: I wanted it to use "Csla.Utilities". I had created myself a nice namespace clash. Or kludge, whatever you want to call this. In stead of searching from the root of the namespace, the compiler started to search relatively from my namespace.
+
+Turns out this is very easy to fix: there is a .NET directive "global" that is the .NET equivalent of starting an URL with a "/". I changed my code to <pre>using Csla;
+using Csla.Validation;
+
+namespace LocalJoost.Utilities.Csla
+{
+  public static class LocalJoostCommonRules
+  {
+    public static bool NotNull(object target, RuleArgs args)
+    {
+      args.Description = string.Format("{0} is required", 
+        args.PropertyName);
+      var value = <span style="color:red">global::</span>Csla.Utilities.CallByName(
+       target, args.PropertyName, CallType.Get);
+      return value != null;
+    }
+  }
+}</pre>and the compiler was happy again. And so was I, incidently.

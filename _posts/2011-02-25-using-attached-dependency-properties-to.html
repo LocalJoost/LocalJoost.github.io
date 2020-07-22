@@ -1,0 +1,142 @@
+---
+layout: post
+title: Using attached dependency properties to toggle an Application Bar Icon from
+  viewmodel
+date: '2011-02-25T18:18:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Application Bar
+- dotnetmag
+- MVVM
+- WP7NL
+- Windows Phone 7
+- Attached Dependency Property
+- Architecture
+- XAML
+- WP7
+modified_time: '2011-04-20T11:34:57.088+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6561972168839740676
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/02/using-attached-dependency-properties-to.html
+---
+
+<p>Application Bar Icon buttons are a look-and-feel-wise very consistent and easy to understand way for every <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> application to give it’s users access to the most important functions. The drawback of this thing is that it’s not a real FrameworkElement, thus you cannot bind commands and other stuff to it, <a href="http://dotnetbyexample.blogspot.com/2011/02/case-for-bindable-application-bar-for.html" target="_blank">but as I described earlier</a>, this has been solved by the <a href="http://blog.humann.info/post/2010/08/27/How-to-have-binding-on-the-ApplicationBar.aspx" target="_blank">BindableApplicationBar</a>.</p>  <p>But even the BindableApplicationBar has its issues. The IconUri attribute of a BindableApplicationBarIconButton cannot be bound to – for it is no Dependecy Property. Now you can fix that, since <a href="http://www.linkedin.com/in/nicolashumann">Nicolas Humann</a> includes the source code of his excellent solution. But I prefer to threat someone else’s code as third party component, and solved the problem using a very powerful way of extending of Silverlight/Windows Phone 7: attached dependency properties.</p>  <p>The problem I wanted to solve is this: I have changed my <a href="http://social.zune.net/redirect?type=phoneApp&amp;id=8b5f61a1-3ffa-df11-9264-00237de2db9e" target="_blank">MapMania</a> App in such a way that it now tracks your location continually if you press the “Satellite” button. But I want the user to be able to <em>stop</em> tracking as well, using the same button. So what used to be a simple activation button, is now a <em>toggle</em> button. When the user is tracking his own phone, I want the button image to change from the image of of a satellite to an image of a satellite with a big cross through it, indicating “if you press me again, I will stop tracking”. And I wanted this, of course, to be steered from the viewmodel.</p>  <p>This is how I solved it, with three attached dependency properties:</p>  <pre style="font-size: 12px">using System;
+using System.Windows;
+using Phone7.Fx.Preview;
+
+namespace LocalJoost.Utilities
+{
+  /// &lt;summary&gt;
+  /// Supports toggle of a BindableApplicationBarIconButton's icon
+  /// &lt;/summary&gt;
+  public static class AppBarIconFlipper
+  {
+    #region IconUri
+    public static readonly DependencyProperty IconUriProperty =
+     DependencyProperty.RegisterAttached(&quot;IconUri&quot;,
+     typeof(Uri),
+     typeof(AppBarIconFlipper),
+     new PropertyMetadata(IconUriPropertyChanged));
+
+    // Called when Property is retrieved
+    public static Uri GetIconUri(DependencyObject obj)
+    {
+      return obj.GetValue(IconUriProperty) as Uri;
+    }
+
+    // Called when Property is set
+    public static void SetIconUri(
+      DependencyObject obj,
+      Uri value)
+    {
+      obj.SetValue(IconUriProperty, value);
+    }
+
+    // Called when property is changed
+    private static void IconUriPropertyChanged(
+     object sender,
+     DependencyPropertyChangedEventArgs args)
+    {
+      var attachedObject = sender as BindableApplicationBarIconButton;
+      if (attachedObject == null) return;
+      attachedObject.IconUri = (bool)attachedObject.GetValue(ShowAlernateIconUriProperty)
+                     ? (Uri)attachedObject.GetValue(AlernateIconUriProperty)
+                     : (Uri)args.NewValue;
+    }
+    #endregion
+
+    #region AlernateIconUri
+    public static readonly DependencyProperty AlernateIconUriProperty =
+     DependencyProperty.RegisterAttached(&quot;AlernateIconUri&quot;,
+     typeof(Uri),
+     typeof(AppBarIconFlipper),
+     new PropertyMetadata(AlernateIconUriPropertyChanged));
+
+    // Called when Property is retrieved
+    public static Uri GetAlernateIconUri(DependencyObject obj)
+    {
+      return obj.GetValue(AlernateIconUriProperty) as Uri;
+    }
+
+    public static void SetAlernateIconUri(
+      DependencyObject obj,
+      Uri value)
+    {
+      obj.SetValue(AlernateIconUriProperty, value);
+    }
+
+    private static void AlernateIconUriPropertyChanged(
+     object sender,
+     DependencyPropertyChangedEventArgs args)
+    {
+      var attachedObject = sender as BindableApplicationBarIconButton;
+      if (attachedObject == null) return;
+      attachedObject.IconUri = (bool)attachedObject.GetValue(ShowAlernateIconUriProperty)
+                     ? (Uri)args.NewValue
+                     : (Uri)attachedObject.GetValue(IconUriProperty);
+    }
+    #endregion
+
+    #region ShowAlernateIconUri
+    public static readonly DependencyProperty ShowAlernateIconUriProperty =
+     DependencyProperty.RegisterAttached(&quot;ShowAlernateIconUri&quot;,
+     typeof(bool),
+     typeof(AppBarIconFlipper),
+     new PropertyMetadata(ShowAlernateIconUriPropertyChanged));
+
+    public static bool GetShowAlernateIconUri(DependencyObject obj)
+    {
+      return (bool)obj.GetValue(ShowAlernateIconUriProperty);
+    }
+
+    public static void SetShowAlernateIconUri(
+      DependencyObject obj,
+      bool value)
+    {
+      obj.SetValue(ShowAlernateIconUriProperty, value);
+    }
+
+    private static void ShowAlernateIconUriPropertyChanged(
+     object sender,
+     DependencyPropertyChangedEventArgs args)
+    {
+      var attachedObject = sender as BindableApplicationBarIconButton;
+      if (attachedObject == null) return;
+      var value = (bool)args.NewValue;
+      attachedObject.IconUri = value
+                     ? (Uri)attachedObject.GetValue(AlernateIconUriProperty)
+                     : (Uri)attachedObject.GetValue(IconUriProperty);
+    }
+    #endregion
+  }
+}</pre>
+The only interesting code is in the “***Changed” methods, the rest is just the necessary plumbing. Anyway, in stead of setting the IconUri of the BindableApplicationBarIconButton directly, you use the attached dependency properties like this: 
+
+<pre style="font-size: 11px">&lt;Phone7Fx:BindableApplicationBarIconButton 
+ Command=&quot;{Binding ShowLocation}&quot; Text=&quot;Track&quot; 
+ LocalJoostUtils:AppBarIconFlipper.IconUri=&quot;/icons/gps.png&quot;
+ LocalJoostUtils:AppBarIconFlipper.AlernateIconUri=&quot;/icons/gps_stop.png&quot;
+ LocalJoostUtils:AppBarIconFlipper.ShowAlernateIconUri=&quot;{Binding IsTracking, Mode=TwoWay}&quot;/&gt;</pre>
+
+<p>and depending on the value of the Viewmodel property IsTracking the icon will flip from gps.png (false) to gps_stop (true) – or back.</p>
+
+<p>Once again it shows Microsoft’s XAML-based platforms are as flexible as a rubber band, and wherever are holes in binding, you can almost always plug them using attached dependency properties – the super glue of MVVM, IMHO.</p>  

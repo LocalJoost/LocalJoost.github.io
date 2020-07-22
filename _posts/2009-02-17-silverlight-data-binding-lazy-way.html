@@ -1,0 +1,198 @@
+---
+layout: post
+title: Silverlight data binding the lazy way
+date: '2009-02-17T20:06:00.007+01:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- Silverlight 2.0
+- C#
+- Extension methods
+modified_time: '2010-04-06T11:17:29.897+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1303461202845768799
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/02/silverlight-data-binding-lazy-way.html
+---
+
+Your typical business class utilizing data binding in Silverlight (and possibly WPF too, but I don't have any experience with that) look like this:<pre>using System.ComponentModel;
+
+namespace Dotnetbyexample
+{
+  public class Person : INotifyPropertyChanged
+  {
+    public event PropertyChangedEventHandler PropertyChanged;
+
+    private string firstName;
+    public string FirstName
+    {
+      get { return this.firstName; }
+      set
+      {
+        this.firstName = value;
+        this.NotifyPropertyChanged("FirstName");
+      }
+    }
+
+    private string lastName;
+    public string LastName
+    {
+      get { return this.lastName; }
+      set
+      {
+        this.lastName = value;
+        this.NotifyPropertyChanged("LastName");
+      }
+    }
+
+    private string address;
+    public string Address
+    {
+      get { return this.address; }
+      set
+      {
+        this.address = value;
+        this.NotifyPropertyChanged("Address");
+      }
+    }
+
+    private string city;
+    public string City
+    {
+      get { return this.city; }
+      set
+      {
+        this.city = value;
+        this.NotifyPropertyChanged("City");
+      }
+    }
+
+    private string state;
+    public string State
+    {
+      get { return this.state; }
+      set
+      {
+        this.state = value;
+        this.NotifyPropertyChanged("State");
+      }
+    }
+
+    private string zip;
+    public string Zip
+    {
+      get { return this.zip; }
+      set
+      {
+        this.zip = value;
+        this.NotifyPropertyChanged("Zip");
+      }
+    }
+
+    public void NotifyPropertyChanged(string propertyName)
+    {
+      if (PropertyChanged != null)
+      {
+        PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+      }
+    }
+  }
+}</pre>Silverlight data binding rocks, for if you change the attribute, the listening GUI elements will update automatically, but what I particulary <em>not </em>like is the fact that the NotifyPropertyChanged method needs to be called with the name of the property as a string. Change the property name and the event does not work anymore.
+
+I created the following extension method<pre>using System.ComponentModel;
+using System.Diagnostics;
+
+namespace Dotnetbyexample
+{
+  public static class INotifyPropertyChangedExtension
+  {
+    public static void NotifyPropertyChanged(
+       this INotifyPropertyChanged npc, 
+       PropertyChangedEventHandler PropertyChanged)
+    {
+      if (PropertyChanged != null)
+      {
+        string propertyName =
+           new StackTrace().GetFrame(1).GetMethod().Name.Substring(4);
+
+        PropertyChanged(npc, new PropertyChangedEventArgs(propertyName));
+      }
+    }
+  }
+}</pre>which allows me to rewrite the business object as follows<pre>using System.ComponentModel;
+
+namespace Dotnetbyexample
+{
+  public class Person : INotifyPropertyChanged
+  {
+    public event PropertyChangedEventHandler PropertyChanged;
+
+    private string firstName;
+    public string FirstName
+    {
+      get { return this.firstName; }
+      set
+      {
+        this.firstName = value;
+        this.NotifyPropertyChanged(PropertyChanged);
+      }
+    }
+
+    private string lastName;
+    public string LastName
+    {
+      get { return this.lastName; }
+      set
+      {
+        this.lastName = value;
+        this.NotifyPropertyChanged(PropertyChanged);
+      }
+    }
+
+    private string address;
+    public string Address
+    {
+      get { return this.address; }
+      set
+      {
+        this.address = value;
+        this.NotifyPropertyChanged(PropertyChanged);
+      }
+    }
+
+    private string city;
+    public string City
+    {
+      get { return this.city; }
+      set
+      {
+        this.city = value;
+        this.NotifyPropertyChanged(PropertyChanged);
+       }
+    }
+
+    private string state;
+    public string State
+    {
+      get { return this.state; }
+      set
+      {
+        this.state = value;
+        this.NotifyPropertyChanged(PropertyChanged);
+      }
+    }
+
+    private string zip;
+    public string Zip
+    {
+      get { return this.zip; }
+      set
+      {
+        this.zip = value;
+        this.NotifyPropertyChanged(PropertyChanged);
+      }
+    }
+  }
+}</pre>and presto: I got rid of the custom NotifyPropertyChanged method at the bottom of the class, and now the call to the extension method NotifyPropertyChanged is the same for every setter. No need to remember to change the string in the NotifyPropertyChanged when the property name changes - or when you copy the getter/setter from somewhere else ;-)
+
+Key to the whole trick is the quite unorthodox usage of the Stacktrace<pre>new StackTrace().GetFrame(1).GetMethod().Name.Substring(4);</pre>credits for this of course go to <a href="http://http://lhotka.net/">Rockford Lhotka</a> with his <a href="http://lhotka.net/cslanet/">CSLA framework</a> - in the BusinessBase object of this framework I noticed this trick a year or so ago and suddenly I wondered if it would work in a Silverlight environment as well.
+
+Update: in the newest version of the CSLA framework the method using this trick  -CanWriteProperty - is marked deprecated, and is replaced by a method CanWriteProperty(string) that takes the property name as an explicit string - so Lhotka is now swinging round to follow the PropertyChangedEventHandler.

@@ -1,0 +1,108 @@
+---
+layout: post
+title: A behaviour for dynamically loading and applying image textures in HoloLens
+  apps
+date: '2017-02-11T17:38:00.001+01:00'
+author: Joost van Schaik
+tags:
+- UWP
+- HoloLens
+- Unity3D
+modified_time: '2017-02-22T13:50:39.887+01:00'
+thumbnail: https://lh3.googleusercontent.com/-vVTm44B3xX0/WJ8-D62G1AI/AAAAAAAAOtE/OVIowJRA5Rs/s72-c/image_thumb%25255B1%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2805756850048207769
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2017/02/a-behaviour-for-dynamically-loading-and.html
+---
+
+<h2>Intro</h2> <p>After two nearly code-less posts it’s time for something more code-heavy, although it’s still out of my ordinary mode of operation: it’s fairly short and not much code. So rest assured, not the code equivalent of “War and Peace”, as usual ;)</p> <p>For both a customer app and one of my own projects I needed to be able to download images from an external source to use as texture on a Plane (this is a flat object with essentially only width and height). Now that’s not that hard – on the Unity scripting reference there’s a <a href="https://docs.unity3d.com/ScriptReference/WWW-texture.html" target="_blank">clear example how to do that</a>. But for my own project I need to make sure I could also change the image (so reload an image on a plane that already had loaded a texture before) and I must also be able to make sure the image was not distorted by width/height ratio differences between the Plane and the image. That required a radical different approach. </p> <h2>Enough talk: code!</h2> <p>The behaviour itself is rather small and simple, even if I say so myself. It starts as follows:</p><pre style="font-size: 12px">using UnityEngine;
+
+public class DynamicTextureDownloader : MonoBehaviour
+{
+    public string ImageUrl;
+    public bool ResizePlane;
+
+    private WWW _imageLoader = null;
+    private string _previousImageUrl = null;
+    private bool _appliedToTexture = false;
+
+    private Vector3 _originalScale;
+
+    void Start()
+    {
+        _originalScale = transform.localScale;
+    }
+
+    void Update()
+    {
+        CheckLoadImage();
+    }
+}</pre>
+<p>The ImageUrl is property you can either set from code or the editor and points to the location of the desired image on the web, ResizePlane (default false) determines whether or not you want the Plane to resize to fit the width/height ratio of the image. You may not always <em>want</em> that, as the <em>center</em> of the Plane stays in place. For instance, if the Plane’s top is aligned with something else. If the resizing makes the Plane’s height decrease, that may ruin your experience.</p>
+<p>The other first three privates are status variables, the last one is the original scale of the plane before we started messing with it. We need to retain that, as can’t trust that scale once we start messing with it. I have seen the Plane become smaller and smaller when I alternated between portrait and landscape pictures.</p>
+<p>The crux is the CheckLoadImage method:</p><pre style="font-size: 12px">private void CheckLoadImage()
+{
+    // No image requested
+    if (string.IsNullOrEmpty(ImageUrl))
+    {
+        return;
+    }
+
+    // New image set - reset status vars and start loading new image
+    if (_previousImageUrl != ImageUrl)
+    {
+        _previousImageUrl = ImageUrl;
+        _appliedToTexture = false;
+        _imageLoader = new WWW(ImageUrl);
+    }
+
+    if (_imageLoader.isDone &amp;&amp; !_appliedToTexture)
+    {
+        // Apparently an image was loading and is now done. Get the texture and apply
+        _appliedToTexture = true;
+        Destroy(GetComponent&lt;Renderer&gt;().material.mainTexture);
+        GetComponent&lt;Renderer&gt;().material.mainTexture = _imageLoader.texture;
+        Destroy(_imageLoader.texture);
+
+        if (ResizePlane)
+        {
+            DoResizePlane();
+        };
+    }
+}</pre>
+<p>This might seem mightily odd if you are .NET developer, but that’s because of the nature of Unity. Keep in mind this method is called from Update, so it’s called 60 times per second. The flow is simple:</p>
+<ul>
+<li>If ImageUrl is null, just forget it 
+<li>If an ImageUrl is set <em>and </em>it is a new one, reset the two status variables and make a new WWW object. You can see this as a kind of WebClient. Key to know it’s async, and it has a <em>done</em> property, that only gets true when it’s downloading. So while it’s downloading, the next part is skipped 
+<li>If, however the WWW object is done, we will need to apply it to the texture, but only if we did not do so before. So then we actually apply it.</li></ul>
+<p>So after the image is applied, the first if clause is false, because we have an ImageUrl. The second one is false, because the last loaded url is equal to the current one. And finally, the last if clause is false because the texture is applied. So although it’s called 60 times a second, it essentially does nothing. Until you change the ImageUrl.</p>
+<p>An important note – you see that I first destroy the existing Render’s texture, then load the WWW’s texture into the renderer, and then destroy the WWWs texture again. If you are using a lot of these objects in one project <em>and</em> have them change image regularly, Unity’s garbage collection process cannot keep up and on a real device (i.e. a HoloLens) you will run out of memory soon. The nasty thing is this won’t happen soon in the editor or an emulator. This is why you always need to test on a real device. And this is also why I had to update this post later ;)</p>
+<h2>Resizing in correct width/height ratio</h2>
+<p>Finally the resizing, that’s not very hard it turns out. As long a you keep in mind the Plane’s ‘natural posture’&nbsp; is ‘flat on the ground’, so what you tend to think of a X is indeed X, but what you tend to think of as Y, is in fact Z in the 3D world. </p><pre style="font-size: 12px">private void DoResizePlane()
+{
+    // Keep the longest edge at the same length
+    if (_imageLoader.texture.width &lt; _imageLoader.texture.height)
+    {
+        transform.localScale = new Vector3(
+            _originalScale.z * _imageLoader.texture.width / _imageLoader.texture.height,
+            _originalScale.y, _originalScale.z);
+    }
+    else
+    {
+        transform.localScale = new Vector3(
+            _originalScale.x, _originalScale.y,
+            _originalScale.x * _imageLoader.texture.height / _imageLoader.texture.width);
+    }
+}</pre>
+<p>It also turns out a loaded texture comes handily with it’s own size attributes, which makes it pretty easy do to the resize. </p>
+<h2>Sample app</h2>
+<p>I made this really trivial HoloLens app that shows two (initially empty) Planes floating in the air. I have given them different with/height ratios on purpose (in fact they mirror each other):</p>
+<p><a href="https://lh3.googleusercontent.com/-wvhlzsiQoPM/WJ8-DE4H6qI/AAAAAAAAOtA/sBS-kUCD8k8/s1600-h/image%25255B3%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-vVTm44B3xX0/WJ8-D62G1AI/AAAAAAAAOtE/OVIowJRA5Rs/image_thumb%25255B1%25255D.png?imgmax=800" width="644" height="348"></a></p>
+<p>I have dragged the behaviour on both of them. One will show my blog’s logo (that’s a landscape picture) and one comes from an Azure Blob container and shows portrait oriented picture of… well, see for yourself. If you deploy this app – or just hit the play button in Unity, the will initially show this:</p>
+<p><a href="https://lh3.googleusercontent.com/-u7iSvyVM8O4/WJ8-EYLACjI/AAAAAAAAOtI/fi5h7Hg0K7M/s1600-h/image%25255B11%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-FUJlviuio_U/WJ8-EnG8UsI/AAAAAAAAOtM/mB0EJMNkMoA/image_thumb%25255B5%25255D.png?imgmax=800" width="644" height="284"></a></p>
+<p>If you air tap on one of the pictures you get this:</p>
+<p><a href="https://lh3.googleusercontent.com/-AbnwWlc46Hc/WJ8-FYh6k4I/AAAAAAAAOtQ/m6lwaXcg36A/s1600-h/image%25255B10%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-f_VjsKcEiCg/WJ8-F1-rPkI/AAAAAAAAOtU/Q5DlsY32CII/image_thumb%25255B4%25255D.png?imgmax=800" width="644" height="325"></a></p>
+<p>In the second picture, the pictures are a lot larger as they fit ‘better’ into the pane. If you click a picture again they will swap back. The only thing that actually changes it the value of ImageUrl. </p>
+<p>Bonus brownie points and eternal fame, by the way, for the first one who correctly tells me who the person in the picture is, and at what occasion this picture was taken :D.</p>
+<h2>Some concluding remarks</h2>
+<p>If you value your sanity, don’t mess with the rotation of the Planes <em>themselves</em>. Just pack them into an empty game object and rotate <em>that</em>, so the local coordinate system is still ‘flat’, as far as the Planes are concerned. I have had all kinds of weird effects if you start messing with Plane orientation and location. Not sure why this is, probably things I don’t quite understand that but – you have been warned.</p>
+<p>This is (or will be part) of something bigger, but I wanted to share the lessons learned separately, preventing them to get lost in some bigger picture. In the mean time, you can view the <a href="https://github.com/LocalJoost/UnityTextureDownload" target="_blank">demo project with source here</a>. </p>

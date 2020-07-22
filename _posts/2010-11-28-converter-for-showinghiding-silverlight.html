@@ -1,0 +1,58 @@
+---
+layout: post
+title: Converter for showing/hiding Silverlight/WP7 GUI elements with boolean model
+  values
+date: '2010-11-28T17:50:00.004+01:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- MVVM
+- WP7NL
+- Windows Phone 7
+- Silverlight
+- Converter
+modified_time: '2011-04-20T11:34:57.115+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5982013389078682851
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/11/converter-for-showinghiding-silverlight.html
+---
+
+<p>Typically, when you are writing Silverlight or <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> applications using the MVVM pattern, your viewmodels expose boolean values indicating something is going on – for instance, your background thread is loading data and thus you want to display a progress bar. For some reason the designers of XAML choose the Visibility property of a GUI element to be of type “Visibility”, an enum with values “Visible” and “Collapsed”. </p>  <p>Anyway, you could of course make your viewmodel expose properties of type Visibility but as an architect I would call that “bad form”. It’s so much easier to create a simple converter for this:</p>  <pre>using System;
+using System.Globalization;
+using System.Windows;
+using System.Windows.Data;
+
+namespace LocalJoost.Converters
+{
+  public class VisibilityConverter : IValueConverter
+  {
+    public object Convert(object value, Type targetType, object parameter, 
+                   CultureInfo culture)
+    {
+      if (value != null &amp;&amp; value is bool &amp;&amp; parameter != null)
+      {
+        var bValue = (bool) value;
+        var visibility = (Visibility)Enum.Parse(
+             typeof (Visibility), parameter.ToString(),true);
+        if (bValue) return visibility;
+        return visibility == 
+           Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+      }
+      
+      return null;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter,
+                       CultureInfo culture)
+    {
+      throw new NotImplementedException();
+    }
+  }
+}</pre>
+
+<p>This convertor assumes a boolean input value and a parameter of type Visibility. If the input value is true, it returns the value in the parameter, if it is false, it returns the opposite. So it’s basically a converter that converts one type of boolean in another, with the possibility to specify what is true and what is false ;-)</p>
+
+<p>Typical usage snippet:</p>
+
+<pre>Visibility=&quot;{Binding IsDownloading, Converter={StaticResource VisibilityConverter}, ConverterParameter=Visible}&quot;</pre>
+
+<p>which says that if the “IsDownloading” property of the model is true, the GUI object in case must be visible. Since I actually used this snippet on a Windows Phone 7 ProgressBar, this makes perfect sense.</p>  

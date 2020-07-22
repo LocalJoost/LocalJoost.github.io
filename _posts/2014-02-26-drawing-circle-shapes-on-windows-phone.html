@@ -1,0 +1,128 @@
+---
+layout: post
+title: Drawing circles on Windows Phone Here Maps and Windows Store Bing Maps
+date: '2014-02-26T14:07:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- Mapping
+- windev
+- wpdev
+- Windows 8
+- WinRt
+- Win8nl
+modified_time: '2014-02-26T14:16:24.522+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8214510733019884289
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/02/drawing-circle-shapes-on-windows-phone.html
+---
+
+<p>One of the areas where the mapping systems for <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> and <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> are lacking, is the ability to draw <em>circles</em>. In particular in Windows Store apps, where you have the ability to use <a href="http://msdn.microsoft.com/en-us/library/windows/apps/windows.devices.geolocation.geofencing.geofence" target="_blank">geofences</a>, it would come in pretty handy to be able to draw the outline of a geofence (<a href="http://msdn.microsoft.com/en-us/library/windows/apps/windows.devices.geolocation.geofencing.geofence.geoshape" target="_blank">typically a circle, as this is the only supported type right now</a>) on the map – if only for testing purposes.</p> <p>To this end I have created a set of extension methods, both for Windows Phone 8 and for Windows Store apps. In the first case, they cannot be used to display the location of a geofence as there <em>are</em> no geofences in Windows Phone 8, but well – drawing circles may come in handy anyway.</p> <p>The results look something like this</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Drawing-circle-shapes-on-Windows-Phone-H_BA48/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Drawing-circle-shapes-on-Windows-Phone-H_BA48/image_thumb.png" width="204" align="right" height="365"></a><a href="http://www.schaikweb.net/dotnetbyexample/Drawing-circle-shapes-on-Windows-Phone-H_BA48/Screenshot-16.png"><img title="Screenshot (16)" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="Screenshot (16)" src="http://www.schaikweb.net/dotnetbyexample/Drawing-circle-shapes-on-Windows-Phone-H_BA48/Screenshot-16_thumb.png" width="404" height="229"></a></p> <p>These are not circles – they <em>look</em> like circles. Basically they are just normal polygons, but their points are drawn in a form to resemble a circle. Would you zoom in very far, you would actually be able to see this. Would you calculate it’s surface area, you would actually find it&nbsp; fraction smaller than a real circle area. But what the heck – it serves the purpose.</p> <p>I have created a few extension methods to get this done. I will start with Windows Phone code - hey, I am not a Windows <em>Phone</em> MVP for nothing, right? ;-) -which starts off with this piece of math:</p><pre>using System;
+using System.Collections.Generic;
+using System.Device.Location;
+
+namespace WpWinNl.Utilities
+{
+  public static class GeoCoordinateExtensions
+  {
+    public static GeoCoordinate GetAtDistanceBearing(this GeoCoordinate point, 
+                                                     double distance, double bearing)
+    {
+      const double degreesToRadian = Math.PI / 180.0;
+      const double radianToDegrees = 180.0 / Math.PI;
+      const double earthRadius = 6378137.0;
+
+      var latA = point.Latitude * degreesToRadian;
+      var lonA = point.Longitude * degreesToRadian;
+      var angularDistance = distance / earthRadius;
+      var trueCourse = bearing * degreesToRadian;
+
+      var lat = Math.Asin(
+          Math.Sin(latA) * Math.Cos(angularDistance) +
+          Math.Cos(latA) * Math.Sin(angularDistance) * Math.Cos(trueCourse));
+
+      var dlon = Math.Atan2(
+          Math.Sin(trueCourse) * Math.Sin(angularDistance) * Math.Cos(latA),
+          Math.Cos(angularDistance) - Math.Sin(latA) * Math.Sin(lat));
+
+      var lon = ((lonA + dlon + Math.PI) % (Math.PI * 2)) - Math.PI;
+
+      var result = new GeoCoordinate(lat * radianToDegrees, lon * radianToDegrees);
+
+      return result;
+    }
+  }
+}</pre>
+<p>This is a method that, given a coordinate, a distance in meters, and a bearing (in degrees) gives you another point. So a entering 50 for distance and 180 for bearing would give you a point 50 meters south of your original point. An impressive piece of math, if I may say so. Which I <a href="http://stackoverflow.com/questions/1125144/how-do-i-find-the-lat-long-that-is-x-km-north-of-a-given-lat-long/1125425#1125425" target="_blank">totally stole from here</a> - as I am into maps, not so much into math. Having this, it’s pretty easy to add a second extension method:</p><pre>public static IList&lt;GeoCoordinate&gt; GetCirclePoints(this GeoCoordinate center, 
+                                   double radius, int nrOfPoints = 50)
+{
+  var angle = 360.0 / nrOfPoints;
+  var locations = new List&lt;GeoCoordinate&gt;();
+  for (var i = 0; i &lt;= nrOfPoints; i++)
+  {
+    locations.Add(center.GetAtDistanceBearing(radius, angle * i));
+  }
+  return locations;
+}</pre>
+<p>It divides the circle of 360 degrees in the number of points you want, and then simply adds points to the shape at the same distance but at every 360/points degrees. The higher the number of points, the more the shape will look like a real circle. Drawing the circle on a Windows Phone map is child’s play now:</p><pre>void MainPageLoaded(object sender, RoutedEventArgs e)
+{
+  var location = new GeoCoordinate(52.181427, 5.399780);
+  MyMap.Center = location;
+  MyMap.ZoomLevel = 16;
+
+  var fill = Colors.Purple;
+  var stroke = Colors.Red;
+  fill.A = 80;
+  stroke.A = 80;
+  var circle = new MapPolygon
+  {
+    StrokeThickness = 2,
+    FillColor = fill,
+    StrokeColor = stroke,
+    StrokeDashed = false,
+  };
+
+  foreach( var p in location.GetCirclePoints(150))
+  {
+    circle.Path.Add(p);
+  }
+
+  MyMap.MapElements.Add(circle);
+}</pre>
+<p>This draws a circle of 150 meters around my house.&nbsp; </p>
+<p>For Windows Store, the story is nearly the same. The differences are:</p>
+<ol>
+<li>You will need to install the <a href="http://visualstudiogallery.msdn.microsoft.com/224eb93a-ebc4-46ba-9be7-90ee777ad9e1" target="_blank">Bing Maps SDK for Windows 8.1 Store apps</a> 
+<li>The Bing Maps SDK does not understand System.Device.Location.GeoCoordinate you will need to make the extension method on Bing.Maps.Location</li></ol>
+<p>It’s very unfortunate that the mapping APIs for Windows Phone and Windows Store lack convergence even at the point of something as basic the naming of location types. I hope this will get more attention in the future, as mapping is something that I really care about - in case you had not noticed that from this blog ;-). </p>
+<p>However, clever use of C# aliasing brings this convergence a bit closer. I changed the top of this file to</p><pre>using System;
+using System.Collections.Generic;
+#if WINDOWS_PHONE
+using GeoCoordinate = System.Device.Location.GeoCoordinate;
+#else
+using GeoCoordinate=Bing.Maps.Location;
+#endif</pre>
+<p>et voilá, this file compiles under both Windows Phone and Windows Store (provided you have the Map SDK installed). You can forget about PCLs, but sharing code is definitely a possibility now as far as this little method goes.</p>
+<p>Drawing a shape in the Windows Store app is now nearly the same:</p><pre>void MainPageLoaded(object sender, RoutedEventArgs e)
+{
+  var location = new Location(52.181427, 5.399780);
+  MyMap.Center = location;
+  MyMap.ZoomLevel = 18;
+  var fill = Colors.Purple;
+  fill.A = 80;
+  var circle = new MapPolygon
+  {
+   FillColor = fill,
+  };
+
+  foreach (var p in location.GetCirclePoints(150))
+  {
+    circle.Locations.Add(p);
+  }
+
+  var layer = new MapShapeLayer();
+  layer.Shapes.Add(circle);
+
+  MyMap.ShapeLayers.Add(layer);
+}</pre>
+<p>Although attentive readers might notice there is no stroke color defined (as MapPolygon in Windows Store does not feature a separate outer shape border) and adding shapes to a map regrettably also works a bit differently. The API of both mapping systems definitely could benefit from some attention here. But anyway – it get’s the job done now at this point.</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/DrawCircle.zip" target="_blank">Full demo solution is downloadable here</a>. One more time – to be able to compile this you will need to install the <a href="http://visualstudiogallery.msdn.microsoft.com/224eb93a-ebc4-46ba-9be7-90ee777ad9e1" target="_blank">Bing Maps SDK for Windows 8.1 Store apps</a> first!</p>  

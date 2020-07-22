@@ -1,0 +1,216 @@
+---
+layout: post
+title: Playing sounds on Windows Phone using the MVVMLight Messenger
+date: '2013-01-13T14:01:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- wpnl
+- wpdev
+- dotnetmag
+- MVVM
+- behavior
+- MVVM Light
+modified_time: '2013-01-13T14:01:23.414+01:00'
+thumbnail: http://lh4.ggpht.com/-SVDn9rkqf88/UPKwIUZIQVI/AAAAAAAAKC8/8T2YCYocE7U/s72-c/SoundMvvm_thumb%25255B1%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6946200399595947555
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/01/playing-sounds-on-windows-phone-using.html
+---
+
+<p>In my never-ending quest to preach the gospel of MVVM in general and <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> in particular as the way to make a structured <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> application I show a little part of my my newest Windows Phone app, “<a href="http://windowsphone.com/s?appid=4aaf1cc1-4393-4d81-98b7-d438d7e83fac&amp;amp;ocid=aff-n-we-loc--ITPRO40939&amp;amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Pull the Rope</a>”. It’s a basically a rope pulling contest played on two phones. I think it’s quite fun to play but I am pretty sure it’s even more hilarious to watch <em>other</em> people play it, swiping like maniacs on their phones.</p> <p>The first version did not even have sounds – I decided to go the “ship early ship often” route this time – so some days ago I submitted a version that does some supportive sound. Of course my game is MVVMLight based and for adding the game sound I pulled a tried-and-tested (at least, by me) out of the hat – the Messenger-Behavior combo.Using the Messenger requires of course a message, so I started off with that:</p><pre>namespace Wp7nl.Audio
+{
+  public class PlaySoundEffectMessage
+  {
+    public PlaySoundEffectMessage(string soundName, bool start = true)
+    {
+      SoundName = soundName;
+      Start = start;
+    }
+
+    public string SoundName { get; private set; }
+
+    public bool Start { get; private set; }
+  }
+}</pre>
+<p>So this message has only two options – an identifier for the sound that must be started, and a boolean that indicates whether the sound should be started (default) or stopped (this for sounds that are played in a loop).</p>
+<p>Then the behavior itself. As usual, I start off with a couple of Dependency Properties, to support data binding:</p>
+<ul>
+<li>SoundFileLocation (string) – the location of the sound file to play 
+<li>SoundName (string) – the sound identifier; if PlaySoundEffectMessage.SoundName has the same value a this property, the behavior will take action. 
+<li>Repeat (bool) – indicates if the sound should be played in a loop or not.</li></ul>
+<p>I hope you will forgive me for not including the Dependency Properties’ code in the this article as it is pretty much run of the mill and takes a lot of space. </p>
+<p>The core of the behavior itself is actually pretty simple. It’s meant to be used in conjunction with a MediaElement. First, the setup. I created this as a <a href="http://dotnetbyexample.blogspot.nl/2011/11/safe-event-detachment-base-class-for.html" target="_blank">SafeBehavior</a> to make setup and teardown a little less complex:</p><pre>using System;
+using System.Windows;
+using System.Windows.Controls;
+using GalaSoft.MvvmLight.Messaging;
+using Wp7nl.Behaviors;
+
+namespace Wp7nl.Audio
+{
+  public class PlaySoundEffectBehavior : SafeBehavior&lt;MediaElement&gt;
+  {
+    protected override void OnSetup()
+    {
+      Messenger.Default.Register&lt;PlaySoundEffectMessage&gt;(
+        this, DoPlaySoundFile);
+      AssociatedObject.IsHitTestVisible = false;
+      AssociatedObject.AutoPlay = false;
+      var soundUri = new Uri(SoundFileLocation, UriKind.Relative);
+      AssociatedObject.Source = soundUri;
+      AssociatedObject.Position = TimeSpan.FromSeconds(0);
+      SetRepeat(Repeat);
+    }
+  }
+}</pre>
+<p>So basically this behavior subscribes to the message type we just defined. Then it goes on initializing the MediaElement – disabling hit test and autoplay, actually setting the sound file URI, initializing it to the beginning and initializing repeat (or not). </p>
+<p>The method DoPlaySoundFile, which kinda does all the work, isn’t quite rocket science either:</p><pre>private void DoPlaySoundFile(PlaySoundEffectMessage message)
+{
+  if (SoundName == message.SoundName)
+  {
+    if (message.Start)
+    {
+      AssociatedObject.Position = TimeSpan.FromSeconds(0);
+      AssociatedObject.Play();
+    }
+    else
+    {
+      AssociatedObject.Stop();
+    }
+  }
+}</pre>
+<p>If a message is incepted with the same sound name as has been set to the behavior in the XAML, then either start or stop the sound. </p>
+<p>The rest of the behavior is basically some odds and ends:</p><pre>private void SetRepeat(bool repeat)
+{
+  if (AssociatedObject != null)
+  {
+    if (repeat)
+    {
+      AssociatedObject.MediaEnded += AssociatedObjectMediaEnded;
+    }
+    else
+    {
+      AssociatedObject.MediaEnded -= AssociatedObjectMediaEnded;
+    }
+  }
+}
+
+private void AssociatedObjectMediaEnded(object sender, RoutedEventArgs e)
+{
+  AssociatedObject.Position = TimeSpan.FromSeconds(0);
+  AssociatedObject.Play();
+}
+
+protected override void OnCleanup()
+{
+  Messenger.Default.Unregister(this);
+  AssociatedObject.MediaEnded -= AssociatedObjectMediaEnded;
+}</pre>
+<p>The first method, SetRepeat, enables or disables repeat. As a MediaElement does not support the endless <a href="http://lh4.ggpht.com/-YwvKM25HeNU/UPKwHqPbszI/AAAAAAAAKC4/-rzR1Bw5oAs/s1600-h/SoundMvvm%25255B3%25255D.png"><img title="SoundMvvm" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="SoundMvvm" align="right" src="http://lh4.ggpht.com/-SVDn9rkqf88/UPKwIUZIQVI/AAAAAAAAKC8/8T2YCYocE7U/SoundMvvm_thumb%25255B1%25255D.png?imgmax=800" width="109" height="185"></a>loop by itself, repeat as such is implemented by subscribing the method AssociatedObjectMediaEnded to the MediaEnded event of the MediaElement – that does nothing more than kicking off the sound again. If repeat has to be turned off, the AssociatedObjectMediaEnded is unsubscribed again and the sound automatically ends.</p>
+<p>Finally, the last method is called when the behavior is deactivated. It removes the messenger subscription and a possible repeat event subscription.</p>
+<p>So how would you go about and use such a behavior? To demonstrate it’s working, I have created <a href="http://www.schaikweb.net/dotnetbyexample/soundmvvm.zip" target="_blank">a small sample solution</a> with the very exiting *cough* user interface showed to the right. What this app does is, as you click on the go button, is fire off the PlaySoundCommand command in the following, admittedly somewhat contrived view model:</p><pre>using System;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Threading;
+using GalaSoft.MvvmLight;
+using GalaSoft.MvvmLight.Command;
+using GalaSoft.MvvmLight.Messaging;
+using Wp7nl.Audio;
+
+namespace SoundMvvm.Viewmodels
+{
+  public class SoundViewModel : ViewModelBase
+  {
+    public ICommand PlaySoundCommand
+    {
+      get
+      {
+        return new RelayCommand(
+          () =&gt;
+            {
+              var t = new DispatcherTimer {Interval =  
+                      TimeSpan.FromSeconds(4)};
+              t.Tick += TimerTick;
+              t.Start();
+            });
+      }
+    }
+
+    private void TimerTick(object sender, EventArgs e)
+    {
+      tickNumber++;
+      switch (tickNumber)
+      {
+        case 1:
+          Messenger.Default.Send(new PlaySoundEffectMessage("Sad trombone"));
+          break;
+        case 2:
+          Messenger.Default.Send(new PlaySoundEffectMessage("Ping"));
+          break;
+        case 3:
+          Deployment.Current.Dispatcher.BeginInvoke(() =&gt; 
+            Messenger.Default.Send(new PlaySoundEffectMessage("Ping", false)));
+          var t = sender as DispatcherTimer;
+          t.Stop();
+          t.Tick -= TimerTick;
+          break;
+      }
+    }
+
+    private int tickNumber;
+  }
+}</pre>
+<p>This initializes and starts a DispatcherTimer that will fire every four seconds. So the first four seconds after you click the button absolutely <em>nothing</em> will happen – I wanted to simulate the situation in which an event in the view model, not necessarily directly kicks off the sound. At the first tick – after four seconds – the view model fires a message making the behavior start the “Sad trombone” sound, which runs about four seconds. Then it fires off the “Ping” message, which causes the “Ping” sound to be started and repeated by the behavior. After another four seconds (good for about three ‘pings’) it’s killed again by the second “Ping” message. And then this little app has done all it could. Cue sad trombone indeed ;-)</p>
+<p>As to the XAML to make this all work, I’ve outlined in red (and underline for the color blind readers) the interesting parts:</p><pre style="font-size: 9pt">&lt;phone:PhoneApplicationPage
+    x:Class="SoundMvvm.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:phone="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone"
+    xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:i="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"
+    xmlns:audio="clr-namespace:Wp7nl.Audio;assembly=Wp7nl.MvvmLight"
+    xmlns:viewmodels="clr-namespace:SoundMvvm.Viewmodels"
+    mc:Ignorable="d"
+    FontFamily="{StaticResource PhoneFontFamilyNormal}"
+    FontSize="{StaticResource PhoneFontSizeNormal}"
+    Foreground="{StaticResource PhoneForegroundBrush}"
+    SupportedOrientations="Portrait" Orientation="Portrait"
+    shell:SystemTray.IsVisible="True" &gt;
+
+  &lt;phone:PhoneApplicationPage.Resources&gt;
+    &lt;viewmodels:SoundViewModel x:Key="SoundViewModel" /&gt;
+  &lt;/phone:PhoneApplicationPage.Resources&gt;
+  &lt;Grid x:Name="LayoutRoot" Background="Transparent" <br>                            <font color="#ff0000"><u>DataContext="{StaticResource SoundViewModel}</u>"</font>&gt;
+    &lt;Grid.RowDefinitions&gt;
+      &lt;RowDefinition Height="Auto"/&gt;
+      &lt;RowDefinition Height="*"/&gt;
+    &lt;/Grid.RowDefinitions&gt;
+
+    &lt;StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,17,0,28"&gt;
+      &lt;TextBlock Text="DEMO MVVM SOUNDS" <br>                 Style="{StaticResource PhoneTextNormalStyle}" Margin="12,0"/&gt;
+      &lt;TextBlock Text="play sounds" Margin="9,-7,0,0" 
+                     Style="{StaticResource PhoneTextTitle1Style}"/&gt;
+    &lt;/StackPanel&gt;
+
+    &lt;Grid x:Name="ContentPanel" Grid.Row="1" Margin="12,0,12,0"&gt;
+      &lt;Button Content="go!" Margin="0,31,0,0" VerticalAlignment="Top" 
+              Width="128" Height="80" <font color="#ff0000"><u>Command="{Binding PlaySoundCommand}"</u></font>/&gt;
+    &lt;/Grid&gt;
+
+    &lt;MediaElement&gt;
+      &lt;i:Interaction.Behaviors&gt;
+        <font color="#ff0000"><u>&lt;audio:PlaySoundEffectBehavior SoundName="Sad trombone"</u>
+               <u>SoundFileLocation="/Sound/Sad_Trombone-Joe_Lamb-665429450.mp3"/&gt;</u></font>
+      &lt;/i:Interaction.Behaviors&gt;
+    &lt;/MediaElement&gt;
+    &lt;MediaElement&gt;
+      &lt;i:Interaction.Behaviors&gt;
+        <u><font color="#ff0000">&lt;audio:PlaySoundEffectBehavior Repeat="True" SoundName="Ping"</font></u> 
+               <u><font color="#ff0000">SoundFileLocation="/Sound/Elevator-Ding-SoundBible.com-685385892.mp3"/&gt;</font></u>
+      &lt;/i:Interaction.Behaviors&gt;
+    &lt;/MediaElement&gt;
+  &lt;/Grid&gt;
+&lt;/phone:PhoneApplicationPage&gt;</pre>
+<p>On top we have the DataContext set to our viewmodel, which, by using it this way, is automatically instantiated. The “go!” button is bound to the PlaySoundCommand, and then you see near the bottom the two MediaElement objects which each a PlaySoundEffectBehavior. The first one plays the “Sad trombone" once as the message is received, the second repeatedly (Repeat=”True”) the “ping” sound until it receives a message with “Start” the to “false” indicating it should shut up.</p>
+<p>In the sample solution you will find two projects: SoundMvvm (the app itself) and Wpnl.Contrib, which both the behavior and the message class. As you probably understand from this setup, both classes will be soon in the <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl CodePlex library</a>.For the record, this is a Windows Phone 8 app, but I think this should work on Windows Phone 7 as well, although on 7 I would still go for the XNA SoundEffect class. The technique used for this behavior comes from my <a href="http://apps.microsoft.com/webpdp/app/catchem-birds/8417a0bf-e19d-4364-8116-e2dc79ffe39d" target="_blank">Catch’em Birds for Windows 8 app</a> by the way, where you don’t have XNA at all.</p>  

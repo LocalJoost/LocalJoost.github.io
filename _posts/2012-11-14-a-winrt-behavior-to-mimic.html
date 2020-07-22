@@ -1,0 +1,84 @@
+---
+layout: post
+title: A WinRT behavior to mimic EventToCommand (take 2)
+date: '2012-11-14T10:13:00.001+01:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- MVVM
+- Windows 8
+- WinRt
+- XAML
+- behavior
+- Win8nl
+modified_time: '2013-01-20T16:45:55.462+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8017519964283843716
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/11/a-winrt-behavior-to-mimic.html
+---
+
+<p>(Updated with sample code January 19 2013)</p> <p>Some time ago I posted a <a href="http://dotnetbyexample.blogspot.nl/2012/07/a-winrt-behavior-to-mimic-eventtocommand.html" target="_blank">WinRT behavior to mimic EventToCommand</a>. This behavior cunningly looked for the command name in the DataContext, but it occurred to me (and some blog post commenters as well) that it actually might be more logical skip all that skullduggery and let the developer <em>bind</em> to a command in stead of letting her/him provide its name as string and then go look for it.</p> <p>Anyway, not wanting to break compatibility I added a <em>new</em> behavior to my <a href="http://win8nl.codeplex.com/" target="_blank">win8nl library on CodePlex</a>, very originally called EventTo<em>Bound</em>CommandBehavior.</p> <p>It’s working is very similar to the original EventToCommandBehavior. There are two notable differences:</p> <ul> <li>The Command property is now no longer of type string but ICommand  <li>The FireCommand method is now very simple:</li></ul><pre>private void FireCommand()
+{
+  if (Command != null &amp;&amp; Command.CanExecute(CommandParameter))
+  {
+    Command.Execute(CommandParameter);
+  }
+}</pre>
+<p>Which goes to show that you can be <em>too</em> clever.</p>
+<p>If you want to replace the original behavior for the new one – say, you used it like this</p><pre>&lt;TextBlock Text="TextBlock" FontSize="48"&gt;
+  &lt;WinRtBehaviors:Interaction.Behaviors&gt;
+    &lt;Behaviors:EventToCommandBehavior Event="Tapped" 
+      Command="TestCommand" 
+      CommandParameter="{Binding TestProperty, Mode=TwoWay}"/&gt;
+  &lt;/WinRtBehaviors:Interaction.Behaviors&gt;
+&lt;/TextBlock&gt;
+</pre>
+<p>Just go to the places marked red/underlined:</p><pre>&lt;TextBlock Text="TextBlock" FontSize="48"&gt;
+  &lt;WinRtBehaviors:Interaction.Behaviors&gt;
+    &lt;Behaviors:EventTo<font color="#ff0000"><u>Bound</u></font>CommandBehavior Event="Tapped" 
+      Command="<font color="#ff0000"><u>{Binding TestCommand}</u></font>" 
+      CommandParameter="{Binding TestProperty, Mode=TwoWay}"/&gt;
+  &lt;/WinRtBehaviors:Interaction.Behaviors&gt;
+&lt;/TextBlock&gt;</pre>
+<p>Those who want to see the full source code of the new (and largely simplified) behavior can do so at <a title="http://win8nl.codeplex.com/SourceControl/changeset/view/20896#395786" href="http://win8nl.codeplex.com/SourceControl/changeset/view/20896#395786">http://win8nl.codeplex.com/SourceControl/changeset/view/20896#395786</a></p>
+<p><strong>Update</strong>: I’ve added some more sample code as a lot of people seem to struggle with the correct use of this behavior. Lots of time I get program problems like this: “I have a list in my view model and a command yet my command is not fired when then I tap the item”. The view model usually contains these properties:</p><pre>public ObservableCollection<phone> Phones { get; set; }
+
+public ICommand TappedCommand
+{
+  // code omitted
+}</pre>
+<p>and the XAML is like this:</p><pre>&lt;Grid Background="{StaticResource ApplicationPageBackgroundThemeBrush}" 
+  DataContext="{StaticResource DemoViewModel}"&gt;
+
+ <font color="#ff0000"> &lt;GridView ItemsSource="{Binding Phones}" SelectionMode="None" 
+     IsTapEnabled="True"&gt;
+<font color="#0000ff">    &lt;GridView.ItemTemplate&gt;
+      &lt;DataTemplate&gt;
+        &lt;Grid Width="350"&gt;
+          &lt;Grid.ColumnDefinitions&gt;
+            &lt;ColumnDefinition/&gt;
+            &lt;ColumnDefinition/&gt;
+          &lt;/Grid.ColumnDefinitions&gt;
+          &lt;WinRtBehaviors:Interaction.Behaviors&gt;
+            &lt;Behaviors:EventToBoundCommandBehavior 
+              Command="{Binding TappedCommand}" 
+              CommandParameter="{Binding}" Event="Tapped" /&gt;
+          &lt;/WinRtBehaviors:Interaction.Behaviors&gt;
+
+          &lt;TextBlock Text="{Binding Brand}"/&gt;
+          &lt;TextBlock Text="{Binding Type}" Grid.Column="1"/&gt;
+        &lt;/Grid&gt;
+      &lt;/DataTemplate&gt;
+    &lt;/GridView.ItemTemplate&gt;</font>
+  &lt;/GridView&gt;
+</font>&lt;/Grid&gt;</pre>
+<p>I this case, the programmer has lost track of what’s the exact data context. Happens all the time, even to me. I’ve used colors to depict the data context changes.</p>
+<ul>
+<li>In the black code, DemoViewModel is the data context 
+<li>In the red code, the ObserservableCollection Phones is the data context 
+<li>In the blue code, a single Phone is the context.</li></ul>
+<p>So what this code tries to do is to call a command TappedCommand <em>on class</em> <em>Phone in stead of DemoViewModel.</em>So either the command needs to be in “Phone”, or the behavior’s binding must be updated like this:</p><pre>&lt;WinRtBehaviors:Interaction.Behaviors&gt;
+  &lt;Behaviors:EventToBoundCommandBehavior 
+    Command="{Binding TappedCommand<u><font color="#ff0000">, Source={StaticResource DemoViewModel}</font></u>}" 
+    CommandParameter="{Binding}" Event="Tapped" /&gt;
+&lt;/WinRtBehaviors:Interaction.Behaviors&gt;</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/GridViewTappedItem.zip" target="_blank">Full working example can be found here.</a></p>  

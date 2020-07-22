@@ -1,0 +1,181 @@
+---
+layout: post
+title: Bind Silverlight 3 Slider Value, Minimum and Maximum attributes in EXACTLY
+  the right order!
+date: '2009-08-01T18:03:00.016+02:00'
+author: Joost van Schaik
+tags:
+- Silverlight 3.0
+- dotnetmag
+- Silverlight
+- Slider
+modified_time: '2010-04-06T11:17:29.876+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7469339255347456880
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/08/bind-silverlight-3-slider-value-minimum.html
+---
+
+Today I want to share a piece of <em>very </em>hard won knowlegde with you.
+That piece of knowlegde is: if you want to use a Silverlight Slider, and you want to get the Value, Minimum <em>and</em> Maximum attributes from binding, <em>you need to bind them in exactly the right order</em>. That order is:<ul>
+<li>Maximum</li>
+<li>Minimum</li>
+<li>Value</li>
+</ul>or else it simply won't work. It took me the better part of a sunny saturday afternoon to figure that out. 
+
+To clarify things, I will show what I was doing when I ran into this. I have a simple business class that looks like this:<pre>using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+
+namespace LocalJoost.CloudMapper.Ui
+{
+  public class TileRequestParms 
+  {
+    private double _xmin;
+    public double XMin { get { return _xmin; } }
+
+    private double _ymin;
+    public double YMin { get { return _ymin; } }
+
+    private double _xmax;
+    public double XMax { get { return _xmax; } }
+
+    private double _ymax;
+    public double YMax { get { return _ymax; } }
+
+    private double _xLow;
+    [Display(Name = "X lower left:")]
+    public double XLow
+    {
+      get
+      {
+        return _xLow;
+      }
+      set
+      {
+        ValidateValue(value, XMin, XHigh);
+        _xLow = value;
+      }
+    }
+
+    private double _yLow;
+    [Display(Name = "Y lower left:")]
+    public double YLow
+    {
+      get
+      {
+        return _yLow;
+      }
+      set
+      {
+        ValidateValue(value, YMin, YHigh);
+        _yLow = value;
+      }
+    }
+
+    private double _xHigh;
+    [Display(Name = "X upper right:")]
+    public double XHigh
+    {
+      get
+      {
+        return _xHigh;
+      }
+      set
+      {
+        ValidateValue(value, XLow, XMax);
+        _xHigh = value;
+
+      }
+    }
+
+    private double _yHigh;
+    [Display(Name = "Y upper right:")]
+    public double YHigh
+    {
+      get
+      {
+        return _yHigh;
+      }
+      set
+      {
+        ValidateValue(value, YLow, YMax);
+        _yHigh = value;
+      }
+    }
+
+    public TileRequestParms(double xLow, double yLow, 
+        double xHigh, double yHigh)
+    {
+      _xmax = _xHigh = xHigh;
+      _ymax = _yHigh = yHigh;
+      _xmin = _xLow = xLow;
+      _ymin = _yLow = yLow;
+    }
+
+    private void ValidateValue(double value, 
+      double minValue, double maxValue)
+    {
+      if (value < minValue || value > maxValue)
+      {
+        throw new ArgumentException(
+           string.Format("Valid value {0} - {1}", minValue,
+                             maxValue));
+      }
+    }
+  }
+}</pre>Its purpose is very simple: the user can input two coordinates that are inside a rectangle defined by the max and min values in the constructor. In addition, XMax can never be smaller than XMin, and YMax never smaller than YMin. 
+
+Now I wanted the user to be able to input the value both by a text box and a slider. And I decided to use the new Silverlight 3 DataForm <em>and </em>control to control binding:<pre>&lt;dataFormToolkit:DataField Grid.Row="0" Grid.Column="0" 
+  Label="X lower left: "&gt;
+    &lt;StackPanel&gt;
+        &lt;TextBox x:Name ="tbXLow" Text="{Binding XLow,Mode=TwoWay}" /&gt;
+        &lt;Slider x:Name="slXLow" 
+         Value="{Binding Text,ElementName=tbXLow, Mode=TwoWay}" 
+         Minimum="{Binding XMin}" Maximum="{Binding XMax}"/&gt;
+    &lt;/StackPanel&gt;
+&lt;/dataFormToolkit:DataField&gt;
+&lt;dataFormToolkit:DataField Grid.Row="0" Grid.Column="1" 
+      Label="Y lower left: "&gt;
+    &lt;StackPanel&gt;
+        &lt;TextBox x:Name ="tbYLow" Text="{Binding YLow,Mode=TwoWay}" /&gt;
+        &lt;Slider x:Name="slYLow" 
+         Value="{Binding Text,ElementName=tbYLow, Mode=TwoWay}" 
+         Minimum="{Binding YMin}" Maximum="{Binding YMax}"/&gt;
+    &lt;/StackPanel&gt;
+&lt;/dataFormToolkit:DataField&gt;
+&lt;dataFormToolkit:DataField Grid.Row="1" Grid.Column="0" 
+    Label="X upper right: "&gt;
+    &lt;StackPanel&gt;
+        &lt;TextBox x:Name ="tbXHigh" Text="{Binding XHigh,Mode=TwoWay}" /&gt;
+        &lt;Slider x:Name="slXHigh" 
+         Value="{Binding Text,ElementName=tbXHigh, Mode=TwoWay}" 
+         Minimum="{Binding XMin}" Maximum="{Binding XMax}"/&gt;
+    &lt;/StackPanel&gt;
+&lt;/dataFormToolkit:DataField&gt;
+&lt;dataFormToolkit:DataField Grid.Row="1" Grid.Column="1" 
+  Label="Y upper right: "&gt;
+    &lt;StackPanel&gt;
+        &lt;TextBox x:Name ="tbYHigh" Text="{Binding YHigh,Mode=TwoWay}" /&gt;
+        &lt;Slider x:Name="slYHigh" 
+         Value="{Binding Text,ElementName=tbYHigh, Mode=TwoWay}" 
+         Minimum="{Binding YMin}" Maximum="{Binding YMax}"/&gt;
+    &lt;/StackPanel&gt;
+&lt;/dataFormToolkit:DataField&gt;</pre>Now the annoying thing is: is worked for X, but not for Y. The sliders stayed put and refused to work.
+
+After a considerable time of debugging and I noticed one thing: it worked when I put hard coded values for Minimum and Maximum, but not if I used binded values. For X, I was using a minimum 0 and a maximum of 300000. But I was using a minimum of 300000 for Y, and 600000 for a maximum (Yes, that's the RD coordinate system, for my Dutch readers).
+
+With a bit of debugging I was able to find out the both minimum and maximum value of the first slider where set to 300000, as was it's value. So I reasoned: maybe, by setting the value, the maximum value is set already (because the minimum is already 0) and it does 'not like' to get a max value twice. Or something among that lines. So what if I <em>first </em>set the maximum, <em>then </em>the minimum, and only then the value?
+So I changed the XAML for the first slider<pre>&lt;dataFormToolkit:DataField Grid.Row="1" Grid.Column="0" 
+  Label="X upper right: "&gt;
+    &lt;StackPanel&gt;
+        &lt;TextBox x:Name ="tbXHigh" Text="{Binding XHigh,Mode=TwoWay}" /&gt;
+        &lt;Slider Maximum="{Binding XMax}" Minimum="{Binding XMin}"
+         x:Name="slXHigh" 
+         Value="{Binding Text,ElementName=tbXHigh, Mode=TwoWay}"/&gt;
+    &lt;/StackPanel&gt;
+&lt;/dataFormToolkit:DataField&gt;</pre>And it worked. It's these little things that make a developer's life interesting, isn't it? Although, in my case, it also gave this here developer a pretty potent headache.

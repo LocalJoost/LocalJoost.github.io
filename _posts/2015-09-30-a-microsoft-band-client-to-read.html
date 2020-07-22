@@ -1,0 +1,338 @@
+---
+layout: post
+title: A Microsoft Band client to read temperatures and control a fan on a Raspberry
+  PI2
+date: '2015-09-30T12:13:00.001+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- Azure
+- Microsoft Band
+- IoT
+- Windows 10
+modified_time: '2015-09-30T20:08:31.010+02:00'
+thumbnail: https://i.ytimg.com/vi/46bi9YbYckg/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1221416143750165647
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/09/a-microsoft-band-client-to-read.html
+---
+
+<h4><font size="2">Part 6 of Reading temperatures &amp; controlling a fan with a RP2, Azure Service Bus and a Microsoft Band</font></h4> <p><font size="4">Intro<br></font>In the final post of this series I will show how the <a href="http://www.microsoft.com/Microsoft-Band/en-us" target="_blank">Microsoft Band</a> client in this project, that is used to actually read temperatures and control the fan, is created and operated. The client has a tile and a two-page UI, looks like this and can be seen in action in this video from the first blog post:</p><iframe height="362" src="https://www.youtube.com/embed/46bi9YbYckg" frameborder="0" width="645" allowfullscreen></iframe> <p>To recap - the function of the Band client is as follows</p> <ul> <li>WhenI tap the tile on the Band, the UI is opened and shows the latest data, that is:  <ul> <li>The temperature as last measure by the Raspberry PI2  <li>A button I can use to toggle the fan. The text on the button reflects the current status of the fan (i.e. it shows "Stop fan" when it's running, and "Start fan" when it is not  <li>Date and time of the last received data.</li></ul></li></ul> <p><font size="4">The classes involved</font><br>As you can see in the <a href="https://github.com/LocalJoost/TemperatureReaderDemo" target="_blank">demo solution</a>, there are three classes, and one interface, all living in the TemperatureReader.ClientApp's Models namespace - that have something to do with the Band:</p> <ul> <li>BandOperator  <li>BandUiController  <li>BandUiDefinitions  <li>IBandOperator</li></ul> <p>I showed a little bit of it in <a href="http://dotnetbyexample.blogspot.com/2015/09/a-windows-10-uwp-app-to-receive.html" target="_blank">the previous post</a> that described the Windows 10 UWP app itself, but to recap: the app is put together using dependency injection, so every class gets everything (well, almost everything) it needs passed via the constructor, and only knows what it gets via an interface (not a concrete class). In addition, most communication goes via events. </p> <p><font size="4">Start it up</font><br>If you look in the MainViewModel's CreateInstance method, you will see the BandOperator first spring into life:</p><pre>public static MainViewModel CreateNew()
+{
+  var fanStatusPoster = new FanSwitchQueueClient(QueueMode.Send);
+  fanStatusPoster.Start();
+<font color="#a5a5a5"> <font color="#000000"> var listener = new TemperatureListener();</font>
+  var errorLogger = SimpleIoc.Default.GetInstance&lt;IErrorLogger&gt;();
+  var messageDisplayer = SimpleIoc.Default.GetInstance&lt;IMessageDisplayer&gt;();</font>
+  var bandOperator = new BandOperator(fanStatusPoster);
+  return (new MainViewModel(
+    listener, bandOperator, 
+    messageDisplayer, errorLogger));
+}</pre>
+<p>I grayed out the stuff that is not so important here, but you see the BandOperator uses the FanSwitchQueueClient (<a href="http://dotnetbyexample.blogspot.com/2015/09/using-azure-service-bus-queue-for-two.html" target="_blank">see explanation in this post</a>) to defer sending data on Azure Service bus to, and then it's passed to the MainViewModel. Apparently some other mechanism is used to deliver temperature data <em>from</em> the Azure Service bus, and that code is found in the Start method of MainViewModel:</p><pre>private async Task Start()
+{
+<font color="#a5a5a5">  IsBusy = true;
+  await Task.Delay(1);</font>
+  _listener.OnTemperatureDataReceived += Listener_OnTemperatureDataReceived;
+  _listener.OnTemperatureDataReceived += _bandOperator.HandleNewTemperature;
+  await _listener.Start();
+<font color="#a5a5a5">  await StartBackgroundSession();</font>
+  await _bandOperator.Start();
+  await _bandOperator.SendVibrate();
+<font color="#a5a5a5">  IsBusy = false;</font>
+}</pre>
+<p>You can see the listener - being a ITemperatureListener, see also <a href="http://dotnetbyexample.blogspot.com/2015/09/using-azure-service-bus-queue-for-two.html" target="_blank">this post</a> - simply passes the event to the BandOperator, starts it, and makes the Band vibrate. So you see - the actual code that operates the Band is very loosely coupled to the rest of the app. But what you also see - the Band does not listen to the data coming form the Azure Service Bus, nor does it send data. That <em>app</em> does that interaction, and the Band - in turn - interacts with the app. </p>
+<p><font size="4">Some definitions first</font><br>What is important to understand is that the UI lives on the Band, an remains there. Changing it, and responding to events, is essentially a process that runs <em>on your phone</em>, not on the Band, and you are interacting with a process that sends data over Bluetooth - but that is mostly abstracted away. Building a Band UI is also vastly different from what you are used to, using XAML. You are basically writing code to build the structure of the UI, then fill it with data using even more code. There is no such things as data binding. All UI elements have to be defined using unique identifiers - no such things as easily recognizable names. It harkens back to ye olden days from even before Visual Basic.</p>
+<p>Anyway, there is this separate definition class that contains all the necessary ids: </p><pre>using System;
+
+namespace TemperatureReader.ClientApp.Models
+{
+  public static class BandUiDefinitions
+  {
+    public static readonly Guid TileId = 
+      new Guid("567FF10C-E373-4AEC-85B4-EF30EE294174");
+    public static readonly Guid Page1Id = 
+      new Guid("7E494E17-B498-4610-A6A6-3D0C3AF20226");
+    public static readonly Guid Page2Id = 
+      new Guid("BB4EB700-A57B-4B8E-983B-72974A98D19E");
+
+    public const short IconId = 1;
+    public const short ButtonToggleFanId = 2;
+    public const short TextTemperatureId = 3;
+    public const short TextTimeId = 4;
+    public const short TextDateId = 5;
+  }
+}</pre>
+<p>So we have three main UI ids - the tile, and both 'pages', that need to have a GUID. I just generated a few using Visual Studio, what GUID you use does not really matter - they need to be different from each other and refrain from re-using them - even over projects. Then there's five user interface elements.</p>
+<ul>
+<li>On the first page - the one you see when you tap the tile: the thermometer icon, the button to turn the fan on or off (also used to show the current fan status), and the label that shows the temperature as measured by the Raspberry PI2 
+<li>On the second page two label fields, that show the time and the date of the last received update from the Azure Service Bus as received by the App.</li></ul>
+<p>The UI looks like this:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/A-Microsoft-Band-client-to-read-temperat_B7D4/IMG_2288.jpg"><img title="IMG_2288" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="IMG_2288" src="http://www.schaikweb.net/dotnetbyexample/A-Microsoft-Band-client-to-read-temperat_B7D4/IMG_2288_thumb.jpg" width="644" height="174"></a> <br>The tile that you can tap</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/A-Microsoft-Band-client-to-read-temperat_B7D4/IMG_2289.jpg"><img title="IMG_2289" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="IMG_2289" src="http://www.schaikweb.net/dotnetbyexample/A-Microsoft-Band-client-to-read-temperat_B7D4/IMG_2289_thumb.jpg" width="644" height="174"></a> <br>The first page, with icon, temperature reading and button. The button now says "Start fan", so apparently the app has already received date from the Raspberry PI2, and it indicated the fan is off. Notice a little part of the second page is already visible on the right, alerting the user there's more to be seen and encouraging him to scroll to the right - a UI pattern in use since the very early days of Windows Phone 7.</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/A-Microsoft-Band-client-to-read-temperat_B7D4/IMG_2290.jpg"><img title="IMG_2290" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="IMG_2290" src="http://www.schaikweb.net/dotnetbyexample/A-Microsoft-Band-client-to-read-temperat_B7D4/IMG_2290_thumb.jpg" width="644" height="174"></a><br><br>The second page (with date and time of last received data)</p>
+<p>The user interface <em>element</em> ids are just just integers, but I make them globally unique - that is, unique in the app. The fact that they are spread over two 'pages' comes from the fact that the Band has a very small display, and you will need to make use of it's multi-page features if you want to show anything but the most trivial data. Fortunately, once you understand how it works, that is not very hard to do.</p>
+<p><font size="4">Building the Band client UI<br></font>I have separated the actual operating building and manipulating of the Band UI from the 'business logic' concerning the interaction with events coming from the Azure Service Bus. So we have the BandUiController and the BandOperator. A crude and not completely correct analogy could define the BandUIController as the view, and the BandOperator as a kind-of-viewmodel. I did this because at one point I had a class approaching 300 lines and things got very confusing. So I split it up. I show only a little excerpt of the BanOperator before I start explaining the BandUIController first. </p>
+<p>The BandUIController needs access to a IBandClient to be able to work on the Band's UI. You need to retrieve one first. How this works, you can see in the BandOperator's GetNewBandClient method:</p><pre>var pairedBands = await BandClientManager.Instance.GetBandsAsync();
+if (pairedBands != null &amp;&amp; pairedBands.Any())
+{
+  return await BandClientManager.Instance.ConnectAsync(pairedBands.First());
+}</pre>
+<p>And this IBandClient is injected into the BandUIController via the constructor. We have seen this pattern before in this series</p><pre>public class BandUiController
+{
+  private readonly IBandClient _bandClient;
+
+  public BandUiController(IBandClient bandClient)
+  {
+    _bandClient = bandClient;
+  }
+}</pre>
+<p>The next important thing to understand is that although both occur from code, <em>defining</em> the Band interface and actually <em>displaying</em> stuff in it are two separate actions. The public interface of the BandUIController actually only has four methods - and one of them is an overload of another:</p><pre>public async Task&lt;bool&gt; BuildTile();
+public async Task RemoveTile();
+public async Task SetUiValues(string timeText, string dateText, 
+                              string temperature, string buttonText);
+public async Task SetUiValues(string temperature, string buttonText);</pre>
+<p>The first one builds the tile (and the rest of the UI), the second one removes it. The third one sets all the UI elements' <em>value</em>, the second one only that of the elements on the first page - that is used for when you press the button to switch the fan on or off. So let's have a look at BuildTile first.</p><pre>public async Task&lt;bool&gt; BuildTile()
+{
+  if (_bandClient != null)
+  {
+    var cap = await _bandClient.TileManager.GetRemainingTileCapacityAsync();
+    if (cap &gt; 0)
+    {
+      var tile = new BandTile(BandUiDefinitions.TileId)
+      {
+        Name = "Temperature reader",
+        TileIcon = await LoadIcon("ms-appx:///Assets/TileIconLarge.png"),
+        SmallIcon = await LoadIcon("ms-appx:///Assets/TileIconSmall.png"),
+      };
+
+      foreach (var page in BuildTileUi())
+      {
+        tile.PageLayouts.Add(page);
+      }
+      await _bandClient.TileManager.AddTileAsync(tile);
+      await _bandClient.TileManager.RemovePagesAsync(BandUiDefinitions.TileId);
+      await _bandClient.TileManager.SetPagesAsync(BandUiDefinitions.TileId, 
+        BuildIntialTileData());
+      return true;
+    }
+  }
+  return false;
+}</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/A-Microsoft-Band-client-to-read-temperat_B7D4/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-Microsoft-Band-client-to-read-temperat_B7D4/image_thumb.png" width="50" align="right" height="50"></a>First thing you need to do is check remaining tile space capability. There's only room for up to 13 custom tiles, so chances are there's not enough room. If there is no space, this client silently fails. But if there's room, the tile is created with the designated GUID, a big and a small icon. The big icon appears on the tile, the small icon is typically used on notifications, but both can be used otherwise (as we will see later). "Large" is maybe stretching it a little as it's only 46x46 (the small one is 24x24). "LoadIcon" is a little routine that loads the icon and I nicked those from <a href="http://developer.microsoftband.com/Content/download/Microsoft%20Band%20SDK%20and%20Samples%20for%20Windows.zip" target="_blank">the Band samples</a>. Then the tile UI pages are being built using BuildTileUi, and are added to the tile's PageLayout collection. So far, so good. Then things get a little murky. </p>
+<ul>
+<li>First we add the tile - with page definitions - to the Band UI. By default, it is added to the very right side of the tile strip - just before the settings gear tile. 
+<li>Then we remove any possible <em>data</em> possibly associated with the pages using RemovePagesAsync. Remember, this is not the <em>structure</em>, just what is being <em>displayed on it</em>.<em> </em>I am not 100% sure this line of code is actually needed, but I just left it while experimenting 
+<li>Then we are adding the default data to display on the tile pages' UI elements using SetPagesAsync</li></ul>
+<p>Let's first have a look at BuildTileUi</p><pre>private IEnumerable&lt;PageLayout&gt; BuildTileUi()
+{
+  var bandUi = new List&lt;PageLayout&gt;();
+  
+  var page1Elements = new List&lt;PageElement&gt;
+  {
+    new Icon {ElementId = BandUiDefinitions.IconId, <br>      Rect = new PageRect(60,10,24,24)},
+<br>    new TextBlock  {ElementId = BandUiDefinitions.TextTemperatureId, 
+      Rect = new PageRect(90, 10, 50, 40)},
+    new TextButton {ElementId = BandUiDefinitions.ButtonToggleFanId, 
+      Rect = new PageRect(10, 50, 220, 40), 
+      HorizontalAlignment = HorizontalAlignment.Center}
+  };
+  
+  var firstPanel = new FilledPanel(page1Elements) { <br>    Rect = new PageRect(0, 0, 240, 150) };
+
+  var page2Elements = new List&lt;PageElement&gt;
+  {
+    new TextBlock {ElementId = BandUiDefinitions.TextTimeId, 
+      Rect = new PageRect(10, 10, 220, 40)},
+    new TextBlock {ElementId = BandUiDefinitions.TextDateId, 
+      Rect = new PageRect(10, 58, 220, 40)}
+  };
+  
+  var secondPanel = new FilledPanel(page2Elements) { <br>    Rect = new PageRect(0, 0, 240, 150) };
+
+  bandUi.Add(new PageLayout(firstPanel));
+  bandUi.Add(new PageLayout(secondPanel));
+
+  return bandUi;
+}</pre>
+<p>Now this may look a bit intimidating, but it's actually not so hard to read.</p>
+<ul>
+<li>First we create the UI elements of the firstpage - an Icon, a TextBlock, and a TextButton, all with location and size defined by a PageRect, relative to the panel they are going to be in. 
+<li>Then we create the first panel, add the list of the UI elements created in the previous step on it, then define it's size and location by a PageRect as well. I am not exactly sure what the maximum values are for a panel, but 240, 150 works out nice and leaves enough space to the right to make the next page visible 
+<li>Then we create the UI elements of the second panel - two TextBlocks of identical size, the second one right under the first 
+<li>Then we create a second panel with the same size as the first panel
+<li>Finally, we create a PageLayout&nbsp; from both panels and add those to the list. </li></ul>
+<p>As we could see in the BuildTile method the result of the BuildTileUi method is added the tile's PageLayouts collection:</p><pre>foreach (var page in BuildTileUi())<br>{
+  tile.PageLayouts.Add(page);
+}</pre>
+<p>At this point, we have only defined the <em>structure</em> of what is to be displayed on the Band. It still does not display any data. </p>
+<p><font size="4">Showing data on a Band UI</font><br>Let's have a look at BuildTile again. It's using this line of code to display data</p><pre> await _bandClient.TileManager.SetPagesAsync(BandUiDefinitions.TileId,<br>          BuildIntialTileData());</pre>BuildIntialTileData. that just shows some default strings, in turn calls this method <pre>private List&lt;PageData&gt; BuildTileData(string timeText, string dateText, 
+                                     string temperature, string buttonText)
+{
+  var result = new List&lt;PageData&gt;
+  {
+    BuildTileDataPage2(timeText, dateText),
+    BuildTileDataPage1(temperature, buttonText)
+  };
+  return result;
+}</pre>
+<p>And then we come to the heart of the matter (as far as displaying data is concerned) - that is, these two little methods:</p><pre>private PageData BuildTileDataPage1(string temperature, string buttonText)
+{
+  return 
+    new PageData(
+      BandUiDefinitions.Page1Id, 0, 
+      new IconData(BandUiDefinitions.IconId, 1),
+      new TextButtonData(BandUiDefinitions.ButtonToggleFanId, buttonText),
+      new TextBlockData(BandUiDefinitions.TextTemperatureId, $": {temperature}"));
+}
+
+private PageData BuildTileDataPage2(string timeText, string dateText)
+{
+  return 
+    new PageData(BandUiDefinitions.Page2Id, 1,
+      new TextBlockData(BandUiDefinitions.TextTimeId, $"Time: {timeText}"),
+      new TextBlockData(BandUiDefinitions.TextDateId, $"Date: {dateText}"));
+}</pre>
+<p>Let's first dissect BuildTileDataPage2 as that is the most simple to understand. This says, basically: for page with Page2Id, which is the 2nd page on this UI (the page numbering&nbsp; is zero based) set a text on a TextBlock with id BandUiDefinitions.TextTimeId, and set another text for BandUiDefinitions.TextDateId. The third parameter of the PageData constructor is of type <strong>params PageElementData[] </strong>so you can just go on adding user interface value settings to that constructor without the need of defining a list.</p>
+<p>In BuildTileDataPage1 we do something similar - bar that the page index now is 0 in stead of 1, a text on a TextButton needs to be of TextButtonData in stead of TextBlockData. and the first item is an IconData. Notice that it adds an icon with index 1. That is the small icon. Remember this piece of code in BuildTile?</p><pre>var tile = new BandTile(BandUiDefinitions.TileId)
+{
+  Name = "Temperature reader",
+  TileIcon = await LoadIcon("ms-appx:///Assets/TileIconLarge.png"),
+  <u><strong>SmallIcon = await LoadIcon("ms-appx:///Assets/TileIconSmall.png")</strong></u>
+};</pre>
+<p>That was added as second, but of course that's zero based as well. You can also add additional icons to the UI but that's not covered here.</p>
+<p>Now there is one important final piece of information that you may not have noticed. In BuildTileData I <em>first add the second pagedata to the list, and then the first</em>. I found it necessary to do it that way, or else the UI appears in reverse order (that is, the page with the date/time is displayed initially, and you have to scroll sideways for the page with the button and the temperature. Sometimes, just sometimes it happens the wrong way around anyway. I have not been able to determine what causes this, but if you add the pagedata in reverse order, it works most times - like in, I saw it go wrong two or three times, and only during heavy development.</p>
+<p>The public methods to change the UI values are very simple wrappers around code we have already seen:</p><pre>public async Task SetUiValues(string timeText, string dateText, 
+                              string temperature, string buttonText)
+{
+  var pageData = BuildTileData(timeText, dateText, temperature, buttonText);
+  await _bandClient.TileManager.SetPagesAsync(BandUiDefinitions.TileId, pageData);
+}
+
+public async Task SetUiValues(string temperature, string buttonText)
+{
+  await
+    _bandClient.TileManager.SetPagesAsync(BandUiDefinitions.TileId,
+       BuildTileDataPage1(temperature, buttonText));
+}</pre>
+<p>The first one refreshes the whole UI, the second only the first page. So that is what is necessary to create a UI and display some data on it. Four UI elements, two pages. Really makes you appreciate XAML, doesn't it? ;)</p>
+<p><font size="4">Handling Band interaction</font><br>The BandOperator bascially only has the following functions:</p>
+<ul>
+<li>When a tile is pressed, show the Band UI with the most recent data received from the Azure Service bus 
+<li>When the toggle button is pressed fire off a command on the Azure Service bus 
+<li>When the fan status change is confirmed by the Raspberry PI2, toggle the text on the button</li></ul>
+<p>... and yet, it's almost 250 lines long. A lot of that has to do with problems I encountered when a suspended app was resuming. I have tried to fix that using quite an elaborate method to get and create a Band client (the GetBandClient method) - that and it's helper methods are 60 lines in itself. So I will skip over that, but have a look at it in the <a href="https://github.com/LocalJoost/TemperatureReaderDemo" target="_blank">demo solution</a> to see how I tried to solve this. I am still not quite satisfied with it, but it seems to work. Most of the times.</p>
+<p>Moving to the BandOperator's Start method, you can see how the interaction is set up</p><pre>public async Task&lt;bool&gt; Start(bool forceFreshClient = false)
+{
+  var tilePresent = false;
+  var bandClient = await GetBandClient(forceFreshClient);
+  if (bandClient != null)
+  {
+    var currentTiles = await bandClient.TileManager.GetTilesAsync();
+    var temperatureTile = currentTiles.FirstOrDefault(
+      p =&gt; p.TileId == BandUiDefinitions.TileId);
+    if (temperatureTile == null)
+    {
+      var buc = new BandUiController(bandClient);
+      tilePresent = await buc.BuildTile();
+    }
+    else
+    {
+      tilePresent = true;
+    }
+
+    if (tilePresent)
+    {
+      await bandClient.TileManager.StartReadingsAsync();
+      bandClient.TileManager.TileOpened += TileManager_TileOpened;
+      bandClient.TileManager.TileButtonPressed += TileManager_TileButtonPressed;
+    }
+  }
+  IsRunning = tilePresent;
+  return tilePresent;
+}</pre>
+<p>Basically this methods tries to either find an existing tile, and failing that, create a BandUiController to make one. bandClient.TileManager.StartReadingsAsync then activates listening to Band events - and by attaching events to TileOpened and TileButtonPressed the handler methods will be called - if the tile on the Band UI button is pressed, or if a button on the custom UI of the tile is pressed.</p><pre>private async void TileManager_TileOpened(object sender, 
+  BandTileEventArgs&lt;IBandTileOpenedEvent&gt; e)
+{
+  var bandClient = await GetBandClient();
+  if (bandClient != null)
+  {
+    if (e.TileEvent.TileId == BandUiDefinitions.TileId &amp;&amp; _lastTemperatureData != null)
+    {
+      var buc = new BandUiController(bandClient);
+      await buc.SetUiValues(
+        _lastTemperatureData.Timestamp.ToLocalTime().ToString("HH:mm:ss"),
+        _lastTemperatureData.Timestamp.ToLocalTime().ToString("dd-MM-yyyy"),
+         $"{_lastTemperatureData.Temperature}°C",
+         GetFanStatusText());
+      await bandClient.NotificationManager.VibrateAsync(
+         VibrationType.NotificationOneTone);
+    }
+  }
+}</pre>
+<p>So the funny thing is - this method gets called when a tile is pressed on the Band. <em>Any </em>tile, not necessarily the one just created. So first we have to determine if it was actually <em>our</em> tile that was being pressed, by checking the tile id against the id of our tile. When that is the case, we create a BandUIController and update the UI values with the last received data from the Azure Service bus. And then we send a single vibration, so the Band wearer knows new data was received immediately (without checking the date and time on the 2nd page of our custom UI).</p>
+<p>A similar procedure goes for the handling of the fan button press:</p><pre>private async void TileManager_TileButtonPressed(object sender, 
+   BandTileEventArgs&lt;IBandTileButtonPressedEvent&gt; e)
+{
+  var te = e.TileEvent;
+  if (te.TileId == BandUiDefinitions.TileId &amp;&amp; 
+    te.PageId == BandUiDefinitions.Page1Id &amp;&amp; 
+    te.ElementId == BandUiDefinitions.ButtonToggleFanId)
+  {
+    if (!_isProcessing)
+    {
+      _lastToggleUse = DateTime.UtcNow;
+      _isProcessing = true;
+      var cmd = new FanSwitchCommand(_lastFanStatus, true);
+      Debug.WriteLine($"Sending fan command {cmd.Status}");
+      await UpdateFirstPageStatus();
+      await _fanStatusPoster.PostData(cmd);
+    }
+  }
+}</pre>
+<p>First, we need to check if the button was pressed on our custom layout&nbsp; - in theory, that would have been enough as there is only one button on it, but for good measure you can also check for the page and the element id in that page. What then basically happens is that text of the button is changed to "Processing" and a FanSwitchCommand is sent to the Raspberry PI2.</p>
+<p>The changing of the text on the button is done via UpdateFirstPageStatus, that in turn uses GetFanStatusText</p><pre>private async Task UpdateFirstPageStatus()
+{
+  var bandClient = await GetBandClient();
+  if (bandClient != null)
+  {
+    var text = GetFanStatusText();
+    var buc = new BandUiController(bandClient);
+    await buc.SetUiValues($"{_lastTemperatureData.Temperature}°C", text);
+  }
+}
+
+private string GetFanStatusText()
+{
+  return _isProcessing ? "Processing" : 
+    _lastTemperatureData.FanStatus == FanStatus.On ? "Stop fan" : "Start fan";
+}</pre>
+<p>The logic behind this is as follows:_isProcessing used to prevent the user from pressing the toggle button multiple times in a row. When you press the button, one of the first things that happens is that _isProcessing is set to true, effectively barring you from doing something with the button again. The text on the button changes to "Processing". The BandOperator is now waiting for the Raspberry PI2 to confirm it has actually toggled the fan. But you cannot change the value of <em>one</em> UI element on a Band page - you have to refresh all of them. So I call the BandUiController's SetUiValues overload with both the new button text <em>and </em>the last received temperature.</p>
+<p>So how is the loop closed? How does the BandOperator know the Raspberry PI2 has indeed toggled the fan? The answer lies in the HandleNewTemperature method that receives new temperature data from the rest of the app (remember that it was wired up in MainViewModel.Start?)</p><pre>public async void HandleNewTemperature(object sender, TemperatureData data)
+{
+  Debug.WriteLine(
+    $"New temperature data received {data.Temperature} fanstatus = {data.FanStatus}");
+  _lastTemperatureData = data;
+  _lastTemperatureData.Timestamp = DateTimeOffset.UtcNow;
+  if (_lastFanStatus != _lastTemperatureData.FanStatus &amp;&amp; _isProcessing)
+  {
+    _isProcessing = false;
+    _lastFanStatus = _lastTemperatureData.FanStatus;
+    await UpdateFirstPageStatus();
+  }
+  else if (_lastToggleUse.IsSecondsAgo(Settings.FanSwitchQueueTtl) &amp;&amp; _isProcessing)
+  {
+    _isProcessing = false;
+    _lastFanStatus = _lastTemperatureData.FanStatus;
+    await UpdateFirstPageStatus();
+  }
+  else if (!_isProcessing)
+  {
+    _lastFanStatus = _lastTemperatureData.FanStatus;
+  }
+}</pre>
+<p>So, the received temperature data does not only contain temperature but also the current status of the fan. But if this method was to accept the fan status right away after we had sent off a command to toggle the fan, the button text would immediately flip back to the old text - because the command had not reached the Raspberry PI2 yet, and it would not have time to react and send a confirmation.</p>
+<p>So what we do is - when new temperature data arrives, _isProcessing is true (so the user has recently clicked the toggle button) <em>and</em> the received data indicates a status flip - <em>then</em> the Raspberry PI2 has received the toggle command and has acted upon it. So the button is updated from "Processing" to a value according the new fan status. If there is <em>no</em> status change, but the last toggle button use was longer ago then the message time-to-live of the FanSwitchQueue - we assume the command has never reached the Raspberry PI2, we update the _lastFanStatus to the old status, and update the button accordingly. In any other cases, if the user has not pressed the button recently, we just keep the last fan status. This has not much to do with the Band or the UI itself - it's just dealing with possible delays from message delivery (and possible messages not being received by the other party).</p>
+<p><font size="4">Conclusion</font><br>Making a custom Band UI is doable, but you do need to pay a lot of attention to detail to get things right. It's definitely more challenging than creating a UI using Blend, as you basically need to keep seeing the whole UI in your mind - there is no way of visually designing it or even make it visible short of running the app and checking the result on the Band. Debugging is a time and battery consuming activity. Acting upon events and having code interact with remote devices has some particular challenges too. And sometimes things just go wrong - but it is not always clear if those things were caused by me doing things wrong or not understanding the finer details of the Band UI API, the fact that I am using it on <a href="http://www.windows.com" target="_blank">Windows</a> 10 mobile (which is still in preview at this moment) or bugs in the various APIs (Band or otherwise) that I use to stitch things together. On the bleeding edge is where you suffer pain - but you have the most fun as well.</p>
+<p>And yet, the potential use cases are pretty appealing and&nbsp; are giving a nice idea of how the (very near) future of device coding with Windows <a href="http://ms-iot.github.io/content/en-US/GetStarted.htm" target="_blank"><a href="http://ms-iot.github.io/content/en-US/GetStarted.htm" target="_blank">CoreIoT</a></a> looks like. And it has practical appliances too. Recently I was on a holiday in <a href="http://dotnetbyexample.blogspot.com/2015/09/windows-10-maps-part-5-styles-and-3d.html" target="_blank">Neustadt an der Weinstraße (where amongst others this blog post was written</a> so the sample location was not entirely random :) ) I had this contraption running at home - but I had put in in my study at home and had connected it to a powerful spot light in stead of a fan. I had my Lumia 1520 and Band with me - and although being physically in Germany, I was able to turn on a light at home (and get confirmation it was actually on or off) by clicking a button on my Band. Thus hopefully convincing potential burglars the house's resident geek was at his computer and the house was occupied. Not that there's much worth stealing anyway, but it's not fun to get home and find broken windows and stuff. If it had any effect - I don't know, but our house was left alone during our absence. </p>
+<p>Well, this marks the end of a rather epic and quite voluminous blog post series.I encourage you one final time to download and check the <a href="https://github.com/LocalJoost/TemperatureReaderDemo" target="_blank">demo solution</a> - and build kick *ss stuff yourself with CoreIoT and/or the Band. Even Doctor Who is into wearable technology these days, and so should we all be :D</p>
+<p><img src="http://i1.walesonline.co.uk/incoming/article10125612.ece/ALTERNATES/s1200/DW-Wearable-Technology.jpg" width="640" height="340"></p>  

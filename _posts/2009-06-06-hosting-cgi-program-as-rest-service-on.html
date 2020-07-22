@@ -1,0 +1,291 @@
+---
+layout: post
+title: Hosting a CGI program as a REST service on the Azure .NET Service Bus (allowing
+  anonymous access)
+date: '2009-06-06T17:17:00.030+02:00'
+author: Joost van Schaik
+tags:
+- Azure
+- CGI
+- REST
+- dotnetmag
+- Service
+- WMS
+- Web Services
+- ".NET Service Bus"
+- Anonymous access
+modified_time: '2010-04-06T11:17:29.892+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3914274590994645106
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/06/hosting-cgi-program-as-rest-service-on.html
+---
+
+The point of this posting is threefold: I want to show how you can make REST services on the .NET service bus, how you can allow anonymous access to these, and that anything that is accessible by an URL can be hosted on the .NET service bus.
+
+For my example I am going to host a WMS Service by UMN MapServer - which is in fact a CGI program - on the .NET Service bus, but you can host anything you want.
+
+I am going to assume that you have Visual Studio 2008, .NET 3.5 SP1, the Azure tools and toolkits CTP May 2009 installed, that you have access to the <a href="http://portal.ex.azure.microsoft.com">.NET Services portal</a> and that you know how to create a solution for a .NET Service on that portal.
+
+<span style="font-size:130%;">Setting the stage</span>
+Create a new solution with two projects: a console application and a WCF Service library. I have called my solution "CloudMapExample", the console app "CloudMapRunner" and the library "CloudMap.Contracts"
+
+<span style="font-size:130%;">Setup the console application</span>
+Add references to "System.ServiceModel", "System.ServiceModel.Web" and the Service library you have just created.
+Add an app.config, and make sure it looks like this:<pre>&lt;?xml version="1.0" encoding="utf-8" ?&gt;
+&lt;configuration&gt;
+  &lt;configSections&gt;
+    &lt;section name="WMSServices"
+   type="System.Configuration.NameValueSectionHandler" /&gt;
+  &lt;/configSections&gt;
+  &lt;WMSServices&gt;
+    &lt;add key="DemoSrv"
+   value="http://localhost/MapServer/mapserv.exe?map=d:/MapServer/CONFIG/Demo.map"/&gt;
+  &lt;/WMSServices&gt;
+&lt;/configuration&gt;</pre>This of course requires you to have setup MapServer. Don't worry, you can also set a url to a HTML page or ASPX page running on your local machine mocking this behaviour.
+
+<span style="font-size:130%;">Setup the service library</span>
+Right-click the CloudMap.Contracts project, select the "WCF Option" tab and unselect the checkbox before "Start WCF Service Host blah blah blah" to prevent the WCF host popping up every time you test your project.
+Then, delete App.config, IService1.cs and Service1.cs
+Finally, add references to "System.ServiceModel.Web" and "System.Configuration"
+
+<span style="font-size:130%;">Add the service contract</span>
+Add to the service library an interface IWMSProxyService that looks like this:<pre>using System.ServiceModel;
+using System.ServiceModel.Web;
+using System.IO;
+
+namespace CloudMap.Contracts
+{
+  [ServiceContract]
+  public interface IWMSProxyService
+  {
+    [OperationContract]
+    [WebGet(UriTemplate = "WMS/{map}/*")]
+    Stream WMSRequest(string map);
+  }
+}</pre>Notice the WebGet attribute "UriTemplate". The asterisk is a <em>wildcard</em> that tells WCF that any url starting with this template is mapped to the WMSRequest method. A nifty trick, since the idea is that I can call the method like "http://host/baseurl/WMS/MyMap/?key1=value&amp;key2=value. "MyMap" will automatically be populated into the "map" parameter of the method "WMSRequest". How the rest of the querystring will become available is shown in the service implementation.
+
+<span style="font-size:130%;">Add the service implementation class</span><pre>using System;
+using System.Collections.Specialized;
+using System.IO;
+using System.Net;
+using System.ServiceModel.Web;
+using System.Configuration;
+namespace CloudMap.Contracts
+{
+  public class WMSProxyService : IWMSProxyService
+  {
+    public Stream WMSRequest(string map)
+    {
+      Console.WriteLine("Proxy call!");
+      var wms = GetWMSbyMap(map);
+      return RelayUrl(string.Format("{0}{1}{2}",
+                      wms,
+                      (wms.Contains("?") ? "&amp;" : "?"),
+      WebOperationContext.Current.IncomingRequest.UriTemplateMatch.QueryParameters));     
+    }
+
+    private string GetWMSbyMap( string map )
+    {
+      var services = ConfigurationManager.GetSection("WMSServices")
+               as NameValueCollection;
+      return services != null ? services[map] : null;
+    }
+
+    private Stream RelayUrl(string urlToLoadFrom)
+    {
+      var webRequest = HttpWebRequest.Create(urlToLoadFrom) 
+         as HttpWebRequest;
+      // Important! Keeps the request from blocking after the first
+      // time!
+      webRequest.KeepAlive = false;
+      webRequest.Credentials = CredentialCache.DefaultCredentials;
+      using (var backendResponse = (HttpWebResponse)webRequest.GetResponse())
+      {
+        using (var receiveStream = backendResponse.GetResponseStream())
+        {
+          var ms = new MemoryStream();
+          var response = WebOperationContext.Current.OutgoingResponse;
+          // Copy headers      
+          // Check if header contains a contenth-lenght since IE
+          // goes bananas if this is missing
+          bool contentLenghtFound = false;
+          foreach (string header in backendResponse.Headers)
+          {
+            if (string.Compare(header, "CONTENT-LENGTH", true) == 0)
+            {
+              contentLenghtFound = true;
+            }
+            response.Headers.Add(header, backendResponse.Headers[header]);
+          }
+          // Copy contents      
+          var buff = new byte[1024];
+          var length = 0;
+          int bytes;
+          while ((bytes = receiveStream.Read(buff, 0, 1024)) > 0)
+          {
+            length += bytes;
+            ms.Write(buff, 0, bytes);
+          }
+          // Add contentlength if it is missing
+          if (!contentLenghtFound) response.ContentLength = length;
+          // Set the stream to the start
+          ms.Position = 0;
+          return ms;
+        }
+      }
+    }
+  }
+}</pre>Now this may look a bit intimidating, but in fact it is just a little extension of <a href="http://dotnetbyexample.blogspot.com/2008/11/writing-simple-http-proxy-using-wcf.html">my WCF proxy example</a> described earlier in this blog.
+The 'extensions' are pretty simple: first of all the method "GetWMS" searches for a configuration section "WMSServices" in the App.config and then tries to retrieve the base url of the WMS defined by the value of "map". It then concatenates the rest of querystring, which is accessible by the not quite self-evident statement
+"WebOperationContext.Current.IncomingRequest.UriTemplateMatch.QueryParameters", to the url found in the config section and calls it, passing the parameters of the query string to it.
+Anyway, don't worry too much about it. This is the more or less generic proxy. The point is getting it to run and then hosting it on the .NET service bus.
+
+<span style="font-size:130%;">Add code code to host the service</span>
+Open the "Program.cs" file in the Console application, and make it look like this:<pre>using System;
+using System.ServiceModel.Dispatcher;
+using System.ServiceModel.Web;
+using CloudMap.Contracts;
+
+namespace CloudMapRunner
+{
+  class Program
+  {
+    static void Main(string[] args)
+    {
+      var serviceType = typeof(WMSProxyService);
+      var _host = new WebServiceHost(serviceType);
+      _host.Open();
+
+      // Code to show what's running
+      Console.WriteLine("Number of base addresses : {0}",
+        _host.BaseAddresses.Count);
+      foreach (var uri in _host.BaseAddresses)
+      {
+        Console.WriteLine("\t{0}", uri);
+      }
+      Console.WriteLine();
+      Console.WriteLine("Number of dispatchers listening : {0}",
+        _host.ChannelDispatchers.Count);
+      foreach (ChannelDispatcher dispatcher in 
+               _host.ChannelDispatchers)
+      {
+        Console.WriteLine("\t{0}, {1}",
+          dispatcher.Listener.Uri,
+          dispatcher.BindingName);
+      }
+
+      // Exit when user presser ENTER
+      Console.ReadLine();
+    }
+  }
+}
+</pre>This basically just starts up the service. Everything between the comments "// Code to show what's running" and "// Exit when user presser ENTER" just displays some information about the service, using code I - er - borrowed from <a href="http://bloggingabout.net/blogs/dennis/">Dennis van der Stelt</a> when I attend a WCF training by him at <a href="http://www.class-a.nl/">Class-A</a> some two years ago.
+Notice I am using a <em>WebServiceHost</em> in stead of the normal ServiceHost. As long as you run your code locally, ServiceHost will do as well, but not when you want to harness your service in the cloud. But this is the only thing you need to take care of <em>in code</em> to make sure you can painlessly move from a locally hosted WCF service to the Azure .NET service bus - the rest is just configuration.
+
+<span style="font-size:130%;">Adding basic WCF configuration</span>
+To get the service to work a REST service, you need to add the following configuration to the app.config of your console application:<pre>&lt;system.serviceModel&gt;
+  &lt;services&gt;
+    &lt;service name="CloudMap.Contracts.WMSProxyService" &gt;
+      &lt;endpoint address="" binding="webHttpBinding"
+        behaviorConfiguration="WebHttpBehavior"
+        contract="CloudMap.Contracts.IWMSProxyService"
+        bindingNamespace="http://dotnetbyexample.blogspot.com"&gt;
+      &lt;/endpoint&gt;
+      &lt;host&gt;
+        &lt;baseAddresses&gt;
+          &lt;add baseAddress="http://localhost:8002/CloudMapper" /&gt;
+        &lt;/baseAddresses&gt;
+      &lt;/host&gt;
+    &lt;/service&gt;
+  &lt;/services&gt;
+  &lt;behaviors&gt;
+    &lt;endpointBehaviors&gt;
+      &lt;behavior name="WebHttpBehavior"&gt;
+        &lt;webHttp /&gt;
+      &lt;/behavior&gt;
+    &lt;/endpointBehaviors&gt;
+  &lt;/behaviors&gt;
+&lt;/system.serviceModel&gt;</pre>The usage of [WebGet] and the webHttp tag are covered in <a href="http://dotnetbyexample.blogspot.com/2008/11/writing-simple-http-proxy-using-wcf.html">a previous post</a> so I'm skipping the details on that. Run the console application, and you will see something like this in your command window: 
+<strong>Number of base addresses : 1
+        http://localhost:8002/CloudMapper
+
+Number of dispatchers listening : 1
+        http://localhost:8002/CloudMapper, http://dotnetbyexample.blogspot.com:WebHttpBinding</strong>
+
+If you have, like me, configured the proxy to be used for a WMS service you can now enter something like "http://localhost:8002/CloudMapper/WMS/DemoSrv/?SRS=EPSG:4326&FORMAT=GIF&SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=PERCEEL,GBKN_BIJGEBOUW,GBKN_VERHARDING,GBKN_HUISNR&TRANSPARENT=TRUE&BBOX=5.855712890625,51.8221981833694,5.86669921875,51.8289883636691&WIDTH=256&HEIGHT=256&REASPECT=FALSE" in your browser and then get a map image. Nice format, WMS, isn't it? :-)
+
+Next - to the clouds and beyond ;-)
+
+<span style="font-size:130%;">Make a new .NET Services solution</span>
+Go to <a href="http://portal.ex.azure.microsoft.com">http://portal.ex.azure.microsoft.com</a> and make a solution. I have called mine "LocalJoost" and let us suppose the password is "dotnetbyexample"
+
+<span style="font-size:130%;">Add reference to ServiceBus dll</span>
+In your console application, add a reference to Microsoft.ServiceBus.dll. On my computer it resides in "D:\Program Files\Microsoft .NET Services SDK (March 2009 CTP)\Assemblies"
+
+<span style="font-size:130%;">Add .NET service bus configuration</span>
+In your app.config, change "webRelayBinding" into "webHttpRelayBinding"
+Then, change the baseAdress from "http://localhost:8002/CloudMapper" to "http://localjoost.servicebus.windows.net/CloudMapper/". Notice: "localjoost", the first part of the URL is the solution name. Yours is likely to be different.
+Finally, in your app.config, add the following configuration to the behaviur "WebHttpBehavior", directly under the "&lt;webHttp /&gt;" tag: <pre>&lt;transportClientEndpointBehavior credentialType="UserNamePassword"&gt;
+  &lt;clientCredentials&gt;
+     &lt;userNamePassword userName="LocalJoost" 
+                          password="dotnetbyexample" /&gt;
+  &lt;/clientCredentials&gt;
+&lt;/transportClientEndpointBehavior&gt;</pre>If you <em>now</em> run your console application, you will see this:
+<strong>Number of base addresses : 1
+        http://localjoost.servicebus.windows.net/CloudMapper/
+
+Number of dispatchers listening : 1
+        sb://localjoost.servicebus.windows.net/CloudMapper/, http://dotnetbyexample.blogspot.com:WebHttpRelayBinding.</strong>
+
+Now your REST service is callable via the Service bus. It is THAT easy. You only have to replace "http://localhost:8002" in your browser by "http://localjoost.servicebus.windows.net" and there you go.
+
+Well... almost. Instead of a map you get a site called "http://accesscontrol.windows.net" that asks you, once again, to enter the solution name and password. And THEN you get the map. 
+
+<span style="font-size:130%;">Enable anonymous access</span>
+For an encore, I am going to show you how to allow anonymous access to your proxy. Whether or not that is a wise thing to do is up to you. Remember that your service is now callable by anyone in the world, no matter how many firewalls are between you and the big bad world ;-)
+
+Add the following configuration data in the system.serviceModel section of your console application<pre>&lt;bindings&gt;
+  &lt;webHttpRelayBinding&gt;
+ &lt;binding name="allowAnonymousAccess"&gt;
+   &lt;security relayClientAuthenticationType="None"/&gt;
+ &lt;/binding&gt;
+  &lt;/webHttpRelayBinding&gt;
+&lt;/bindings&gt;</pre>and add bindingConfiguration="allowAnonymousAccess" to your endpoint. This is what your systems.serviceModel section of your app.config should look like when you're done:<pre>&lt;system.serviceModel&gt;
+  &lt;bindings&gt;
+    &lt;webHttpRelayBinding&gt;
+      &lt;binding name="allowAnonymousAccess"&gt;
+        &lt;security relayClientAuthenticationType="None"/&gt;
+      &lt;/binding&gt;
+    &lt;/webHttpRelayBinding&gt;
+  &lt;/bindings&gt;
+
+  &lt;services&gt;
+    &lt;service name="CloudMap.Contracts.WMSProxyService" &gt;
+      &lt;endpoint address="" binding="webHttpRelayBinding"
+       bindingConfiguration="allowAnonymousAccess"
+       behaviorConfiguration="WebHttpBehavior"
+       contract="CloudMap.Contracts.IWMSProxyService"
+       bindingNamespace="http://dotnetbyexample.blogspot.com"&gt;
+      &lt;/endpoint&gt;
+      &lt;host&gt;
+        &lt;baseAddresses&gt;
+          &lt;add baseAddress="http://localjoost.servicebus.windows.net/CloudMapper/" /&gt;
+        &lt;/baseAddresses&gt;
+      &lt;/host&gt;
+    &lt;/service&gt;
+  &lt;/services&gt;
+  &lt;behaviors&gt;
+    &lt;endpointBehaviors&gt;
+      &lt;behavior name="WebHttpBehavior"&gt;
+        &lt;webHttp /&gt;
+        &lt;transportClientEndpointBehavior credentialType="UserNamePassword"&gt;
+          &lt;clientCredentials&gt;
+            &lt;userNamePassword userName="LocalJoost"
+                                 password="dotnetbyexample" /&gt;
+          &lt;/clientCredentials&gt;
+        &lt;/transportClientEndpointBehavior&gt;
+      &lt;/behavior&gt;
+    &lt;/endpointBehaviors&gt;
+  &lt;/behaviors&gt;
+&lt;/system.serviceModel&gt;</pre>And that's all there is to it. Moving a service to the cloud is mostly configuration, and hardly any programming. Are we spoiled by Microsoft or what? ;-)
+
+Complete sample downloadable <a href="http://www.schaikweb.net/dotnetbyexample/CloudMapExample.zip">here</a>

@@ -1,0 +1,194 @@
+---
+layout: post
+title: Angularjs + TypeScript – setting up a basic application with Visual Studio
+  2013
+date: '2014-07-27T17:10:00.000+02:00'
+author: Joost van Schaik
+tags:
+- TypeScript
+- Angularjs
+modified_time: '2014-10-25T21:03:58.863+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-9102934527857557222
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/07/angularjs-typescript-setting-up-basic.html
+---
+
+<h2>Preface</h2> <p>No, I have not abandoned Windows (Phone) Development, and am not planning to do that. But apart from being Windows Platform MVP (as it is called since a few weeks) I actually have a day job as an employee building web applications. A few years ago I brought in the SPA concept in the company, first based on Knockout, later Angular, and after the 2014 Dutch TechDays and actually having dinner with Erich Gamma I decided it was time to take on <a href="http://www.typescriptlang.org/" target="_blank">TypeScript</a>. And the overall team lead agreed. Provided I would give some good feedback on my experiences. Well, how about this? ;)</p> <p>Although I have ascertained the combination actually works very well, I really found myself in unchartered territory and it took some time to get off the ground. I started my blog in 2007 because there were not enough complete samples in the .NET world – well, in the web world this apparently goes squared and with a few VERY notable exceptions people are quite terse when it comes to giving help. I even got told off on Stack Overflow for commenting on an answer containing typos and suggested some calls were synchronous while in fact they were not. This is a apparently a whole different world than the helpful <a href="https://twitter.com/search?q=%23wpdev%20&amp;src=typd" target="_blank">#wpdev</a> community. Still, I soldiered on, and decided to do this blog post – or actually series of blog posts, that’s forged from the same fire as this blog itself: of frustration about lack of helpful samples.</p> <p>I am not saying this the definitive guide to AngularJS and TypeScript – but it’s how I got stuff working, how I got to understand it, or at least I think I understand it. I hereby invite anyone thinking I do things wrong to provide corrections, or write better blog posts with better samples themselves. I will gladly link to you for credits.:)</p> <p>I am not going to have a discussion about why to use TypeScript. I am going to assume you want to use it, that you know that in order to use it you will need files that type JavaScript types, and that you know the basics of creating a module, class or interface. This is mostly a how-to, with some explanations on the side. This article learns you:</p> <ul> <li>The initial setup of the solution  <li>What initial NuGet packages to get  <li>How to create the base application  <li>How to set up your first scope, view, controller and route</li></ul> <h2>Prerequisites</h2> <p>I used </p> <ul> <li>Visual Studio 2013 Update 2 with the Microsoft Web Developer tools selected  <li><a href="http://visualstudiogallery.msdn.microsoft.com/56633663-6799-41d7-9df7-0f2a504ca361" target="_blank">Web Essentials 2013 for Update 2</a> </li></ul> <p>The last one is optional, but recommended. It gives a few extra options, as generating JavaScript classes from C# and (when you are typing TypeScript) seeing your code converted to JavaScript on the fly. </p> <h2><a href="http://www.schaikweb.net/dotnetbyexample/Angularjs--TypeScript--WebApi--setting-u_F24F/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Angularjs--TypeScript--WebApi--setting-u_F24F/image_thumb.png" width="300" align="right" height="225"></a>Creating a new project</h2> <ul> <li>File/New Project/Web/ASP.Net Web application (it’s the only choice you have)  <li>Choose a name (I chose AtsDemo) and hit OK  <li>Choose “Web Api” and UNSELECT “Host is the cloud”  <li>Go to the NuGet Package manager and update all the packages, because a lot of them will be horribly outdated. Hit “accept” or “yes” on any questions  <li>Delete the “Areas” and “Fonts” folder cause we won’t need them</li></ul> <h2>Getting the additional NuGet packages</h2> <p>This is quite a list. Maybe it is too much for just a basic start, but I decided to load it all. </p> <ul> <li>Angularjs  <li>Angularjs.Animate  <li>AngularJS.Cookies  <li>AngularJS.Route  <li>AngularJS.Sanatize  <li>Angularjs.TypeScript.DefinitelyTyped  <li>Jquery.TypeScript.DefinitelyTyped</li></ul> <p>Note that this will also pull in Angularjs.Core.</p> <p>The TypeScript.DefinitelyTyped--files are definitions that make it possible to use typed versions of Angular and Jquery from TypeScript.</p> <h2>Set up the initial application</h2> <ul> <li>Add a folder “app” to the root folder of your web project  <li>Add a file AppBuilder.ts to the app folder with the following contents:</li></ul><pre>module App {
+    "use strict";
+    export class AppBuilder {
+
+
+        app: ng.IModule;
+
+        constructor(name: string) {
+            this.app = angular.module(name, [
+            // Angular modules 
+                "ngAnimate",
+                "ngRoute",
+                "ngSanitize",
+                "ngResource"
+            ]);
+        }
+
+        public start() {
+            $(document).ready(() =&gt;
+            {
+                console.log("booting " + this.app.name);
+                angular.bootstrap(document, [this.app.name]);
+            });
+        }
+    }
+}</pre>
+<p>This is the basic setup for a class I use to ‘construct’ my app. I don’t like to do this in the global namespace. So I create a basic ‘module’ – which I tend to think of as a .NET namespace – in the “AppBuilder” in the namespace “App”.</p>
+<p>Then add another file to app, called “start.ts”, to create an AppBuilder instance and call “start” to bootstrap your Angular app:</p><pre>/// &lt;reference path="appbuilder.ts" /&gt;
+new App.AppBuilder('atsDemo').start();</pre>
+<p>By the way, the first line indicates this uses a type defined in appbuilder.ts. It’s good practice to add these references, although mostly (but certainly not <em>always</em>) the compiler seems to find the references itself. You can make these references easily by dropping one file on top of the other form the solution explorer (so in this case, I dropped AppBuilder.ts on top of start.js).</p>
+<p>Then</p>
+<ul>
+<li>right-click your web project, 
+<li>select properties, 
+<li>go to the “TypeScript Build” tab, 
+<li>select “combine Javascript into output file” 
+<li>Enter “app/app.js” in the text box</li></ul>
+<p>Net result: see below.</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Angularjs--TypeScript--WebApi--setting-u_F24F/image_7.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Angularjs--TypeScript--WebApi--setting-u_F24F/image_thumb_6.png" width="484" height="259"></a></p>
+<p>Build your project, and verify that in the app folder the files “app.js” and “app.js.map” appear. Don’t include them in your project – when working with TypeScript it’s best to think of the created JavaScript as binaries. I use this options mainly to prevent loading order issues with regards to the resulting JavaScript, but it also makes the loading of JavaScript faster – now there’s only one file to load, in stead of more – and when you use TypeScript, it becomes quite a lot of files soon. Of course, you might also go for something like <a href="http://requirejs.org/docs/whyamd.html" target="_blank">AMD with requirejs</a> but for the somewhat smaller sites I tend to write, this works pretty well.</p>
+<p>Then, open App_Start/Bundleconfig.cs and add the following lines just before the comment line <strong>"//Set EnableOptimizations to false for debugging. For more information,"</strong></p><pre>bundles.Add(new ScriptBundle("~/bundles/angular").Include(
+    "~/Scripts/angular.js",
+    "~/Scripts/angular-animate.js",
+    "~/Scripts/angular-cookies.js",
+    "~/Scripts/angular-route.js",
+    "~/Scripts/angular-sanitize.js",
+    "~/Scripts/angular-resource.js"
+    ));
+
+bundles.Add(new ScriptBundle("~/bundles/app").Include(
+"~/app/app.js"));</pre>
+<p>This will include Angular files, as well as the JavaScript generated from the TypeScript. Finally, the last code line says</p><pre>BundleTable.EnableOptimizations = true;</pre>
+<p>Change "true" to “false”. Then go to the Views/Shared/_Layout.cshtml. Change it’s contents to this:</p><pre>&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;meta charset="utf-8" /&gt;
+  &lt;meta name="viewport" content="width=device-width" /&gt;
+  &lt;title&gt;@ViewBag.Title&lt;/title&gt;
+  @Styles.Render("~/Content/css")
+  @Scripts.Render("~/bundles/modernizr")
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;div class="container body-content"&gt;
+    @RenderBody()
+  &lt;/div&gt;
+  @Scripts.Render("~/bundles/jquery", "~/bundles/angular", "~/bundles/app")
+  @RenderSection("scripts", required: false)
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>This will load the all the necessary scripts. Finally visit the Views/Home/Index.cshtml file. Delete it’s contents and replace it by just this:</p><pre>@{
+  ViewBag.Title = "Home Page";
+}
+ angulartest={{ "{{" }}1+1}}
+&lt;div data-ng-view=""&gt;&lt;/div&gt;</pre>
+<p>The “angulartest={{ "{{" }}1+1}}“ line is just to see if Angular works. The div below it is the place where we will inject our views (see later).</p>
+<h2>Test the setup</h2>
+<p>Run the application from Visual Studio in your browser of choice. Hit F12 as soon as the browser starts. In your console it should say “booting atsDemo”, an in your browser window it should say “angulartest=2”</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Angularjs--TypeScript--WebApi--setting-u_F24F/image_5.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Angularjs--TypeScript--WebApi--setting-u_F24F/image_thumb_4.png" width="565" height="454"></a></p>
+<p>If you see this, then a) Angular is correctly loaded and activated (or else your browser window most likely displays “angulartest={{ "{{" }}1+1}}”, meaning the expression is not evaluated and replaced and b) your application written in TypeScript actually has booted. Now it does nothing yet, but that’s the next step. For people who want to reference this stage, you can download the solution for this stage <a href="http://www.schaikweb.net/dotnetbyexample/atsdemo0.zip" target="_blank">here</a>. It may be useful if you just want a starter point.</p>
+<h2>Defining a scope object and a scope </h2>
+<p>The thing about TypeScript is typing, and you can also type your <em>scope</em>. Now the same caveats apply as to ‘normal’ Angular – if you go into a child scope or sub scope, or whatever they may be called, you can access <em>but not change the parent scope</em> – unless you specifically access it. That is quite of a hassle,&nbsp; so it’s good practice to create an object to put on the scope, and manipulate that object – and not the scope itself. That’s basically Angular, and has nothing to do with TypeScript per se.</p>
+<p>So I first added a folder “scope” to my app folder, and created the following object to hold person data:</p><pre>module App.Scope {
+    "use strict";
+    export class Person {
+        public firstName: string
+        public lastName: string
+    }
+}</pre>And then, to use it in the <em>scope</em>, I define and <em>interface</em> telling TypeScript that my scope, apart from the usual things that Angular provides, should at least contain a person of type Person:<pre>/// &lt;reference path="person.ts" /&gt;
+module App.Scope {
+    "use strict";
+    export interface IDemoScope extends ng.IScope {
+        person : Person
+    }
+}</pre>
+<p>Important to remember is that an interface is purely aTypeScript construct. <em>It does not exist in JavaScript</em>. If you look into the resulting app.js file, you won't find an IDemoScope. You won't find any interface. It's just a scaffold to help you not make typos in addressing this particular scope again. It needs to extend ng.IScope, a predefined interface from the DefinitelyTyped file.</p>
+<h2>Defining a controller</h2>
+<p>Add a folder “controller” to your app folder, and add a simple controller that allows you to enter the fields but also clear them again.&nbsp; </p><pre>/// &lt;reference path="../scope/idemoscope.ts" /&gt;
+/// &lt;reference path="../scope/person.ts" /&gt;
+module App.Controllers {
+    "use strict";
+    export class DemoController {
+        static $inject = ["$scope"];
+
+        constructor(private $scope: Scope.IDemoScope) {
+            if (this.$scope.person === null || this.$scope.person === undefined) {
+                this.$scope.person = new Scope.Person();
+            }
+        }
+        public clear(): void {
+            this.$scope.person.firstName = "";
+            this.$scope.person.lastName = "";
+        }
+    }
+}</pre>
+<p>As you can see, a controller is just a plain old class not extending anything special, with a pubic method to clear the fields of a person. It has a few things to note.</p>
+<ul>
+<li>It’s the first class I show with an actual constructor. In that constructor it makes sure the person in the scope is initialized if necessary. 
+<li>Note that putting “private” in front of a constructor parameter automatically creates a private class member which can be henceforth referenced by this.$scope 
+<li>There is a static $inject variable. Although you are supposed to create the controller in the AppBuilder (see later) and only <em>then</em> inject the scope into in, apparently to prevent minification issues you have to provide this array too. </li></ul>
+<h2>Defining a view</h2>
+<p>Create a folder “views” in you “app” folder, then add a file “PersonView.html” with the following very complex HTML in it:</p><pre>&lt;div&gt;
+  &lt;div&gt;
+    &lt;input type="text" data-ng-model="person.firstName" /&gt;
+  &lt;/div&gt;
+  &lt;div&gt;
+    &lt;input type="text" data-ng-model="person.lastName" /&gt;
+  &lt;/div&gt;
+  &lt;div&gt;{{ "{{" }}person.firstName}}&lt;/div&gt;
+  &lt;div&gt;{{ "{{" }}person.lastName}}&lt;/div&gt;
+  &lt;button data-ng-click="myController.clear()"&gt;Clear&lt;/button&gt;
+&lt;/div&gt;</pre>This will give you a text box to enter the fields in, some feedback text below it to show data binding actually works, and a button to clear the fields again to see we can also actually can call bind to the controller - in this case a method. 
+<h2>Defining the controller in the AppBuilder</h2>Just before the closing accolade } of the constructor, add this code: <pre>this.app.controller("personController", [
+    "$scope", ($scope)
+        =&gt; new App.Controllers.DemoController($scope)
+]);</pre>or&nbsp; if you want to super safe, explicitly type the scope explicitly so the controller get's the exact type of scope it expects. <pre>this.app.controller("personController", [
+    "$scope", ($scope : <u><font color="#ff0000">Scope.IDemoScope</font></u>)
+        =&gt; new App.Controllers.DemoController($scope)
+]);</pre>
+<p>I find two things odd about this:</p>
+<ul>
+<li>The fact that the first code works as well, while I would expect it would not – anything that is not typed explicitly is type “any” but clearly that does not fit into the constructor 
+<li>This compiles without making a reference to the files containing IDemoScope and DemoController.</li></ul>
+<p>Anyway, for good measure I always add these references just to make sure. I have been running into some odd problems where references suddenly could not be found anymore.</p>
+<h2>Creating the route definition </h2>
+<p>Once again, just before the last accolade of the AppBuilder constructor, add this code:</p><pre>this.app.config([
+    "$routeProvider",
+    ($routeProvider: ng.route.IRouteProvider) =&gt; { 
+        $routeProvider
+            .when("/person",
+            {
+                controller: "personController",
+                controllerAs: "myController",
+                templateUrl: "app/views/personView.html"
+            })
+            .otherwise({
+                redirectTo: "/person"
+            });
+    }
+]);</pre>This defines a single route "person", which is also the default route, for which it will use the personController, the view personView.html, and what is very important and had me searching for quite some time - it defines a <em>binding alias for the controller</em> <em>in the router, in code</em>. Almost all the samples I found where controller definitions <em>in html</em>, e.g. <pre>&lt;div data-ng-controller="personController as myController"&gt;
+...
+&lt;/div&gt;</pre>but it took me quite some time to find out how to do it <em>from code</em>. Which I <em>had</em> to be able&nbsp; to do, as I sometimes have use a different controller on the same view. Well, this is how you do that: use "<strong>controllerAs</strong>" in your router definition. 
+<h2>Kick start the router</h2>
+<p>Finally, to get the router working and started, add once again a piece of code just before the last accolade of the AppBuilder constructor :</p><pre>this.app.run([
+    "$route", $route =&gt; {
+        // Include $route to kick start the router.
+    }
+]);</pre>
+<h2>And we’re done… for now</h2>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Angularjs--TypeScript--WebApi--setting-u_F24F/image_6.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Angularjs--TypeScript--WebApi--setting-u_F24F/image_thumb_5.png" width="244" align="right" height="169"></a>If you run the code, you should see the url in the browser go from <a title="http://localhost:3987/" href="http://localhost:3987/">http://localhost:3987/</a> to <a title="http://localhost:3987/#/person" href="http://localhost:3987/#/person">http://localhost:3987/#/person</a>, indicating your router is now in control, and it should show the beautiful *cough* UI on the right. I typed “Joost” in the first box and “van Schaik” in the second and as you type, the line below it should change with it, indicating data binding works to the scope. And the “Clear” clears both the boxes and the display lines, showing binding to the controller works as well.</p>
+<h2>Conclusion</h2>
+<p>Setting up an Angular + TypeScript application in Visual Studio 2013 is not that hard to do, once you know how to do it. I hope this post will save other developers from the stumbling around I did. I am, by far, not finished, but what I now have are more small gotcha’s, things you need to know and things that are apparently common knowledge, self-explanatory, blindingly obviously or buried deep inside documentation everyone seems to know by heart as no-one explains or mentions them to mere mortal (web) developers such as myself ;)&nbsp; </p>
+<p>The full solution, as always, <a href="http://www.schaikweb.net/dotnetbyexample/atsdemo1.zip" target="_blank">can be downloaded here</a>, so you can see for yourself how things work in it’s totality, in stead of having to hunt it down piecemal from Stack Overflow.</p>
+<h2>Thanks</h2>
+<p>Special thanks to a few of the “notable exceptions” who helped me along the way to get here (and further)</p>
+<ul>
+<li><a href="http://twitter.com/mauricedb" target="_blank">Maurice de Beijer</a> 
+<li><a href="http//www.twitter.com/kasperlewau" target="_blank">Kasper Lewau</a> 
+<li><a href="http//www.twitter.com/mterwoord" target="_blank">Matthijs ter Woord</a> 
+<li><a href="www.twitter.com/funkykimster" target="_blank">Joakim Rosendahl</a></li></ul>  

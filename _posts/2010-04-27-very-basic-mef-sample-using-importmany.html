@@ -1,0 +1,179 @@
+---
+layout: post
+title: A very basic MEF sample using ImportMany
+date: '2010-04-27T21:54:00.016+02:00'
+author: Joost van Schaik
+tags:
+- ".NET 4.0"
+- MEF
+- dotnetmag
+- Architecture
+- ImportMany
+- Managed Extensibility Framework
+modified_time: '2012-07-06T17:54:18.730+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5405077393307132223
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/04/very-basic-mef-sample-using-importmany.html
+---
+
+<p>If you have been programming since the mid-80’s and have been a IT professional for over 17 years it does not happen often anymore that you get mesmerized by a beautiful piece of architecture, but recently it happened twice to me in a very short time, and one of the causes was the Managed Extensibility Framework or MEF. Almost everyone has built some or other extensible architecture at one point but never before I have seen something as simple, elegant and universally applicable as this.</p>  <p>This article describes the setup of a very basic MEF driven application, using VS2010 Pro and .NET 4. It’s kind of abstract: a hosting component that accepts two strings, and calls one or more MEF components to actually do the manipulation. Every component has its own library, which may seem a bit overkill, but I wanted to check out the extensibility to the max. So I started out with an empty solution and then used the following track</p> <span style="font-size: 130%">1. Create a class library &quot;Contracts&quot;</span>   <br />This will contain the interface IMyComponent by which the components communicate:   <pre>namespace Contracts
+{
+  public interface IMyComponent
+  {
+    string Description { get; }
+    string ManipulateString(string a, string b);
+  }
+}</pre>
+
+<p>as you can see, one hell of a complex component we are making here ;-)</p>
+<span style="font-size: 130%">2. Create a class library &quot;ImportingLib&quot;</span> 
+
+<br />This will contain the host, i.e. the class that actually hosts and calls the components. Add a reference to the &quot;Contracts&quot; projects as well as to &quot;System.ComponentModel.Composition&quot;. Then Add a class &quot;Importer&quot;, with the following code: 
+
+<pre>using System;
+using System.Collections.Generic;
+using System.Linq;
+using Contracts;
+using System.ComponentModel.Composition;
+using System.ComponentModel.Composition.Hosting;
+using System.Reflection;
+using System.IO;
+
+namespace ImportingLib
+{
+  public class Importer
+  {
+    [ImportMany(typeof(IMyComponent))]
+    private IEnumerable&lt;IMyComponent&gt; operations;
+
+    public void DoImport()
+    {
+      //An aggregate catalog that combines multiple catalogs
+      var catalog = new AggregateCatalog();
+      //Adds all the parts found in all assemblies in 
+      //the same directory as the executing program
+      catalog.Catalogs.Add(
+       new DirectoryCatalog(
+        Path.GetDirectoryName(
+         Assembly.GetExecutingAssembly().Location)));
+
+      //Create the CompositionContainer with the parts in the catalog
+      CompositionContainer container = new CompositionContainer(catalog);
+
+      //Fill the imports of this object
+      container.ComposeParts(this);
+    }
+
+    public int AvailableNumberOfOperations
+    {
+      get
+      {
+        return (operations != null ? operations.Count() : 0);
+      }
+    }
+
+    public List&lt;string&gt; CallAllComponents( string a, string b)
+    {
+      var result = new List&lt;string&gt;();
+      foreach( var op in operations )
+      {
+        Console.WriteLine(op.Description);
+        result.Add( op.ManipulateString(a,b ));
+      }
+      return result;
+    }
+  }
+}</pre>
+
+<p>This deserves some explanation. This host imports 0 or more (ImportMany) components implementing IMyCompoment - and wants them delivered into the private property operations, thank you. The method &quot;DoImport&quot; can be called to initialize this object - Path.GetDirectoryName( Assembly.GetExecutingAssembly().Location) gives the directory in which the executing assembly (i.e. the program or the test) project resides, and by creating a DirectoryCatalog on that directory and then adding that to the main AggregateCatalog you make MEF <strong>automatically start searching all the assemblies in the directory where the calling program resides</strong>. Property AvailableNumberOfOperations of the Importer returns the number of found operations, and CallAllComponents calls all the IMyComponent exporting components and returns the result in one go.</p>
+
+<p>To prove this actually works, we continue: </p>
+<span style="font-size: 130%">3. Create a class library &quot;ExportingLib1&quot;</span> 
+
+<br />Add a reference to &quot;Contracts&quot; and &quot;System.ComponentModel.Composition&quot;, then add a class &quot;TestComponent1&quot; with the following code: 
+
+<pre>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Contracts;
+using System.ComponentModel.Composition;
+
+namespace ExportingLib1
+{
+  [Export(typeof(IMyComponent))]
+  public class TestComponent1 : IMyComponent
+  {
+    #region IMyComponent Members
+    public string Description
+    {
+      get { return &quot;Concatenates a and b&quot;; }
+    }
+
+    public string ManipulateString(string a, string b)
+    {
+      return string.Concat(a, b);
+    }
+    #endregion
+  }
+}</pre>
+
+<p>as you can see, this utterly exiting class exports IMyComponent, delivers a description of itself and concatenates the two strings to 1</p>
+
+<p><span style="font-size: 130%">4. Create a class library &quot;ExportingLib2&quot;</span> 
+
+  <br />Add a reference to &quot;Contracts&quot; and &quot;System.ComponentModel.Composition&quot;, then add a class &quot;TestComponent2&quot; with the following code:</p>
+
+<pre>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Contracts;
+using System.ComponentModel.Composition;
+
+namespace ExportingLib2
+{
+  [Export(typeof(IMyComponent))]
+  public class TestComponent2 : IMyComponent
+  {
+    #region IMyComponent Members
+    public string Description
+    {
+      get { return &quot;Removes b from a&quot;; }
+    }
+
+    public string ManipulateString(string a, string b)
+    {      
+      return a.Replace(b, string.Empty);
+    }
+    #endregion
+  }
+}</pre>
+Again, a very complex class ;-), this time it removes all occurrences from b in a. 
+
+<p><span style="font-size: 130%">5. Create a test project &quot;ImportingLib.Test&quot;</span> </p>
+
+<p>Add references to ImportingLib, ExportingLib1 and ImportingLib2 and add the following test methods:</p>
+
+<pre>[Test]
+public void TestCountComponents()
+{
+  var t = new Importer();
+  t.DoImport();
+  Assert.AreEqual(2, t.AvailableNumberOfOperations);
+}
+
+[Test]
+public void TestOperations()
+{
+  var t = new Importer();
+  t.DoImport();
+  var result = t.CallAllComponents(&quot;all are equal &quot;, &quot;all&quot;);
+  Assert.IsTrue( result.Contains( &quot;all are equal all&quot;));
+  Assert.IsTrue( result.Contains( &quot; are equal &quot;));
+}</pre>
+If you followed my ‘recipe’ correctly, both tests will succeed. In addition, since you have added a Console.WriteLine in the CallAllComponents method, on the standard console output you will see &quot;Concatenates a and b&quot; and &quot;Removes b from a&quot;, indicating the components that have been called. As you see, nowhere in code the components are actually instantiated - this is all done by MEF. The fun thing is, just by removing the reference to either ExportingLib1 or ExportingLib2 you can make the test fail. Nowhere are any explicit links between host and components but in the actual calling program itself, and those links are only made <strong>by the very presence of an assembly in the directory of the current executing program</strong>, or in this case, the test project.
+
+<p>So, you can dump more assemblies exporting IMyComponent - and the host will automatically pick them up. <a href="http://www.youtube.com/watch?v=3YmMNpbFjp0">#Thatwaseasy</a></p>
+<p>Parts of this sample are based on <a href="http://msdn.microsoft.com/en-us/library/dd460648.aspx?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939">this description</a></p>
+
+Update 06-07-2012: I've added <a href="http://www.schaikweb.net/dotnetbyexample/MEFdemo.zip">a full demo</a> solution to this post to show how things are put together

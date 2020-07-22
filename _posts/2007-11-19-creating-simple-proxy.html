@@ -1,0 +1,80 @@
+---
+layout: post
+title: Creating a simple proxy
+date: '2007-11-19T21:47:00.000+01:00'
+author: Joost van Schaik
+tags:
+- ASP.NET
+- Proxy
+- C#
+modified_time: '2008-03-04T08:14:56.579+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1407891398379898848
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2007/11/creating-simple-proxy.html
+---
+
+Sometimes you want to give web browsers access to web resources that are best not opened indiscriminatly to the world. A good example are WMS servers: you want the users to be able to see maps, but putting a WMS server directly online is like putting a read-only sql client online. 
+
+The solution is put the web resource on a server that is not accessible by the internet, but is accessible by the web application - i.e. the limited resource is put inside the DMZ, and create some kind of proxy page that streams data from the server inside the DMZ to the outside world - after doing some validations, of course.
+
+A setup for a proxy page (that only does the streaming, not the validation) may be as follows:
+
+Create an aspx page MyProxyPage.aspx and add the following code:
+<pre>void ProcessProxyRequest( string request, HttpResponse response)
+ {
+   HttpWebRequest webRequest = HttpWebRequest.Create(request) as HttpWebRequest;
+ 
+   // Important! Keeps the request from blocking after the first time!
+   webRequest.KeepAlive = false;
+   webRequest.Credentials = CredentialCache.DefaultCredentials;
+   using (HttpWebResponse backendResponse = (HttpWebResponse)webRequest.GetResponse())
+   {
+     Stream receiveStream = backendResponse.GetResponseStream();
+ 
+     // Clear whatever is already sent
+     response.Clear();
+     response.ClearContent();
+     response.ClearHeaders();
+ 
+     // Copy headers
+     // Check if header contains a contenth-lenght since IE
+     // goes bananas if this is missing
+     bool contentLenghtFound = false;
+     foreach (string header in backendResponse.Headers)
+     {
+       if (string.Compare(header, "CONTENT-LENGTH", true) == 0) 
+       { 
+         contentLenghtFound = true;
+       }
+       response.AppendHeader(header, backendResponse.Headers[header]);
+     }
+     // Copy content           
+     byte[] buff = new byte[1024];
+     long length = 0;
+     int bytes;
+     while ((bytes = receiveStream.Read(buff, 0, 1024)) > 0)
+     {
+       length += bytes;
+       response.OutputStream.Write(buff, 0, bytes);
+     }
+ 
+     // Manually add content-lenght header to satisfy IE
+     if (!contentLenghtFound) 
+     {
+       response.AppendHeader("Content-Length", 
+         length.ToString());
+     }
+ 
+     receiveStream.Close();
+     backendResponse.Close();
+     response.Flush();
+     response.Close();
+   }
+ }</pre>
+Now of course, in the Page_Load you have to do something first:
+<pre>protected void Page_Load(object sender, EventArgs e)
+{
+   string requestInsideDMZ = "http://somewhereinyourdmz/somepage.aspx";
+   ProcessProxyRequest( requestInsideDMZ, 
+                        Response);
+}</pre>
+If the user accesses MyProxyPage.aspx he gets the contents of http://somewhereinyourdmz/somepage.aspx instead.

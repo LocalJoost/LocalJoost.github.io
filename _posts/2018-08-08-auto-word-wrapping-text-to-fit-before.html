@@ -1,0 +1,83 @@
+---
+layout: post
+title: Auto word wrapping a text to fit before a backdrop pane in Mixed Reality apps
+date: '2018-08-08T11:21:00.000+02:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Windows Mixed Reality
+- Unity3D
+modified_time: '2018-08-08T11:22:02.859+02:00'
+thumbnail: https://lh3.googleusercontent.com/-RrI1p75YuGY/W2q2G3NQtiI/AAAAAAAAQCE/FACZPJp6OKcx4HVSGYtB-SngzG2NOHTpACHMYCw/s72-c/image_thumb%255B2%255D?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-630233971717412474
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2018/08/auto-word-wrapping-text-to-fit-before.html
+---
+
+<h2>Intro</h2><p>As <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality</a> in general and <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> apps in particular become more mainstream, so they become ever more complex, and this reflects in their interfaces. And if, in those user interfaces, we need to communicate something more complex to user, text is in most cases still the most efficient way of doing that.</p><p>Now a floating text by itself may not be very readable, so you might want to use some kind of backdrop. I usually take a kind of blueish background with white text, as that turns out the most readable. And yeah, I know, it feels a bit 2D Windows-ish – but until someone comes up with a better paradigm, it will have to do.</p><p>A TextMesh in Unity does not have a clue about word wrapping or fitting into a specific 'box' – you need to do that yourself. There is some of that in the <a href="https://github.com/Microsoft/MixedRealityToolkit-Unity" target="_blank">Mixed Reality Toolkit</a> dialog system – but that wraps based on the maximum of characters. If you change the font size, or the size of the backdrop – you will need to start testing again if you message fits. No need for that here.</p><h2>The actual text wrapping</h2><pre style="font-size: 12px;">public static class TextUtilities
+{
+    public static void WordWrap(this TextMesh mesh, float maxLength)
+    {
+        var oldQ = mesh.gameObject.transform.rotation;
+        mesh.gameObject.transform.rotation = Quaternion.identity;
+        var renderer = mesh.GetComponent&lt;Renderer&gt;();
+        var parts = mesh.text.Split(' ');
+        mesh.text = "";
+        foreach (var t in parts)
+        {
+            var builder = new StringBuilder(mesh.text);
+
+            mesh.text = string.Concat(mesh.text, t, " ");
+            if (renderer.bounds.size.x &gt; maxLength)
+            {
+                builder.AppendFormat("{0}{1} ", Environment.NewLine, t);
+                mesh.text = builder.ToString();
+            }
+        }
+
+        mesh.text = mesh.text.TrimEnd();
+        mesh.gameObject.transform.rotation = oldQ;
+    }
+}
+
+</pre><p>This sits in an extension method in the class TextUtilities.It assumes the text has already been applied to the text mesh. What is basically does is:</p><ul><li>Rotate the text mesh to Identity so it can measure width in one plane</li><li>Split the text in words</li><li>For each word:</li><ul><li>Make a StringBuilder for the text so far</li><li>Add the word to the mesh</li><li>Calculate the width of the resulting mesh</li><li>If the mesh is wider than allowed:</li><ul><li>Add the word to the StringBuilder with a newline prepending it </li><li>Set mesh to the StringBuilder’s contents</li></ul></ul></ul><p>Now I did not make that up myself, <a href="https://answers.unity.com/questions/223906/textmesh-wordwrap.html" target="_blank">I nicked it from here in the Unity Forums</a> but I kind of simplified and optimized it a bit – a thing I am prone to doing as my colleague knows ;)</p><h2>Calculating the size</h2><p>As I have written in a previous post, you can calculate an object's size by getting the Render's size. But I <em>also</em> shown what you get is the size after rotation. So what you need to do is to calculate the <em>unrotated</em> size. I put the same trick as used in the way to measure the text width in an extension method:</p><pre style="font-size: 12px;">public static class GameObjectExtensions
+{
+    public static Vector3 GetRenderedSize( this GameObject obj)
+    {
+        var oldQ = obj.transform.rotation;
+        obj.transform.rotation = Quaternion.identity;
+        var result = obj.GetComponent&lt;Renderer&gt;().bounds.size;
+        obj.transform.rotation = oldQ;
+        return result;
+    }
+}</pre><p>Rotate the object to identity, get it's render's size, return the object back, then return the result. A rather crude way to get to the size, but it seems to work. I stuck this method into my GameObjectExtensions class.</p><h2>Connecting all the dots</h2><p>The only thing now missing is a behaviour that will be using all this:</p><pre style="font-size: 12px;">public class SimpleTextDialogController : MonoBehaviour
+{
+    private TextMesh _textMesh;
+
+    [SerializeField]
+    public GameObject _backPlate;
+
+    [SerializeField]
+    public float _margin = 0.05f;
+
+    void Start()
+    {
+        _textMesh = GetComponentInChildren&lt;TextMesh&gt;();
+        gameObject.SetActive(false);
+    }
+
+    public void ShowDialog(string text)
+    {
+        gameObject.SetActive(true);
+        StartCoroutine(SetTextDelayed(text));
+    }
+
+    private IEnumerator SetTextDelayed(string msg)
+    {
+        yield return new WaitForSeconds(0.05f);
+        _textMesh.text = msg;
+        var sizeBackplate = _backPlate.GetRenderedSize();
+        var textWidth = sizeBackplate.x - _margin * 2f;
+        _textMesh.WordWrap(textWidth);
+        _textMesh.GetComponent&lt;Transform&gt;().position -= new Vector3(textWidth/2f, 0,0);
+    }
+}</pre><p>So the start method immediately renders the game object invisible. Calling the ShowDialog makes the 'dialog' visible and actually sets the text, by calling the ShowTextDelayed coroutine, where the stuff is actually happening. First we get the size of the 'backplate', then we calculate the desired width of the text. After that the text is wordwrapped, and then it's moved half the calculated width to the left. </p><p>So why the delay? This is because the complete dialog looks like this:</p><p><a href="https://lh3.googleusercontent.com/-G4Xqj8ZC49g/W2q2GFeHENI/AAAAAAAAQCA/TBN9vyWkVNEXKcm-bFrLnfYqJIFm5PyJgCHMYCw/s1600-h/image%255B4%255D"><img width="400" height="407" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-RrI1p75YuGY/W2q2G3NQtiI/AAAAAAAAQCE/FACZPJp6OKcx4HVSGYtB-SngzG2NOHTpACHMYCw/image_thumb%255B2%255D?imgmax=800" border="0"></a></p><p>I reuse the AdvancedKeepInViewController <a href="http://dotnetbyexample.blogspot.com/2018/07/an-advanced-gaze-following-behaviour-to.html" target="_blank">from my previous post</a>. But if you use the AppearInView property (as I do), that places the dialog's center exactly on the gaze cursor when it's activated. And you will see that it tends to appear on the left of the center, then quickly move to the center.</p><p>That is because when the text is rendered without the word wrap, it looks like this</p><p><a href="https://lh3.googleusercontent.com/-ud1SVOYJ5W8/W2q2Hlr2cZI/AAAAAAAAQCI/82Y6kyrJ_GYfnyjLaMqhpVsUESYgjqjOgCHMYCw/s1600-h/image%255B9%255D"><img width="640" height="164" title="image" style="border: 0px currentcolor; border-image: none; margin-right: auto; margin-left: auto; float: none; display: block; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-KrQOZ8R0Vd4/W2q2IWrpLSI/AAAAAAAAQCM/JiGK1Lx6V9cYkLYe2pLWtlM0FYHA6JCbwCHMYCw/image_thumb%255B5%255D?imgmax=800" border="0"></a></p><p>So Unity calculates the horizontal component of the center of all the objects in the combined game object, that end up a little left of the center of the <em>text.</em> But what we want to see is this:</p><p><a href="https://lh3.googleusercontent.com/-zOVIMmDOD5Y/W2q2JLuQqvI/AAAAAAAAQCQ/kya9nN8n2ToSNvbiJjoTk10odmmRnd5mQCHMYCw/s1600-h/image%255B14%255D"><img width="350" height="200" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-o1-aAFiaYmo/W2q2J2JnVoI/AAAAAAAAQCU/UMmp1TQkonYdHtE_tALeEPy-mw8pvT-lwCHMYCw/image_thumb%255B8%255D?imgmax=800" border="0"></a></p><p>The text is nicely wrapped and fits before the box. So hence the little delay, to allow AdvancedKeepInViewController to calculate and place the object in the center, before we start messing with the text.</p><p>Finally there's a simple behaviour called DialogLauncher but basically all that does is calling the ShowDialog method with some text I got from "<a href="https://startupsum.com/" target="_blank">Startupsum</a>", a kind of Lorum Ipsum generator that uses words from your average Silicon Valley startup marketing manager's BS jargon. </p><p>The fun thing is that when you make the dialog bigger and run the app again, it will automatically word wrap to the new size:</p><p><a href="https://lh3.googleusercontent.com/-iEydLMhByNs/W2q2KtRkuKI/AAAAAAAAQCY/4pAcLI2UNQkocbHYp8M5ZoEs7UkALLiwwCHMYCw/s1600-h/image%255B20%255D"><img width="500" height="185" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-OHyCN68SOeA/W2q2Lf4DxzI/AAAAAAAAQCc/rlhIOpRcs_EUgcC9EX12lMyl6uSFWBKAgCHMYCw/image_thumb%255B12%255D?imgmax=800" border="0"></a></p><p>And when you increase the font size:</p><p><a href="https://lh3.googleusercontent.com/-bBUf44rALgc/W2q2MIv6EDI/AAAAAAAAQCg/Qlg2Wra1NO4f9OY-otwAnCO4_vfjCnkBACHMYCw/s1600-h/image%255B25%255D"><img width="500" height="181" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-NBgaeN51nG8/W2q2MyCNlQI/AAAAAAAAQCk/B81H-68pAnEAHyzepjE-C0EbTCYAQwmqwCHMYCw/image_thumb%255B15%255D?imgmax=800" border="0"></a></p><h2>Requirements and limitations</h2><p>There are four requirements to the text:</p><ul><li>The text needs to be placed in the horizontal center of the backdrop plate. </li><li>Vertically it needs to be in the position where you want to the text to start flow down from</li><li><a href="https://lh3.googleusercontent.com/-OJbC0Kb-QkI/W2q2Nt4M2lI/AAAAAAAAQCo/0OTbzAB0CwE9f_0UtIin7uDRRL0rV7i1ACHMYCw/s1600-h/image%255B35%255D"><img width="240" height="30" title="image" align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-biWwfyJB0vs/W2q2OWOJ7pI/AAAAAAAAQCs/f7ovJTbXaxUiFa0vl5PSeRLffUMOBYs0wCHMYCw/image_thumb%255B19%255D?imgmax=800" border="0"></a>It needs to have it's Anchor upper left</li><li>The Alignment needs to be left</li></ul><h2>Limitations</h2><ul><li>If you have a single word in your text that's so long it takes up more space than available, you are out of luck. <a href="http://www.learn-german-language-online.com/long-german-words.html" target="_blank">Germans need to be especially careful</a> ;)</li><li>As you can see a little in the last image: if the text is so long it takes up more vertical space than available, Unity will render the rest 'in thin air' under the backdrop.</li></ul><p>It's actually possible to fix that too, but you might wonder how efficiently you are communicating if you need to write large texts in what is in essence an immersive experience. How much people read an entire six-paragraph text in zoo or a museum? "Brevity is the soul of wit", as The Bard said, so keep texts short and concise. </p><h2>Conclusion</h2><p>Thank to <a href="https://answers.unity.com/users/81406/shopguy.html" target="_blank">Shopguy</a> on the Unity Forums for the original word wrapping code. The <a href="https://github.com/LocalJoost/TextFitting" target="_blank">code for this article can be found here.</a></p>

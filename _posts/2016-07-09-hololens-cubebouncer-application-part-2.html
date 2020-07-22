@@ -1,0 +1,153 @@
+---
+layout: post
+title: HoloLens CubeBouncer application part 2-create the gaze aligned cube grid
+date: '2016-07-09T11:21:00.000+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- HoloLens
+- Unity3D
+- C#
+modified_time: '2016-07-09T23:25:03.449+02:00'
+thumbnail: https://lh3.googleusercontent.com/-dP-jqVZbs48/V4DCDvtsVXI/AAAAAAAAODQ/gnxNXCzVu4k/s72-c/image_thumb%25255B5%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5272956088724220117
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/07/hololens-cubebouncer-application-part-2.html
+---
+
+<h2>Preface</h2> <p>In the <a href="http://dotnetbyexample.blogspot.com/2016/07/hololens-cubebouncer-application-part-1.html" target="_blank">previous post</a>, I have showed you how to setup a <em>very</em> basic <a href="https://www.microsoft.com/microsoft-hololens/" target="_blank">HoloLens</a> application that only shows one floating cube – exactly on the spot where your head is when you start the app. You actually had to get up and look backwards to where your head was to see it. In this post I will show you how to dynamically create a grid of cubes, aligned with your head, based upon the available space. This space is defined by the distance HoloLens measures between you and where your gaze hits a physical object. Or, failing to find such a object (because you are staring in empty space or an object too far away) it will make a small ‘fixed’ grid.</p> <h2>But first some spatial mapping</h2> <p>In order to find a wall, we first have to instruct HoloLens to actually start <em>looking</em> for it. It’s not turned on by default in an app – it’s a resource intensive process and it would not make sense to turn in on in an app that does not use it. You might have noticed that the gazing cursor, which we added in the previous post, actually never appeared unless you looked directly at the lonely cube. Now we will make it appear when you look at a wall or object. Turning spatial mapping on is actually very easy:</p> <p>&nbsp;<a href="https://lh3.googleusercontent.com/-udmCrJNIF2U/V4DCDOfS_MI/AAAAAAAAODM/nFnuu-d6MwU/s1600-h/image%25255B9%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-dP-jqVZbs48/V4DCDvtsVXI/AAAAAAAAODQ/gnxNXCzVu4k/image_thumb%25255B5%25255D.png?imgmax=800" width="534" height="484"></a></p> <p>First, type “spatial” in the search box. This will search through all your asset folders. Then, locate the SpatialMapping <em>prefab</em>. <a href="http://docs.unity3d.com/Manual/Prefabs.html" target="_blank">In Unity3D, a prefab is a reusable set of components</a> that can be used over and over again, without having to build it up from it’s parts and set all the properties every time you want use it. If you did follow my advice and had a look at <a href="http://twitter.com/rickbarraza">Rick Barraza</a>’s awesome <a href="https://channel9.msdn.com/Series/UnityCreativeCoding">Creative Coding series</a> you will have had the concept explained. </p> <p>Hit File/Build/Build settings to re-create the Visual Studio Solution, the deploy the app using Visual Studio. First, you won’t see much difference. But then suddenly the “Spatial Mesh” will appear, and you will the ‘gaze cursor’ following your gaze where ever it hits a wall. (indicated by a red arrow I added later to make it easier to find on the photo).</p> <p><a href="https://lh3.googleusercontent.com/-Z01-JmAo2w8/V4DCEBaL3eI/AAAAAAAAODU/3wFoyc0odlw/s1600-h/image%25255B13%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-N2YnHOllnmQ/V4DCEjPouBI/AAAAAAAAODY/7aK6UMlkuPU/image_thumb%25255B7%25255D.png?imgmax=800" width="654" height="370"></a></p> <p>You can decide to leave it on while developing – some people find it fascinating to see HoloLens actually doing it’s magic trick. I think it’s a great tool to check if the app is actually mapping, but I also have found it to be visually distracting after a while. So after I have ascertained my app is doing it’s spatial mapping, I change it’s ‘Surface Material’ property to ‘Occusion’:</p> <p><a href="https://lh3.googleusercontent.com/-pSzZWPIuUUA/V4DCFEjgfLI/AAAAAAAAODc/6ENzgLsGVv0/s1600-h/image%25255B24%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-r-MuGAGbLI4/V4DCFY4kybI/AAAAAAAAODg/SwtiIg9p42Y/image_thumb%25255B14%25255D.png?imgmax=800" width="449" height="354"></a></p> <h2>Create a prefab from our cube</h2> <p>In order to be able to dynamically create an object, we need to turn it into a prefab as well. That is actually very easy. Just grab your Cube and drag it into your Assets/Custom/Prefabs folder</p> <p><a href="https://lh3.googleusercontent.com/-HfC2wX7g2y0/V4DCFtQ4RWI/AAAAAAAAODk/jkKFKIK6_UY/s1600-h/image%25255B31%25255D%25255B3%25255D.png"><img title="image[31]" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image[31]" src="https://lh3.googleusercontent.com/-BaoUry_wkhI/V4DCGAzbKsI/AAAAAAAAODo/wD1rwVglC8U/image%25255B31%25255D_thumb%25255B1%25255D.png?imgmax=800" width="445" height="481"></a></p> <p>And give it a name. I called it “WortellCube”. Then proceed to delete the thing that is now called “WortellCube from the <em>HologramCollection</em>. We won’t need the static cube anymore. And now, my friends, halfway the 2nd episode on this hard core coder’s blog, we are <em>finally</em> nearing the place where actual coding takes place. Just one more step.</p> <h2>Creating a ‘script’ </h2> <p>Any code in Unity3D is called a “script”. It supports a lot of languages and one of them is, fortunately, C#. There are all kinds of ways to do this, but I find the easiest one the following:</p> <ul> <li>Open the Assets/Custom/Scripts folder  <li>Right-click it, hit “Create”, then “C# script”  <li>Name it “MainStarter”  <li>Select “HologramCollection”  <li>Drag the MainStarter script on top of the Inspector pane, below the “Add Component” button.</li></ul> <p>Net result should be this </p> <p><a href="https://lh3.googleusercontent.com/-UQn3JWulOXs/V4Fh6voJDSI/AAAAAAAAOD8/OnpTxZ8EO-o/s1600-h/image4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-7ODqfuw_kMo/V4Fh7NEPWBI/AAAAAAAAOEA/aVXU-PbNbQM/image_thumb2.png?imgmax=800" width="449" height="394"></a></p> <p>There are at least two other ways that I know of to to create a C# script – this in my work flow.</p> <p>Hit File/Build settings/Build. Open the resulting project in Visual Studio (or reload the project). Assuming you indeed selected the “Unity C# project” option as I advised in my previous post, the solution will look like this:</p> <p><a href="https://lh3.googleusercontent.com/-jqLRnlqfPok/V4Fh7sQyOmI/AAAAAAAAOEE/LT7L4qX83_U/s1600-h/image9%25255B1%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-WzeV75rwx3o/V4Fh7x9C_WI/AAAAAAAAOEI/X0Gfv_JUgtk/image_thumb5.png?imgmax=800" width="413" height="484"></a></p> <p>And there’s our Script. Now a proper C# class in a Visual Studio Solution.</p> <h2>Adding a game object</h2> <p>All right. So the ‘script’, a C# class, looks initially like this</p><pre>using UnityEngine;
+using System.Collections;
+
+public class MainStarter : MonoBehaviour
+{
+
+    // Use this for initialization
+    void Start()
+    {
+
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+
+    }
+}</pre>
+<p>Now imagine, just for a second, this here veteran XAML coder and behavior nut when he saw this. A Unity script is actually called a <em>behaviour</em>. Granted – it’s spelled in The Queen’s English, but it really made my day. Far from ‘home’, still writing things called ‘behaviour’.&nbsp; Apart from the name, that’s about where the similarities end.&nbsp; </p>
+<p>To get started, we first add a public field to the top of the class:</p><pre>public class MainStarter : MonoBehaviour
+{
+    public GameObject Cube;
+
+    // Use this for initialization
+    void Start()
+    {
+
+    }</pre>
+<p>Yes. A public field. If you want to do Unity3D, get ready to meet some things that might hurt your coder’s feelings, and do some things you have learned to avoid like the plague.</p>
+<p>Hit Save, go back to the Unity Editor, and after a few seconds tops you will see this (assuming you still have the HologramCollection object selected:</p>
+<p><a href="https://lh3.googleusercontent.com/-JWtKf00KZxM/V4Fh8EP0w-I/AAAAAAAAOEM/-8ByZEpXqTQ/s1600-h/image14.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-lREZ5M7_BU4/V4Fh8T48dhI/AAAAAAAAOEQ/Gnj9ZZ3fxwc/image_thumb8.png?imgmax=800" width="449" height="174"></a></p>
+<p>The Cube fields shows up. Now that’s the GameObject we can instantiate. So from our Assets/Prefabs folder we drag the WortellCube on top of the field that now says “None”:</p>
+<p><a href="https://lh3.googleusercontent.com/-aqbAOcvfxo8/V4Fh839JJRI/AAAAAAAAOEU/KoZYfOGG8wc/s1600-h/image18.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-M07aQCa8mBE/V4Fh9HBJqVI/AAAAAAAAOEY/YqmQU98Pp5k/image_thumb10.png?imgmax=800" width="449" height="367"></a></p>
+<p>And this should be the result. Hit File/Build Settings/Build, reload the project in Visual Studio, and now it’s time for real coding.</p>
+<h2>Building the initial script</h2>
+<p>As the comment that’s added by default added shows, there are some methods that are called on events that happen in the Unity object lifecycle. Note that those methods are private, but apparently they can be called anyway. A proper C# way would be to make a base class with overrideable public methods but hey, like I said, things are a bit different here. There is a whole <em>host</em> of private methods that can be called on an equal host of events, but that’s for later. Let’s first fill the Start method:</p><pre>private bool _distanceMeasured;
+private DateTimeOffset _lastInitTime;
+
+// Use this for initialization
+void Start()
+{
+  _distanceMeasured = false;
+  _lastInitTime = DateTimeOffset.Now;
+}</pre>
+<p>and then the Update method:</p><pre>void Update()
+{
+  if (!_distanceMeasured)
+  {
+    if (GazeManager.Instance.Hit)
+    {
+      _distanceMeasured = true;
+      CreateGrid(GazeManager.Instance.Position);
+    }
+    else
+    {
+      // If we can't find a wall in 10 seconds, create a default grid 
+      if((_lastInitTime - DateTimeOffset.Now).Duration() &gt;
+           TimeSpan.FromSeconds(10))
+      {
+        _distanceMeasured = true;
+        CreateGrid(CalculatePositionDeadAhead());
+      }
+    }
+  }
+}</pre>
+<p>So this method is called, every ‘frame’. This is typically 60 times per seconds, as far as I understand it. The GazeManager is the object that tracks your gaze. If it hits something within 10 seconds, it sends the position of the hit to the method that creates the grid (CreateGrid). If not, if calculates a location 3.5 meters in front of you, following the direction of your gaze:</p><pre>private Vector3 CalculatePositionDeadAhead()
+{
+  var gazeOrigin = Camera.main.transform.position;
+  return gazeOrigin + Camera.main.transform.forward * 3.5f;
+}</pre>
+<p>The position Camera.main.transform.position – that is where you are. And there is a transform.forward thingy. Now this was a point where I first met a TransForm, and that quite puzzled me. </p>
+<h2>Aside: Transform</h2>
+<p>At this point I don’t quite understand all the finesses of a TransForm, but one thing is key. A TransForm has amongst other, three very important properties. “forward”, “right” and “up”. What helped me understand was thinking of this image: imagine you are an astronaut floating in space next to Earth. Your nose is pointing to Earth. Which way is forward? Well, Earth of course. Which way is up? Whatever direction the top of your head is pointing. And right? Well, to your right of course. Next, you fire the jets of your <a href="https://en.wikipedia.org/wiki/Manned_Maneuvering_Unit" target="_blank">MMV</a> and it rotates you – so now your <em>back</em> is pointing to Earth and your nose is pointing towards the International Space Station, that was originally behind you. The cardinal question is now – <em>which way is forward?</em> Exactly. Although everything else stayed in place, <em>forward is now IIS.</em> </p>
+<p>This is how you can use a TransForm. However an object is rotated in space, if you add 2 times it’s transform.forward to it’s position, it will move 2 meters forward – that is, the direction that is <em>forward from it’s own perspective.</em> If you rotate it in another reaction, it will go in the direction it <em>then</em> points to. If you want it to move <em>backwards</em>, simply <em>subtract </em>it’s transform.forward. Same goes for the rest. Want to move 2 meters up? Add 2 times transform.up. Want to move down? Subtract it. Want to go right? Add transform.right. Go left? Subtract the same. Unity will take care of in what absolute direction the object actually needs to be moved in. </p>
+<p>So what the second line of CalculatePositionDeadAhead simply does it add 3.5 meters to your position in front of you, exactly in the direction where you are looking when the grid is created. This is a quite powerful concept. You don’t have to care how stuff is rotated. Transform properties will tell you which way to go.</p>
+<h2>Calculating the grid</h2>
+<p>So now that I have explained this, I can show you how to how the grid is calculated:</p><pre>private void CreateGrid(Vector3 hitPosition)
+{
+  var gazeOrigin = Camera.main.transform.position;
+  var rotation = Camera.main.transform.rotation;
+
+  var maxDistance = Vector3.Distance(gazeOrigin, hitPosition);
+
+  transform.position = hitPosition;
+  transform.rotation = rotation;
+
+  int id = 0;
+
+  float size = 0.2f;
+  float maxZ = maxDistance - 1f;
+  float maxX = 0.35f;
+  float maxY = 0.35f;
+  float z = 1.5f;
+  do
+  {
+    var x = -maxX;
+    do
+    {
+      var y = -maxY;
+      do
+      {
+        CreateCube(id++,
+            gazeOrigin + transform.forward * z +
+                         transform.right * x +
+                         transform.up * y,
+            rotation);
+        y += size;
+      }
+      while (y &lt;= maxY);
+      x += size;
+    }
+    while (x &lt;= maxX);
+    z += size;
+  }
+  while (z &lt;= maxZ);
+}</pre>
+<p>Using the camera’s rotation and the hitPosition I calculate a location about 1 meter from the wall (or the calculated point). The grid will start 1.5 meters in front of you. So the space between 1.5 meters from you and 1 meter from the wall is filled with a 4 x 4 grid, using three loops (one for every dimension). I seem not te be able to new up a TransForm, but every behaviour has a transform property – and since this script is not part of a physically displayed GameObject I can use it for calculations. I do this to take a snapshot of the camera rotation, and prevent slight differences in rotation because the user does not keep his or her head still.The actual TransForm position does not seem to matter much in calculations – you can also take the gazeOrgin in stead of hitPosition. The vector containing forward, up and right is always <a href="http://www.fundza.com/vectors/normalize/" target="_blank">normalized</a> – values are always 1 or smaller and can therefore be used for this kind of tricks.</p>
+<p>Oh, and finally there is this very simple method to actually create the cube:</p><pre>private void CreateCube(int id, Vector3 location, Quaternion rotation)
+{
+  var c = Instantiate(Cube, location, rotation) as GameObject;
+}</pre>
+<p>So why is this a method at all, does it have an id property that is not used at all? Because there is more to come, and we will need other parts in a future post.</p>
+<p>If you run the project now, after a maximum of 10 seconds, you will see something like this:</p>
+<p><a href="https://lh3.googleusercontent.com/-uaJlksfGG9c/V4Fh9xR9ulI/AAAAAAAAOEc/7-5h0STWWTs/s1600-h/20160709_184529_HoloLens%25255B7%25255D.jpg"><img title="20160709_184529_HoloLens" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="20160709_184529_HoloLens" src="https://lh3.googleusercontent.com/-ZuQngWpdQao/V4Fh-KO25NI/AAAAAAAAOEg/jXcQu-o7uj4/20160709_184529_HoloLens_thumb%25255B2%25255D.jpg?imgmax=800" width="654" height="370"></a></p>
+<p>That's awesome, right? Except - why are the cubes upside down? In Unity it was displayed correctly! </p>
+<p><a href="https://lh3.googleusercontent.com/-c_qPk5VplQ8/V4Fh-fu1m2I/AAAAAAAAOEk/NwYkqsdy5gs/s1600-h/image%25255B13%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-CNYBTyH0GOQ/V4Fh-8C4-sI/AAAAAAAAOEo/a8Ph2qez6MQ/image_thumb%25255B3%25255D.png?imgmax=800" width="304" height="165"></a></p>
+<p>Once again – think TransForm. If you walk around the cubes, you will see they are actually not upside down. Because we aligned them to the gaze – rotation and all - we are looking at their <em>backside. </em>So what we need to do is – rotate the cube 180 degrees around the axis that goes from top to bottom – in other words, the “up” axis – on it’s own location. </p><pre>private void CreateCube(int id, Vector3 location, Quaternion rotation)
+{
+  var c = Instantiate(Cube, location, rotation) as GameObject;
+  //Rotate around it's own up axis so up points TO the camera
+  c.transform.RotateAround(location, transform.up, 180f);
+}</pre>
+<p>and here we go. One grid of boxes, perfectly aligned to your view angle (notice I have tilted my head to the right now)</p>
+<p><a href="https://lh3.googleusercontent.com/-e6_6ah0OcsY/V4Fh_KbwzWI/AAAAAAAAOEs/eZ-xjM3F-6I/s1600-h/20160709_221350_HoloLens%25255B3%25255D.jpg"><img title="20160709_221350_HoloLens" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="20160709_221350_HoloLens" src="https://lh3.googleusercontent.com/-_osT8Ur728Q/V4Fh_UkCcwI/AAAAAAAAOEw/9CQ3qHlSllM/20160709_221350_HoloLens_thumb%25255B1%25255D.jpg?imgmax=800" width="654" height="370"></a></p>
+<h2>Concluding remarks</h2>
+<p>I have shown you how to add and use Spatial Mapping, create a prefab from your cube, and how you can dynamically instantiate those prefabs. I also showed you how to align the grid with your view angle, using the GazeManager, that I also used to measure distance. Finally, I have showed you how to employ TransForm for calculating relative directions.</p>
+<p>As usual, you can find a full working solution of the project so far <a href="https://github.com/LocalJoost/CubeBouncer/tree/blog2" target="_blank">here</a>.</p>

@@ -1,0 +1,107 @@
+---
+layout: post
+title: Windows 10 maps part 3 - querying the map & attaching business objects to map
+  shapes
+date: '2015-08-20T18:08:00.000+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- Mapping
+- Windows 10
+modified_time: '2015-08-21T22:09:00.608+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6043467961744598165
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/08/windows-10-maps-part-3-querying-map.html
+---
+
+<p><font size="4">Intro</font><br>In my <a href="http://dotnetbyexample.blogspot.com/2015/08/windows-10-maps-part-2-manipulation-and.html" target="_blank">previous post in this series</a> I showed how to draw lines, polygons and icons on the map. What I did not show was how you could query the map for the shapes present at a location when you tap on it, and more importantly - how you find the business objects back that were used to create this shapes in the first place. In previous times, specifically the Visual Basic 6.0 era, people used to do something like putting something like an id in a Tag property of a UI element and use that go back into the database. I recently even encountered an approach using a Tag in a Window Store app *shudder* ;) Fortunately in these day and age things can be done quite differently.</p> <p>To be honest - this article does not describe brand new knowledge, nor it is really specific to <a href="http://www.windows.com" target="_blank">Windows</a> 10 (I used this trick in <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> 8.0 already), and if you dig through my blog and/or samples of the past year you might already distill it. Yet, I get the question about relating map shapes to business objects quite often, as map shapes (thankfully) do not have a Tag property, people apparently still wonder how to connect shapes and business objects so I thought it best to make this a separate article.</p> <p><font size="4">Attaching business objects to map shapes</font><br>This is actually pretty easy, and if you have been peeking at the <a href="https://github.com/LocalJoost/Manipulation_Drawing">sample app</a> you might have seen that there is actually one extra statement in all three methods that draw a shape as I write in my previous post. For example, I take line drawing method:</p><pre>private void DrawLines(object sender, RoutedEventArgs e)
+{
+  if (!DeleteShapesFromLevel(2))
+  {
+    var strokeColor = Colors.Green;
+    strokeColor.A = 200;
+
+    //Drawing lines, notice the use of Geopath. Consists out of BasicGeopositions
+    foreach (var dataObject in PointList.GetLines())
+    {
+      var shape = new MapPolyline
+      {
+        StrokeThickness = 9,
+        StrokeColor = strokeColor,
+        StrokeDashed = false,
+        ZIndex = 2,
+        Path = new Geopath(dataObject.Points)
+      };
+      <font color="#ff0000"><u>shape.AddData(dataObject);</u></font>
+
+      MyMap.MapElements.Add(shape);
+    }
+  }
+}</pre>
+<p>There is an AddData method that you won't find in any Microsoft API documentation because it's an extension method I wrote myself. The key thing to understand is that a map shape descends from DependencyObject. And thus, while it does not have a Tag, <em>it can support attached dependency properties</em>.</p>
+<p>So over in the MappingUtilities folder there is a class hosting a simple attached dependency property plus some helper methods:</p><pre>using Windows.UI.Xaml;
+using Windows.UI.Xaml.Controls.Maps;
+
+namespace MappingUtilities
+{
+  /// &lt;summary&gt;
+  /// Helper class to attach data to map shapes. Well, to any 
+  /// DependencyObject, but that's to make it fit into a PCL
+  /// &lt;/summary&gt;
+  public static class MapElementData
+  {
+    #region Attached Dependency Property ObjectData
+    public static readonly DependencyProperty ObjectDataProperty =
+       DependencyProperty.RegisterAttached("ObjectData",
+       typeof(object),
+       typeof(MapElementData),
+       new PropertyMetadata(default(object), null));
+
+    public static object GetObjectData(MapElement obj)
+    {
+      return obj.GetValue(ObjectDataProperty);
+    }
+
+    public static void SetObjectData(
+       DependencyObject obj,
+       object value)
+    {
+      obj.SetValue(ObjectDataProperty, value);
+    }
+    #endregion
+
+    public static void AddData(this MapElement element, object data)
+    {
+      SetObjectData(element, data);
+    }
+
+    public static T ReadData&lt;T&gt;(this MapElement element) where T : class
+    {
+      return GetObjectData(element) as T;
+    }
+  }
+}</pre>
+<p>Attaching a business object to a shape is as simple as calling shape.SetObjectData(businessObject) and getting it back again from the shape is done by using ReadData&lt;T&gt;. Which brings me to the subject of</p>
+<p><font size="4">Querying the map</font><br>On any GIS (or simple map based system) you want to be able to tap an element on the map to review it's properties. On the Windows 10 map, it's not possible to select individual elements. In stead, you can tap the <em>map</em> and check what's there. I call that the "skewer method" - you basically stick a skewer in the map on the tap location and see what sticks :). Nothing wrong with that, by the way.</p>
+<p>If you tap the map, you get either this message -&nbsp; if you tap on a place where there are no shapes to be found<br><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-3---setting-up_D0B5/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-3---setting-up_D0B5/image_thumb.png" width="644" height="185"></a></p>
+<p>...or something like this when you tap on a place where there are map shapes indeed<br><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-3---setting-up_D0B5/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-3---setting-up_D0B5/image_thumb_3.png" width="644" height="215"></a> Either way, this method is called:</p><pre style="font-size: 12px"> private async void OnMapElementClick(MapControl sender, 
+                                      MapElementClickEventArgs args)
+{
+  var resultText = new StringBuilder();
+
+  // Yay! Goodbye string.Format!
+  resultText.AppendLine($"Position={args.Position.X},{args.Position.Y}");
+  resultText.AppendLine(
+    $"Location={args.Location.Position.Latitude:F9},{args.Location.Position.Longitude:F9}");
+
+  foreach (var mapObject in args.MapElements)
+  {
+    resultText.AppendLine("Found: " + mapObject.ReadData&lt;PointList&gt;().Name);
+  }
+  var dialog = new MessageDialog(resultText.ToString(),
+    args.MapElements.Any() ? "Found the following objects" : "No data found");
+  await Dispatcher.RunAsync(CoreDispatcherPriority.Normal,
+    async () =&gt; await dialog.ShowAsync());
+}</pre>
+<p>This is great new event that makes searching for map elements on the location where is tapped or clicked. This is like actually applying the skewer - you stick it in the map and whatever is there, ends up in args.MapElements. Then it's simply a matter of processing all shapes in there and retrieve the business object using the ReadData method. The generic parameter conveniently casts it to the right type. Thus we can extract the Name property of every business objects from which the map shape originates and display it in a dialog. Or, presumably, do something more useful with it in a real life situation ;)</p>
+<p>Hooking up the control to the click event is simple, like this</p><pre>&lt;maps:MapControl x:Name="MyMap" MapElementClick="OnMapElementClick" /&gt;</pre>
+<p><font size="4">Concluding remarks</font><br>Using an attached dependency property to keep track of business objects and their map representation is pretty easy. So look no further for a tag (or some other weird trick) - just use the great things XAML offers us out of the box. Once again I refer to the <a href="https://github.com/LocalJoost/Manipulation_Drawing">sample app</a> to show you how things work in real life.</p>  

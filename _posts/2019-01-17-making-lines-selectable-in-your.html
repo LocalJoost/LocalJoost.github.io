@@ -1,0 +1,112 @@
+---
+layout: post
+title: Making lines selectable in your HoloLens or Windows Mixed Reality application
+date: '2019-01-17T19:24:00.000+01:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Windows Mixed Reality
+- Unity3D
+modified_time: '2019-01-27T14:45:57.193+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5603198485156163221
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2019/01/making-lines-selectable-in-your.html
+---
+
+<h2>Intro</h2><p>Using the <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank"><a href="https://github.com/Microsoft/MixedRealityToolkit-Unity" target="_blank">Mixed Reality Toolkit</a>, it's so easy to make an object selectable. You just add a behavior to your object that implements IInputClickHandler, fill in some code in the OnInputClicked method, and you are done. Consider for instance this rather naïve implementation of a behavior that toggles the color from the original to red and back when clicked: </p><pre style="font-size: 12px;">using HoloToolkit.Unity.InputModule;
+using UnityEngine;
+
+public class ColorToggler : MonoBehaviour, IInputClickHandler
+{
+    [SerializeField]
+    private Color _toggleColor = Color.red;
+
+    private Color _originalColor;
+
+    private Material _material;
+	void Start ()
+	{
+	    _material = GetComponent&lt;Renderer&gt;().material;
+        _originalColor = _material.color;
+	}
+	
+    public void OnInputClicked(InputClickedEventData eventData)
+    {
+        _material.color = _material.color == _originalColor ? _toggleColor : _originalColor;
+    }
+}</pre><p>If you add this behavior on for instance a simple Cube, the color will flick from whatever the original color was (in my case blue) to red and back when you tap it. But add this behavior to a line and and attempt to tap it - and nothing will happen. </p><p><img style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20191701/AppView.png" border="0"></p><h2>So what's a line, then?</h2><p>In Unity, a Line is basically an empty game object containing a LineRender component. You can access the LineRender using the standard GetComponent, then using it's SetPosition method to actually set the points. You can see how it's done <a href="https://github.com/LocalJoost/LineCollider" target="_blank">in the demo project</a>, in which I created a class LineController to make drawing the line a bit easier:</p><pre style="font-size: 12px;">public class LineController : MonoBehaviour
+{
+    public void SetPoints(Vector3[] points)
+    {
+        var lineRenderer = GetComponent&lt;LineRenderer&gt;();
+        lineRenderer.positionCount = points.Length;
+        for (var i = 0; i &lt; points.Length; i++)
+        {
+            lineRenderer.SetPosition(i, points[i]);
+        }
+        //Stuff omitted
+    }
+}</pre><p>This is embedded in a prefab "Line". Here you might see the root cause of the problem. The difference between a line and, for instance a cube is simple: there is no mesh, but more importantly - <em>there is no collider</em>. Compare this with the cube next to it:</p><p><img width="300" height="536" align="left" style="border: 0px currentcolor; border-image: none; float: left; display: inline; background-image: none;" src="http://www.schaikweb.net/blog/20191701/Line.png" border="0"><img width="300" height="426" align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" src="http://www.schaikweb.net/blog/20191701/Cube.png" border="0"><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><h2>So... how do we add a collider, then?</h2><p>That is not very hard. Find the prefab "Line", and add a "Line Collider Drawer" component. This is sitting in "HoloToolkitExtensions/Utilities/Scripts. <img width="630" height="271" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20191701/AddLineCollider.png" border="0"></p><p>Once you have done that, try to click the line again</p><p><img style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20191701/SelectedLine.png" border="0"></p><p>And hey presto - the line is not only selectable, but even the MRKT Standard Shader Hover Light option, that I selected in creating the line material, actually works. </p><h2>And in code, it works like this</h2><p>First of all, in the LineController, I wrote "//Stuff omitted". That stuff actually calls the LineColliderDrawer (or at least, it tries to):</p><pre style="font-size: 12px;">public class LineController : MonoBehaviour
+{
+    public void SetPoints(Vector3[] points)
+    {
+        var lineRenderer = GetComponent&lt;LineRenderer&gt;();
+        lineRenderer.positionCount = points.Length;
+        for (var i = 0; i &lt; points.Length; i++)
+        {
+            lineRenderer.SetPosition(i, points[i]);
+        }
+        
+<strong><font color="#ff0000">        var colliderDrawer = GetComponent&lt;LineColliderDrawer&gt;();
+        if (colliderDrawer != null)
+        {
+            colliderDrawer.AddColliderToLine(lineRenderer);
+        }</font></strong>
+    }
+}</pre><p>The main part of LineColliderDrawer is this method:</p><pre style="font-size: 12px;">private  void AddColliderToLine( LineRenderer lineRenderer, 
+    Vector3 startPoint, Vector3 endPoint)
+{
+    var lineCollider = new GameObject(LineColliderName).AddComponent&lt;CapsuleCollider&gt;();
+    lineCollider.transform.parent = lineRenderer.transform;
+    lineCollider.radius = lineRenderer.endWidth;
+    var midPoint = (startPoint + endPoint) / 2f;
+    lineCollider.transform.position = midPoint;
+
+    lineCollider.transform.LookAt(endPoint);
+    var rotationEulerAngles = lineCollider.transform.rotation.eulerAngles;
+    lineCollider.transform.rotation =
+        Quaternion.Euler(rotationEulerAngles.x + 90f, 
+        rotationEulerAngles.y, rotationEulerAngles.z);
+
+    lineCollider.height = Vector3.Distance(startPoint, endPoint);
+}</pre><p>This is partially inspired by <a href="https://answers.unity.com/questions/470943/collider-for-line-renderer.html" target="_blank">this post in the Unity forums</a>, and partially <a href="https://answers.unity.com/questions/768997/how-can-i-add-a-collider-to-my-line-renderer-scrip.html" target="_blank">by this one</a>. Although I think they are both not entirely correct, it certainly put me on the right track. </p><p>Basically it creates an empty game object, and add a capsule collider to that. The collider is set to the end with of the line, which is assumed to be of constant width. It's midpoint is set exactly halfway the line (segment) and then rotated to look at the end point. Oddly enough, it's then at 90 degrees with the actual line segment, so the collider is rotated 90 degrees over it's X axis. Finally, it is stretched to cover the whole line segment.</p><p>The rest of the class is basically a support act:</p><pre style="font-size: 12px;">public class LineColliderDrawer : MonoBehaviour
+{
+    private const string LineColliderName = "LineCollider";
+
+    public void AddColliderToLine(LineRenderer lineRenderer)
+    {
+        RemoveExistingColliders(lineRenderer);
+
+        for (var p = 0; p &lt; lineRenderer.positionCount; p++)
+        {
+            if (p &lt; lineRenderer.positionCount - 1)
+            {
+                AddColliderToLine(lineRenderer, 
+                    lineRenderer.GetPosition(p), 
+                    lineRenderer.GetPosition(p + 1));
+            }
+        }
+    }
+
+    private void RemoveExistingColliders(LineRenderer lineRenderer)
+    {
+        for (var i = lineRenderer.gameObject.transform.childCount - 1; i &gt;= 0; i--)
+        {
+            var child = lineRenderer.gameObject.transform.GetChild(i);
+            if (child.name == LineColliderName)
+            {
+                Destroy(child.gameObject);
+            }
+        }
+    }
+  }</pre>
+<p>This basically first removes any existing colliders, then adds colliders to the line for every segment - basically a line of n points gets n-1 colliders.</p><h2>Concluding words</h2><p>And that's basically it. Now lines can be selected as well. Thanks to both Unity forum posters who gave me two half-way parts that allowed me to combine this into one working solution.</p>

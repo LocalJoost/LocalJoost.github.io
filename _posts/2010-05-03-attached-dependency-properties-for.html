@@ -1,0 +1,113 @@
+---
+layout: post
+title: Attached dependency properties for dummies
+date: '2010-05-03T20:38:00.003+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- MVVM
+- Attached Dependency Property
+- Dependency Property
+- Silverlight
+- XAML
+modified_time: '2011-03-12T20:20:38.221+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3396309611380680398
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/05/attached-dependency-properties-for.html
+---
+
+<p>Recently I tried to make my first attached dependency property and it struck me as odd that I could find a lot of articles on dependency properties – but it still took me quite some time to piece together the how and the why. And basically they all parrot the same few samples. So I decided to try my own take on the subject.</p>  <p><span style="font-size: 130%">So what is an attached dependency property, then?</span></p>  <p>It helped me a lot to think of an attached dependency property as <em>being the property equivalent of an extension method</em>. You basically attach a new property to an existing object. Without actually modifying the object definition.</p>  <p><span style="font-size: 130%">What is it good for?</span></p>  <p>About the same as an extension method: you can add extra properties to existing objects, without having to go trough the hoopla of inheritance. Which is especially handy when inheritance is not possible, like in sealed objects. More importantly, these properties can play along in the WPF en Silverlight data binding. The most important application, as far as I am concerned, is that you can make something bindable that is not bindable out of the box. If some value(s) a GUI component can only be set by a method, you cannot use it from MVVM, for example. By making an attached dependency property that passes on the new value to said method you work around that. See below for how you make such a callback.</p>  <p>In fact, attached dependency properties is part of the magic of that makes <a href="http://www.galasoft.ch/mvvm/getstarted/" target="_blank">Laurent Bugnion’s MVVM Light toolkit</a> go, at least where the ButtonBaseExtensions class is concerned, and reading the code in this class actually (and finally) made the penny drop for me. </p>  <p><span style="font-size: 130%">So how do you make an attached dependency property?</span></p>  <p>You make a static class, in which the property is declared and 'hosted', as I call it. The general form is like this:</p>  <pre>public static class DependencyPropertyHoster
+{
+  public static readonly DependencyProperty MyPropertyNameProperty =
+    DependencyProperty.RegisterAttached(&quot;MyPropertyName&quot;, 
+    typeof(TargetPropertyType), 
+    typeof(DependencyPropertyHoster), 
+    new PropertyMetadata(CallBackWhenPropertyIsChanged));
+
+  // Called when Property is retrieved
+  public static TargetPropertyType GetMyPropertyName(DependencyObject obj)
+  {
+    return obj.GetValue(MyPropertyNameProperty) as TargetPropertyType;
+  }
+
+  // Called when Property is set
+  public static void SetMyPropertyName(
+     DependencyObject obj, 
+     TargetPropertyType value)
+  {
+    obj.SetValue(MyPropertyNameProperty, value);
+  }
+
+  // Called when property is changed
+  private static void CallBackWhenPropertyIsChanged(
+   object sender, 
+   DependencyPropertyChangedEventArgs args)
+  {
+    var attachedObject = sender as ObjectTypeToWhichYouWantToAttach;
+    if (attachedObject != null )
+    {
+      // do whatever is necessary, for example
+      // attachedObject.CallSomeMethod( 
+      // args.NewValue as TargetPropertyType);
+    }
+   }
+}</pre>
+This is roughly the equivalent of 
+
+<pre>public partial class ObjectTypeToWhichYouWantToAttach
+{
+  TargetPropertyType _myPropertyName;
+  TargetPropertyType MyPropertyName
+ {
+   get
+   {
+     return _myPropertyName;
+   }
+   set
+   {
+     if( _myPropertyName != value )
+     {
+        //CallBackWhenPropertyIsChanged...
+     }
+   }
+  }
+}</pre>
+
+<p>The whole thing works by <strong>naming convention</strong>. So if you call your property <em>&quot;MyPropertyName&quot;</em>, then:</p>
+
+<ul>
+  <li>Your DependecyProperty needs to be called <em>MyPropertyName</em>Property </li>
+
+  <li>Your Set method needs to be called Set<em>MyPropertyName</em> </li>
+
+  <li>Your Get method needs to be called Get<em>MyPropertyName</em> </li>
+</ul>
+When you register your property the way I do, the members in the RegisterAttached method call are, from left to right: 
+
+<ul>
+  <li>The name of your property (as a string, yes) </li>
+
+  <li>Property value type (here “TargetPropertyType”, but of course that can be anything) </li>
+
+  <li>Type of the <em>hosting class </em>(i.e. DependencyPropertyHoster in this case) </li>
+
+  <li>Callbackmethod to be called when the property is changed. </li>
+</ul>
+
+<p><span style="font-size: 130%">How do you use it from XAML?</span></p>
+
+<p>First, you need to declare its namespace and possibly its assembly. Suppose my class DependencyPropertyHoster was in namespace LocalJoost.Binders, and in a separate assembly called LocalJoost, I would need to declare it as</p>
+
+<pre>xmlns:MyPrefix=&quot;clr-namespace:LocalJoost.Binders;assembly=LocalJoost&quot;</pre>
+and if you want to use it in binding, you use 
+
+<pre>MyPrefix:DependencyPropertyHoster.MyPropertyName=&quot;{Binding whatever}&quot; </pre>
+
+<p>I am currently making a small mapping application using a MultiScaleImage for showing Bing Maps that heavily depends on this trickery. Stay tuned, an example of this will probably follow shortly.</p>
+
+<p><span style="font-size: 130%">But wait, where is the actual data stored if not in the object itself?</span></p>
+
+<p>To be honest, I don’t really know. An explanation is provided in the first comment by Dennis Vroegop (thanky you!). But to be even more honest, for now I don’t really have to know. If it works, it works. That's the real beauty of abstraction :-)</p>
+
+<p><span style="font-size: 130%">Update: for the real lazybones, a code snippet</span></p>
+
+<p><span style="font-size: 130%"></span>Unzip <a href="http://www.schaikweb.net/dotnetbyexample/adp.zip" target="_blank">this file</a> in your code snippet directory. You will find this in Libraries\Documents\Visual Studio 2010\Code Snippets\Visual C#\My Code Snippets. From now on, if you type “adp” followed by a tab it will automatically insert an attached dependency property for you</p>  

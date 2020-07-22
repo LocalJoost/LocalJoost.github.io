@@ -1,0 +1,36 @@
+---
+layout: post
+title: Displaying an image in Windows Phone 7 accent color
+date: '2011-01-21T21:36:00.003+01:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- XAML
+- WP7
+modified_time: '2012-03-29T16:10:36.014+02:00'
+thumbnail: http://lh4.ggpht.com/_QXPoKuE9q6k/TTnuWWytoQI/AAAAAAAAF5A/PHXYI0HbHis/s72-c/hand_thumb.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1060243624058528430
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/01/displaying-image-in-windows-phone-7.html
+---
+
+<p>One of the customizing features of <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> is the accent color, which is used to display tiles and certain user interface elements. Default is blue, but I like to play with it (indeed, as the text on the ‘theme’ settings page suggests, to match my mood) and am currently hooked on <font color="#9b00d3"><strike>purple</strike> </font><font color="#00ff00">green</font>. Sue me ;-)</p>  <p>When you use vector data or controls, it is possible to use this color by referring to <strong>PhoneAccentBrush. </strong>For example, if you want a TextBlock’s color to match the accent color, simply add</p>  <pre>Foreground=&quot;{StaticResource PhoneAccentBrush}&quot;</pre>
+to the TextBlock. An example of this effect can be seen <a href="http://dotnetbyexample.blogspot.com/2011/01/standard-about-page-for-windows-phone-7.html" target="_blank">in my previous post</a> - there is the text &quot;About Sample&quot; shown in blue - the default accent color (screen shot way way below at the end of the post) 
+
+<p><a href="http://lh5.ggpht.com/_QXPoKuE9q6k/TTnuV8rQgsI/AAAAAAAAF48/hyOqyEhIV2U/s1600-h/hand%5B2%5D.png"><img style="border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="hand" border="0" alt="hand" align="right" src="http://lh4.ggpht.com/_QXPoKuE9q6k/TTnuWWytoQI/AAAAAAAAF5A/PHXYI0HbHis/hand_thumb.png?imgmax=800" width="78" height="94" /></a>But it is also possible to show an entire <em>image</em> in the accent color, and it is surprisingly simple. Suppose you want a “thumbs up” image like showed to the right, which I use on the Map Mania credits page. I started out with a simple white-on-transparent background image, and added that to my Windows Phone 7 page like this:</p>
+
+<p>&#160;</p>
+
+<pre>&lt;Rectangle Fill=&quot;{StaticResource PhoneAccentBrush}&quot; 
+     Width=&quot;55&quot; Height=&quot;68&quot;&gt;
+  &lt;Rectangle.OpacityMask&gt;
+    &lt;ImageBrush ImageSource=&quot;icons/thumbsup.png&quot; Stretch=&quot;Fill&quot; /&gt;
+  &lt;/Rectangle.OpacityMask&gt;
+&lt;/Rectangle&gt;</pre>
+
+<p>In stead of adding the image directly to your XAML, you add a R<em>ectangle</em> of the same size with a PhoneAccentBrush Fill color, and the image itself as a brush. Presto. Image in accent color – that automatically changes when you change the accent color of your phone. </p>
+
+<p>And that’s all that’s to it. It’s not always complicated architectural things that lighten up your App. ;-)</p>
+
+<b>Update 20-02-2012</b> Is has been brought to my attention that an older post with nearly identical XAML code has appeared earlier <a href="http://accidentalscientist.com/2010/09/colorizing-images-for-windows-phone-7.html">on the "Accidental Scientist"</a> by Simon Cooke. It's uncanny that he even used an identically named image. As my regular readers know I take great pains to link to blog posts or people that inspired me or on whose work I based my examples. For the record: I never saw this blog post when I posted this over a year ago, possibly because of the title, but Mr. Simon Cooke appeared to have this idea earlier than I did. So I hereby acknowledge he has 'prior art credits'.

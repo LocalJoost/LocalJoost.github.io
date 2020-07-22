@@ -1,0 +1,58 @@
+---
+layout: post
+title: 'JSON services revisited: using a Dictionary as a generic parameter'
+date: '2008-03-16T16:17:00.007+01:00'
+author: Joost van Schaik
+tags:
+- refactoring
+- C#
+- Service
+- JSON
+- Web Services
+- Javascript
+modified_time: '2008-03-16T18:16:17.235+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-835152595425995076
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2008/03/json-services-revisited-using.html
+---
+
+Somebody at Microsoft deserves a Nobel Prize. Well, that is maybe a bit strong, but I ran into the problem that I wanted to create JSON scriptserver that would accept a 'parameter bag' of unknown size and type. I expected problems in the serialization, since Javascript typing is at best a bit lax, but it turns out that when you define a web service with a parameter of type Dictionary&lt;string, object&gt; dict, the JSON serializer <em>automatically</em> derives the object types from the javascript data! 
+
+It works like this: suppose we define the following method:<pre>[WebMethod]
+public string DictMethod(Dictionary&lt;string, object&gt; dict)
+{
+  StringBuilder b = new StringBuilder("C# reports&lt;BR/&gt;");
+  foreach( string s in dict.Keys )
+  {
+    b.AppendFormat(string.Format("{0}:{1}={2}&lt;BR/&gt;", s, dict[s].GetType(), 
+                   dict[s]));
+  }
+  return b.ToString();
+}</pre>We can call this method from javascript like this<pre>&lt;script type="text/javascript"&gt;
+  function LoadDict()
+  {
+    dict = new Object();
+    dict["test1"] = "Joost";
+    dict["test2"] = 21;
+    dict["test3"] = true;
+    dict["test4"] = 9999999999;
+    dict["test5"] = new Date(2008,09,12,13,14,00);
+    DictService.DictMethod( dict, ProcessResult );
+  }
+
+  function ProcessResult( WebServiceResult )
+  {
+    document.write( WebServiceResult );
+  }
+&lt;/script&gt;</pre>If you attach the LoadDict javascript function to some client side event (The OnClientClick of a button for example) and launch it, you will see the following output:
+<code>C# reports
+test1:System.String=Joost
+test2:System.Int32=21
+test3:System.Boolean=True
+test4:System.Int64=9999999999
+test5:System.DateTime=12-10-2008 11:14:00
+</code>
+So you can see, the javascript string converted into a true .NET string, the value 21 into an Int32 - but the value 9999999999 is too long for an int and is converted into a Int64, a.k.a. long - I really like that one, for it shows true craftmanship of the programmer ;-). The "true" javascript value is converted into a Boolean finally, the javascript Date is converted into a neat DateTime. And presto, all your stuff is converted into real .NET objects.
+
+Of course, you should always used typed parameters when possible, but for some generic solutions this may come in very handy.
+
+Complete code downloadable <a href="http://www.schaikweb.net/dotnetbyexample/DictDemo.zip">here</a>.

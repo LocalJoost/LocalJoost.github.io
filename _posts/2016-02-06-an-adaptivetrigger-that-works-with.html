@@ -1,0 +1,219 @@
+---
+layout: post
+title: An AdaptiveTrigger that works with StateTrigger inside WindowsStateTriggers’
+  CompositeStateTrigger
+date: '2016-02-06T15:28:00.000+01:00'
+author: Joost van Schaik
+tags:
+- UWP
+- XAML
+- Triggers
+modified_time: '2016-02-07T12:28:05.322+01:00'
+thumbnail: https://i.ytimg.com/vi/sok3s04fWKQ/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7796766495493500263
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/02/an-adaptivetrigger-that-works-with.html
+---
+
+<h2>Intro</h2> <p>Still working on porting <a href="https://www.microsoft.com/en-US/store/Apps/Map-Mania-8/9NBLGGH08D4P" target="_blank">Map Mania</a> to the <a href="https://www.visualstudio.com/en-us/features/universal-windows-platform-vs.aspx" target="_blank">Universal Windows Platform</a>, I ran into a bit of a snag. It wanted to have a kind of decision-tree Visual State</p> <ul> <li>In wide screen, show the UI elements next to each other  <li>In narrow screen, show the UI element on top of each other and allow the user to determine which one to show with a kind of menu</li></ul> <p><iframe height="362" src="https://www.youtube.com/embed/sok3s04fWKQ" frameborder="0" width="645" allowfullscreen></iframe></p> <p>And being a stubborn b*st*rd, I felt I should be able to solve by using the Visual State Manager and <a href="https://msdn.microsoft.com/en-us/library/windows/apps/windows.ui.xaml.adaptivetrigger.aspx" target="_blank">Adaptive Triggers</a> only, with three Visual States. </p> <ul> <li>WideState  <li>NarrowState_Red  <li>NarrowState_Green</li></ul> <p>And of course, using MVVM. There is a <a href="https://msdn.microsoft.com/en-us/library/windows/apps/windows.ui.xaml.statetrigger.aspx" target="_blank">StateTrigger</a>, which you can bind to a boolean, that will activate upon that boolean being true – using something like a <a href="https://github.com/LocalJoost/WpWinNl/blob/uwp/uap10.0/WpWinNl/Converters/BoolInvertConverter.cs" target="_blank">BoolInvertConverter</a>, that will nicely do as flip-flop switch. There is also the well-known AdaptiveTrigger. So for both the narrow state, I can add a StateTrigger <em>and</em> an AdaptiveTrigger. I envisioned something like this: </p><pre>&lt;VisualState x:Name="NarrowState_Red"&gt;
+  &lt;VisualState.StateTriggers&gt;
+    &lt;AdaptiveTrigger MinWindowWidth="0"&gt;&lt;/AdaptiveTrigger&gt;
+    &lt;StateTrigger IsActive="{x:Bind ViewModel.TabDisplay, Mode=OneWay}"/&gt;
+  &lt;/VisualState.StateTriggers&gt;
+  &lt;VisualState.Setters&gt;
+    &lt;!-- --&gt;
+  &lt;/VisualState.Setters&gt;
+&lt;/VisualState&gt;
+
+&lt;VisualState x:Name="NarrowState_Green"&gt;
+  &lt;VisualState.StateTriggers&gt;
+    &lt;AdaptiveTrigger  MinWindowWidth="0" &gt;&lt;/AdaptiveTrigger&gt;
+    &lt;StateTrigger IsActive="{x:Bind ViewModel.TabDisplay, Mode=OneWay, 
+         Converter={StaticResource BoolInvertConverter}}"/&gt;
+  &lt;/VisualState.StateTriggers&gt;
+  &lt;VisualState.Setters&gt;
+    &lt;!-- --&gt;
+  &lt;/VisualState.Setters&gt;
+&lt;/VisualState&gt;
+
+&lt;VisualState x:Name="WideState"&gt;
+  &lt;VisualState.StateTriggers&gt;
+    &lt;AdaptiveTrigger MinWindowWidth="700" &gt;&lt;/AdaptiveTrigger&gt;
+  &lt;/VisualState.StateTriggers&gt;
+    &lt;VisualState.Setters&gt;
+    &lt;!-- --&gt;
+  &lt;/VisualState.Setters&gt;
+&lt;/VisualState&gt;</pre>
+<p>Unfortunately, that will activate the state if <em>either of one triggers is true</em>. So even in Wide state, I still get one of the Narrow states (and/or the Visual State Manager went belly-up), depending on whether TabDisplay is true or not. I needed something to fire only if <em>all</em> of the triggers are true. Enter…</p>
+<h2>WindowsStateTriggers to the rescue (sort of)</h2>
+<p>My smart fellow MVP <a href="https://twitter.com/dotmorten" target="_blank">Morten Nielsen</a> has created a <a href="https://github.com/dotMorten/WindowsStateTriggers" target="_blank">GitHub repo</a> (as well as a <a href="https://www.nuget.org/packages/WindowsStateTriggers/" target="_blank">NuGet package</a>) containing all kinds of very useful triggers. One of the most awesome is <a href="https://github.com/dotMorten/WindowsStateTriggers/blob/master/src/WindowsStateTriggers/CompositeStateTrigger.cs" target="_blank">CompositeStateTrigger</a>, which allows you to put a number of triggers <em>inside</em> it, and have them evaluated as one. The default behavior of CompositeStateTrigger is to only fire <em>when all of the triggers inside it are true</em> – exactly what I need! Then I had a bit of a setback discovering the default Microsoft AdaptiveTrigger cannot be used inside the CompositeStateTrigger, but fortunately there was a <a href="https://github.com/dotMorten/WindowsStateTriggers/pull/48" target="_blank">pull request</a> by one <a href="https://github.com/totht91" target="_blank">Tibor Tóth</a> in October 2015 that provided an implementation that could. So happy as a clam I pulled all the stuff in, changed my Visual State Manager to this:</p><pre>&lt;VisualState x:Name="NarrowState_Red"&gt;
+  &lt;VisualState.StateTriggers&gt;
+    <font color="#ff0000"><strong>&lt;windowsStateTriggers:CompositeStateTrigger&gt;</strong></font>
+      &lt;<font color="#ff0000"><strong>windowsStateTriggers</strong></font>:AdaptiveTrigger  MinWindowWidth="0" /&gt;
+      &lt;StateTrigger IsActive="{x:Bind ViewModel.TabDisplay, Mode=OneWay}"/&gt;
+ <font color="#ff0000">   <strong>&lt;/windowsStateTriggers:CompositeStateTrigger&gt;</strong></font>
+  &lt;/VisualState.StateTriggers&gt;
+  &lt;VisualState.Setters&gt;
+    &lt;!-- --&gt;
+  &lt;/VisualState.Setters&gt;
+&lt;/VisualState&gt;
+
+&lt;VisualState x:Name="NarrowState_Green"&gt;
+  &lt;VisualState.StateTriggers&gt;
+    <font color="#ff0000"><strong>&lt;windowsStateTriggers:CompositeStateTrigger&gt;</strong></font>
+      &lt;<font color="#ff0000"><strong>windowsStateTriggers</strong></font>:AdaptiveTrigger  MinWindowWidth="0" /&gt;
+      &lt;StateTrigger IsActive="{x:Bind ViewModel.TabDisplay, Mode=OneWay, 
+          Converter={StaticResource BoolInvertConverter}}"&gt;&lt;/StateTrigger&gt;
+<strong><font color="#ff0000">    &lt;/windowsStateTriggers:CompositeStateTrigger&gt;</font></strong>
+  &lt;/VisualState.StateTriggers&gt;
+  &lt;VisualState.Setters&gt;
+    &lt;!-- --&gt;
+  &lt;/VisualState.Setters&gt;
+&lt;/VisualState&gt;
+
+&lt;VisualState x:Name="WideState"&gt;
+  &lt;VisualState.StateTriggers&gt;
+    &lt;windowsStateTriggers:AdaptiveTrigger MinWindowWidth="700"/&gt;
+  &lt;/VisualState.StateTriggers&gt;
+  &lt;VisualState.Setters&gt;
+    &lt;!-- --&gt;
+  &lt;/VisualState.Setters&gt;
+&lt;/VisualState&gt;</pre>
+<p>And got this – only both Narrow states showed. </p>
+<p><iframe height="362" src="https://www.youtube.com/embed/eQnRAb2CqJs" frameborder="0" width="645" allowfullscreen></iframe></p>
+<p>And then I felt a bit like this</p>
+<p><img src="http://1.bp.blogspot.com/-OI32F0zSAtY/TrliunPbzhI/AAAAAAAAEcM/zYIofTvOiEc/s1600/curmudgeon.jpg" width="305" height="213"></p>
+<p>And about the same age too.</p>
+<h3>Investigating my issue</h3>
+<p>The <a href="https://raw.githubusercontent.com/dotMorten/WindowsStateTriggers/master/src/WindowsStateTriggers/AdaptiveTrigger.cs" target="_blank">WindowsStateTriggers AdaptiveTrigger</a> is a child class of the default AdaptiveTrigger, and I think the issue boils down to these lines:</p><pre>private void OnCoreWindowOnSizeChanged(CoreWindow sender, 
+  WindowSizeChangedEventArgs args)
+{
+  IsActive = args.Size.Height &gt;= MinWindowHeight &amp;&amp; 
+             args.Size.Width &gt;= MinWindowWidth;
+}
+
+private void OnMinWindowHeightPropertyChanged(DependencyObject sender, 
+  DependencyProperty dp)
+{
+  var window = CoreApplication.GetCurrentView()?.CoreWindow;
+  if (window != null)
+  {
+    IsActive = window.Bounds.Height &gt;= MinWindowHeight;
+  }
+}
+
+private void OnMinWindowWidthPropertyChanged(DependencyObject sender, 
+  DependencyProperty dp)
+{
+  var window = CoreApplication.GetCurrentView()?.CoreWindow;
+  if (window != null)
+  {
+    IsActive = window.Bounds.Width &gt;= MinWindowWidth;
+  }
+}</pre>
+<p>If you have 4 triggers, for screen sizes 0, 340, 500 and 700, and a screen size of 600 – then the three triggers for 0, 340 and 500 will set IsActive to true, three states will be valid at once, your Visual State Manager barfs and nothing happens. In fact, there is no way in Hades the 0 width trigger will <em>not</em> fire, as there are no ways to make a negative sized active element that I am aware of. I don’t know what Microsoft have done with <em>their</em> implementation, but apparently it ‘magically’ finds sibling-triggers inside the Visual State Manager and proceeds to fire only the one that has the highest value smaller than the screen size, and not all those with lower values. Ironically – by making this AdaptiveTrigger trigger a child class of the Microsoft AdaptiveTrigger, it will function perfectly –<em> as long as you don’t put it into a CompositeTrigger</em>, so it can do the ‘Microsoft Magic’. It’s an insidious trap, and it took me the better part of a day to find out why the hell this was not working.</p>
+<h2>Now what?</h2>
+<p>The key thing to understand – and what took quite some for me to have the penny dropped - is that the Visual State Manager will only work if always, under any circumstances, <em>one and only one state is true.</em> Therefore, one and only <em>one set of triggers may be true</em>. So, based upon what I learned from looking at Tibor’s code, I made my own AdaptiveTrigger, which is unfortunately not so elegant.</p>
+<h2>To a working/workable AdaptiveTrigger</h2>
+<p>As I don’t have any clue as to how Microsoft does the “looking-up-sibling-triggers-magic”, I have made two major changes to the WindowsStateTrigger’s AdaptiveTrigger:</p>
+<ol>
+<li>I did not make a it a child class from the Microsoft AdaptiveTrigger (but from WindowsStateTrigger’s StateTriggerBase) 
+<li>Next to the properties the Microsoft AdaptiveTrigger has – MinWindowHeight en MinWindowWidth – I added two <em>new</em> properties, <strong>MaxWindowHeight</strong> and <strong>MaxWindowWidth</strong></li></ol>
+<p>And then added the following code:</p><pre style="font-size: 12px">public class AdaptiveTrigger : StateTriggerBase, ITriggerValue
+{
+  public AdaptiveTrigger()
+  {
+    var window = CoreApplication.GetCurrentView()?.CoreWindow;
+    if (window != null)
+    {
+      var weakEvent = new WeakEventListener&lt;AdaptiveTrigger, CoreWindow, 
+                                            WindowSizeChangedEventArgs&gt;(this)
+      {
+        OnEventAction = (instance, s, e) =&gt; OnCoreWindowOnSizeChanged(s, e),
+        OnDetachAction = (instance, weakEventListener) 
+          =&gt; window.SizeChanged -= weakEventListener.OnEvent
+      };
+      window.SizeChanged += weakEvent.OnEvent;
+    }
+  }
+  private void OnCoreWindowOnSizeChanged(CoreWindow sender, 
+    WindowSizeChangedEventArgs args)
+  {
+    OnCoreWindowOnSizeChanged(args.Size);
+  }
+
+<strong><font color="#ff0000">  private void OnCoreWindowOnSizeChanged(Size size)
+  {
+    IsActive = size.Height &gt;= MinWindowHeight &amp;&amp; size.Width &gt;= MinWindowWidth &amp;&amp;
+               size.Height &lt;= MaxWindowHeight &amp;&amp; size.Width &lt;= MaxWindowWidth &amp;&amp;
+               MinWindowHeight &lt;= MaxWindowHeight &amp;&amp; MinWindowWidth &lt;= MaxWindowWidth;
+  }</font></strong>
+
+  private void OnWindowSizePropertyChanged()
+  {
+    var window = CoreApplication.GetCurrentView()?.CoreWindow;
+    if (window != null)
+    {
+      OnCoreWindowOnSizeChanged(new Size(window.Bounds.Width, window.Bounds.Height));
+    }
+  }
+
+  private bool _isActive;
+
+  public bool IsActive
+  {
+    get
+    {
+      return _isActive;
+    }
+    private set
+    {
+      if (_isActive != value)
+      {
+        _isActive = value;
+        SetActive(value);
+        IsActiveChanged?.Invoke(this, EventArgs.Empty);
+      }
+    }
+  }
+
+  public event EventHandler IsActiveChanged;
+}</pre>
+<p>Key part of course is the OnCoreWindowOnSizeChanged method, that not only checks for lower, but also <em>upper</em> boundaries. Usage then is as follows:</p><pre style="font-size: 12px">&lt;VisualState x:Name="NarrowState_Red"&gt;
+  &lt;VisualState.StateTriggers&gt;
+    &lt;windowsStateTriggers:CompositeStateTrigger&gt;
+     <strong><font color="#ff0000"> &lt;wpwinnltriggers:AdaptiveTrigger  <u>MinWindowWidth="0" MaxWindowWidth="699"</u>/&gt;</font></strong>
+      &lt;StateTrigger IsActive="{x:Bind ViewModel.TabDisplay, Mode=OneWay}"&gt;&lt;/StateTrigger&gt;
+   <font color="#000000"> &lt;/windowsStateTriggers:CompositeStateTrigger&gt;</font>
+  &lt;/VisualState.StateTriggers&gt;
+  &lt;VisualState.Setters&gt;
+    &lt;!-- --&gt;
+  &lt;/VisualState.Setters&gt;
+&lt;/VisualState&gt;
+
+&lt;VisualState x:Name="NarrowState_Green"&gt;
+  &lt;VisualState.StateTriggers&gt;
+    &lt;windowsStateTriggers:CompositeStateTrigger&gt;
+      &lt;<font color="#ff0000"><strong>wpwinnltriggers:AdaptiveTrigger  <u>MinWindowWidth="0" MaxWindowWidth="699"</u>/&gt;</strong></font>
+      &lt;StateTrigger IsActive="{x:Bind ViewModel.TabDisplay, Mode=OneWay, 
+      Converter={StaticResource BoolInvertConverter}}"&gt;&lt;/StateTrigger&gt;
+    &lt;/windowsStateTriggers:CompositeStateTrigger&gt;
+  &lt;/VisualState.StateTriggers&gt;
+  &lt;VisualState.Setters&gt;
+    &lt;!-- --&gt;
+  &lt;/VisualState.Setters&gt;
+&lt;/VisualState&gt;
+
+&lt;VisualState x:Name="WideState"&gt;
+  &lt;VisualState.StateTriggers&gt;
+    &lt;wpwinnltriggers:AdaptiveTrigger MinWindowWidth="700" /&gt;
+  &lt;/VisualState.StateTriggers&gt;
+  &lt;VisualState.Setters&gt;
+    &lt;!-- --&gt;
+  &lt;/VisualState.Setters&gt;
+&lt;/VisualState&gt;</pre>
+<p>Having to watch for both min and max sizes and having them align closely is a bit cumbersome and not so elegant, but it works for my needs – as the first video on this post shows. </p>
+<h3>Credits</h3>
+<p>These go first and foremost to <a href="https://github.com/totht91" target="_blank">Tibor Tóth</a> for making a good first attempt at making a composable AdaptiveTrigger, teaching me about things like CoreApplication windows that I had previously not encountered. Second of course Morten Nielsen himself, for making WindowsStateTriggers in the first place (it’s quite a popular library by the looks of it) and providing some pointers to improve on my initial code. </p>
+<h3>Some concluding remarks</h3>
+<p>A demo project, that sports pages with show both mine and Tibor’s trigger and demonstrates the issue I encountered, <a href="https://github.com/LocalJoost/ComposableAdaptiveTriggerDemo" target="_blank">can be found here</a>. In fact, the video’s displayed in this post are screencasts of that very app. You will also notice WeakEventListener from WindowsStateTriggers being copied in there – this is because inside WindowsStateTriggers the WeakEventListener is not publicly accessible. The fun thing about open source is that, well, it’s open, and it allows things like copying out internal classes and making use of them anyway. There are several ways to do open source – I tend to make open extensible tool boxes, other people make libraries with a surface as small as possible. Both are valid. </p>
+<p>In any case, I hope I have given people who want to do some more advanced Visual State Manager magic some things to reach their goal.</p>

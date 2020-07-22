@@ -1,0 +1,202 @@
+---
+layout: post
+title: Custom oAuth login to Facebook for Windows Store apps
+date: '2015-06-24T10:33:00.000+02:00'
+author: Joost van Schaik
+tags:
+- oAuth
+- windows 8.1
+- Facebook
+modified_time: '2018-03-29T10:34:25.515+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5009557503543292127
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/06/custom-oauth-login-to-facebook-for.html
+---
+
+<p><font size="4">Intro: the joy of third party dependencies<br></font>I am currently working on a <a href="http://www.windows.com" target="_blank">Windows</a> app that uses some kind of Facebook integration. Last Friday (June 20) something odd occurred: some POC code that I got from my colleague <a href="https://nl.linkedin.com/in/melvinv" target="_blank">Melvin Vermeer</a> where I had been toying with (the code, to be clear – not Melvin ;) ), suddenly stopped working. Assuming I had messed something up, I started tinkering with it, then checked the Facebook settings to see if Melvin had used some odd setting that only worked temporarily. This was not the case – so I even tried it on a different computer and later at home (operating on the assumption I had somehow blacklisted the Wortell offices). To no avail. The error I kept getting was:</p> <p><strong>Given URL is not permitted by the Application configuration<br>One or more of the given URLs is not permitted by the App's settings. It must match the Website URL or Canvas URL, or the domain must be a subdomain of one of the App's domains.</strong></p> <p>Not a good way to start a weekend, I can tell you. Then I decided to employ the ‘wisdom of the crowd’, aka twitter. My fellow MVP <a href="http://twitter.com/vbandi" target="_blank">András Vélvart</a> responded immediately by acknowledging he had the same problem, and pointed me <a href="https://developers.facebook.com/bugs/1448059258828537/?__mref=message_bubble" target="_blank">to this Facebook bug report</a>.</p> <p>I hadn’t messed anything up, neither had Melvin. <em>Facebook itself had pulled the rug from under us.</em></p> <p>Now at the point of this writing I have ascertained Facebook apparently have fixed the error, but that was not the case yesterday and with a deadline looming I needed a plan B very quickly, and I got one with the help of Tamás Deme, aka <a href="http://twitter.com/tomzorz_" target="_blank">'tomzorz'</a>, a Hungarian <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> consumer MVP that I did not knew nor followed yet (shame on me!). Although the ‘normal’ way now works again, I decided to blog about the alternative approach anyway, to make sure this plan B is available to everyone in case, ehm … excrement hits the cooling device … again.</p> <p><font size="4">The prescribed way of getting a Facebook access token</font><br>In a world where everything works as it should you can get a Facebook token using WebAuthenticationBroker and a <a href="https://github.com/facebook-csharp-sdk/facebook-csharp-sdk" target="_blank">Facebook C# SDK</a>, which is also available as a <a href="http://www.nuget.org/packages/Facebook/" target="_blank">NuGet package</a>. The code I got from my colleague basically came down to this:</p><pre>using Facebook;
+
+namespace FacebookNormal
+{
+  public sealed partial class MainPage : Page
+  {
+    private const string AppId = "your app id here";
+    private const string ExtendedPermissions = 
+      "publish_actions, user_managed_groups, user_groups";
+
+    public MainPage()
+    {
+      this.InitializeComponent();
+    }
+
+    private async void ButtonBase_OnClick(object sender, RoutedEventArgs e)
+    {
+      var result = await AuthenticateFacebookAsync();
+      var md = new MessageDialog("your token is: " + result);
+      await md.ShowAsync();
+    }
+
+    private async Task&lt;string&gt; AuthenticateFacebookAsync()
+    {
+      try
+      {
+        var fb = new FacebookClient();
+
+        var redirectUri = 
+          WebAuthenticationBroker.GetCurrentApplicationCallbackUri().ToString();
+
+        var loginUri = fb.GetLoginUrl(new
+                                       {
+                                         client_id = AppId,
+                                         redirect_uri = redirectUri,
+                                         scope = ExtendedPermissions,
+                                         display = "popup",
+                                         response_type = "token"
+                                       });
+
+        var callbackUri = new Uri(redirectUri, UriKind.Absolute);
+
+        var authenticationResult =
+          await
+            WebAuthenticationBroker.AuthenticateAsync(
+            WebAuthenticationOptions.None, 
+            loginUri, callbackUri);
+
+        return ParseAuthenticationResult(fb, authenticationResult);
+      }
+      catch (Exception ex)
+      {
+        return ex.Message;
+      }
+    }
+
+    public string ParseAuthenticationResult(FacebookClient fb, 
+                                            WebAuthenticationResult result)
+    {
+      switch (result.ResponseStatus)
+      {
+        case WebAuthenticationStatus.ErrorHttp:
+          return "Error";
+        case WebAuthenticationStatus.Success:
+
+          var oAuthResult = fb.ParseOAuthCallbackUrl(new Uri(result.ResponseData));
+          return oAuthResult.AccessToken;
+        case WebAuthenticationStatus.UserCancel:
+          return "Operation aborted";
+      }
+      return null;
+    }
+  }
+}
+</pre>
+<p>You get the callback URL to your own app, create a login Url, ask the WebAuthenticationBroker to do it’s stuff and show the “connecting to a service” window with the Facebook login, you parse the result, and if all goes well, you have a token. All code sits in the code behind – this was a POC, so that is very much OK.</p>
+<p><font size="4">Plan B – using a custom login employing a WebView</font><br></p>This looks very much the same, except that I have replaced both the AuthenticateFacebookAsync and the ParseAuthenticationResult methods. <pre>private const string FbSuccess = 
+  "https://www.facebook.com/connect/login_success.html";
+
+private async Task&lt;string&gt; AuthenticateFacebookAsync()
+{
+  try
+  {
+    var fb = new FacebookClient();
+
+    var loginUri = fb.GetLoginUrl(new
+    {
+      client_id = AppId,
+      redirect_uri = FbSuccess,
+      scope = ExtendedPermissions,
+      display = "popup",
+      response_type = "token"
+    });
+
+    var authenticationResult =
+      await
+        FacebookAuthenticationBroker.AuthenticateAsync(loginUri);
+
+    return ParseAuthenticationResult(authenticationResult);
+  }
+  catch (Exception ex)
+  {
+    return ex.Message;
+  }
+}
+
+private static string ParseAuthenticationResult(string authResult)
+{
+  var pattern = 
+    string.Format("{0}#access_token={1}&amp;expires_in={2}", 
+                  FbSuccess,"(?&lt;access_token&gt;.+)", "(?&lt;expires_in&gt;.+)");
+  var match = Regex.Match(authResult, pattern);
+  return match.Groups["access_token"].Value;
+}
+</pre>
+<p>Now what is that mysterious FacebookAuthenticationBroker? The framework for that I got from Tamás, and I added some stuff to it</p><pre>namespace FacebookCustom
+{
+  /// <summary>
+  /// This class is a helper to replace the default WebAuthenticationBroker
+  /// </summary>
+  public static class FacebookAuthenticationBroker
+  {
+    public static Task<string> AuthenticateAsync(Uri uri)
+    {
+      var tcs = new TaskCompletionSource<string>();
+
+      var w = new WebView
+      {
+        HorizontalAlignment = HorizontalAlignment.Stretch,
+        VerticalAlignment = VerticalAlignment.Stretch,
+        Margin = new Thickness(30.0),
+      };
+
+      var b = new Border
+      {
+        Background = 
+          new SolidColorBrush(Color.FromArgb(255, 255, 255, 255)),
+        Width = Window.Current.Bounds.Width,
+        Height = Window.Current.Bounds.Height,
+        Child = w
+      };
+
+      var p = new Popup
+      {
+        Width = Window.Current.Bounds.Width,
+        Height = Window.Current.Bounds.Height,
+        Child = b,
+        HorizontalOffset = 0.0,
+        VerticalOffset = 0.0
+      };
+
+      Window.Current.SizeChanged += (s, e) =&gt;
+          {
+            p.Width = e.Size.Width;
+            p.Height = e.Size.Height;
+            b.Width = e.Size.Width;
+            b.Height = e.Size.Height;
+          };
+
+      w.Source = uri;
+
+<font color="#ff0000"><strong>      w.NavigationCompleted += (sender, args) =&gt;
+      {
+        if (args.Uri != null)
+        {
+          if (args.Uri.OriginalString.Contains("access_token"))
+          {
+            tcs.SetResult(args.Uri.ToString());
+            p.IsOpen = false;
+          }
+          if (args.Uri.OriginalString.Contains("error=access_denied"))
+          {
+            tcs.SetResult(null);
+            p.IsOpen = false;
+          }
+        }
+      };</strong></font>
+
+      p.IsOpen = true;
+      return tcs.Task;
+    }
+  }
+}</string></string></pre>
+<p>A lot of it is just setting up a UI of a popup with a WebView, then navigating to the Facebook authentication url. This will show a ‘normal’ web Facebook login (without the “Connecting to service” header). The interesting part I annotated in red and bold – when this event handler detects either “access_token” or “error=access_denied” in the url it’s navigated to, it considers it’s work done. Facebook navigates to a page with an url that either contains one of these strings, and we have a token again. Or not. </p>
+<p>I know, it’s crude, probably has a lot of edge cases, but it will get you through the day when time is tight ;)</p>
+<p><font size="4">One more thing</font><br>To get this to work, you will have to add in your <em>Facebook</em> app settings (on Facebook developer) under section “Settings/Advanced” the return url to whatever you decided to use for the Facebook success url ( see FbSuccess constant). </p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Custom-login-to-Facebook-for-Windows-Sto_B17D/image.png"><img width="593" height="484" title="image" style="border-width: 0px; padding-top: 0px; padding-right: 0px; padding-left: 0px; display: inline; background-image: none;" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Custom-login-to-Facebook-for-Windows-Sto_B17D/image_thumb.png" border="0"></a></p>
+<p><font size="4">Conclusion</font><br>As always you can find <a href="https://github.com/LocalJoost/CustomFacebookoAuthLogin" target="_blank">a ready to run demo on GitHub</a> although in this case ‘ready to run’ is stretching it a little, as you will need to define an app in Facebook developer to get this actually working. And a great big of thanks to my colleague and the awesome #wpdev community for getting this to work.</p>

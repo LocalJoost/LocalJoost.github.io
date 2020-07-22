@@ -1,0 +1,580 @@
+---
+layout: post
+title: Bing Maps control with MVVMLight on Windows Phone 7
+date: '2011-04-08T08:37:00.001+02:00'
+author: Joost van Schaik
+tags:
+- MVVM
+- WP7NL
+- Windows Phone 7
+- XAML
+- MVVM Light
+- Tombstoning
+- WP7
+modified_time: '2011-04-08T12:30:13.721+02:00'
+thumbnail: http://lh3.ggpht.com/_QXPoKuE9q6k/TZ6tFGC8gKI/AAAAAAAAGZw/OHdkRdO9EFk/s72-c/designedapp_thumb.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1089560454118692103
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/04/bing-maps-control-with-mvvmlight-on.html
+---
+
+<p><em>This article appeared originally in the <a href="http://www.dotnetmag.nl/Artikelen/2011/1" target="_blank">March 2011 issue of .Net Magazine</a> – in <a href="http://www.dotnetmag.nl/Artikel/1470/Bing-Maps-control-met-MVVMLight-op-WP7" target="_blank">Dutch</a>. By popular request I wrote this English translation. Regular readers of this blog may recognize parts of it ;-)</em></p>  <p><font size="4">A POWERFUL CONTROL WITH A ROBUST ARCHITECTURE</font></p>  <p>Not everyone is aware of it yet, but MVVM is becoming the de facto standard for all XAML driven environments – WPF, Silverlight, Microsoft Surface and <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a>. This article shows how this pattern can be applied and how it can make complex tasks like tombstoning easier. A quite unusual approach is used – driving the Bing Maps control</p>  <p><font size="4">MVVM – theory</font></p>  <p>MVVM stands for Model-View-Viewmodel. Model (business classes) and View (XAML) are connected by a ViewModel – which was dubbed ‘basically a value convertor on steroids’ by Josh Smith. The ViewModel is a class that provides properties from the Model in such a way that the contents can be displayed using data binding.</p>  <p>Since data binding can work two-way, a change in the ViewModel is automatically displayed in the View, and a change in the View (on user input) is automatically populated to the model. The View can also bind to <em>commands</em>: these are methods in the ViewModel called as a result of an event in the View (for example, a button is pressed), and that in some way manipulate the underlying Model. In theory the companion ‘code behind’ files to the XAML are completely empty. This approach has two distinct advantages:</p>  <ol>   <li>     <div align="left">The ViewModel can be unit-tested, something that’s next to impossible when the logic is put in the code behind in the traditional way.</div>   </li>    <li>     <div align="left">The View itself – the XAML – is totally devoid of code. Therefore a designer, who is not interested in code, can happily style the and adapt the View without breaking functionality.</div>   </li> </ol>  <p align="left"><font size="4">MVVM – in practice, on Windows Phone 7</font></p>  <p align="left">Windows Phone 7 – based on Silverlight 3 – poses some challenges. Property binding is a breeze, but command binding is not – for the simple reason that the classes supporting command binding are missing. Another challenge is the fact that Windows Phone 7 applications can be interrupted at any moment – because the user hits the ‘Start’ button, for instance. When this occurs, the application state must be preserved – ‘tombstoned’.</p>  <p align="left">CodePlex host various frameworks that enable MVVM support in Silverlight and Windows Phone 7. Two of the most well-known are (in no particular order) <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> by <a href="www.twitter.com/lbugnion" target="_blank">Laurent Bugnion</a> and <a href="http://caliburnmicro.codeplex.com/" target="_blank">Caliburn Micro</a> by <a href="http://twitter.com/#!/eisenbergeffect" target="_blank">Rob Eisenberg</a>. Both have their distinct advantages and disadvantages, both have their ardent advocates. In this article MVVMLight is used.</p>  <p align="left">In the next sample all classes are put together in one project – in practice certain classes will get their own assemblies. But the purpose of this article is to show the idea behind using MVVM.</p>  <p align="left"><font size="4">Base application</font></p>  <p align="left"><a href="http://lh4.ggpht.com/_QXPoKuE9q6k/TZ6tEenQDfI/AAAAAAAAGZs/9ySk6yxFOQ8/s1600-h/designedapp2.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="designedapp" border="0" alt="designedapp" align="right" src="http://lh3.ggpht.com/_QXPoKuE9q6k/TZ6tFGC8gKI/AAAAAAAAGZw/OHdkRdO9EFk/designedapp_thumb.png?imgmax=800" width="160" height="244" /></a>The way Bing Maps and MVVMLight can act together will be demonstrated using a simple “MapBindingDemo” app. This consists of a Bing Maps control, two buttons to select map types, and a TextBlock to display the name of the selected map. Map manipulation by using pinch zoom, pan and double tap are all included for free, courtesy of the Bing Maps control. The easiest way to get started is to create an empty “Windows Phone Application” in Visual Studio 2010. Then open this application in Blend, enter “Map” in the Assets box and drag the map on the design pane. Add controls until the result looks like displayed on the the right.</p>  <p align="left">&#160;</p>  <p align="left">&#160;</p>  <p align="left">In XAML, the result should look like this:</p>  <pre>&lt;Grid x:Name=&quot;ContentPanel&quot; Grid.Row=&quot;1&quot; Margin=&quot;12,0,12,0&quot;/&gt;
+&lt;Grid Grid.Row=&quot;1&quot;&gt;
+  &lt;Grid.ColumnDefinitions&gt;
+    &lt;ColumnDefinition Width=&quot;0.167*&quot;/&gt;
+    &lt;ColumnDefinition Width=&quot;0.667*&quot;/&gt;
+    &lt;ColumnDefinition Width=&quot;0.167*&quot;/&gt;
+  &lt;/Grid.ColumnDefinitions&gt;
+  &lt;Grid.RowDefinitions&gt;
+    &lt;RowDefinition Height=&quot;0.13*&quot;/&gt;
+    &lt;RowDefinition Height=&quot;0.87*&quot;/&gt;
+  &lt;/Grid.RowDefinitions&gt;
+  &lt;Microsoft_Phone_Controls_Maps:Map Grid.Row=&quot;1&quot; Grid.ColumnSpan=&quot;3&quot;/&gt;
+  &lt;Button Content=&quot;&lt;&quot;/&gt;
+  &lt;Button Content=&quot;&gt;&quot; Grid.Column=&quot;2&quot;/&gt;
+  &lt;TextBlock Grid.Column=&quot;1&quot; TextWrapping=&quot;Wrap&quot; Text=&quot;TextBlock&quot; 
+    Margin=&quot;0,23,0,0&quot; HorizontalAlignment=&quot;Center&quot;/&gt;
+&lt;/Grid&gt;</pre>
+
+<p>Those who are stubborn enough to venture here without using Blend: the project should have a reference to Windows.Controls.Phone.Maps and the namespace declarations of the PhoneApplicationPage should include the following declarations:</p>
+
+<pre style="font-size: 11px">xmlns:Microsoft_Phone_Controls_Maps=
+   &quot;clr-namespace:Microsoft.Phone.Controls.Maps;assembly=Microsoft.Phone.Controls.Maps&quot;</pre>
+
+<p>Another thing to take into consideration is the fact that Bing Maps Control usages requires <em>credentials</em>. These can be created using <a href="https://www.bingmapsportal.com/" target="_blank">this website</a>.The credentials should be included in the Map Control’s <em>CredentialsProvider</em> property. The Uri the site asks for does not matter – that’s only important when the Bing Maps control is used in a web site context, which is obviously not the case in a Windows Phone 7 app.</p>
+
+<p><font size="4">Bing Maps Control and TileSource</font></p>
+
+<p>The Bing Maps Control is pretty flexible and powerful, and can show both vector and raster maps. This example concentrates on the latter. It’s important to know the control has three major settings as far as raster maps are concerned: “Road”,&#160; “Aerial” and the least known – “Mercator”. When Mercator is set, the control won’t download any map data by itself – the developer should supply the logic in a class implementing Microsoft.Phone.Controls.Maps.TileSource. Only the GetUri method needs to be overridden. The Bing Maps controls supplies <a href="http://lh5.ggpht.com/_QXPoKuE9q6k/TZ6tFS8xL8I/AAAAAAAAGZ0/ierWPO-7VpQ/s1600-h/mapclasses5.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="mapclasses" border="0" alt="mapclasses" align="right" src="http://lh3.ggpht.com/_QXPoKuE9q6k/TZ6tFzsBPEI/AAAAAAAAGZ4/EiMPJPjD7dw/mapclasses_thumb3.png?imgmax=800" width="405" height="228" /></a>three parameters to this method: x, y and zoomlevel. At level 1, the world is a square of 2x2=4 tiles of 256x256 pixels each. On level 2, there are 16 tiles, on level 3 there are 64, etc. The method GetUri should convert these three numbers into an Uri leading to a suitable image. For geo nuts like me a piece of cake, for the rest of the world possible a load of gobbledygook. This is by no means a problem when trying to understand MVVM - the TileSource code is all included in this article. The application sports a folder &quot;Maps&quot; which will include this code.</p>
+
+<p>In this article, the code for the various TileSources is showed in a single code file to give an easier overview. In real-world development, only code generators put multiple classes in one file, eh?</p>
+
+<pre>using System;
+using Microsoft.Phone.Controls.Maps;
+
+namespace MapBindingDemo.Maps
+{
+  public abstract class BaseTileSource : TileSource, 
+    IEquatable&lt;BaseTileSource&gt;
+  {
+    public string Name { get; set; }
+
+
+    public bool Equals(BaseTileSource other)
+    {
+      return other != null &amp;&amp; other.Name.Equals(Name);
+    }
+
+    public override bool Equals(object obj)
+    {
+      return Equals(obj as BaseTileSource);
+    }
+  }
+
+//------------------------
+
+  public abstract class BaseBingSource : BaseTileSource
+  {
+    private static string TileXYToQuadKey(int tileX, int tileY, int levelOfDetail)
+    {
+      var quadKey = new StringBuilder();
+      for (var i = levelOfDetail; i &gt; 0; i--)
+      {
+        char digit = '0';
+        int mask = 1 &lt;&lt; (i - 1);
+        if ((tileX &amp; mask) != 0) digit++;
+        if ((tileY &amp; mask) != 0)
+        {
+          digit++;
+          digit++;
+        }
+        quadKey.Append(digit);
+      }
+      return quadKey.ToString();
+    }
+
+    public override Uri GetUri(int x, int y, int zoomLevel)
+    {
+      if (zoomLevel &gt; 0)
+      {
+        string quadKey = TileXYToQuadKey(x, y, zoomLevel);
+        string veLink = string.Format(UriFormat,
+           new object[] { quadKey[quadKey.Length - 1], quadKey });
+        return new Uri(veLink);
+      }
+      return null;
+    }
+  }
+  
+//------------------------  
+  
+  public class BingRoad : BaseBingSource
+  {
+    public BingRoad()
+    {
+      UriFormat = &quot;http://r{0}.ortho.tiles.virtualearth.net/tiles/r{1}.png?g=203&quot;;
+    }
+  }
+  
+//------------------------  
+
+  public class BingAerial : BaseBingSource
+  {
+    public BingAerial()
+    {
+      UriFormat = &quot;http://h{0}.ortho.tiles.virtualearth.net/tiles/h{1}.jpeg?g=203&quot;;
+    }
+  }
+
+//------------------------
+
+  public class OsmaRender : BaseTileSource
+  {
+    public OsmaRender()
+    {
+      UriFormat = &quot;http://{0}.tah.openstreetmap.org/Tiles/tile/{1}/{2}/{3}.png&quot;;
+    }
+
+    private readonly static string[] TilePathPrefixes = 
+      new[] { &quot;a&quot;, &quot;b&quot;, &quot;c&quot;, &quot;d&quot;, &quot;e&quot;, &quot;f&quot; };
+
+    public override Uri GetUri(int x, int y, int zoomLevel)
+    {
+      if (zoomLevel &gt; 0)
+      {       
+        var url = string.Format(UriFormat, 
+          TilePathPrefixes[(y%3) + (3*(x%2))], zoomLevel, x, y);
+        return new Uri(url);
+      }
+      return null;
+    }
+  }
+  
+//------------------------  
+
+  public class Mapnik : BaseTileSource
+  {
+    public Mapnik()
+    {
+      UriFormat = &quot;http://{0}.tile.openstreetmap.org/{1}/{2}/{3}.png&quot;;
+    }
+
+    private readonly static string[] TilePathPrefixes = new[] { &quot;a&quot;, &quot;b&quot;, &quot;c&quot; };
+
+    public override Uri GetUri(int x, int y, int zoomLevel)
+    {
+      if (zoomLevel &gt; 0)
+      {
+        var url = string.Format(UriFormat, TilePathPrefixes[y%3], zoomLevel, x, y);
+        return new Uri(url);
+      }
+      return null;
+    }
+  }
+  
+//------------------------  
+
+  public enum GoogleType
+  {
+    Street     ='m',
+    Hybrid     ='y',
+    Satellite    ='s',
+    Physical     ='t',
+    PhysicalHybrid ='p',
+    StreetOverlay  ='h',
+    WaterOverlay   ='r'
+  }
+
+//------------------------  
+  
+  public class Google : BaseTileSource
+  {
+    public Google()
+    {
+      MapType = GoogleType.PhysicalHybrid;
+      UriFormat = @&quot;http://mt{0}.google.com/vt/lyrs={1}&amp;z={2}&amp;x={3}&amp;y={4}&quot;;
+    }
+
+    public GoogleType MapType { get; set; }
+
+    public override Uri GetUri(int x, int y, int zoomLevel)
+    {
+      return new Uri( 
+        string.Format(UriFormat, (x % 2) + (2 * (y % 2)),
+        (char)MapType, zoomLevel, x, y) );
+    }
+  } 
+}</pre>
+
+<p>The starting point is a base class “BaseTileSource” which only adds a Name property and an Equals method that compares by name – a quite naïve implementation, but sufficient for this purpose. A subclass “BaseBingSource” contains most of the heavy lifting for the Bing Maps calculations, so two pretty simple subclasses “BingAerial” and “BingRoad” are all that’s needed to implement Bing Aerial and Bing Road. So far the net result is a quite complicated way to get exactly the same result as the standard Bing Maps Control, but the fun starts when two well-known open source OpenStreetMap mapservers are added – OsmaRender and Mapnik. And of course my personal favorite ‘nag the competition’ option: Google Maps. </p>
+
+<p>As stated before, the Bing Maps Control should operate in Mercator mode. The way to do this is described below:</p>
+
+<pre>&lt;Microsoft_Phone_Controls_Maps:Map                 
+    CredentialsProvider=&quot;your_credentials_here&quot;&gt;               
+    &lt;Microsoft_Phone_Controls_Maps:Map.Mode&gt;
+        &lt;MSPCMCore:MercatorMode/&gt;
+    &lt;/Microsoft_Phone_Controls_Maps:Map.Mode&gt;
+&lt;/Microsoft_Phone_Controls_Maps:Map&gt;</pre>
+
+<p>The namespace “MSPCMCore” is declared in the PhoneApplicationPage tag like this:</p>
+
+<pre style="font-size: 11px">&quot;clr-namespace:Microsoft.Phone.Controls.Maps.Core;assembly=Microsoft.Phone.Controls.Maps&quot;</pre>
+
+<p><font size="4">Setup MVVMLight</font></p>
+
+<p><a href="http://lh4.ggpht.com/_QXPoKuE9q6k/TZ6tGZeM7qI/AAAAAAAAGZ8/Z09ePDyU5Cw/s1600-h/Solution16.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="Solution1" border="0" alt="Solution1" align="right" src="http://lh3.ggpht.com/_QXPoKuE9q6k/TZ6tGxSlpQI/AAAAAAAAGaA/VRhtIjW8zyo/Solution1_thumb4.png?imgmax=800" width="159" height="284" /></a>The framework itself contains of two assemblies: GalaSoft.MvvmLight.WP7.dll andGalaSoft.MvvmLight.Extras.WP7.dll. These can be downloaded from <a href="http://mvvmlight.codeplex.com/" target="_blank">CodePlex</a>. Apart from those, the assembly System.Windows.Interactivity.dll is necessary as well – this can be found in the Expression Blend SDK and is locaties either in 
+
+  <br /><font size="1"><strong>&lt;drive&gt;:\Program Files\Microsoft SDKs\Expression\Blend\Windows Phone\v7.0\Libraries</strong></font> 
+
+  <br />or in 
+
+  <br /><strong><font size="1">&lt;drive&gt;:\Program Files (x86)\Microsoft SDKs\Expression\Blend\Windows Phone\v7.0\Libraries</font> 
+
+    <br /></strong>when you have a 64 bit OS, which is becoming ever more commonplace these days. It’s good practice to put these assemblies in a <em>solution</em> <em>folder</em> to make sure they remain associated with the solution – it makes working with multiple developers on a single Windows Phone 7 project utilizing a source control mechanism a lot easier. In this sample a folder “Binaries” is used to that effect. The project needs to have a reference to the three assemblies mentioned above, and the solution now should look like displayed to the right.</p>
+
+<p><font size="4">Map app ViewModel</font></p>
+
+<p>An MVVMLight ViewModel is a child class of the most originally named “ViewModelBase” class. A number of properties are defined within this application’s ViewModel: ZoomLevel, MapCenter, AvailableMaps and CurrentMap. In addition, it has a number of commands: one for moving a map definition ahead, and one for moving back. The ViewModel looks like this:</p>
+
+<pre>using System.Collections.Generic;
+using System.Device.Location;
+using System.Windows.Input;
+using GalaSoft.MvvmLight;
+using GalaSoft.MvvmLight.Command;
+using MapBindingDemo.Maps;
+using MapBindingDemo.Serialization;
+
+namespace MapBindingDemo.ViewModel
+{
+  public class MvvmMap : ViewModelBase
+  {
+    public MvvmMap()
+    {
+      _availableMapSources = new List&lt;BaseTileSource&gt; 
+      {
+        new BingAerial{ Name = &quot;Bing Aerial&quot;},
+        new BingRoad {Name = &quot;Bing Road&quot;},
+        new Mapnik {Name = &quot;OSM Mapnik&quot;},
+        new OsmaRender {Name = &quot;OsmaRender&quot;},
+        new Google {Name = &quot;Google Hybrid&quot;, MapType = GoogleType.Hybrid},
+        new Google {Name = &quot;Google Street&quot;, MapType = GoogleType.Street},
+      };
+    }
+
+    private GeoCoordinate _mapCenter;
+    public GeoCoordinate MapCenter
+    {
+      get { return _mapCenter; }
+      set
+      {
+        if (_mapCenter == value) return;
+        _mapCenter = value;
+        RaisePropertyChanged(&quot;MapCenter&quot;);
+      }
+    }
+
+    private double _zoomLevel;
+    public double ZoomLevel
+    {
+      get
+      {
+        return _zoomLevel;
+      }
+      set
+      {
+        if (value == _zoomLevel) return;
+        if (value &gt;= 1)
+        {
+          _zoomLevel = value;
+        }
+        RaisePropertyChanged(&quot;ZoomLevel&quot;);
+      }
+    }
+
+    private BaseTileSource _currentMap;
+    public  BaseTileSource CurrentMap
+    {
+      get
+      {
+        if (_currentMap == null &amp;&amp; 
+          _availableMapSources != null &amp;&amp; 
+          _availableMapSources.Count &gt; 0)
+        {
+          _currentMap = _availableMapSources[0];
+        }
+        return _currentMap;
+      }
+      set
+      {
+        if (value.Equals(CurrentMap)) return;
+        {
+          _currentMap = value;
+        }
+        RaisePropertyChanged(&quot;CurrentMap&quot;);
+      }
+    }
+
+    private List&lt;BaseTileSource&gt; _availableMapSources;
+    [DoNotSerialize]
+    public List&lt;BaseTileSource&gt; AvailableMapSources
+    {
+      get
+      {
+        return _availableMapSources;
+      }
+      set
+      {
+        _availableMapSources = value;
+        RaisePropertyChanged(&quot;AvailableMapSources&quot;);
+      }
+    }
+
+    public ICommand NextMap
+    {
+      get
+      {
+        return new RelayCommand(() =&gt;
+        {
+          var newIdx = AvailableMapSources.IndexOf(CurrentMap) + 1 ;
+          CurrentMap = 
+            AvailableMapSources[newIdx &gt; AvailableMapSources.Count - 1? 0 : newIdx];
+        });
+      }
+    }
+
+    public ICommand PreviousMap
+    {
+      get
+      {
+        return new RelayCommand(() =&gt;
+        {
+          var newIdx = AvailableMapSources.IndexOf(CurrentMap) -1;
+          CurrentMap = 
+            AvailableMapSources[newIdx &lt; 0 ? 
+             AvailableMapSources.Count - 1 : newIdx];
+        });
+      }
+    }
+     
+    private static MvvmMap _instance;
+    public static MvvmMap Instance
+    {
+      get { return _instance; }
+      set { _instance = value; }
+    }
+
+    public static void CreateNew()
+    {
+      _instance = new MvvmMap();
+    }
+  }
+}</pre>
+
+<p><font size="4">Hooking up ViewModel and user interface using Blend</font></p>
+
+<p><a href="http://lh6.ggpht.com/_QXPoKuE9q6k/TZ6tHM0vsfI/AAAAAAAAGaE/PxfHtOEcFfc/s1600-h/data4.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="data" border="0" alt="data" align="right" src="http://lh5.ggpht.com/_QXPoKuE9q6k/TZ6tHlFYxiI/AAAAAAAAGaI/oSQSv_9ESvw/data_thumb2.png?imgmax=800" width="266" height="143" /></a>Using databinding, ZoomLevel and MapCenter can be hooked up without any special measures to a Bing Maps control, while the TextBlock “TextBlock” should display the map name. The easiest way to accomplish this is using Expression Blend. A free version for Windows Phone is included with the Windows Phone 7 tools. When Blend has finished loading your projects, notice the three tabs to the upper right: &quot;Properties&quot;, &quot;Resources&quot; and &quot;Data&quot;. Click the encircled symbol and a menu appears, which contains the option “Create Object Data Source. When this is selected, a popup appears with all the objects in the solution. Click MapBindingDemo, then MapBindingDemo.ViewModel, and finally MvvmMap. To the right, the properties of MvvmMap are displayed. Drag the “Instance” property to the Grid “LayoutRoot” in the “Objects and Timeline” panel at the left side. Blend shows the text “Data bind LayoutRoot.DataContext to Instance”. Release the mouse button and – done. Data binding.</p>
+
+<p>At the right bottom, a panel “Data context” has appeared. Drag property “Name” from “CurrentMap” on top of the TextBlock. The contents of the TextBlock immediately changes to “Bing Aerial”. And that’s correct, since the ViewModel code shows that when no map is selected, the first map in “AvailableMaps” should be selected, which is indeed Bing Aerial.</p>
+
+<p><a href="http://lh5.ggpht.com/_QXPoKuE9q6k/TZ6tHy4zVeI/AAAAAAAAGaM/3QMZwTuchvM/s1600-h/ObjectsAndTimeLine%5B2%5D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: left; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="ObjectsAndTimeLine" border="0" alt="ObjectsAndTimeLine" align="left" src="http://lh5.ggpht.com/_QXPoKuE9q6k/TZ6tIO82UsI/AAAAAAAAGaQ/Eris5JGukzg/ObjectsAndTimeLine_thumb%5B1%5D.png?imgmax=800" width="165" height="190" /></a>Go back to the “Objects and Timeline” panel, and select the object “Map”. To get there, you will first need to expand “Layoutroot” and “Grid”. Data bind the “MapCenter” property of the ViewModel to the “Center” property of the map by dragging MapCenter on top of the Bing Maps controls – a popup appears, in which you can select the “Center” property. </p>
+
+<p>For some strange reason I could not get Blend to databind “ZoomLevel” this way – it only wants to bind to “Content”. To work around this: select <a href="http://lh5.ggpht.com/_QXPoKuE9q6k/TZ6tIk_sBUI/AAAAAAAAGaU/sqGyDeqoPik/s1600-h/advancedoptions%5B1%5D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="advancedoptions" border="0" alt="advancedoptions" align="right" src="http://lh6.ggpht.com/_QXPoKuE9q6k/TZ6tIw5Y5GI/AAAAAAAAGaY/VEWZa243efc/advancedoptions_thumb%5B1%5D.png?imgmax=800" width="175" height="292" /></a>tab “Properties”. Then expand “Miscellaneous”. All the way down you will see the “ZoomLevel” property. Right next to it is a little square: click this, and this will yield and menu which contains the option “Data Binding”. Select this, and then select property “ZoomLevel” of the model in the popup that follows. </p>
+
+<p>Now switch to the XAML view, and notice that in the Bing Maps Control Center and Zoomlevel properties are bound: Center=&quot;{Binding MapCenter}&quot; ZoomLevel=&quot;{Binding ZoomLevel}&quot;. To make the binding function properly, change this to Center=&quot;{Binding MapCenter, <strong>Mode=TwoWay</strong>}&quot; ZoomLevel=&quot;{Binding ZoomLevel, <strong>Mode=TwoWay</strong>}”. This can be done from Blend as well, but this way is quicker. </p>
+
+<p>Databinding command utilizes the MVVMLight EventToCommand behavior. Type “Event” in the “Search” box top left and the EventToCommand behavior appears. Drag this on both the “&lt;” and the “&gt;” button. Then drag “PreviousCommand” from the ViewModel on top of the EventToCommand below the “&lt;” button (inthe Objects and Timeline panel). “NextCommand” is databound in the same way to the “&gt;” button. Hit F5 in Blend, the emulator appears and when “&gt;” and “&lt;” the text in the TextBlock should change. But the map does not play along – even more, there is absolutely no map visible. That’s because there’s no TileSource associated with it.</p>
+
+<p><font size="4">Attached Dependency Properties – plumbing holes in data binding</font></p>
+
+<p>Binding a TileSource to a Bing Maps control is not possible, because there’s no fitting property. Fortunately XAML includes attached dependency properties – these can be regarded as the property equivalent of extension methods. Back to Visual Studio, where an attached dependency property will be created in the folder “ViewModel”</p>
+
+<pre>using System.Windows;
+using MapBindingDemo.Maps;
+using Microsoft.Phone.Controls.Maps;
+
+namespace MapBindingDemo.ViewModel
+{
+  public static class BindingHelpers
+  {
+    //Used for binding a single TileSource object to a Bing Maps control
+    #region TileSourceProperty
+
+    public static readonly DependencyProperty TileSourceProperty =
+      DependencyProperty.RegisterAttached(&quot;TileSource&quot;, typeof(TileSource),
+      typeof(BindingHelpers), new PropertyMetadata(SetTileSourceCallback));
+
+    // Called when TileSource is retrieved
+    public static TileSource GetTileSource(DependencyObject obj)
+    {
+      return obj.GetValue(TileSourceProperty) as TileSource;
+    }
+
+    // Called when TileSource is set
+    public static void SetTileSource(DependencyObject obj, TileSource value)
+    {
+      obj.SetValue(TileSourceProperty, value);
+    }
+
+    //Called when TileSource is set
+    private static void SetTileSourceCallback(object sender, 
+      DependencyPropertyChangedEventArgs args)
+    {
+      var map = sender as Map;
+      var newSource = args.NewValue as TileSource;
+      if (newSource == null || map == null) return;
+
+      // Remove existing layer(s)
+      for (var i = map.Children.Count - 1; i &gt;= 0; i--)
+      {
+        var tileLayer = map.Children[i] as MapTileLayer;
+        if (tileLayer != null)
+        {
+          map.Children.RemoveAt(i);
+        }
+      }
+      
+      var newLayer = new MapTileLayer();
+      newLayer.TileSources.Add(newSource);
+      map.Children.Add(newLayer);
+    }
+    #endregion
+  }
+}</pre>
+
+<p>This quite adequately shows why an attached dependency property is necessary: a Bing Maps controls has Children that can contain (among others) MapTileLayer objects – and only <em>that </em>contains a TileSource. So when the displayed map is changed, first all current MapTileLayer objects need to be deleted, before a new MapTileLayer containing the new Tilesource is created, that can be added to the Children of the map. With this in place, the whole ViewModel can be databound to the Bing Maps Control. Unfortunately not with Blend, so this will have to go manually, in XAML. Add the namespace in which the BindingHelper class is situated to the namespace declarations at the top of the PhoneApplicationPage:</p>
+
+<pre>xmlns:MapBindingDemo_ViewModel=&quot;clr-namespace:MapBindingDemo.ViewModel&quot;</pre>
+
+<p>Now the actual binding to the map needs to take place. On the same spot where ZoomLevel and MapCenter were bound the attached dependency property is bound: </p>
+
+<pre>&lt;Microsoft_Phone_Controls_Maps:Map x:Name=&quot;Map&quot; Grid.Row=&quot;1&quot; Grid.ColumnSpan=&quot;3&quot;             
+  CredentialsProvider=&quot;your_credentials_here&quot; 
+  Center=&quot;{Binding MapCenter, Mode=TwoWay}&quot; 
+  ZoomLevel=&quot;{Binding ZoomLevel, Mode=TwoWay}&quot; 
+  MapBindingDemo_ViewModel:BindingHelpers.TileSource =&quot;{Binding CurrentMap}&quot;&gt;</pre>
+
+<p>Now the application is fully functional, even in design mode it shows the default map (Bing Aerial). The buttons left and right of the map name change the map that’s displayed – <em>with not a single line of code in the code behind</em>. Granted, the user experience and look and feel could benefit from some more attention, but nevertheless – mission accomplished. Well, almost. Zoom in a little, select a map that not the default, hit the start button and then hit back. Alas – the default map again, with full world view. The application’s last state is not preserved,&#160; or to put things differently – it does not support tombstoning.</p>
+
+<p><font size="4">Tombstoning an MVVMLight application</font></p>
+
+<p>Mike Talbot has written a brilliant post in which he describes a helper object called “SilverlightSerializer”. This object can serialize virtually every Silverlight and Windows Phone 7 object as a binary. The fun part is that it even serializes non-serializable objects – like MVVMLight’s ViewModelBase. The blog post is called <a href="http://whydoidoit.com/2010/04/08/silverlight-serialization/" target="_blank">“Silverlight Binary Serialization”</a> and includes the source code.</p>
+
+<p>SilverlightSerializer is added to a folder “Serialization” in the project. In the same folder (and namespace) a file “ApplicationExtensions.cs” is added that implements two extension methods on the Application class: one for writing the entire ViewModel to Isolated Storage, and one for reading it back from IS.</p>
+
+<pre>using System;
+using System.IO;
+using System.IO.IsolatedStorage;
+using System.Windows;
+using GalaSoft.MvvmLight;
+
+namespace MapBindingDemo.Serialization
+{
+  /// &lt;summary&gt;
+  /// Some extensions method that allow serializing and deserializing
+  /// a model to isolated storage
+  /// &lt;/summary&gt;
+  public static class ApplicationExtensions
+  {
+    private static string GetDataFileName( Type t)
+    {
+      return string.Concat(t.Name, &quot;.dat&quot;);
+    }
+
+    public static T RetrieveFromIsolatedStorage&lt;T&gt;(this Application app) 
+      where T : class
+    {
+      using (var appStorage = IsolatedStorageFile.GetUserStoreForApplication())
+      {
+        var dataFileName = GetDataFileName(typeof(T));
+        if (appStorage.FileExists(dataFileName))
+        {
+          using (var iss = appStorage.OpenFile(dataFileName, FileMode.Open))
+          {
+            try
+            {
+              return SilverlightSerializer.Deserialize(iss) as T;
+            }
+            catch (Exception e)
+            {
+              System.Diagnostics.Debug.WriteLine(e);
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    public static void SaveToIsolatedStorage(this Application app, 
+      ViewModelBase model)
+    {
+      var dataFileName = GetDataFileName((model.GetType()));
+      using (var appStorage = IsolatedStorageFile.GetUserStoreForApplication())
+      {
+        if (appStorage.FileExists(dataFileName))
+        {
+          appStorage.DeleteFile(dataFileName);
+        }
+        using (var iss = appStorage.CreateFile(dataFileName))
+        {
+           SilverlightSerializer.Serialize(model,iss);          
+        }
+      }
+    }
+  }
+}</pre>
+
+<p>These methods are used from App.Xaml’s code behind. This may look like a deviation from the MVVM paradigm, but it’s not as bad as it looks. This file has some default code anyway (the Application_* methods), for this is the place that sports the methods that are called when the application (re)starts or stops. This last step just adds a little code. First, add two usings:</p>
+
+<pre>using MapBindingDemo.Serialization;
+using MapBindingDemo.ViewModel;</pre>
+
+<p>Then, adapt the existing code till it looks like this:</p>
+
+<pre>// Code to execute when the application is launching (eg, from Start)
+// This code will not execute when the application is reactivated
+private void Application_Launching(object sender, LaunchingEventArgs e)
+{  
+  LoadModelFromIsolatedStorage();
+}
+
+// Code to execute when the application is activated (brought to foreground)
+// This code will not execute when the application is first launched
+private void Application_Activated(object sender, ActivatedEventArgs e)
+{
+  LoadModelFromIsolatedStorage();
+}
+
+/// <summary>
+/// Loads the model from isolated storage
+/// </summary>
+private void LoadModelFromIsolatedStorage()
+{
+  MvvmMap.Instance = this.RetrieveFromIsolatedStorage<mvvmmap>();
+  if (MvvmMap.Instance == null) MvvmMap.CreateNew();
+}
+
+// Code to execute when the application is deactivated (sent to background)
+// This code will not execute when the application is closing
+private void Application_Deactivated(object sender, DeactivatedEventArgs e)
+{
+  this.SaveToIsolatedStorage(MvvmMap.Instance);
+}
+
+// Code to execute when the application is closing (eg, user hit Back)
+// This code will not execute when the application is deactivated
+private void Application_Closing(object sender, ClosingEventArgs e)
+{
+   this.SaveToIsolatedStorage(MvvmMap.Instance);
+}</pre>
+
+<p>Notice both deactivation and closing call the same code: the data is always written to Isolated Storage. Similarly, launching and deactivation always call RetrieveFromIsolatedStorage. It’s perfectly possible to store the ViewModel in the PhoneApplicationService but then the stored model won’t be available when the application is started again from the start menu (in stead of using the “back” button). This is “works as designed” behavior as far as Windows Phone 7 is concerned but if it’s used in as described above, both the back button and a restart give the same result – the last application state is preserved.</p>
+
+<p>A drawback of saving the entire ViewModel as a binary is that deserializing fails when major changes are implemented in the ViewModel. This is why it always is surrounded by try/catch statements. Attentive readers also may have noticed that property “AvailableMapSources” is serialized in vain, since it’s always initialized from the constructor. SilverlightSerializer’s default behavior is to serialize everything, but if something needs to be skipped it can be marked with the [DoNotSerialize] attribute defined by SilverlightSerializer itself.</p>
+
+<p><font size="4">Concluding remarks</font></p>
+
+<p>For all but the most trivial Windows Phone 7 applications MVVM simply is the way to go, if only because SilverlightSerializer makes a quite complex thing like tombstoning a breeze. For complex application with multiple models things get a lit more challenging, but it’s clear MVVMLight and SilverlightSerializer are a winning team.</p>
+
+<p>Thanks to <a href="http://twitter.com/#!/peshir" target="_blank">Jarno Peshier</a> and <a href="http://twitter.com/dvroegop" target="_blank">Dennis Vroegop</a> for their suggestions on the original article.</p>
+
+<p>Code can be downloaded <a href="http://www.schaikweb.net/dotnetmag/MapBindingDemo.zip" target="_blank">here</a>. </p>  

@@ -1,0 +1,18 @@
+---
+layout: post
+title: HoloLens 2 Emulator - showing and manipulating hands in an MRTK2 app
+date: '2019-04-26T19:28:00.000+02:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Windows Mixed Reality
+- HoloLens2
+- Emulator
+modified_time: '2019-04-29T08:33:21.294+02:00'
+thumbnail: https://i.ytimg.com/vi/lOZ5nW3zQ38/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-9043939137700340233
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2019/04/hololens-2-emulator-showing-and.html
+---
+
+<p>Last week I wrote a first look at the new <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> 2 emulator and showed you how something of the hand movement in the HoloLens shell using an Xbox One controller. This was pretty hard to do as the hands were only intermittently displayed. It turns out that if you deploy an app made with the <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank"><a href="https://github.com/Microsoft/MixedRealityToolkit-Unity" target="_blank">Mixed Reality Toolkit</a> 2 you actually get a <em>lot</em> better graphics assisting you in manipulating. It takes some getting used to, but I was able to play the piano and press some buttons, just like Julia Schwarz was able to do in her now-famous MWC demo.</p><p>This then, looks like this:</p><iframe width="650" height="365" src="https://www.youtube.com/embed/lOZ5nW3zQ38" frameborder="0" allowfullscreen="" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"></iframe>
+<p>As you can see, the mere act of moving the hand past or through the piano keys or the buttons above actually triggers the buttons (if you turn the sound on you can hear the piano and some audio feedback on the buttons too).</p><p>This is simply the HandInteractionExamples scene from the MRTK2 dev branch, generated into a C++ app and deployed into the emulator.</p><p>To show you how the hands can be moved, I made another little captioned movie:</p><p><iframe width="650" height="365" src="https://www.youtube.com/embed/Fgj7epAlUlM" frameborder="0" allowfullscreen="" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"></iframe></p><p> Using the Xbox controller is a lot easier this way, although I am not quite sure how to do a two-hand-manipulation yet, as the sticks can only control one hand at a time (the left or right bumpers determine which hand you control.</p>

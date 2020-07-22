@@ -1,0 +1,184 @@
+---
+layout: post
+title: Calling a WCF service from Javascript
+date: '2008-02-23T19:40:00.048+01:00'
+author: Joost van Schaik
+tags:
+- C#
+- Architecture
+- ASP.NET AJAX
+- JSON
+- WCF
+- Web Services
+- Javascript
+- Hosting in IIS
+modified_time: '2013-01-02T21:10:39.741+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-666458565666722458
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2008/02/calling-wcf-service-from-javascript.html
+---
+
+<i>Note - I wrote this a long time ago. While the information in this article is still valid, nowadays I would use ASP.NET MVC 4 WebAPI on the server, and jQuery on the client to do something like this. I will blog about this soon.</i>
+<p>
+In a previous post I pointed out how to call an ASP.NET ASMX web service from javascript in the browser. Although this still works fine, the world has moved on to .NET 3.5 and WCF services have now replaced ASMX services. Luckily, these are also callable from javascript although the procedure is now a little bit different.
+
+In this sample I presume you can use Visual Studio 2008 and know a little about WCF.
+<p>
+<span style="font-size:130%;">1. Create an empty solution, and add a WCF service library to it</span></p>
+We'll call the solution JSONWCFTest, and the library JSONServices.
+<p><span style="font-size:130%;">2. Add a data contract</span></p>
+<pre>using System.Collections.Generic;
+using System.Runtime.Serialization;
+
+namespace JSONServices
+{
+ [DataContract]
+ public class SampleDataObject
+ {
+   public SampleDataObject(int NewId, string NewName)
+   {
+     Id = NewId;
+     Name = NewName;
+   }
+   [DataMember]
+   public int Id { get; set; }
+
+   [DataMember]
+   public string Name { get; set; }
+ }
+}</pre>
+<p><span style="font-size:130%;">3. Add service contract</span></p>
+Add an interface IJSONService with the following methods
+using System.Collections.Generic;
+using System.ServiceModel;
+
+<pre>namespace JSONServices
+{
+ [ServiceContract(Namespace="http://DotNetByExample/JSONDemoService")]
+ public interface IJSONService
+ {
+   [OperationContract]
+   SampleDataObject GetSingleObject(int id, string name);
+
+   [OperationContract]
+   ICollection GetMultipleObjects(int number);
+ }
+}</pre>
+<p><span style="font-size:130%;">4. Add an implementing class</span></p>
+Implement the service contract like this<pre>System.Collections.Generic;
+
+namespace JSONServices
+{
+ public class JSONService : IJSONService
+ {
+   public SampleDataObject GetSingleObject(int id, string name)
+   {
+     return new SampleDataObject(id, name);
+   }
+
+   public ICollection&lt;SampleDataObject&gt; GetMultipleObjects(int number)
+   {
+     List&lt;SampleDataObject&gt; list = new List&lt;SampleDataObject&gt;();
+     for (int i = 0; i &lt; number; i++)
+     {
+       list.Add(new SampleDataObject(i, "Name" + i));
+     }
+     return list;
+   }
+ }
+}
+</pre>
+
+So far, this is very basic WCF stuff. Nothing special here.
+<p><span style="font-size:130%;">5. Add new web application</span></p>
+Add a new project of type "ASP.NET Web Application" to the solution. Call it JSONTestApp. Add a reference to the  JSONWCFTest project.
+
+<p><span style="font-size:130%;">6. Add a SVC file to the web application</span></p>
+This part is a bit awkward. Choose "Text File", and name it "AjaxService.svc". Then open the file, and enter the following code<pre>&lt;%@ServiceHost language="C#" debug="true"
+Service="JSONServices.JSONService"<br/>Factory="System.ServiceModel.Activation.WebScriptServiceHostFactory"%&gt;</pre>It may be tempting to add an "Ajax-enabled WCF service" to the project but this creates its own operation contract, and in this example I want to simulate the situation in which I re-use an already existing operation contract implemented in a separate service library.
+<p><span style="font-size:130%;">7. Check the javascript interface</span></p>
+Basically, you are done now. Your service is hosted callable from javascript. You can check right-clicking on AjaxService.svc, and you will now see a web page that will say something like "This is a Windows© Communication Foundation service.
+Metadata publishing for this service is currently disabled." and a lot things more. You can check the javascript interface by adding "/jsdebug" to the url displayed in your browser, in my case this is "http://localhost:1781/AjaxService.svc/jsdebug". This shows the dynamically generated javascript proxy that you can call in your client code:<pre>Type.registerNamespace('dotnetbyexample.JSONDemoService');
+dotnetbyexample.JSONDemoService.IJSONService=function() {
+dotnetbyexample.JSONDemoService.IJSONService.initializeBase(this);
+this._timeout = 0;
+this._userContext = null;
+this._succeeded = null;
+this._failed = null;
+}
+<span style="color:red">dotnetbyexample.JSONDemoService.IJSONService</span>.prototype={
+_get_path:function() {
+var p = this.get_path();
+if (p) return p;
+else return dotnetbyexample.JSONDemoService.IJSONService._staticInstance.get_path();},
+<span style="color:red">GetSingleObject</span>:function(id,name,succeededCallback, failedCallback, userContext) {
+/// &lt;param name="id" type="Number"&gt;System.Int32&lt;/param&gt;
+/// &lt;param name="name" type="String"&gt;System.String&lt;/param&gt;
+/// &lt;param name="succeededCallback" type="Function" optional="true" mayBeNull="true"&gt;&lt;/param&gt;
+/// &lt;param name="failedCallback" type="Function" optional="true" mayBeNull="true"&gt;&lt;/param&gt;
+/// &lt;param name="userContext" optional="true" mayBeNull="true"&gt;&lt;/param&gt;
+return this._invoke(this._get_path(), 'GetSingleObject',false,{id:id,name:name},succeededCallback,failedCallback,userContext); },
+<span style="color:red">GetMultipleObjects</span>:function(number,succeededCallback, failedCallback, userContext) {
+/// &lt;param name="number" type="Number"&gt;System.Int32&lt;/param&gt;
+/// &lt;param name="succeededCallback" type="Function" optional="true" mayBeNull="true"&gt;&lt;/param&gt;
+/// &lt;param name="failedCallback" type="Function" optional="true" TomayBeNull="true"&gt;&lt;/param&gt;
+/// &lt;param name="userContext" optional="true" mayBeNull="true"&gt;&lt;/param&gt;</pre>Note: FireFox displays the javascript directly in the browser; for security reasons, Internet Explorer wants to download it to a file rather than display it, but after saving it and opening it in a text editor you will see the text above. As you can see this contains a lot of plumbing - and this is only the top part - but I emphasized the parts that are interesting right now: the name of the object that you need to call from javascript (dotnetbyexample.JSONDemoService.IJSONService) and the methods, which have - surprise, suprise - exactly the same name as their C# server-side counterparts. From here on, the procedure is pretty much the same as we were used to when calling asmx webservices from javascript:
+<p>
+<span style="font-size:130%;">8. Add an Web Form to the Web Application</span></p>
+Call it TestForm1.aspx
+<p>
+<span style="font-size:130%;">9. Add a script manager and a reference</span></p>
+Add a script manager to the form, right below the form tag, and make a reference to the AjaxService.svc file:<p></p><pre>&lt;form id="form1" runat="server"&gt;
+&lt;asp:scriptmanager runat="server"&gt;
+&lt;services&gt;
+&lt;asp:ServiceReference Path="AjaxService.svc" /&gt;
+&lt;/services&gt;
+&lt;/asp:scriptmanager&gt;</pre>
+
+<p><span style="font-size:130%;">10. Add some user interface elements to call the service</span></p>
+Right below the script reference, add the following code:<pre>&lt;div&gt;
+ID&lt;asp:TextBox ID="tbId" runat="server"&gt;21&lt;/asp:TextBox&gt;
+Name&lt;asp:TextBox ID="tbName" runat="server"&gt;John Doe&lt;/asp:TextBox&gt;&lt;br /&gt;
+&lt;asp:Button ID="btnSelect" runat="server" Text="SingleSelect"
+   UseSubmitBehavior="False"  OnClientClick="CallSingle(); return false;"/&gt;
+&lt;/div&gt;
+&lt;div id="result1"&gt;&lt;/div&gt;</pre>
+
+<p><span style="font-size:130%;">11. Add Javascript code</span></p>
+Add some javascript code to call the WCF service and process the results. Place this inside the head-tag, below the title tag:
+<pre>&lt;script type ="text/javascript"&gt;
+function CallSingle()
+{
+dotnetbyexample.JSONDemoService.IJSONService.GetSingleObject(
+    document.getElementById("tbId").value,
+    document.getElementById("tbName").value,
+    CallBackSingle );
+}
+function CallBackSingle( WebServiceResult )
+{
+resultDiv = document.getElementById("result1");
+resultDiv.innerHTML = "You entered: id = " +
+ WebServiceResult.Id + " name = " +
+ WebServiceResult.Name;
+}
+&lt;/script&gt;</pre>Notice again that calling a WCF method from javascript works the same as when using asmx services: one extra parameter at the end of the list is required, which is the callback. This is a function that is called upon receiving the result from the server - the server method result is put into the single parameter of the callback.
+
+<p><span style="font-size:130%;">12. Run the test page</span></p>
+Run Test1Form.aspx. You should be able to input and numerical id and a alphanumeric name, which are sent to the server, and returned back to you as and SampleObject.
+<p><span style="font-size:130%;">13. Deploying WCF services in IIS</span></p>
+This all works fine when running it in Cassini, but when you want to host it in IIS, you will need to take care two things.
+
+First, you will need to ensure that IIS and WCF are correctly installed and registered. If IIS does not seem to want to cough up your SVC files (you can check that by trying http://&lt;your host here&gt;/&lt;your sitename here&gt;/AjaxService.svc), try running the command <b>ServiceModelReg.exe /i /x</b> from %WINDIR%\Microsoft.NET\Framework\v3.0\Windows Communication Foundation. Restart IIS after running this command.
+
+Second, if you created a default ASP.NET 2.0 website, you may run into this error message:<pre>IIS specified authentication schemes 'IntegratedWindowsAuthentication, Anonymous', but the binding only supports specification of exactly one authentication scheme. Valid authentication schemes are Digest, Negotiate, NTLM, Basic, or Anonymous. Change the IIS settings so that only a single authentication scheme is used.</pre>To fix this, right-click the website in your IIS manager and choose "properties". Then click the "Directory" tab, click the "Edit" button in the "Anonymous access and authentication control" area. You will see that both Anonymous access and Integrated Windows Authentication are selected. Unselect one of them, then restart IIS. After that, the application should work smoothly.
+<p>
+<span style="font-size:130%;">Concluding remarks</span></p>
+Calling WCF services from javascript is even simpler than calling asmx services - you don't even have to mark a service as [ScriptService] anymore, you just put an .svc file into your web site with four lines of code, make a reference to an existing service library and you're done.
+
+The sample described here does not use the IJSONService.GetMultipleObjects method, but you can download a the complete source code which includes a second test page that does. Notice that although GetMultipleObjects returns a ICollection<sampledataobject>, in javascript this is translated into a simple array. Thus, you can also use data and operation contract that use generic types, as long as the can simply be translated into an array.
+
+Oh - and don't forget to remove "debug=true" from "AjaxService.svc" before publishing it on production.
+
+Complete code downloadable <a href="http://www.schaikweb.net/dotnetbyexample/WCFAjaxServiceDemo.zip">here</a>.
+
+<em>Author's note: this article is my most viewed posting by far: 20% the traffic of my blog goes to this page. Apparently it meets a growing need in knowlegde. Please spread the word, (and the link) and if you find any errors of have any additions, let me know. Compliments are appreciated as well.</em>
+</sampledataobject>

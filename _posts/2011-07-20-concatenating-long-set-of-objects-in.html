@@ -1,0 +1,23 @@
+---
+layout: post
+title: Concatenating a long set of objects in a string with a separator
+date: '2011-07-20T17:56:00.001+02:00'
+author: Joost van Schaik
+tags:
+- C#
+- string
+modified_time: '2011-07-20T19:58:05.713+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7432244046226152527
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/07/concatenating-long-set-of-objects-in.html
+---
+
+<p>It still amazes me when I see people concatenating a long set of repetitive strings with a StringBuilder, adding a separator to each string it, and then remove the last separator – or doing some complex if-statement comparing a count or index to prevent a trailing separator or something. </p>  <p>This is a very simple trick I use a lot of times when I need, for instance, to change a list of points into it’s <a href="http://en.wikipedia.org/wiki/Well-known_text" target="_blank">Well Known Text (WKT)</a> representation. So let’s assume we have a variable <em>points</em> of IList&lt;<a href="http://msdn.microsoft.com/en-us/library/system.windows.point.aspx" target="_blank">System.Windows.Point</a>&gt;, that I want to convert to a list of coordinates that fit in WKT string. That is: X and Y separated by a space, and coordinates separated by a comma. I can do that with this simple statement that would have been a one-liner if it had not been for lack of space ;-) :</p>  <pre>var pointString = 
+  string.Join(&quot;, &quot;,
+    points.Select(p =&gt; 
+      string.Format(CultureInfo.InvariantCulture, &quot;{0} {1}&quot;, p.X, p.Y)));</pre>
+
+<p>If I had points X=10, Y=15, X=20, Y=25 and X=30 ,Y=40 this would nicely translate to</p>
+
+<p><font face="Courier New">10 15,20 25,30 40</font></p>
+
+<p>That's all. No loops, no truncating trailing comma’s: just a Select and a Join</p>  

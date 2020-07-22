@@ -1,0 +1,162 @@
+---
+layout: post
+title: Mogade powered Live Tile high score service for Windows Phone 7
+date: '2011-06-18T17:35:00.009+02:00'
+author: Joost van Schaik
+tags:
+- Mogade
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- Live Tile
+- WP7
+modified_time: '2011-07-01T08:37:38.010+02:00'
+thumbnail: http://lh3.ggpht.com/-8_bw3GEDeWY/TfzFzlCsNMI/AAAAAAAAGeY/8gY4rl25Zek/s72-c/livetile_thumb.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-831659670086672003
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/06/mogade-powered-live-tile-high-score.html
+---
+
+<p>Those who are following my twitter timeline cannot have missed the fact that I recently published a little game called “<a href="http://social.zune.net/redirect/preferences/askclient?ReturnUrl=http%3a%2f%2fsocial.zune.net%2fredirect%3ftype%3dphoneApp%26id%3d48fd8097-f07e-e011-986b-78e7d1fa76f8" target="_blank">Catch’em birds</a>” for <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> in the Marketplace. This was mainly a trial project to see if I could bend <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> far enough to use in an action&#160; game (result: yes you can). It’s not exactly a smashing success in terms of downloads and sales, and it does not use any of the Windows Phone exclusive features. So I decided to add a Live Tile showing the overall high score and if possible, the player’s rank. I’ve noticed that some people in the Dutch Windows Phone developer community (I won’t mention names here) tend to get particularly competitive when high scores are involved, so maybe this would boost download. And if not, then at least I’d have a lot of fun developing it.</p>  <p>Catch’em birds features an online leaderboard using the services of <a href="www.mogade.com" target="_blank">Mogade</a>. They have a nice and very simple to use library that you can include in your Windows Phone 7 project. You make an account, you define a game, and you define a leaderboard. This will give you 3 keys that you must include in your App and you are ready to go. Samples on their site are quite adequate so I won’t bore you with a repeat of that.</p>  <p>But now I want to use the same leaderboard services from a Live Tile service. So I defined a solution with an empty ASP.NET Web application project, and deleted all source files except for web.config. In the web.config, I defined four keys:</p>  <pre>&lt;appSettings&gt;
+  &lt;add key=&quot;gamekey&quot; value=&quot;your gamekey here&quot;/&gt;
+  &lt;add key=&quot;secret&quot; value=&quot;your game secret here&quot;/&gt;
+  &lt;add key=&quot;leaderboard&quot; value=&quot;your leaderboard key here&quot;/&gt;
+  &lt;add key=&quot;baseimageurl&quot; value=&quot;Catchembirds/background.png&quot;/&gt;
+&lt;/appSettings&gt;</pre>
+
+<p>The first three are the Mogade keys and are supposed to be secret, so you are not going to include them in your tile request, but ‘somewhere safe’. How safe a plain ole’ web.config is, is subject of discussion but not the point of this article.</p>
+
+<p>To make Mogade work, you will need <strong>Mogade.Core.dll</strong> and <strong>Newtonsoft.Json.Net35.dll</strong>. Beware: <em>use the full .NET version</em>. This a .NET web application, not a Windows Phone application ;-). You can download these from Mogade or just nick them out of <a href="http://cid-2406abd89008ac37.office.live.com/self.aspx/dotnetbyexample/LiveTileSample.zip" target="_blank">my sample solution</a>. Make a reference to those two dll’s and then it’s simply a case of defining a Generic Handler (ashx) and filling in the ProcessRequest method.</p>
+
+<p>First, I get all the variables I need. My leaderboard is configured to use player name and anonymous live id to recognize the player, so I have to pick those from an URL. The rest comes from the web.config. </p>
+
+<pre>var userName = context.Request[&quot;username&quot;];
+var anid = context.Request[&quot;anid&quot;];
+var gameKey = ConfigurationManager.AppSettings[&quot;gamekey&quot;];
+var secret = ConfigurationManager.AppSettings[&quot;secret&quot;];
+var leaderboard = ConfigurationManager.AppSettings[&quot;leaderboard&quot;];
+var baseImageUrl = ConfigurationManager.AppSettings[&quot;baseImageUrl&quot;];</pre>
+
+<p>The second part opens the base image, calls the Mogade service, waits for it to return data, and draws the result on the image. If the user has not played or has no name entered into the game settings yet, there may be no ranking, so that’s optional. To show that it actually works and the tile is indeed updated multiple times I’ve included code to draw a timestamp on the tile as well. This you will never do in real life, of course.</p>
+
+<pre>using (var myBitmap = new Bitmap(context.Server.MapPath(baseImageUrl)))
+{
+  try
+  {
+    var readyCalled = new ManualResetEvent(false);
+    var driver = new Driver(gameKey, secret);
+
+    // Get high score and user ranking
+    driver.GetLeaderboard(leaderboard, LeaderboardScope.Overall, 1, 50,
+      userName, anid,
+      p =&gt;
+      {
+        if (p.Success)
+        {
+          using (var g = Graphics.FromImage(myBitmap))
+          {
+            var font = new Font(&quot;Segoe&quot;, 5, FontStyle.Bold);
+            // Draw high score on the tile
+            var points = p.Data.Scores[0].Points;
+            g.DrawString(&quot;h: &quot; + points.ToString(),
+                          font, Brushes.White, new PointF(10, 5));
+
+            // If user has ranking, draw ranking
+            if (p.Data.User != null)
+            {
+              var rank = &quot;r: &quot; + p.Data.User.Rank.ToString();
+              var size = g.MeasureString(rank, font);
+              g.DrawString(rank.ToString(),font,
+                            Brushes.White, 
+                            new PointF(173 - size.Width - 10, 5));
+            }
+            // Draw timestamp - for debugging purposes only
+            g.DrawString(
+              String.Format(
+                new CultureInfo(&quot;en-US&quot;),
+                &quot;{0:HH:mm\ndd-MM-yyyy}&quot;, DateTime.UtcNow),
+                  font, Brushes.White, new PointF(10, 110));
+          }
+        }
+        // Indicate Mogade call is complete
+        readyCalled.Set();
+      });
+
+    // Service waits here for Mogade call to complete
+    readyCalled.WaitOne();
+  }</pre>
+
+<p>To make the code wait for the call to Mogade to complete, I use a ManualResetEvent. Calling its “WaitOne” method basically hangs the main thread until something else – in this case the anonymous callback from the Mogade GetLeaderBoard method – calls it’s Set method. This little trick I learned from <a href="http://twitter.com/#!/oconijn" target="_blank">Olaf Conijn</a>.</p>
+
+<p>The final part writes the image back to the stream. There are two important things to note here. First, I output the image as a JPEG of pretty low quality. There are three good reasons for that:</p>
+
+<ol>
+  <li>The most important one: I use a <a href="http://msdn.microsoft.com/en-us/library/microsoft.phone.shell.shelltileschedule(v=vs.92).aspx" target="_blank">ShellTileSchedule</a> to retrieve the tiles, which simply refuses to download anything larger than 80 kb. When I output the tile as PNG, the result is over 120kb and nothing seems to happen. It took me some time to figure out why. </li>
+
+  <li>You hardly see the difference on a small screen between 80kb PNG and 16kb JPEG </li>
+
+  <li>Microsoft have tried very hard to make bandwidth and battery usage of Windows Phone 7 as economical as possible, so be user, battery and data plan friendly and keep this kind of repetitive network access as small as possible. </li>
+</ol>
+
+<pre>    finally
+    {
+      // Output as JPEG to stay below the 80 kb
+      context.Response.ContentType = &quot;image/jpg&quot;;
+      using (var ms = new MemoryStream())
+      {
+        // Select JPEG encoder
+        var imgCodec = ImageCodecInfo.GetImageEncoders().Where(
+          codec =&gt; codec.FormatID.Equals(ImageFormat.Jpeg.Guid)).FirstOrDefault();
+        var parameters = new EncoderParameters();
+        parameters.Param[0] = new EncoderParameter(Encoder.ColorDepth, 8);
+
+        // Save on memory stream first, then write bytes to Response
+        // Neccesary to get this working on AppHarbor
+        myBitmap.Save(ms, imgCodec, parameters);
+        var bmpBytes = ms.GetBuffer();
+        ms.Close();
+
+        // Add content-length for good measure
+        context.Response.AppendHeader(&quot;Content-Length&quot;, bmpBytes.Length.ToString());
+        context.Response.BinaryWrite(bmpBytes);
+        context.Response.Flush();
+        context.Response.End();
+      }
+    }
+  }
+}</pre>
+
+<p>The second thing to note is that I use a little detour writing the resulting image to the Response via a MemoryStream. I could just as easy have written it directly to the context.Response.OutputStream – which I originally did - but I host the service on <a href="http://appharbor.com/" target="_blank">AppHarbor</a> and for some reason this gives me a &quot;A generic error occurred in GDI+&quot; error message. Using the MemoryStream solves that problem. </p>
+
+<p>The result looks something like this:<a href="http://lh4.ggpht.com/-_0Kue_0ouc4/TfzFzDw7RvI/AAAAAAAAGeU/GBgTYKoAQAQ/s1600-h/livetile%25255B2%25255D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: left; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="livetile" border="0" alt="livetile" align="left" src="http://lh3.ggpht.com/-8_bw3GEDeWY/TfzFzlCsNMI/AAAAAAAAGeY/8gY4rl25Zek/livetile_thumb.png?imgmax=800" width="177" height="177" /></a></p>
+
+<p>&#160;</p>
+
+<p>&#160;</p>
+
+<p>&#160;</p>
+
+<p>&#160;</p>
+
+<p>&#160;</p>
+
+<p>For my Windows Phone 7 solution I use <a href="http://twitter.com/#!/mark_monster" target="_blank">Mark Monster</a>’s <a href="http://mark.mymonster.nl/2010/12/19/solving-3-problems-with-the-shelltileschedule/" target="_blank">SmartShellTileSchedule</a> – with a little adaption, i.e. I put a try/catch block in the UpdateTileBeforeOperation because that tended to crash on my phone – but not on my wife’s. I still don’t understand why. I initialize it like this:</p>
+
+<pre>var mogadeClient = MogadeClient.Initialize(gameId, gameKey);
+mogadeClient.Update(null);
+new SmartShellTileSchedule
+{
+  Interval = UpdateInterval.EveryHour,
+  MaxUpdateCount = 0,
+  RemoteImageUri = new Uri(
+    string.Format(
+      @&quot;http://www.yourservernamehere.com/LiveTile.ashx?username={0}&amp;anid={1}&quot;,
+      userName, mogadeClient.GetUniqueIdentifier()), UriKind.Absolute),
+  StartTime = DateTime.Now,
+  Recurrence = UpdateRecurrence.Interval
+};</pre>
+
+<p>gameId, gameKey and userName are all variables loaded from the settings ‘somewhere’ in your phone app.</p>
+
+I had a little doubt whether or not the <a href="http://create.msdn.com/" target="_blank">App Hub</a> test team would object to me sending the anonymous live id as part of the tile request but yesterday my live tile enabled version 1.2.0 of Catch'em birds was certified for the Marketplace, so apparently that's allowed. So now there's no reason not to add a Live Tile to your game as well. Make use of this Windows Phone 7 exclusive feature and get your game pinned to start screens all over the world!</p>
+
+<p>Sample code can be downloaded <a href="http://cid-2406abd89008ac37.office.live.com/self.aspx/dotnetbyexample/LiveTileSample.zip" target="_blank">here</a>.</p>

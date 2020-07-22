@@ -1,0 +1,125 @@
+---
+layout: post
+title: HoloLens CubeBouncer application part 3-air tapping the cubes away and adding
+  spatial sounds
+date: '2016-07-13T09:57:00.000+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- HoloLens
+- Unity3D
+- C#
+modified_time: '2016-07-13T09:58:00.440+02:00'
+thumbnail: https://lh3.googleusercontent.com/-rvS-v_i9qMw/V4XZPq52K4I/AAAAAAAAOGY/ZQV4YO6w3mw/s72-c/image_thumb.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8334339600347713718
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/07/hololens-cubebouncer-application-part-3.html
+---
+
+<h2>Preface</h2> <p>In the <a href="http://dotnetbyexample.blogspot.com/2016/07/hololens-cubebouncer-application-part-2.html" target="_blank">previous post</a> I showed you how to create a neatly arranged grid aligned to your view in your <a href="https://www.microsoft.com/microsoft-hololens/" target="_blank">HoloLens</a> app. Now, it’s time to make a mess of it – I am going to show you how to employ air tap on the cubes to move the them around, and gaze to determine which way they go. Plus, we are going to add some sound to them – when they bounce against each other, and against the wall. </p> <h2>Steal some sounds</h2> <p><a href="https://lh3.googleusercontent.com/-eeA4aoOx8Dg/V4XZO6NMd2I/AAAAAAAAOGU/6-7lCOq_fdQ/s1600-h/image%25255B1%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; margin: 0px 10px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-rvS-v_i9qMw/V4XZPq52K4I/AAAAAAAAOGY/ZQV4YO6w3mw/image_thumb.png?imgmax=800" width="244" align="left" height="126"></a></p> <p>First of all, we need two short sound clips. One for two cubes hitting each other, one for a cube hitting a wall. Any clip will do, as long as it’s short. I took two from the “Free Casual Sounds SFX Pack” that you can find in the Unity Asset Store (Click Windows/Assets Store or hit CTRL+9)</p> <p>&nbsp;</p> <p>&nbsp;</p> <p><a href="https://lh3.googleusercontent.com/-QdHV83Hickc/V4PJDxjSUkI/AAAAAAAAOFM/Vdz7eoVDWJQ/s1600-h/image%25255B9%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; margin: 0px 0px 10px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-pP2uHvRJVw8/V4PJEWWcV5I/AAAAAAAAOFQ/N4qWdHo33p0/image_thumb%25255B3%25255D.png?imgmax=800" width="244" align="right" height="139"></a>Beware: importing directly from the store can get you more than you have bargained for, bloating your project with unnecessary stuff. I tend to create a new Unity3d project and import the package there first, to see what happens. And in this case I just cherry picked two sounds, that I called BounceCubel.wav and BounceBall.wav. Then I dragged into the Assets/Audio folder in Unity, as displayed here to the left.</p> <p>Now it’s time for coding again. That is to say …</p> <h2>Steal some scripts</h2> <p>Writing code is awesome – not having to write code is even better. In the <a href="https://www.microsoft.com/microsoft-hololens/" target="_blank">HoloLens</a> toolkit there’s a script that <em>almost</em> does what we want. It’s called “GestureManager” and it’s in Assets\HoloToolkit\Input\Scripts. It’s a script that handles the air tap and sends a kind of message to a selected object. That is almost what we want. We need to copy and adapt it a little.</p> <p>The next few steps are best done when Unity3d is not running, as it starts to parse scripts as soon as they appear in the folder:</p> <ul> <li>Copy Assets\HoloToolkit\Input\Scripts\GestureManager.cs to. Assets\Custom\Scripts  <li>Rename the file to RaySendingGestureManager.cs  <li>Open RaySendingGestureManager.cs and change the class name to RaySendingGestureManager  <li>Change “Singleton&lt;GestureManager&gt;” into “Singleton&lt;RaySendingGestureManager&gt;”  <li>Remove the namespace namespace HoloToolkit.Unity  <li>Add “using HoloToolkit.Unity” on top.  <li>Find the method GestureRecognizer_TappedEvent  <li>Change it to the following:</li></ul><pre>private void GestureRecognizer_TappedEvent(
+     InteractionSourceKind source, int tapCount, Ray headRay)
+{
+    if (focusedObject != null)
+    {
+        focusedObject.SendMessage("OnSelect"<strong><font color="#ff0000">, headRay</font></strong>);
+    }
+}</pre>
+<p>Basically, the only thing you do, is pass on the headRay “Ray” as extra parameter to the focusedObject.SendMessage method. This means that Unity3d should search for a Script component in the selected GameObject, find a method “OnSelect” in there with a a single parameter of type object - and invoke that. This feels a bit Javascripty, only even less typed, and there is no punishment, either: if the method is not found, nothing happens. No error – just nothing. It that sense it’s like sending a message indeed – if no-one is listening, we don’t care. Talk about loose coupling. You can’t get much looser than this ;)</p>
+<p>Why do we need to send the headRay? Because we want the selected object to know from which direction it’s being looked at when you tap. If you want to know the details of air tap, have a look at the rest of the script. For now, we should be content that there is a method called on the selected object – i.e. the WortellCube – when there is an air tap while the cursor is on it. </p>
+<p>One more thing – we need to <em>apply </em>the script. Select the HologramCollection/Managers object in the Hierarchy pane, then hit the “Add Component” button, Type “Ray Sending” in the search box and add the Ray Sending Manager component. Net result should be this:</p>
+<p><a href="https://lh3.googleusercontent.com/-fbedGJbo0Nk/V4P6T2d6chI/AAAAAAAAOFg/1gT9AvUgB3c/s1600-h/image%25255B14%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-EoMOZU8wW6c/V4P6UQh4UgI/AAAAAAAAOFk/qeOoGv00TjI/image_thumb%25255B6%25255D.png?imgmax=800" width="454" height="255"></a></p>
+<h2>Message sent – now catch it!</h2>
+<p>Okay, so whenever someone air taps while their gaze is at ‘something’, Unity3D tries to call on “OnSelect” method. Let’s make sure that if that something is a WortellCube, it listens to it. Start as follows:</p>
+<ul>
+<li>Select the “Assets/Custom/Scripts folder 
+<li>Right click, hit Create/C# script 
+<li>Call it “CubeManipulator” 
+<li>Select the WortellCube Prefab 
+<li>Drag the new script on top Inspector tab, below the “Add Component” button. 
+<li>Hit File/Build Settings/Build and build the solution 
+<li>Open the Visual Studio solution (or reload it)</li></ul>
+<p>Open the CubeBouncer.cs script, and change it so it looks like this:</p><pre>using HoloToolkit.Unity;
+using System.Collections;
+using UnityEngine;
+
+public class CubeManipulator : MonoBehaviour
+{
+    private Rigidbody _rigidBody;
+
+    public int ForceMultiplier = 100;
+
+
+    // Use this for initialization
+    void Start()
+    {
+        _rigidBody = GetComponent&lt;Rigidbody&gt;();
+    }<br>
+<p>    public void OnSelect(object ray)
+    {
+        if (!(ray is Ray)) return;
+        var rayData = (Ray)ray;
+
+        _rigidBody.AddForceAtPosition(
+            new Vector3(
+                rayData.direction.x * ForceMultiplier, 
+                rayData.direction.y * ForceMultiplier, 
+                rayData.direction.z * ForceMultiplier),
+                GazeManager.Instance.Position);
+    }
+  }
+}</p></pre>
+<p>Since the script is now part of a compound object, I can easily get a reference to other components in that objects. In this case, we can get a reference to the RigidBody component. For performance reasons (and because I find it more tidy looking), we store that in a private field that is initialized in the Start method.</p>
+<p>And then there’s the OnSelect method. After first checking if we indeed get a Ray supplied in the ray parameter, we simply call the RigidBody’s AddForceAtPosition with a Vector3D made out of the direction of the Ray, times 100, and the position where the cursor is now. And that’s it. Unity gives the Cube a push in the direction you are looking on the place where your gaze is locked on the cube. And off it goes, spinning into the void, bouncing off other cubes and walls. Notice the cubes slowly slow down by themselves. That is all caused by the physical characteristics – the bouncyness of the Physic Material, the weight and drag of the Rigid Body. Having written software that calculates bouncing at angles myself, it almost feels like cheating. But this is the awesome power of a fleshed out physics engine.</p>
+<p>To see this stage you actually have to rebuild the project from Unity first again or you will get an “[Position out of bounds!]” error when you try to run the app on a HoloLens or the emulator. This is because we have added a public field again, which translates into a property that can be filled by Unity. Every time you add public field to a script you will have to rebuild the project from Unity. </p>
+<p>There is a still a thing missing. The cubes bounces off each other in dead silence. Time to fix that, and make the experience more immersive.</p>
+<h2>Let’s make some noise!</h2>
+<p>First, we need to add three public and one private field to the CubeManipulator script:</p><pre>private AudioSource _audioSource;
+
+public int Id;
+
+public AudioClip BounceTogetherClip;
+
+public AudioClip BounceOtherClip;</pre>
+<p>_audioSource gets initialized in Start as well:</p><pre>void Start()
+{
+  _rigidBody = GetComponent&lt;Rigidbody&gt;();
+  <strong><font color="#ff0000">_audioSource = GetComponent&lt;AudioSource&gt;();</font></strong>
+}</pre>
+<p>And then we have to act on a collision. That is just another simple private method that is automatically called by Unity. And wouldn’t you know it, it’s called “OnCollision” – duh ;). So let’s add that to the script:</p><pre>void OnCollisionEnter(Collision coll)
+{
+  // Ignore hits by cursors
+  if (coll.gameObject.GetComponent&lt;CursorManager&gt;() != null) return;
+
+  // Play a click on hitting another cube, but only if the it has a higher Id
+  // to prevent the same sound being played twice
+  var othercube = coll.gameObject.GetComponent&lt;CubeManipulator&gt;();
+  if (othercube != null &amp;&amp; othercube.Id &lt; Id)
+  {
+    _audioSource.PlayOneShot(BounceTogetherClip);
+  }
+
+  // No cursor, no cube - we hit a wall.
+  if (othercube == null)
+  {
+    if (coll.relativeVelocity.magnitude &gt; 0.1)
+    {
+      _audioSource.PlayOneShot(BounceOtherClip);
+    }
+  }
+}</pre>
+<p>So if a cube collides with a GameObject that has a CursorManager – it’s a cursor, so ignore it. But if it has a CubeManipulator - it’s a cube too! Then play the BounceTogetherClip AudioClip. But only if the Id of this cube is lower than the cube we hit – to prevent double sounds. If it was not a cursor or another cube, it was most likely a wall – so play the BounceOtherClip, but only if the cube hit the wall ‘hard enough’.You do this by checking the collision magnitude. I took a quite arbitrary value. Once again – it feels like cheating. Unity takes care of mostly everything. </p>
+<p>Aside – don’t try to be smart and change “<strong>if (othercube != null &amp;&amp; othercube.Id &lt; Id)”</strong> into <br>“<strong>if (othercube?.Id &lt; Id)</strong>”. It will compile, it will run, <a href="http://dotnetbyexample.blogspot.com/2016/07/gotchathe-associated-script-could-not.html" target="_blank">and it will also mess up Unity3d</a>. Avoid C# 6 constructs.</p>
+<p>We only need to do a couple of things more to not only see but also hear our app at work. too. Save the script, then go back to Unity. Open the WortellCube prefab again, scroll down to the CubeManipulator script component. You will see – like expected – the script has three extra properties now: Id, Bounce Together Clip and Bounce Other Clip. So drag the Audio asset “BounceCube” on top of the Bounce Together Clip field, and BounceWall on top of Bounce Other Clips. Net result should be this:</p>
+<p><a href="https://lh3.googleusercontent.com/-IYQuul5thm8/V4XYkesEqFI/AAAAAAAAOGI/Lw_midZ0CPs/s1600-h/image%25255B21%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-mkwguoT6fZI/V4XYlElS_-I/AAAAAAAAOGM/_4i-nOzy0EY/image_thumb%25255B18%25255D.png?imgmax=800" width="437" height="327"></a></p>
+<p>Build the project again, and go back to Visual Studio. There is that tiny thing about the Id we have to solve. Because now we have an Id, but nothing is set yet. Remember that <a href="http://dotnetbyexample.blogspot.com/2016/07/hololens-cubebouncer-application-part-2.html" target="_blank">in the previous post</a> the method CreateCube in MainStarter.cs had an id parameter that was not used? Well, now we are going to use it. We change that method a little by adding two lines:</p><pre>private void CreateCube(int id, Vector3 location, Quaternion rotation)
+{
+  var c = Instantiate(Cube, location, rotation) as GameObject;
+  //Rotate around it's own up axis so up points TO the camera
+  c.transform.RotateAround(location, transform.up, 180f);
+<strong><font color="#ff0000">  var m = c.GetComponent&lt;CubeManipulator&gt;();
+  m.Id = id;</font></strong>
+}</pre>
+<p>And thus we assign the Id we need to make only one cube play the bounce together sound when two cubes hit. Deploy the project to a HoloLens or an emulator, and the cubes click when they bounce together, or emit a kind of boom when they hit the wall:</p><iframe height="365" src="https://www.youtube.com/embed/DeAcrsV9ZDo" frameborder="0" width="650" allowfullscreen></iframe>
+<p>Also, if you have an actual HoloLens, try turning your head after launching some cubes – you will hear the sound actually coming from the right direction. This is because we have included an AudioSource component configured for Spatial Sound in the WortellCube prefab - and that travels along with the cube. Once again – it feels like cheating, but it works.</p>
+<h2>Concluding remarks</h2>
+<p>We have learned to intercept air taps, and apply directed force to a rigid body – making cubes all bounce by themselves (or actually, by Unity. We have also learned to act on collisions, and play spatial sound. Still by writing very, very little code. Next time – speech command and moving stuff yourself!</p>
+<p>You can find, as always, the completed project so far <a href="https://github.com/LocalJoost/CubeBouncer/tree/blog3" target="_blank">here</a>.</p>

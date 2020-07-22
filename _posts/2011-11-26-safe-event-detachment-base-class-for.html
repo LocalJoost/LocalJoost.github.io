@@ -1,0 +1,176 @@
+---
+layout: post
+title: Safe event detachment base class for Windows Phone 7 behaviors
+date: '2011-11-26T19:16:00.001+01:00'
+author: Joost van Schaik
+tags:
+- wpdev
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- behavior
+- WP7
+modified_time: '2011-12-03T13:46:36.829+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1967210838325718409
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/11/safe-event-detachment-base-class-for.html
+---
+
+<p>Some time ago I blogged about the <a href="http://dotnetbyexample.blogspot.com/2011/04/safe-event-detachment-pattern-for.html" target="_blank">Safe Event Detachment ‘pattern’ for behaviors</a> and even included a snippet that made implementing this pattern easier. When I started to use this pattern more often myself I observed quite some code duplication appearing and I don’t like that. What’s more – although the pattern works well under Silverlight and WPF, there are some unique situations in <a href="http://www.microsoft.com/windowsphone/" target="_blank">Windows Phone 7</a> that need some extra attention – particularly the situation in which the user is navigating <em>back</em> to a page containing such a behavior. For when the user is navigation <em>from</em> the page, the AssociatedObject’s <em>Unloaded</em> event fires and the behavior is de-activated. If the user then moves back to the page – the AssociatedObject’s <em>OnAttached</em> event is <em>not</em> fired and the behavior is not re-initialized. </p>So I set out to create a base class taking care of most of this initalization hooplah without bothering the developer too much. This turned out to be not so simple as I thought. But anyway – thinks worked out. The initial setup of the base class is like this:<pre style="font-size: 12px">using System;
+using System.Windows;
+using System.Windows.Interactivity;
+using System.Windows.Navigation;
+using Microsoft.Phone.Controls;
+
+namespace Wp7nl.Behaviors
+{
+  /// &lt;summary&gt;
+  /// A base class implementing the safe event detachment pattern for behaviors.
+  /// Optional re-init after page back navigation.
+  /// &lt;/summary&gt;
+  /// &lt;typeparam name="T"&gt;The framework element type this behavior attaches to&lt;/typeparam&gt;
+  public abstract class SafeBehavior&lt;T&gt; : Behavior&lt;T&gt; where T : FrameworkElement
+  {
+    protected SafeBehavior()
+    {
+      IsCleanedUp = true;
+    }
+
+    /// &lt;summary&gt;
+    ///Setting this value to true in the constructor makes the behavior
+    ///re-init after a page back event.
+    /// &lt;/summary&gt;
+    protected bool ListenToPageBackEvent { get; set; }
+
+    /// &lt;summary&gt;
+    /// The page this behavior is on
+    /// &lt;/summary&gt;
+    protected PhoneApplicationFrame ParentPage;
+
+    /// &lt;summary&gt;
+    /// The uri of the page this behavior is on
+    /// &lt;/summary&gt;
+    private Uri pageSource;
+
+    protected override void OnAttached()
+    {
+      base.OnAttached();
+      InitBehavior();
+    }
+
+    /// &lt;summary&gt;
+    /// Does the initial wiring of events
+    /// &lt;/summary&gt;
+    protected void InitBehavior()
+    {
+      if (IsCleanedUp)
+      {
+        IsCleanedUp = false;
+        AssociatedObject.Loaded += AssociatedObjectLoaded;
+        AssociatedObject.Unloaded += AssociatedObjectUnloaded;
+      }
+    }
+  }
+}</pre>
+<p>The comments already give away which direction this is going to take: the behavior keeps track of the page it’s on <em>and that page’s u</em><em>ri</em> to track if the user is navigating back to this page. If you don’t want this behavior, do nothing. If you <em>need</em> to track the user navigating back to the page (and believe me, in Windows Phone 7 you want that in most of the cases), set ListenToPageBackEvent to true in the behavior’s constructor. The setting up of this tracking is done in the next method:</p><pre style="font-size: 12px">/// &lt;summary&gt;
+/// Does further event wiring and initialization after load
+/// &lt;/summary&gt;
+/// &lt;param name="sender"&gt;&lt;/param&gt;
+/// &lt;param name="e"&gt;&lt;/param&gt;
+private void AssociatedObjectLoaded(object sender, RoutedEventArgs e)
+{
+  // Find the page this control is on and listen to its orientation changed events
+  if (ParentPage == null &amp;&amp; ListenToPageBackEvent)
+  {
+    ParentPage = Application.Current.RootVisual as PhoneApplicationFrame;
+    pageSource = ParentPage.CurrentSource;
+    ParentPage.Navigated += ParentPageNavigated;
+  }
+  OnSetup();
+}
+
+/// &lt;summary&gt;
+/// Fired whe page navigation happens
+/// &lt;/summary&gt;
+/// &lt;param name="sender"&gt;&lt;/param&gt;
+/// &lt;param name="e"&gt;&lt;/param&gt;
+private void ParentPageNavigated(object sender, NavigationEventArgs e)
+{
+  // Re-setup when this page is navigated BACK to
+  if (IsNavigatingBackToBehaviorPage(e))
+  {
+    if (IsCleanedUp)
+    {
+      InitBehavior();
+    }
+  }
+  OnParentPageNavigated(sender, e);
+}
+
+/// &lt;summary&gt;
+/// Checks if the back navigation navigates back to the page
+/// on which this behavior is on
+/// &lt;/summary&gt;
+/// &lt;param name="e"&gt;&lt;/param&gt;
+/// &lt;returns&gt;&lt;/returns&gt;
+protected bool IsNavigatingBackToBehaviorPage(NavigationEventArgs e)
+{
+  return (e.NavigationMode == NavigationMode.Back &amp;&amp; e.Uri.Equals(pageSource));
+}
+</pre>
+<p>Now if you have set ListenToPageBackEvent to true, it keeps the root visual (i.e. the page on which the behavior is plonked) in ParentPage, it’s uri in pageSouce <em>and attaches</em> an listener to the ParentPageNavigated event of this page. Now if a navigation event happens, the IsNavigatingBackToBehaviorPage checks by comparing uri’s if the user is actually navigating <em>back</em> to this page.</p>
+<p>All very interesting, but the most important is: there are two methods OnSetup and OnParentPageNavigated in this class which are called. They are basically emtpy and form your hook points into this:</p><pre style="font-size: 12px">/// &lt;summary&gt;
+/// Override this to add your re-init
+/// &lt;/summary&gt;    
+protected virtual void OnParentPageNavigated(object sender, NavigationEventArgs e)
+{     
+}
+
+/// &lt;summary&gt;
+/// Override this to add your own setup
+/// &lt;/summary&gt;
+protected virtual void OnSetup()
+{
+}
+</pre>
+<p>So far for the setup stuff: the cleanup stuff is a lot simpler:</p><pre style="font-size: 12px">protected bool IsCleanedUp { get; private set; }
+
+/// &lt;summary&gt;
+/// Executes at OnDetaching or OnUnloaded (usually the last)
+/// &lt;/summary&gt;
+private void Cleanup()
+{
+  if (!IsCleanedUp)
+  {
+    AssociatedObject.Loaded -= AssociatedObjectLoaded;
+    AssociatedObject.Unloaded -= AssociatedObjectUnloaded;
+    OnCleanup();
+    IsCleanedUp = true;
+  }
+}
+
+protected override void OnDetaching()
+{
+  Cleanup();
+  base.OnDetaching();
+}
+
+private void AssociatedObjectUnloaded(object sender, RoutedEventArgs e)
+{
+  Cleanup();
+}
+
+/// &lt;summary&gt;
+/// Override this to add your own cleanup
+/// &lt;/summary&gt;
+protected virtual void OnCleanup()
+{
+}</pre>
+<p>And once again you see a simple virtual Cleanup you can override. </p>
+<p>I realize this is all very theoretical and technical, and the question you probably have now is – so what is this for and how do you use it? The usage is simple:</p>
+<ul>
+<li>You create a MyBehavior&lt;T&gt; that descends from SafeBehavior&lt;T&gt; 
+<li>If you want your behavior to re-init when the user navigates back set ListenToPageBackEvent&nbsp; to true in the MyBehavior constructor. But <em>beware</em>. By its very nature the Navigated event is <em>not</em> detached. So basically you are leaking memory. Therefore, if you make a <em>lot</em> of behaviors, like in a game, don’t ever set ListenToPageBackEvent to true.Use with care and moderation. 
+<li>You do setting up events in an override of OnSetup 
+<li>You do cleaning up of events in an override of OnCleanup 
+<li>And if you want to do something extra when the user is navigating back to the page do that in an override of OnParentPageNavigated.</li></ul>
+<p>This makes implementing the Safe Event Detachment ‘pattern‘ way more easy. This new behavior base is now included in my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a> and the source can be found <a href="http://wp7nl.codeplex.com/SourceControl/changeset/view/11210#214132" target="_blank">here</a>. A sample usage of this base class can be found <a href="http://dotnetbyexample.blogspot.com/2011/12/rethinking-behavior-to-show-windows.html" target="_blank">here</a>.</p>  

@@ -1,0 +1,161 @@
+---
+layout: post
+title: A behavior to show the Windows Phone 7 camera as background
+date: '2011-10-17T21:31:00.004+02:00'
+author: Joost van Schaik
+tags:
+- wpdev
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- behavior
+- WP7
+modified_time: '2012-03-04T10:29:37.541+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-494862941005176815
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/10/behavior-to-show-windows-phone-7-camera.html
+---
+
+<p><em>This article was updated October 29, 2011, implementing correctly handling of “back” navigation</em></p> <p>In a previous post I showed how to <a href="http://dotnetbyexample.blogspot.com/2011/09/mango-augmented-reality-101-showing.html" target="_blank">use the camera feed as background on a page</a> of a <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone 7</a> application. Today, I make it even easier for the really <em>really</em> lazy programmer: I have created a behavior to do the same. As a bonus, this behavior also takes the page orientation into account and whether the <a href="http://msdn.microsoft.com/en-us/library/microsoft.phone.shell.systemtray(v=vs.92).aspx" target="_blank">SystemTray</a> is visible or not.</p> <p>First order of business: make a basic behavior. Using the snippet from my previous <a href="http://dotnetbyexample.blogspot.com/2011/04/safe-event-detachment-pattern-for.html" target="_blank">safe event detachment pattern for behaviors</a> the initial setup looks like this:</p><pre>namespace Wp7nl.Behaviors
+{
+  /// &lt;summary&gt;
+  /// A behavior that shows a camera view on the background of a panel
+  /// &lt;/summary&gt;
+  public class CameraViewBackgroundBehavior : Behavior&lt;Panel&gt;
+  {
+    private PhotoCamera camera;
+    private PhoneApplicationFrame parentPage;
+    private Uri pageSource;
+    private VideoBrush backgroundBrush;
+
+    // Setup and cleanup according to http://bit.ly/dZb6D9
+
+    #region Setup
+    protected override void OnAttached()
+    {
+      base.OnAttached();
+      AssociatedObject.Loaded += AssociatedObjectLoaded;
+      AssociatedObject.Unloaded += AssociatedObjectUnloaded;
+    }
+
+    private void AssociatedObjectLoaded(object sender, RoutedEventArgs e)
+    {
+      DoInit();
+    }
+    #endregion
+
+    #region Cleanup
+    private bool isCleanedUp;
+
+    private void Cleanup()
+    {
+      if (!isCleanedUp)
+      {
+        isCleanedUp = true;
+        AssociatedObject.Loaded -= AssociatedObjectLoaded;
+        AssociatedObject.Unloaded -= AssociatedObjectUnloaded;
+        DoCleanup();
+      }
+    }
+
+    protected override void OnDetaching()
+    {
+      Cleanup();
+      base.OnDetaching();
+    }
+
+    private void AssociatedObjectUnloaded(object sender, RoutedEventArgs e)
+    {
+      Cleanup();
+    }
+    #endregion
+  }
+}</pre>With sincere apologies to region haters ;-). Nothing special here, just a skeleton behavior on a Panel. From the AssociatedObjectLoaded a method "DoInit" is called, which does actually all that’s needed to get this behavior going:<pre>/// &lt;summary&gt;
+/// Initializes the behavior
+/// &lt;/summary&gt;
+private void DoInit()
+{
+  // Find the page this control is on and listen to its orientation changed events
+  if( parentPage == null)
+  {
+    parentPage = Application.Current.RootVisual as PhoneApplicationFrame;
+    pageSource = parentPage.CurrentSource;
+    parentPage.Navigated += ParentPageNavigated;
+  }  
+  parentPage.OrientationChanged += ParentPageOrientationChanged;
+
+  camera = new PhotoCamera();
+
+  // Create a video brush with the right parameters
+  backgroundBrush = new VideoBrush();
+  backgroundBrush.Stretch = Stretch.UniformToFill;
+  backgroundBrush.AlignmentX = AlignmentX.Left;
+  backgroundBrush.AlignmentY = AlignmentY.Top;
+
+  // Set the video brush to the background of the panel 
+  // and do an initial display
+  AssociatedObject.Background = backgroundBrush;
+  backgroundBrush.SetSource(camera);
+  SetVideoOrientation(parentPage.Orientation);
+}</pre>
+<p>The comments in the source show pretty much what it does: it starts listening to page orientation change events, it sets up the video brush (but now from code in stead of from XAML) and sets the brush to the background of the panel. </p>
+<p>Of course, it has its counterpart disabling all settings again: </p><pre>/// &lt;summary&gt;
+/// Safely detach all extra events
+/// &lt;/summary&gt;
+private void DoCleanup()
+{
+  parentPage.OrientationChanged -= ParentPageOrientationChanged;
+  camera.Dispose();
+}</pre>
+<p>To make sure the behavior initializes correctly again when the user navigates <em>back</em> to the page with this behavior on it, the following code is needed (and this is the part I missed myself in the first version of this post)<pre>/// &lt;summary&gt;
+/// Re-init when user navigates back to this page
+/// &lt;/summary&gt;
+/// &lt;param name="sender"&gt;&lt;/param&gt;
+/// &lt;param name="e"&gt;&lt;/param&gt;
+private void ParentPageNavigated(object sender, NavigationEventArgs e)
+{
+  if (e.NavigationMode == NavigationMode.Back && e.Uri.Equals(pageSource))
+  {
+    isCleanedUp = false;
+    AssociatedObject.Loaded += AssociatedObjectLoaded;
+    AssociatedObject.Unloaded += AssociatedObjectUnloaded;
+  }
+}</pre>
+<p>I appears a behavior’s OnAttached is not called when a user navigates back to a page, resulting in the video not being displayed on the background. Anyway, to wrap up the code, you simply need this:</p><pre>private void ParentPageOrientationChanged(object sender, 
+                                          OrientationChangedEventArgs e)
+{
+  SetVideoOrientation(e.Orientation);
+}
+
+/// &lt;summary&gt;
+/// Sets background video brush parameters based upon page orientation
+/// &lt;/summary&gt;
+/// &lt;param name="orientation"&gt;&lt;/param&gt;
+private void SetVideoOrientation(PageOrientation orientation)
+{
+  System.Diagnostics.Debug.WriteLine("Switching to {0}", orientation);
+  switch (orientation)
+  {
+  case PageOrientation.PortraitUp:
+    backgroundBrush.Transform = 
+      new CompositeTransform { Rotation = 90, TranslateX = 480 };
+    break;
+  case PageOrientation.LandscapeLeft:
+    backgroundBrush.Transform = null;
+    break;
+  case PageOrientation.LandscapeRight:
+    if (Microsoft.Phone.Shell.SystemTray.IsVisible)
+    {
+    backgroundBrush.Transform = 
+      new CompositeTransform { Rotation = 180, TranslateX = 728, TranslateY = 480 };
+    }
+    else
+    {
+    backgroundBrush.Transform = 
+      new CompositeTransform { Rotation = 180, TranslateX = 800, TranslateY = 480 };
+    }
+    break;
+  }
+}</pre>
+<p>Based upon the way the page is oriented, a different translation and/or rotation is applied. The number are easy enough to recognize, 800 being the vertical resolution and 480 the horizontal resolution of a Windows Phone 7 screen. Apparently a system tray takes about 62 pixels – at least, that was the value I got by trial-and-error till the camera view filled the whole screen background. Bear in mind that although this will probably work on any panel, the numbers only make sense if you add this behavior to it’s top panel.</p>
+<p>Now its simply a matter of dragging this behavior on top of your top panel using expression Blend, and boom – instant camera background. No coding necessary, and a clean and empty code behind file. You big coder hero makes friends with designer ;-)</p>
+<p>Code file can be downloaded <a href="http://www.schaikweb.net/dotnetbyexample/CameraViewBackgroundBehavior.zip" target="_blank">here</a>. I will soon add this to the <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a></p>

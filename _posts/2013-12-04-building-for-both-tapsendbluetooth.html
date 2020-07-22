@@ -1,0 +1,239 @@
+---
+layout: post
+title: 'Building for both: a tap+send/Bluetooth connection helper for Windows Phone
+  8 AND Windows 8.1'
+date: '2013-12-04T17:22:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Bluetooth
+- Windows Phone 8
+- NFC
+- wpnl
+- wpdev
+- dotnetmag
+- Windows 8
+- WinRt
+- Win8nl
+modified_time: '2013-12-05T22:43:54.454+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-952716182524423643
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/12/building-for-both-tapsendbluetooth.html
+---
+
+<p>On my way to the November 2013 MVP Summit, at <a href="http://www.twitter.com/mahoekst" target="_blank">Matthijs Hoekstra</a>’s house in Sammamish, and back again in the Netherlands I spent considerable time trying to get my <a href="http://dotnetbyexample.blogspot.nl/2013/10/an-mvvm-friendly-tapsend-and-bluetooth.html" target="_blank">tap+send and Bluetooth connection helper</a> to not only work on Windows 8.1 as well, but also to make it provide cross-platform communication between <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 8 and Windows 8.1. Unfortunately the <a href="http://code.msdn.microsoft.com/wpapps/PixPresenter-Code-sharing-39ed631f" target="_blank">MSDN PixPresenter sample</a> suggest you can connect between Windows Phone and Windows 8 by sharing <em>app ids</em> in the PeerFinder.AlternateIdentities property, and <a href="http://msdn.microsoft.com/en-us/library/windows/apps/windows.networking.proximity.peerfinder.alternateidentities.aspx" target="_blank">so does the MSDN documentation on said property</a>. That way, my friends, lay only mud pies and frustration. I don’t doubt that it will work for tap+send, but as the majority of the current Windows 8.x devices (including Microsoft’s own excellent <a href="http://www.microsoft.com/surface" target="_blank">Surface</a> devices) do not include NFC capabilities, the chances of making a successful connection between a Windows Phone and a random Windows 8 computer using tap+send are very small.</p> <p>I seem to have a thing with Italians these days – I had a lot of fun with a bunch of them at the Summit, and it was not until this Italian developer called <a href="https://twitter.com/aboschin" target="_blank">Andrea Boschin</a> pointed me to <a href="http://www.silverlightshow.net/items/Windows-8.1-Play-with-Bluetooth-Rfcomm.aspx" target="_blank">a recent blog post by him</a> that I found a way out of this. Using this knowledge I adapted <a href="http://dotnetbyexample.blogspot.nl/2013/10/an-mvvm-friendly-tapsend-and-bluetooth.html" target="_blank">DevicePairConnectionHelper</a> once again, so now it’s not only cross platform, but it can also connect between Windows Phone 8 and Windows 8.1. If you are completely new to this subject, I suggest you read the previous two articles about this subject as well.</p> <p><font size="4">What it can do</font></p> <p>In <a href="http://www.schaikweb.net/dotnetbyexample/TtcDemoWithBTcrossPlatform.zip" target="_blank">the demo solution</a>, that sports both a Windows 8.1 Store application and a Windows Phone 8 application, you will find a shared file DevicePairConnectionHelper2.cs containing the updated DevicePairConnectionHelper – now supporting&nbsp; the following communication paths:</p> <ul> <li>Windows Phone 8 to Windows Phone 8 – tap+send  <li>Windows Phone 8 to Windows Phone 8 – Bluetooth browsing  <li>Windows 8.1 to Windows 8.1 – WifiDirect browsing  <li>Windows 8.1 to Windows Phone 8 – Bluetooth.</li></ul> <p>In theory it should support Windows 8.1 to Windows 8.1 over tap+send as well, but lacking even a single NFC enabled Windows 8.1 device, this is hard to test for me.</p> <p><font size="4">How to set it up and use it</font></p> <p>A very important precondition– the devices can only find each other <em>when the phone is paired to the Windows 8.1 computer</em>. Now the odd thing is – as you have paired the phone to the computer, you will see that is “connected” on both the computer <em>and</em> the phone, for a very short time. And then it flashes off again, so they are not connected. This is a bit confusing, but it is normal. They now ‘know’ each other, and that is what’s important.</p> <p>As far as the the updated DevicePairConnectionHelper goes, it works nearly the same as the previous one, but it has two extras, as far as using it is concerned.</p> <ul> <li>In the constructor, you can now optionally provide a GUID that describes a Bluetooth Service  <li>There is a new boolean property ConnectCrossPlatform that you can set to true – then the Window 8 phone will try to connect to a <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> machine using Bluetooth. </li></ul> <p>To set it up, you have to take the following things into account:</p> <ul> <li>In you Windows Phone 8 app manifest, you have to select the ID_CAP_PROXIMITY capability  <li>In you Windows 8 app manifest, you will have to the following capabilities </li> <ul> <li>Private Networks (Client &amp; Server)  <li>Proximity</li></ul> <li>After you have saved you manifest, you have to open the Package.appmanifest manually (right click, hit View Code) and add a Bluetooth rfcomm service. Andrea explains how this is done, and I repeat it here for completeness:</li></ul><pre>&lt;Capabilities&gt;
+  &lt;Capability Name="internetClient" /&gt;
+  &lt;Capability Name="privateNetworkClientServer" /&gt;
+  &lt;DeviceCapability Name="proximity" /&gt;
+  <em>&lt;m2:DeviceCapability Name="bluetooth.rfcomm"&gt;
+    &lt;m2:Device Id="any"&gt;
+      &lt;m2:Function Type="serviceId:<strong><font color="#ff0000">A7EA96BB-4F95-4A91-9FDD-3CE3CFF1D8BC</font></strong>" /&gt;
+    &lt;/m2:Device&gt;
+  &lt;/m2:DeviceCapability&gt;</em>
+&lt;/Capabilities&gt;</pre>
+<p>The stuff in Italics is what you add – verbatim. Except for the serviceId. Make and id up yourself, generate a guid, but don’t copy this one. Don’t re-use it over applications. But keep it ready, for you will need it in your code.</p>
+<p>So, in your Windows 8 app, you now create a DevicePairConnectionHelper and fire it off like this:</p><pre>var d = new DevicePairConnectionHelper("A7EA96BB-4F95-4A91-9FDD-3CE3CFF1D8BC");
+d.ConnectCrossPlatform = true;
+d.Start(ConnectMethod.Browse);</pre>
+<p>And you do exactly the same on Windows Phone 8. Usually the best way to connect is:</p>
+<ul>
+<li>Start both the Windows 8.1 and the Windows Phone 8 app. 
+<li>First start connect on the Windows 8.1 computer. That usually pretty quickly returns with zero peers found, but it keeps advertising it’s service. Then hit connect on the Windows Phone 8 
+<li>After some time – sometimes half a minute – the Windows Phone 8 gets the peers</li></ul>
+<p>Below is the Windows 8 demo app as it has found my main desktop computer “Karamelk”) (that sports a Bluetooth dongle), and next to it the screen of the Windows 8.1 computer, still searching for contacts</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Building-for-botha-tapsendBluetooth-co.1_111BB/wp_ss_20131204_0001.png"><img title="wp_ss_20131204_0001" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="wp_ss_20131204_0001" src="http://www.schaikweb.net/dotnetbyexample/Building-for-botha-tapsendBluetooth-co.1_111BB/wp_ss_20131204_0001_thumb.png" width="174" height="297"></a>&nbsp;&nbsp;&nbsp;&nbsp; <a href="http://www.schaikweb.net/dotnetbyexample/Building-for-botha-tapsendBluetooth-co.1_111BB/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Building-for-botha-tapsendBluetooth-co.1_111BB/image_thumb.png" width="436" height="298"></a></p>
+<p>Then I hit “Select contact”. The first time, the Windows 8.1 you get a popup asking if the phone can use the connection. And if you give it permission, the apps connect, and it then it looks like this:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Building-for-botha-tapsendBluetooth-co.1_111BB/wp_ss_20131205_0001.png"><img title="wp_ss_20131205_0001" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="wp_ss_20131205_0001" src="http://www.schaikweb.net/dotnetbyexample/Building-for-botha-tapsendBluetooth-co.1_111BB/wp_ss_20131205_0001_thumb.png" width="175" height="320"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <a href="http://www.schaikweb.net/dotnetbyexample/Building-for-botha-tapsendBluetooth-co.1_111BB/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Building-for-botha-tapsendBluetooth-co.1_111BB/image_thumb_3.png" width="444" height="319"></a><a href="http://www.schaikweb.net/dotnetbyexample/Building-for-botha-tapsendBluetooth-co.1_111BB/wp_ss_20131205_0003.png"><img title="wp_ss_20131205_0003" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; margin: 0px 8px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="wp_ss_20131205_0003" src="http://www.schaikweb.net/dotnetbyexample/Building-for-botha-tapsendBluetooth-co.1_111BB/wp_ss_20131205_0003_thumb.png" width="174" align="left" height="306"></a></p>
+<p>Now you can send messages back and forth.</p>
+<p>You can still use this component to connect two Windows Phones to each other like you used to, and you now can also can connect two computers to each other and exchange messages.</p>
+<p>A final piece of warning as far as usage is concerned – if you set ConnectCrossPlatform to true, the Windows Phone 8 will do cross-platform connect – but that’s the <em>only</em> thing it will do. Apparently it can’t find <em>other</em> Windows Phone 8 devices in that mode – just Windows 8.1 computers. For a Windows 8.1 computer, it does not matter – whether ConnectCrossPlatform is on or off, it will find other computers as well as phones. The text “Bluetooth” next to the right radio button is actually wrong on Windows 8.1, since the connection between computer actually uses WiFi Direct. </p>
+<p><font size="4"></font>&nbsp;</p>
+<p><font size="4">How it works</font></p>
+<p>Just like last time – when I added Bluetooth – there was surprisingly little to change. The actual difficult stuff was already found out by Andrea ;-). It turns out that on the Windows Phone side you don’t have to do much, but on the Windows 8.1 side you have to resort to some trickery and use the Bluetooth Rfcomm API.</p>
+<p>First of all we need a property to instruct the component to connect cross-platform (or not) and some stuff to hold the service GUID that we need:</p><pre style="font-size: 12px">public bool ConnectCrossPlatform { get; set; }
+
+private Guid rfcommServiceUuid;
+
+public string RfcommServiceUuid
+{
+  get
+  {
+    return rfcommServiceUuid == Guid.Empty ? null : rfcommServiceUuid.ToString();
+  }
+  set
+  {
+    Guid tmpGuid;
+    if (Guid.TryParse(value, out tmpGuid))
+    {
+      rfcommServiceUuid = tmpGuid;
+    }
+  }
+}</pre>
+<p>The RfcommServiceUuid property looks a bit complex, but it’s only to ensure there’s an actual GUID in it. Then comes the actual cross-platform connecting stuff. Most is just simply taken from Andrea, and for an explanation of what he is actually doing I kindly refer to his post (because I understand about half of it). </p><pre style="font-size: 12px">#if WINDOWS_PHONE
+    private async Task InitBrowseWpToWin()
+    {
+      var t = new Task(() =&gt;
+      {
+        PeerFinder.AlternateIdentities["Bluetooth:SDP"] = 
+          rfcommServiceUuid.ToString();
+      });
+      t.Start();
+      await t;
+    }
+
+    private void StopInitBrowseWpToWin()
+    {
+      if (PeerFinder.AlternateIdentities.ContainsKey("Bluetooth:SDP"))
+      {
+        PeerFinder.AlternateIdentities.Remove("Bluetooth:SDP");
+      }
+    }
+#endif
+
+#if NETFX_CORE
+    // Code in this part largely based on 
+    // http://www.silverlightshow.net/items/Windows-8.1-Play-with-Bluetooth-Rfcomm.aspx
+
+    private const uint ServiceVersionAttributeId = 0x0300;
+    private const byte ServiceVersionAttributeType = 0x0A;
+    private const uint ServiceVersion = 200;
+
+    private RfcommServiceProvider provider;
+
+    private async Task InitBrowseWpToWin()
+    {
+      provider = await RfcommServiceProvider.CreateAsync(
+                       RfcommServiceId.FromUuid(rfcommServiceUuid));
+
+      var listener = new StreamSocketListener();
+      listener.ConnectionReceived += HandleConnectionReceived;
+
+      await listener.BindServiceNameAsync(
+        provider.ServiceId.AsString(),
+        SocketProtectionLevel.BluetoothEncryptionAllowNullAuthentication);
+
+      using (var writer = new DataWriter())
+      {
+        writer.WriteByte(ServiceVersionAttributeType);
+        writer.WriteUInt32(ServiceVersion);
+
+        var data = writer.DetachBuffer();
+        provider.SdpRawAttributes.Add(ServiceVersionAttributeId, data);
+        provider.StartAdvertising(listener);
+      }
+    }
+
+    private void HandleConnectionReceived(StreamSocketListener listener,
+      StreamSocketListenerConnectionReceivedEventArgs args)
+    {
+      provider.StopAdvertising();
+      listener.Dispose();
+      DoConnect(args.Socket);
+    }
+    
+    // Borrowed code ends
+    
+    private void StopInitBrowseWpToWin()
+    {
+      if (provider != null)
+      {
+        provider.StopAdvertising();
+        provider = null;
+      }
+    }
+#endif
+</pre>
+<p>Important to notice is that I use <strong>Bluetooth:SDP</strong> in stead of Bluetooth:Paired like Andrea does. If I use the paired option, I get a list of all devices paired to my phone, including my Jabra headset, my Surface Pro, a Beewi Mini Cooper Coupé Red I got on the last MVP Summit and the desktop computer that I try to connect to. I use SDP (Service Discovery Protocol) to find the device that actually provides the one <em>service</em> I am looking for – not so much a Bluetooth connection from a device that happens to be in the list of paired devices. Notice the Windows Store portion actually makes a “RfcommServiceProvider” with the Guid as identifier, and the Windows Phone portion sets that same Guid <em>as a string</em> to the AlternateIdentities.</p>
+<p>Oh – the Windows Phone version of InitBrowseWpToWin method is a bit convoluted – it’s just a way to make whatever is inside async as well, so it’s compatible with the signature of the Windows 8.1 version.</p>
+<p>Another important thing to notice is that the Window 8.1 part needs an extra using:</p><pre style="font-size: 12px">#if NETFX_CORE
+using Windows.Devices.Bluetooth.Rfcomm;
+#endif</pre>
+<p>Anyway, where it all starts is here: at the constructor. Not much has changed – there’s only the extra optional parameter that’s being recorded for future use:</p><pre style="font-size: 12px">public DevicePairConnectionHelper2(string crossPlatformServiceUid = null)
+{
+  RfcommServiceUuid = crossPlatformServiceUid;
+  Messenger.Default.Register&lt;NavigationMessage&gt;(this, ProcessNavigationMessage);
+  PeerFinder.TriggeredConnectionStateChanged += PeerFinderTriggeredConnectionStateChanged;
+  PeerFinder.ConnectionRequested += PeerFinderConnectionRequested;
+}</pre>
+<p>The Start method has been slightly adapted- it’s now async, to accommodate the async InitBrowseWpToWin method</p><pre style="font-size: 12px">public async Task Start(ConnectMethod connectMethod = ConnectMethod.Tap, 
+   string displayAdvertiseName = null)
+{
+  Reset();
+  connectMode = connectMethod;
+  if (!string.IsNullOrEmpty(displayAdvertiseName))
+  {
+    PeerFinder.DisplayName = displayAdvertiseName;
+  }
+
+  try
+  {
+    PeerFinder.Start();
+  }
+  catch (Exception)
+  {
+    Debug.WriteLine("Peerfinder error");
+  }
+
+  // Enable browse
+  if (connectMode == ConnectMethod.Browse)
+  {
+    if (ConnectCrossPlatform)
+    {
+      await InitBrowseWpToWin();
+    }
+
+    await PeerFinder.FindAllPeersAsync().AsTask().ContinueWith(p =&gt;
+    {
+      if (!p.IsFaulted)
+      {
+        FirePeersFound(p.Result);
+      }
+    });
+  }
+}}</pre>
+<p>A couple of things have changed here – first of all, the whole component is reset in stead of just the PeerFinder, because there's now potentially much more set up now than just the PeerFinder. The start of the PeerFinder is now in a try-catch because on Windows 8.1 some combinations of parameters cause an exception – while still the connection is set up. This is a typical ‘yeah whatever works’ solution. Then the cross platform stuff is set up – if that is required, and I also check first if the result of the task that returns from the PeerFinder is not faulted, which I did not do in earlier versions either.</p>
+<p>The most important piece of refactoring is the DoConnect method. In the old version there was one – now there are three overloads: </p><pre style="font-size: 12px">private void DoConnect(PeerInformation peerInformation)
+{
+#if WINDOWS_PHONE
+  if (peerInformation.HostName != null)
+  {
+    DoConnect(peerInformation.HostName, peerInformation.ServiceName);
+    return;
+  }
+#endif
+
+  PeerFinder.ConnectAsync(peerInformation).AsTask().ContinueWith(p =&gt;
+  {
+    if (!p.IsFaulted)
+    {
+      DoConnect(p.Result);
+    }
+    else
+    {
+      Debug.WriteLine("connection fault");
+      FireConnectionStatusChanged(TriggeredConnectState.Failed);
+    }
+  });
+}
+
+private void DoConnect(HostName hostname, string serviceName)
+{
+  var streamSocket = new StreamSocket();
+  streamSocket.ConnectAsync(hostname, serviceName).AsTask().ContinueWith((p) =&gt; 
+                            DoConnect(streamSocket));
+}
+
+private void DoConnect(StreamSocket receivedSocket)
+{
+  socket = receivedSocket;
+  StartListeningForMessages();
+  PeerFinder.Stop();
+  FireConnectionStatusChanged(TriggeredConnectState.Completed);
+}</pre>
+<p>It is a bit complicated, but these three methods cover all scenario’s</p>
+<ol>
+<li>If a Windows Phone connects to a Windows Phone, it calls the first method. Since this is not a cross-platform call, the HostName will be null, so it will do PeerFinder.ConnectAsync, receive a StreamSocket and proceed to call the 3rd DoConnect method. 
+<li>If a Windows 8.1 computer connects a Windows 8.1 computer – ditto 
+<li>If a Windows Phone connects a Windows 8.1 computer – the Phone will fine find that the HostName (and ServiceId) will be set, so it calls the 2nd DoConnect method. This will proceed to connect to the service, as pass on the result StreamSocket again to the 3rd method 
+<li>The Window 8.1 computer, upon being connected by a Windows Phone, will get a callback in HandleConnectionReceived (see above, in Andrea’s code) which will immediately result in a StreamSocket, so it call the 3rd DoConnect immediately. </li></ol>
+<p>For good measure – the 2nd DoConnect method is actually never used in a Windows 8.1 application.</p>
+<p>And that’s about what I needed to do. The changes to the sample app are very limited – I added a checkbox on both of them, and a wrapping ConnectCrossPlatform property that is set by said checkbox. Also a minor detail – the Reset method in the NfcConnectViewModel no longer stops the PeerFinder first. This is especially important for the Windows 8.1 app – it never finds the phone, but the phone is still trying to make a connection. If the PeerFinder on Windows 8.1 is already stopped, you get all kind of funky errors when you select the computer on the phone.</p>
+<p>For those who find the discussion a bit arcane – there is, as always, <a href="http://www.schaikweb.net/dotnetbyexample/TtcDemoWithBTcrossPlatform.zip" target="_blank">a working demo solution for this article</a>. It is built on top of my new not-yet-published WpWinNl library – that’s basically a cross-platform (no, not PCL, just a NuGet Package) version of the <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library</a>. Well as cross platform as it can be. Stay tuned, it will be available soon. But tackling this problem took a bit longer than I hoped, so I am a bit behind schedule</p>  

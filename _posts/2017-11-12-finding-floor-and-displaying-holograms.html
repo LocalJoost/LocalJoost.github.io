@@ -1,0 +1,248 @@
+---
+layout: post
+title: Finding the floor - and displaying holograms at floor level in HoloLens apps
+date: '2017-11-12T14:56:00.000+01:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Windows Mixed Reality
+- Unity3D
+modified_time: '2017-11-13T08:13:54.037+01:00'
+thumbnail: https://i.ytimg.com/vi/aML7a38XIqQ/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6207430288862920182
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2017/10/finding-floor-and-displaying-holograms.html
+---
+
+<h2>Intro</h2><p>Both of my HoloLens apps in the store ask the user to identify some kind of horizontal space to put holograms on, in one case Schiphol Airport, in the other case a map of some part of the world. Now you can of course use Spatial Understanding, which is awesome and offers very advanced capabilities, but requires some initial activity by the user. Sometimes, you just want to identify the floor or some other horizontal place - if only to find out how long the user is. This the actual code I wrote for <a href="https://www.microsoft.com/store/productid/9P6SVQQCP2SQ" target="_blank">Walk the World</a> and extracted it for you. In <a href="https://github.com/LocalJoost/FloorFinder/" target="_blank">the demo project</a>, it displays a white plane at floor level.</p><iframe width="650" height="365" src="https://www.youtube.com/embed/aML7a38XIqQ" frameborder="0" allowfullscreen="" gesture="media"></iframe><h2>Setting the stage.</h2><p>We start with creating and empty project. The we proceed with importing the newest <a href="https://github.com/Microsoft/MixedRealityToolkit-Unity" target="_blank">Mixed Reality Toolkit</a>. If you have done that, you will notice the extra menu option "HoloToolkit" no longer appears, but it now says "Mixed Reality Toolkit". It still has three settings, but one of them has profoundly changed: the setting "Apply Mixed Reality Scene Settings" basically adds everything you need to get started:</p><p><a href="https://lh3.googleusercontent.com/-_pm6YgajiYg/WgcLAUDbCOI/AAAAAAAAPUw/evJqj9B6w8Y7EtX8vwZtyIDOXYtWn4UrACHMYCw/s1600-h/image%255B13%255D"><img width="400" height="142" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-_Fe2sb_XMfA/WgcLBNeFF2I/AAAAAAAAPU0/B-7USQs1Jkkck5wUSxZDfkpxR-vDcMA3ACHMYCw/image_thumb%255B9%255D?imgmax=800" border="0"></a><a href="https://lh3.googleusercontent.com/-b0wYXafMaag/WgcLBjA0P8I/AAAAAAAAPU4/x_buq6UX6Ek7pCnHjy0Mfu7HZZp5ZNVUwCHMYCw/s1600-h/image%255B14%255D"><img width="148" height="142" title="image" style="margin: 0px 0px 0px 20px; border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-2vSxOCa5Exo/WgcLCV0_WTI/AAAAAAAAPU8/pnNvAzuiZXIvAAuFe_d-6pCAjmiivxJ_wCHMYCw/image_thumb%255B10%255D?imgmax=800" border="0"></a></p><ul><li>A "MixedRealityCameraParent" - the replacement for the HoloLensCamera that encapsulates a camera that will work both on HoloLens and immersive headsets.</li><li>A default cursor</li><li>An input manager that processes input from gestures, controllers or other devices depending on whether your app runs on a HoloLens or an immersive headset</li></ul><p>Now I tend to organize stuff a little bit different, so after I have set up the scene I have like this:</p><p><a href="https://lh3.googleusercontent.com/-qcM3PAIWgLc/WgcLC73HL9I/AAAAAAAAPVA/lCgbwR8fxzIallBgDK-zr8p-KQt3GMXCwCHMYCw/s1600-h/image%255B27%255D"><img width="148" height="98" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-ph5rKwms0H4/WgcLDWfxzRI/AAAAAAAAPVE/vSPPeuDJW2g2PNHEA52w8qhFmHck5QT4ACHMYCw/image_thumb%255B17%255D?imgmax=800" border="0"></a></p><p>I make an empty game object "HologramCollection" that will hold my holograms, and all the standard or none-graphic I tend to chuck in a game object "Managers". Notice I also added SpatialMapping. If you click the other two options in the Mixed Reality Toolkit/Configure menu our basic app setup is now ready to go. </p><h2>Some external stuff to get</h2><p>Then we proceed to import <a href="https://www.assetstore.unity3d.com/en/#!/content/3595">LeanTween</a> and <a href="https://www.assetstore.unity3d.com/en/#!/content/36106">Mobile Power Ups Vol Free 1</a> from the Unity Store. Both are free. Note – the latter one is deprecated, but the one arrow asset we need from it still is usable. If you can't get it from the store anymore, just nick it from <a href="https://github.com/LocalJoost/FloorFinder/" target="_blank">my code</a> ;)</p><p><a href="https://lh3.googleusercontent.com/-fSRO-wF49_c/WgcLDzqVpOI/AAAAAAAAPVI/n9uq62JAEW0a-QpRquAl5REQEDu2QkelACHMYCw/s1600-h/image%255B33%255D"><img width="148" height="98" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-kae4iDILrCk/WgcLEZx88mI/AAAAAAAAPVM/kZ_Wpf8aR38qH8lqWXNaNKnKqhgSxUjawCHMYCw/image_thumb%255B21%255D?imgmax=800" border="0"></a></p><h2>Recurring guest appearances</h2><p>We need some more stuff I wrote about before:</p><ul><li>The <a href="http://dotnetbyexample.blogspot.com/2017/04/using-messenger-to-communicate-between.html" target="_blank">Messenger</a>, although it’s internals have changed a little since my original article</li><li>The KeepInViewController class to keep an object in view – a improved version of the MoveByGaze class about my post <a href="http://dotnetbyexample.blogspot.com/2017/07/building-floating-hololens-info-screen-2.html" target="_blank">about a floating info screen</a></li><li>The <a href="https://dotnetbyexample.blogspot.com/2017/07/building-floating-hololens-info-screen-2.html" target="_blank">LookAtCamera</a> class to keep an object oriented to the camera</li></ul><h2>Setting up the initial game objects</h2><p>The end result should be this:</p><p><a href="https://lh3.googleusercontent.com/-ycGtvoC5rEk/WgcLE3chDMI/AAAAAAAAPVQ/zdpKOq69b3glgPGDPBZB7DfwIl8RfFaNACHMYCw/s1600-h/image%255B34%255D"><img width="148" height="78" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-vWrklConBmI/WgcLFeArzJI/AAAAAAAAPVU/hDM95rM0OtQI-AZuAQzQTQGtQiviUkWmgCHMYCw/image_thumb%255B22%255D?imgmax=800" border="0"></a></p><p>HologramCollection has three objects in it:<a href="https://lh3.googleusercontent.com/-O6WpHlgcMPc/WgcWcdJ2-VI/AAAAAAAAPVk/0cCprdSZQNgNvVG01kDpb3glQYXH7NhMQCHMYCw/s1600-h/image%255B41%255D"><a href="https://lh3.googleusercontent.com/-O6WpHlgcMPc/WgcWcdJ2-VI/AAAAAAAAPVk/0cCprdSZQNgNvVG01kDpb3glQYXH7NhMQCHMYCw/s1600-h/image%255B41%255D"><img width="217" height="240" title="image" align="right" style="border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-nOhFKaPMv_8/WgcWc5RDJuI/AAAAAAAAPVo/9kCmjKa3dDUofAl3wTtWvlkplbAHcOmcQCHMYCw/image_thumb%255B25%255D?imgmax=800" border="0"></a><br></p><ul><li>A 3DTextPrefab "LookAtFloorText"</li><li>An empty game object "ArrowHolder"</li><li>A simple plane. This is the object we are going to project on the floor.</li></ul><p>Inside the ArrowHolder we place two more objects:</p><ul><li>A 3DTextPrefab "ConfirmText"</li><li>The "Arrows Green" prefab from the Mobile Power Ups Vol Free 1. That initially looks like on the right</li></ul><p>So let's start at the top setting up our objects:</p><h3>LookAtFloorText</h3><p><a href="https://lh3.googleusercontent.com/-tAqgsLPNqcM/WgcWdxkUpnI/AAAAAAAAPVs/cOhwEU73RQ0_Mucx0z9AcehRUwChvTpvwCHMYCw/s1600-h/image%255B46%255D"><img width="200" height="259" title="image" align="right" style="border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-m-r8tJzXzbU/WgcWetj5C6I/AAAAAAAAPVw/qadQaMmEAmwOxBrY-smIUJFqutIieOuXQCHMYCw/image_thumb%255B28%255D?imgmax=800" border="0"></a>This is fairly easy. We scale it to 0.005 in all directions, enter the text "Please look towards the floor" in the text mesh, and set a couple of other parameters:</p><ul><li>Z position is 1. So it will spawn 1 meter before you.</li><li>Character size to 0.1</li><li>Anchor to middle center</li><li>Font size to 480</li><li>Color to #00FF41FF (or any other color you like)</li></ul><p>After that, we drag two components on it </p><ul><li>KeepInViewController</li><li>LookAtCamera</li></ul><p><a href="https://lh3.googleusercontent.com/-a0GtAmkz_lA/WgcWfBGtkGI/AAAAAAAAPV0/rxQQJ8GKFE0YR6P9kzsQdnrmfIvJB27AgCHMYCw/s1600-h/image%255B51%255D"><img width="200" height="74" title="image" align="right" style="border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-1MpsQ8hQK_w/WgcWf6YXHcI/AAAAAAAAPV4/Zmd_w8R7G7on0L7jmr21kQAbBaj7BfT0QCHMYCw/image_thumb%255B31%255D?imgmax=800" border="0"></a>With the following settings:</p><ul><li>Max Distance 2.0</li><li>Move time 0.8</li><li>Rotate Angle 180</li></ul><p>This will keep the text at a maximum distance of 2 meters, or closer if you are looking at an object that is nearer, it will move in 0.8 seconds to a new position, and with an angle of 180 degrees it will always be readable to you.</p><a href="https://lh3.googleusercontent.com/-uwLhGhDHzos/WgcWgn9oykI/AAAAAAAAPV8/AtL23yg6nxEvfMQ-3QuuDf2EEix4hl04QCHMYCw/s1600-h/image%255B56%255D"><img width="200" height="270" title="image" align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-XDBIZLgtsfc/WgcWhI3nJGI/AAAAAAAAPWA/2-WrKhP7RbUq9j2DhvNNQHfNp_LDEvp3QCHMYCw/image_thumb%255B34%255D?imgmax=800" border="0"></a><h3>ConfirmText</h3><p>This is hardly worth it's own sub paragraph, but for the sake of completeness I show it's configuration.</p><p>Notice:</p><ul><li>Y = 0.27, Z is 0 here. </li><li>This has only the LookAtCamera script attached to it, with the same settings. There is no LookAtCamera here.</li></ul><p><a href="https://lh3.googleusercontent.com/-uwLhGhDHzos/WgcWgn9oykI/AAAAAAAAPV8/AtL23yg6nxEvfMQ-3QuuDf2EEix4hl04QCHMYCw/s1600-h/image%255B56%255D"><br></a></p><p><a href="https://lh3.googleusercontent.com/-a0GtAmkz_lA/WgcWfBGtkGI/AAAAAAAAPV0/rxQQJ8GKFE0YR6P9kzsQdnrmfIvJB27AgCHMYCw/s1600-h/image%255B51%255D"><br></a></p><p><a href="https://lh3.googleusercontent.com/-O6WpHlgcMPc/WgcWcdJ2-VI/AAAAAAAAPVk/0cCprdSZQNgNvVG01kDpb3glQYXH7NhMQCHMYCw/s1600-h/image%255B41%255D"><br></a></p><h3><a href="https://lh3.googleusercontent.com/-ZFj_Le6tlXc/WgcYWIxsugI/AAAAAAAAPWQ/1o2uqY8bkTAIfNd8X3KEakjq9HzK-p8PgCHMYCw/s1600-h/image%255B61%255D"><img width="200" height="187" title="image" align="right" style="margin: 0px 0px 0px 5px; border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-3_zQhgNZVtE/WgcYWhgH6wI/AAAAAAAAPWU/W2qXAV7yp_QqvmLyA5jsPcT-9ZJHdr_CgCHMYCw/image_thumb%255B37%255D?imgmax=800" border="0"></a>Arrows Green</h3><p>This is the object nicked from Mobile Power Ups Vol Free 1. </p><ul><li>Y = 0.1, I moved it a little upwards so it will always appear just above the floor </li><li>I rotated it over X so it will point to the floor.</li><li>I added a <a href="https://github.com/LocalJoost/FloorFinder/blob/master/Assets/App/Scripts/HorizontalAnimator.cs" target="_blank">HorizontalAnimator</a> to it with a spin time of 2.5 seconds over an absolute (vertical) axis so it will slowly spin around.</li></ul><h3>Plane</h3><p>The actual object we are going to show on the floor. It's a bit big (default size = 10x10 meters), so we are going to scale it down a little:</p><p><a href="https://lh3.googleusercontent.com/-X5Lw1N6sJJo/WghOXMmVDGI/AAAAAAAAPWo/YZa74cqudUI-5Nl2aPgr6pGgM5M5YV8EACHMYCw/s1600-h/image%255B25%255D"><img width="240" height="214" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-hgGk-iX3Vns/WghOX9OxYzI/AAAAAAAAPWs/AneywIMUtoojATRp0SpTBLGZUAbeezsTwCHMYCw/image_thumb%255B12%255D?imgmax=800" border="0"></a></p><p>And now for some code.</p><h2>The general idea</h2><p>Basically, there are two classes doing the work, the rest only is 'support crew.</p><ul><li>FloorFinder actually looks for the floor, and controls a prompt object (LookAtFloorText) that prompts you - well, to look at the floor</li><li>FloorConfirmer displays an object that shows you where the floor is find, and then waits for a method to be called that either accepts or reject the floor. In sample the app, this is done by speech commands.</li><li>They both communicate by a simple messaging system</li></ul><p>The message class is of course very simple:</p><pre style="font-size: 12px;">using UnityEngine;
+
+public class PositionFoundMessage
+{
+    public Vector3 Location { get; }
+
+    public PositionFoundMessage(Vector3 location)
+    {
+        Location = location;
+    }
+
+    public PositionFoundStatus Status { get; set; }
+}</pre><p>With an enum to go with it indicating where in the process we are</p><pre style="font-size: 12px;">public enum PositionFoundStatus
+{
+    Unprocessed,
+    Accepted,
+    Rejected
+}
+</pre><p>On startup, the FloorConfirmer hides it's confirmation object (the arrow with text). FloorFinder <em>shows</em> it's prompt object. When it detects a floor, it sends the position in a PositionFoundMessage message with status "Unprocessed". It also <em>listens </em>to PositionFoundMessages. If it <em>receives</em> one that has status "Unprocessed" (which is, in this sample, only sent by itself), it will disable itself and hide the prompt object (the text saying "Please look at the floor").</p><p>If the FloorConfirmer receives a PositionFoundMessage of status unprocessed "Unprocessed" it will show it's confirmation object on the location where the floor is detected. And then, as I wrote, it waits for it's Accept or Reject method being called. If Accept is called, it resends the PositionFoundMessage with status "Accepted" to anyone who might be interested - in this app, that's a simple class "ObjectDisplayer" that shows a game object that has been assigned to it on the correct height below the user's head. If the Reject method is called, FloorConfirmer resend the message as well - but with status Rejected. Which will wake up the FloorFinder again.</p><h2>Finding the actual floor</h2><pre style="font-size: 12px;">using HoloToolkit.Unity.InputModule;
+using HoloToolkitExtensions.Messaging;
+using HoloToolkitExtensions.Utilities;
+using UnityEngine;
+
+public class FloorFinder : MonoBehaviour
+{
+    public float MaxDistance = 3.0f;
+
+    public float MinHeight = 1.0f;
+
+    private Vector3? _foundPosition = null;
+
+    public GameObject LabelText;
+
+    private float _delayMoment;
+
+    void Start()
+    {
+        _delayMoment = Time.time + 2;
+        Messenger.Instance.AddListener&lt;PositionFoundMessage&gt;(ProcessMessage);
+#if !UNITY_EDITOR
+        Reset();
+#else
+        LabelText.SetActive(false);
+#endif
+    }
+
+    void Update()
+    {
+        if (_foundPosition == null &amp;&amp; Time.time &gt; _delayMoment)
+        {
+            _foundPosition = LookingDirectionHelpers.GetPositionOnSpatialMap(MaxDistance, <br>                                                     GazeManager.Instance.Stabilizer);
+            if (_foundPosition != null)
+            {
+                if (GazeManager.Instance.Stabilizer.StablePosition.y - 
+                       _foundPosition.Value.y &gt; MinHeight)
+                {
+                    Messenger.Instance.Broadcast(
+                       new PositionFoundMessage(_foundPosition.Value));
+                    PlayConfirmationSound();
+                }
+                else
+                {
+                    _foundPosition = null;
+                }
+            }
+        }
+    }
+
+    public void Reset()
+    {
+        _delayMoment = Time.time + 2;
+        _foundPosition = null;
+        if(LabelText!= null) LabelText.SetActive(true);
+    }
+
+
+    private void ProcessMessage(PositionFoundMessage message)
+    {
+        if (message.Status == PositionFoundStatus.Rejected)
+        {
+            Reset();
+        }
+        else
+        {
+            LabelText.SetActive(false);
+        }
+    }
+
+    private void PlayConfirmationSound()
+    {
+        Messenger.Instance.Broadcast(new ConfirmSoundMessage());
+    }
+}</pre>
+<p><a href="https://lh3.googleusercontent.com/-ltRipakvg3c/WghOYUbQ2NI/AAAAAAAAPWw/f_ZXD41rTGAa--j8TtBUAYZvahn2trMIQCHMYCw/s1600-h/image%255B4%255D"><img width="240" height="66" title="image" align="right" style="margin: 0px 10px; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-gANlDlGrc1U/WghOZa27uaI/AAAAAAAAPW0/iR58ZEdrk3oapTOVCWZi9TpxC7cCkyFmgCHMYCw/image_thumb%255B1%255D?imgmax=800" border="0"></a>This has three public properties - a prompt object (this becomes the text "please look towards the floor", a maximum distance to try to find the floor, and the minimum height the floor should be below the user's head. These properties are set as displayed on the right:</p><p>The Update method does all the work - if a position on the spatial map is found that's at least MinHeight below the user's head, then we might have found the floor, and we send out a message (with default status Unprocessed). The method below Update, ProcessMessage, actually gets that message too and hides the prompt text.<p>The helper method "GetPositionOnSpatialMap" in LookingDirectionHelpers simply tries to project a point on the spatial map at maximum distance along the viewing direction of the user. It's like drawing a line projecting from the users head ;)<pre style="font-size: 12px;">public static Vector3? GetPositionOnSpatialMap(float maxDistance = 2,
+                                               BaseRayStabilizer stabilizer = null)
+{
+    RaycastHit hitInfo;
+
+    var headReady = stabilizer != null
+        ? stabilizer.StableRay
+        : new Ray(Camera.main.transform.position, Camera.main.transform.forward);
+
+    if (SpatialMappingManager.Instance != null &amp;&amp;
+        Physics.Raycast(headReady, out hitInfo, maxDistance, 
+        SpatialMappingManager.Instance.LayerMask))
+    {
+        return hitInfo.point;
+    }
+
+    return null;
+}</pre><h2>Is this the floor we want?</h2><pre style="font-size: 12px;">using HoloToolkitExtensions.Messaging;
+using UnityEngine;
+
+public class FloorConfirmer : MonoBehaviour
+{
+    private PositionFoundMessage _lastReceivedMessage;
+
+    public GameObject ConfirmObject;
+
+    // Use this for initialization
+    void Start()
+    {
+        Messenger.Instance.AddListener&lt;PositionFoundMessage&gt;(ProcessMessage);
+        Reset();
+#if UNITY_EDITOR
+        _lastReceivedMessage =  new PositionFoundMessage(new Vector3(0, -1.6f, 0));
+        ResendMessage(true);
+#endif
+    }
+
+    public void Reset()
+    {
+        if(ConfirmObject != null) ConfirmObject.SetActive(false);
+        _lastReceivedMessage = null;
+    }
+
+    public void Accept()
+    {
+        ResendMessage(true);
+    }
+
+    public void Reject()
+    {
+        ResendMessage(false);
+    }
+
+    private void ResendMessage(bool accepted)
+    {
+        if (_lastReceivedMessage != null)
+        {
+            _lastReceivedMessage.Status = accepted ? 
+                 PositionFoundStatus.Accepted : PositionFoundStatus.Rejected;
+            Messenger.Instance.Broadcast(_lastReceivedMessage);
+            Reset();
+            if( !accepted) PlayConfirmationSound();
+        }
+    }
+
+    private void ProcessMessage(PositionFoundMessage message)
+    {
+        _lastReceivedMessage = message;
+        if (message.Status != PositionFoundStatus.Unprocessed)
+        {
+            Reset();
+        }
+        else
+        {
+            ConfirmObject.SetActive(true);
+            ConfirmObject.transform.position = 
+                message.Location + Vector3.up * 0.05f;
+        }
+    }
+
+
+    private void PlayConfirmationSound()
+    {
+        Messenger.Instance.Broadcast(new ConfirmSoundMessage());
+    }
+}</pre>
+<p>A rather simple class - it disables it's confirm object at startup. If it gets a PositionFoundMessage, two things might happen:</p><ul><li>If it's an Unprocessed message, it will activate it's confirm object (the arrow) and place it on the location provided inside the message (well, 5 cm above that).</li><li>For any other PositionFoundMessage, it will deactivate itself and hide the confirm object</li></ul><p>If the Accept method is called from outside, it will resend the message with status Accepted for any interested listener and deactivate itself. If the reject method is called, it will send the message with status Rejected - effectively deactivating itself too, but waking up the floor finder again.</p><p>And thus these two objects, the FloorFinder and the FloorConfirmer can work seamlessly together while having no knowlegde of each other whatsover.</p><h2>The final basket</h2><p>For anything to happen after a PositionFoundMessage with status Accepted is sent, there need to also be something that actually receives it, and acts upon it. I places the game object it's attached to the same vertical position as the point it received - that is, 5 cm above it. It's not advisable to do it at the exact vertical floor position, as stuff might disappear <em>under</em> the floor.I have found horizontal planes are never smooth or, indeed - actually horizontal.</p><pre style="font-size: 12px;">using HoloToolkitExtensions.Messaging;
+using UnityEngine;
+
+public class ObjectDisplayer : MonoBehaviour
+{
+    void Start()
+    {
+        Messenger.Instance.AddListener&lt;PositionFoundMessage&gt;(ShowObject);
+
+#if !UNITY_EDITOR
+        gameObject.SetActive(false);
+#endif
+    }
+
+    private void ShowObject(PositionFoundMessage m)
+    {
+        if (m.Status == PositionFoundStatus.Accepted)
+        {
+            transform.position = new Vector3(transform.position.x, m.Location.y,
+                transform.parent.transform.position.z) + Vector3.up * 0.05f;
+            if (!gameObject.activeSelf)
+            {
+                gameObject.SetActive(true);
+            }
+        }
+    }
+}</pre><p><a href="https://lh3.googleusercontent.com/-RTEczyf_Bu8/WghOZz1RSYI/AAAAAAAAPW4/QEwORzPqitgVkJt5XMPr01DYZeJ7BUFKwCHMYCw/s1600-h/image%255B17%255D"><img width="240" height="472" title="image" align="right" style="border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-gCM0Y6KD-HQ/WghOabwK_0I/AAAAAAAAPW8/8kmsowy0TVo4347peBOfw5xWoUOQ5F-hgCHMYCw/image_thumb%255B8%255D?imgmax=800" border="0"></a>This script is dragged upon the plane that will appear on the floor</p><h2>Wiring it all together</h2><p>FloorFinder and FloorConfirmer sit together in the Managers object, but there's more stuff in the to tie all the knots:</p><ul><li>The Messenger, for if there are messages to be sent, there should also be something to send it around</li><li>A Speech Input Source and a Speech Input Handler. Notice the last one calls FloorConfirmer's Accept method on "Yes", and the Reject method upon no.</li></ul><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><h2>Adding some sound</h2><a href="https://lh3.googleusercontent.com/-_NGbb1koA1I/WghTIRVvW4I/AAAAAAAAPXk/dkAxjSyW5QshrbwC4hjRRC2E5siQz7oGgCHMYCw/s1600-h/image%255B20%255D"><br></a><p>If yo<a href="https://lh3.googleusercontent.com/-Ykbcd8na0us/WghTJFjOeQI/AAAAAAAAPXo/vEjR4Hm5iOQQcbJm1zb58cQkIi8pR28QACHMYCw/s1600-h/image%255B21%255D"><img width="244" height="401" title="image" align="right" style="float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-UEgTfhSdCpc/WghOcpALiDI/AAAAAAAAPXI/YGdXVHYMtYkpiZujIEPW_6wOKaX4jErHACHMYCw/image_thumb%255B10%255D?imgmax=800" border="0"></a>u download the source code and run it, you might notice my trademark "pringggg" sound when the app does something. You might also have noticed various scripts sending ConfirmSoundMessage messages. In the Managers object there's another game object called "ConfirmSoundManager". It has an audio source and a ConfirmSoundRinger, that as you might expect is not too complicated:</p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><pre style="font-size: 12px;">using HoloToolkitExtensions.Messaging;
+using UnityEngine;
+
+public class ConfirmSoundRinger : MonoBehaviour
+{
+    void Start()
+    {
+        Messenger.Instance.AddListener&lt;ConfirmSoundMessage&gt;(ProcessMessage);
+    }
+
+    private void ProcessMessage(ConfirmSoundMessage arg1)
+    {
+        PlayConfirmationSound();
+    }
+
+    private AudioSource _audioSource;<br>
+    private void PlayConfirmationSound()
+    {
+        if (_audioSource == null)
+        {
+            _audioSource = GetComponent&lt;AudioSource&gt;();
+        }
+        if (_audioSource != null)
+        {
+            _audioSource.Play();
+        }
+    }
+}</pre><h2>Conclusion</h2><p>And that's it. Simply stare at a place below your head (default at least 1 meter), say "Yes" and the white plane will appear exactly on the ground. Or, as I explained, a little above it. Replace the plane by your object of choice and you are good to go, without using Spatial Understanding over complex code.</p><p>As usual, <a href="https://github.com/LocalJoost/FloorFinder/" target="_blank">demo code can be found on GitHub.</a></p>

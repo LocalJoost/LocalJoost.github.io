@@ -1,0 +1,212 @@
+---
+layout: post
+title: MVVMLight based language selection for Windows Phone 7
+date: '2011-07-24T13:58:00.009+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- MVVM
+- WP7NL
+- Windows Phone 7
+- MVVM Light
+- WP7
+modified_time: '2012-04-01T21:03:55.249+02:00'
+thumbnail: http://lh4.ggpht.com/-oYk2yh1mi3w/TiwI_2q84VI/AAAAAAAAGp4/Fu1Rf5XPPpE/s72-c/screenshot_7-24-2011_13.44.6.244_thumb%25255B3%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-706594134394839137
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/07/mvvmlight-based-language-selection-for.html
+---
+
+<span style="font-style:italic;">Updated 25-09-2011 with a new implementation of LanguageSettingsViewModel to make it compatible with SilverlightSerializer. It appeared that every 2nd tombstoning of this viewmodel it lost it’s CurrentLanguage property</span>
+<span style="font-style:italic;">Updated 01-02-2011 with bug fix in SetLanguageFromCurrentLocale</span>
+<p>With the advent of the ‘Mango’ release of <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> with 19 more countries getting a Marketplace, supporting more than your own native language or English becomes all the more important. I can tell from personal experience that for instance supporting German gives a tremendous boost to your downloads. Tremendous as in: I get almost as much downloads from Germany as from the whole USA. Apparently Windows Phone 7 is doing pretty well in Germany. So take note of this ‘Geheimtipp’ ;-)</p> <p>I implemented the following solution, based on <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> 4, which upon first startup automatically tries to select a language based upon the current UI locale, and if that fails, tries to select one from the same group (for instance, if I only have en-UK it tries to select the first language that starts with “en”, for instance en-US). And of course you give the possibility of selecting another language manually.</p> <p>It works like this. First, I define a very simple class that describes the base properties of a language, i.e. the locale (for instance en-US) and the way you want this language described:</p><pre style="font-size: 11px">using System;
+using GalaSoft.MvvmLight;
+
+namespace Wp7nl.Globalization
+{
+  /// &lt;summary&gt;
+  /// Supported languages
+  /// &lt;/summary&gt;
+  public class Language : ViewModelBase, IEquatable&lt;Language&gt;
+  {
+    private string locale;
+    public string Locale
+    {
+      get { return locale; }
+      set
+      {
+        if (locale != value)
+        {
+          locale = value;
+          RaisePropertyChanged(() =&gt; Locale);
+        }
+      }
+    }
+
+    private string description;
+    public string Description
+    {
+      get { return description; }
+      set
+      {
+        if (description != value)
+        {
+          description = value;
+          RaisePropertyChanged(() =&gt; Description);
+        }
+      }
+    }
+
+    public override string ToString()
+    {
+      return Description;
+    }
+
+    public bool Equals(Language other)
+    {
+      return other != null &amp;&amp; other.Locale.Equals(Locale);
+    }
+
+    public override bool Equals(object obj)
+    {
+      return Equals(obj as Language);
+    }
+
+    public override int GetHashCode()
+    {
+      return Locale.GetHashCode();
+    }
+  }
+}</pre>
+<p>I may look like a lot but it’s only two properties and an implementation of Equals. I implemented it as a full view model, which is actually a bit overkill, but I tend to do this since I have a couple of code snippets that make this pretty easy anyway. The second class does actually all the work:</p><pre style="font-size: 11px">
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Linq;
+using System.Threading;
+using GalaSoft.MvvmLight;
+
+namespace Wp7nl.Globalization
+{
+  /// &lt;summary&gt;
+  /// A ViewModel class to handle language settings. 
+  /// Override this class and add languages in the constructor
+  /// &lt;/summary&gt;
+  public class LanguageSettingsViewModel : ViewModelBase
+  {
+    public LanguageSettingsViewModel()
+    {
+      AddLanguages(new Language { Description = "English", Locale = "en-US" });
+    }
+
+    private readonly ObservableCollection&lt;Language&gt; supportedLanguages =
+       new ObservableCollection&lt;Language&gt;();
+
+    /// &lt;summary&gt;
+    /// Gets the supported languages.
+    /// &lt;/summary&gt;
+    public ObservableCollection&lt;Language&gt; SupportedLanguages
+    {
+      get { return supportedLanguages; }
+    }
+
+    /// &lt;summary&gt;
+    /// Determine current language
+    /// &lt;/summary&gt;
+    /// &lt;returns&gt;&lt;/returns&gt;
+    private Language GetDefaultLanguage()
+    {
+      // Try to select from current UI thread on full name
+      var language = SupportedLanguages.Where(
+        p =&gt; p.Locale == Thread.CurrentThread.CurrentUICulture.Name).FirstOrDefault();
+      if (language == null)
+      {
+        // Try to select from current UI thread on 2 letter ISO code
+        language =
+          SupportedLanguages.Where(
+            p =&gt; p.Locale.StartsWith(
+              Thread.CurrentThread.CurrentUICulture.TwoLetterISOLanguageName)).FirstOrDefault();
+      }
+      if (language == null)
+      {
+        // Still no language: take the first one that starts with English
+        language = SupportedLanguages.Where(p =&gt; p.Locale.Contains("en")).First();
+      }
+
+      return language;
+    }
+
+    private Language currentLanguage;
+    /// &lt;summary&gt;
+    /// Gets or sets the current language.
+    /// &lt;/summary&gt;
+    /// &lt;value&gt;
+    /// The current language.
+    /// &lt;/value&gt;
+    public Language CurrentLanguage
+    {
+      get
+      {
+        return currentLanguage;
+      }
+      set
+      {
+        if (currentLanguage != value)
+        {
+          currentLanguage = value;
+          RaisePropertyChanged(() =&gt; CurrentLanguage);
+        }
+      }
+    }
+
+
+    /// &lt;summary&gt;
+    /// Sets the language from current locale.
+    /// &lt;/summary&gt;
+    public void SetLanguageFromCurrentLocale()
+    {
+      if (CurrentLanguage == null)
+      {
+        CurrentLanguage = GetDefaultLanguage();
+      }
+      Thread.CurrentThread.CurrentUICulture = new CultureInfo(CurrentLanguage.Locale);
+      Thread.CurrentThread.CurrentCulture = Thread.CurrentThread.CurrentUICulture;
+    }
+
+    /// &lt;summary&gt;
+    /// Adds the languages.
+    /// &lt;/summary&gt;
+    /// &lt;param name="languages"&gt;The languages.&lt;/param&gt;
+    public void AddLanguages(params Language[] languages)
+    {
+      if (languages != null && languages.Count() &gt; 0)
+      {
+        foreach (var l in languages)
+        {
+          if (!supportedLanguages.Contains(l))
+          {
+            supportedLanguages.Add(l);
+          }
+        }
+      }
+    }
+  }
+}</pre>
+<p>Out of the box this thing only supports English-USA. To add more languages, you subclass this model and add your own languages:</p><pre style="font-size: 12px">using Wp7nl.Globalization;
+
+namespace YourApp.ViewModels
+{
+  public class MyLanguagesViewModel : LanguageSettingsViewModel
+  {
+    public LanguageViewModel()
+    {
+       AddLanguages(new Language { Description = "Nederlands", Locale = "nl-NL" });
+       AddLanguages(new Language { Description = "Deutsch", Locale = "de-DE" });
+    }
+  }
+}</pre>
+<p><a href="http://lh5.ggpht.com/-izp4qcsZrJw/TiwI_LFgWoI/AAAAAAAAGp0/ApBpj7ei_40/s1600-h/screenshot_7-24-2011_13.44.6.244%25255B5%25255D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="screenshot_7-24-2011_13.44.6.244" border="0" alt="screenshot_7-24-2011_13.44.6.244" align="right" src="http://lh4.ggpht.com/-oYk2yh1mi3w/TiwI_2q84VI/AAAAAAAAGp4/Fu1Rf5XPPpE/screenshot_7-24-2011_13.44.6.244_thumb%25255B3%25255D.png?imgmax=800" width="200" height="392"></a>Directly after you have created MyLanguagesViewModel, or retrieved it from tombstoning <a href="http://dotnetbyexample.blogspot.com/2011/01/tombstoning-mvvmlight-viewmodels-with.html" target="_blank">using my extension methods based upon SilverlightSerializer</a>, you simply call the SetLanguageFromCurrentLocale and that either restores the selection last made by the user in the application itself, or tries to find the language that best fits what the user has selected as locale on his phone. To give the user an option to select a language you can, for instance, bind the models’ SupportedLanguages property to the ItemsSource property of a <a href="http://blogs.msdn.com/b/delay/archive/2010/11/03/listpicker-i-hardly-even-know-er-a-detailed-overview-of-the-windows-phone-toolkit-s-listpicker-control.aspx" target="_blank">ListPicker</a> and the CurrentLanguage to its SelectedItems property.</p>
+<p>In my as of yet unreleased Mango version of Map Mania this looks like as displayed on the right:</p>
+<p>This leaves, of course, still two things to do:</p>
+<ol>
+<li>Defining resources files with with the actual text 
+<li>Implement a class that makes these resource files bindable </li></ol>
+<p>This procedure is shown in the <a href="http://go.microsoft.com/fwlink/?LinkId=190350" target="_blank">Windows Phone 7 Globalization Sample</a> provided on <a href="http://msdn.microsoft.com/en-us/library/ff431744(v=vs.92).aspx" target="_blank">MSDN</a> so I won’t repeat them here.</p>

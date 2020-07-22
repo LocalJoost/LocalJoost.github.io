@@ -1,0 +1,38 @@
+---
+layout: post
+title: Drawing translucent shapes and lines on a Windows Phone 8 Map
+date: '2014-02-11T21:09:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- Mapping
+- wpnl
+- wpdev
+- dotnetmag
+modified_time: '2014-02-13T10:25:23.229+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5426464560341219497
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/02/drawing-translucent-shapes-and-lines-on.html
+---
+
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Drawing_123C6/Shapes1.png"><img title="Shapes1" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="Shapes1" src="http://www.schaikweb.net/dotnetbyexample/Drawing_123C6/Shapes1_thumb.png" width="148" align="right" height="244"></a>For those who think the MVP title comes with divine wisdom, I have a disappointing announcement to make: it does not. Recently I discovered (or actually was told) something pretty elementary that I missed all that time: how to draw more or less translucent lines or shapes on a <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 8 map.</p> <p>To the right you see a few shapes that I draw on the screen during my 3rd WpDevFusion Mapping session demo. The basic piece for such a shape is very simple:</p><pre style="width: 75%">var line = new MapPolygon
+{
+  StrokeThickness = 2,
+  FillColor=Colors.Purple,
+  StrokeColor = Colors.Red,
+  StrokeDashed = false
+};
+</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Drawing_123C6/Shapes2.png"><img title="Shapes2" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="Shapes2" src="http://www.schaikweb.net/dotnetbyexample/Drawing_123C6/Shapes2_thumb.png" width="148" align="right" height="244"></a>But what we want is more or less translucent shapes. That turns out to be insanely easy:</p><pre style="width: 75%">var fill = Colors.Purple;
+var stroke = Colors.Red;
+fill.A = 80;
+stroke.A = 80;
+var line = new MapPolygon
+{
+  StrokeThickness = 2,
+  FillColor = fill,
+  StrokeColor = stroke,
+  StrokeDashed = false
+};
+</pre>
+<p>A Color has four elements : R(ed), G(reen), B(lue) and A(lpha). The last ones determines the opacity of XAML elements, but apparently also that of map shapes. Both fill and stroke are now about 80/255th (or 31%) opaque – or 69% translucent.</p>
+<p>And that’s all there is to it. If you don’t mind, I will leave the demo solution for as exercise for the reader this time ;)</p>  

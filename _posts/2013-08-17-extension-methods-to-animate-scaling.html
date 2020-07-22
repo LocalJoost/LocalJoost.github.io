@@ -1,0 +1,81 @@
+---
+layout: post
+title: Extension methods to animate scaling and opacity on Windows Phone
+date: '2013-08-17T21:23:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- wpnl
+- wpdev
+- dotnetmag
+- Windows Phone
+- Extension methods
+modified_time: '2013-08-17T21:44:05.232+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6379217311365871624
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/08/extension-methods-to-animate-scaling.html
+---
+
+<p>This is the first part of a tree-part series handling animating scaling and opacity. If you kind of wonder how the hell something that simple can require three blog posts – bear with me, it will all become clear in the end.</p> <p>For a game that – at the moment of this writing – I have just submitted to the <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> Store I have developed a number of extension methods to animate a number of properties of a GUI element. You have already seen <a href="http://dotnetbyexample.blogspot.nl/2013/07/extension-methods-to-animate-object.html">extension methods to animate an object over the screen via waypoints</a> –that’s also part of the package that will be added to my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on CodePlex</a>, just as the extension methods that below that animate scaling and opacity. They are actually pretty simple, and are built on top of the&nbsp; <a href="http://dotnetbyexample.blogspot.nl/2011/03/simple-windows-phone-7-silverlight.html" target="_blank">translation extension methods I already wrote earlier for animations</a>. If have temporarily added them to a “StoryboardExtensions3” class – in wp7nl all the methods will sit snugly together in “StoryboardExtensions” </p> <p>First, the class with the scaling methods:</p><pre style="font-size: 11px">using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+
+namespace Wp7nl.Utilities
+{
+  /// &lt;summary&gt;
+  /// Extension methods to add animations to a storyboard
+  /// &lt;/summary&gt;
+  public static class StoryboardExtensions3
+  {
+    public static void AddScalingAnimation(this Storyboard storyboard,
+                                           FrameworkElement fe, double fromX, double toX, 
+                                           double fromY, double toY, Duration duration)
+    {
+      storyboard.AddScalingAnimation(fe, fromX, toX, fromY, toY, duration, null);
+    }
+
+    public static void AddScalingAnimation(this Storyboard storyboard,
+                                           FrameworkElement fe, double fromX, double toX, 
+                                           double fromY, double toY, Duration duration,
+                                           IEasingFunction easingFunction)
+    {
+      storyboard.AddAnimation(fe.RenderTransform,
+                  storyboard.CreateDoubleAnimation(duration, fromX, toX, easingFunction),
+                     CompositeTransform.ScaleXProperty);
+      storyboard.AddAnimation(fe.RenderTransform,
+                  storyboard.CreateDoubleAnimation(duration, fromY, toY, easingFunction),
+                     CompositeTransform.ScaleYProperty);
+    }
+  }
+}</pre>
+<p>if you have read the earlier article, there is not much special in there. The heavy lifting has already been done earlier, by making the CreateDoubleAnimation and AddAnimation extension methods. You can use the AddScaling methods to scale an object over Y from 1 to 0 (notice X stays the same), which will effectively let it disappear by folding the object upwards to a horizontal line, by using this code:</p><pre style="font-size: 11px">myGuiElement.RenderTransform = new CompositeTransform();
+var s = new Storyboard();
+s.AddScalingAnimation(myGuiElement, 1, 1, 1, 0, TimeSpan.FromMilliseconds(500));
+s.Begin();</pre>or letting it mirror itself over the X-axis by changing the 4th line to <pre style="font-size: 11px">s.AddScalingAnimation(myGuiElement, 1, -1, 1, 1, TimeSpan.FromMilliseconds(500));</pre>
+<p>I made a very similar set of methods for Opacity:</p><pre style="font-size: 11px">public static void AddOpacityAnimation(this Storyboard storyboard,
+                                       UIElement fe, double from, double to, 
+                                       Duration duration)
+{
+  AddOpacityAnimation(storyboard, fe, from, to, duration, null);
+}
+
+public static void AddOpacityAnimation(this Storyboard storyboard,
+          UIElement fe, double from, double to, Duration duration,
+          IEasingFunction easingFunction)
+{
+  storyboard.AddAnimation(fe,
+         storyboard.CreateDoubleAnimation(duration, from, to, easingFunction),
+         UIElement.OpacityProperty);
+}</pre>
+<p>Opacity runs from 1 (totally visible) to 0 (totally transparent) so with this code:</p><pre style="font-size: 11px">var s = new Storyboard();
+s.AddOpacityAnimation(myGuiElement, 1, 0, TimeSpan.FromMilliseconds(500));
+s.Begin();</pre>
+<p>”myGuiElement” will fade out in half a second. And even <em>more</em> fun is combining the code to:</p><pre style="font-size: 11px">myGuiElement.RenderTransform = new CompositeTransform();
+var s = new Storyboard();
+s.AddScalingAnimation(myGuiElement, 1, 1, 1, 0, TimeSpan.FromMilliseconds(500));<br>s.AddOpacityAnimation(myGuiElement, 1, 0, TimeSpan.FromMilliseconds(500)); 
+s.Begin();</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Extension-methods-to-animate-scaling-and_11019/folding.png"><img title="folding" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; margin: 0px 4px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="folding" align="left" src="http://www.schaikweb.net/dotnetbyexample/Extension-methods-to-animate-scaling-and_11019/folding_thumb.png" width="148" height="244"></a>Now the element will fold up <em>and</em> fade out simultaneously. And that’s exactly what happens is <a href="http://www.schaikweb.net/dotnetbyexample/ScalingOpacitityDemo.zip" target="_blank">this little demo app</a> that contains all the source code. And it shows you how to do the opposite as well – fold the window out again. </p>
+<p>I can hear you think now: “So why on earth would you want to do this from code? Animations can be made can be made in Blend, and if you are such a Blend fan, why do you make me do it from code now, huh?”. I am an probably always will be a Blend fan – very much so, as will become clear soon – but the problem with this kind of animations is that they are not reusable. Storyboards tend to become attached to the element they have been created for – they refer by name to it. So I am trying to find a way to make a few common animations reusable. Read the next posts, and it will become clear. In the mean time, enjoy this demo application that demonstrates how to use the stuff.</p>
+<p>&nbsp;</p>
+<p>On more for the road: if you add following line of at the top of both the Button_Click and Button_Click1 in the demo app:</p><pre style="font-size: 11px">FoldingPanel.RenderTransformOrigin = new Point(0.5, 0.5);</pre>
+<p>the panel won’t fold up to the top, but it will kind of collapse on its horizontal middle. This way, you set the origin of the animation. By setting it to 0.5, 0.5 you set it in the center point of the window. If you would set it to 1,1 the panel will fold up to its bottom.</p>
+<p>And finally – although developed for Windows Phone 8, this this will work in Windows Phone 7 as well. And most likely for <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a>, which will get some attention from me when this game is finally done. I think ;-)</p>  

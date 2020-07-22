@@ -1,0 +1,46 @@
+---
+layout: post
+title: MovedCheeseException–where is StorageFolder.TryGetItemAsync in Windows Phone
+  8.1?
+date: '2014-05-06T11:11:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Windows phone 8.1
+- Extension methods
+modified_time: '2014-05-06T13:34:48.665+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4043351192679536172
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/05/movedcheeseexceptionwhere-is.html
+---
+
+<p>A quickie this time: when I finally started porting <a href="http://WpWinNl.codeplex.com" target="_blank">WpWinNl</a> over to <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 8.1 (sorry, I was busy testing, preparing a talk and the <a href="https://www.youtube.com/watch?v=s9FfOs6TqOY" target="_blank">Windows Phone Code Battle</a>, so something had to give) and was getting into the nuts and bolts of some of my code I noticed something peculiar. Somewhere in my code the StorageHelper class, that sports this little method.</p><pre style="font-size: 11px">private async Task&lt;StorageFile&gt; GetDataFile()
+{
+  var result = 
+    await ApplicationData.Current.LocalFolder.<font color="#ff0000"><u>TryGetItemAsync</u></font>(GetDataFileName(typeof(T)));
+  return result as StorageFile;
+}</pre>
+<p>got a compiler error on the TryGetItemsAsync method. So although Microsoft works hard on convergence for Windows Phone and Windows, apparently for some reason this method did not make the cut. In a Windows Phone / Windows 8.1 PCL it is not available either.</p>
+<p>Now of course you can cry foul and say that once again Microsoft is pulling the rug out from under you, the loyal developer, or something to that effect – or you can just solve the problem. Either you change the line that does not compile to something that <em>does</em> compile on all platforms, for instance </p><pre style="font-size: 11px">var files = await ApplicationData.Current.LocalFolder.GetFilesAsync();
+var result = files.FirstOrDefault(p =&gt; p.Name == name);</pre>
+<p>Or if you are a <em>really</em> lazy bastard&nbsp; - like me – and just want to leave existing code intact, you can just make an extension method that you tuck in a library like this:</p><pre style="font-size: 11px">using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Windows.Storage;
+
+namespace WpWinNl.Utilities
+{
+  /// &lt;summary&gt;
+  /// Replaces the missing TryGetItemAsync method in Windows Phone 8.1
+  /// &lt;/summary&gt;
+  public static class StorageFolderExtensions
+  {
+    public static async Task&lt;IStorageItem&gt; TryGetItemAsync(this StorageFolder folder, 
+                                                           string name)
+    {
+      var files = await folder.GetItemsAsync().AsTask().ConfigureAwait(false);
+      return files.FirstOrDefault(p =&gt; p.Name == name);
+    }
+  }
+}
+</pre>
+<p>And we’re&nbsp; done here. Sometimes your cheese moves a little. Deal with it, that’s what it takes to be a developer ;-). As this article basically talks about two lines of code, I will dispense with the sample solution this time if you don’t mind.</p>
+<p>Thanks to <a href="https://twitter.com/davesmits" target="_blank">Dave Smits</a> for pointing out on Twitter that I should add AsTask().ConfigureAwait(false), which I did. As I am writing a library, I should not interfere with the developer's way of handling thread safety. <a href="http://channel9.msdn.com/Series/Three-Essential-Tips-for-Async/Async-library-methods-should-consider-using-Task-ConfigureAwait-false-" target="_blank">Here is explained why</a>.</p>  

@@ -1,0 +1,91 @@
+---
+layout: post
+title: Zero lines of code solution to entice Windows Phone users to rate and review
+  an app
+date: '2013-09-12T12:03:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- wpnl
+- wpdev
+- WP7NL
+- Windows Phone 7
+- Windows Phone
+- behavior
+modified_time: '2013-09-13T18:06:41.531+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1708123847736710102
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/09/zero-lines-of-code-solution-to-entice.html
+---
+
+<p>I don’t think I need to elaborate on how important it is to get ratings for your app in the Store – and preferably <em>good</em> ratings. By no means this is new and original: <a href="http://www.hoekstraonline.net/2013/01/12/how-to-increase-your-ratings-with-windows-phone/" target="_blank">Matthijs Hoekstra wrote something to this effect</a>, our Dutch DPE <a href="http://blog.rajenki.com/2013/08/reviewnotifier-nuget-package/" target="_blank">Rajen Kishna even made a NuGet package for similar stuff</a>, Telerik have something <a href="http://www.telerik.com/products/windows-phone/overview/all-controls/rateappreminder.aspx" target="_blank">in their magnificent Radcontrols</a> for <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a>&nbsp; and yet me, being stubborn, need to make something of my own. The reason for this is simple: I wanted (of course) to make a behavior so you can add it to your app <em>without any code at all</em> – just drag it on top of your first opening page and it will work out of the box. And Blend will present you with some properties that you can set – or not. It works fine out of the box. As it does in my latest Windows Phone app, <a href="http://www.windowsphone.com/s?appid=ed077cc6-21ce-4e99-8e19-c5b119646016" target="_blank">2 Phone Pong</a>.</p> <p>If you drop the behavior on top of your start page it will work without modification. But Blend exposes four properties to customize it’s mode of operation:</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-remind-a-Windows-Phone-use_A4CE/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: none; padding-top: 0px; padding-left: 0px; margin-left: auto; display: block; padding-right: 0px; border-top-width: 0px; margin-right: auto" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-remind-a-Windows-Phone-use_A4CE/image_thumb.png" width="301" height="221"></a></p> <ul> <li><strong>Caption<em> </em></strong>is the text on top of the message box that will display when the app reminds the user. Default is “Review App”. You can set a different value in XAML or (better) bind it to a view model property holding a globalized text. <li><strong>MaxReminders</strong> is the number of times the behavior will ask the user to review. If the user refuses to review more than MaxReminders time, he will no longer be bothered.  <li><strong>Message</strong> shows the actual reminder message. Default values is “You have used this app a few times now, would you like to review it in the store?”  <li><strong>RemindFrequency</strong> is the number of app startups after which the review request is displayed.</li></ul> <p>So, with the default setting, the app will ask you the 7<sup>th</sup>, 14<sup>th</sup> and 21<sup>st</sup> time if you want to review the app. After the third dismiss, it won’t ask you anymore. This is to prevent users getting annoyed by endless review requests and giving negative reviews because of that. And of course it will stop asking the user when has elected to post a review.</p> <p>The behavior itself is built on top of my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a> (of course) and implemented as a <a href="http://dotnetbyexample.blogspot.com/2011/11/safe-event-detachment-base-class-for.html" target="_blank">SafeBehavior</a>. First, I created a simple data class to hold the data in local storage:</p><pre>namespace Wp7nl.Behaviors
+{
+  /// &lt;summary&gt;
+  /// Simple data class to store data in used by RemindReviewBehavior
+  /// &lt;/summary&gt;
+  public class RemindData
+  {
+    public int Starts { get; set; }
+
+    public bool Reviewed { get; set; }
+
+    public bool Refused { get; set; }
+  }
+}</pre>
+<p>The behavior itself is also pretty simple – it sports four Dependency Properties with the same names as Blend shows – not coincidentally – in front of the text boxes in the image on top of this post. </p>
+<p>The behavior itself starts simple enough, being a standard SafeBehavior:</p><pre>namespace Wp7nl.Behaviors
+{
+  /// &lt;summary&gt;
+  /// A behavior to remind the user to review the app after a couple
+  /// times using it
+  /// &lt;/summary&gt;
+  public class RemindReviewBehavior: SafeBehavior&lt;Page&gt;
+  {
+    protected override void OnSetup()
+    {
+      CheckRemind();
+   }
+}</pre>
+<p>All the functionality is in the CheckRemind method:</p><pre>private void CheckRemind()
+{
+  var helper = new IsolatedStorageHelper&lt;RemindData&gt;();
+  var remindData = <br>     helper.ExistsInStorage() ? helper.RetrieveFromStorage() : new RemindData();
+
+  if (!remindData.Reviewed &amp;&amp; !remindData.Refused)
+  {
+    remindData.Starts++;
+    if (remindData.Starts % RemindFrequency == 0)
+    {
+      var result = MessageBox.Show(Message, Caption, MessageBoxButton.OKCancel);
+      if (result == MessageBoxResult.OK)
+      {
+        Review();
+        remindData.Reviewed = true;
+      }
+      else
+      {
+        if (remindData.Starts &gt;= MaxReminders * RemindFrequency)
+        {
+          remindData.Refused = true;
+        }
+      }
+    }
+    helper.SaveToStorage(remindData);
+  }
+}</pre>
+<p>Using the IsolatedStorageHelper from wp7nl it checks if there is already data from a previous run in local storage – if there is not, it is created. If Reviewed or Refused are true, no action in necessary. After, the number or starts is increased, and it checks if the number of starts can be divided by the RemindFrequency. If that is the case, the message is displayed,</p>
+<p>If the user then decides to review the app, the Review method called and the Reviewed property is set to true so the user won’t be bothered anymore. If the user does not want to review, the app checks if the max number of review request has already been put out – and if so, the Refused property is set to true. The user is (also) no longer bothered anymore. And at the end, the remindData is saved so whatever happened in the method is saved for posterity.</p>
+<p>The Review method then is pretty simple:</p><pre>private void Review()
+{
+  var marketplaceReviewTask = new MarketplaceReviewTask();
+  try
+  {
+    marketplaceReviewTask.Show();
+  }
+  catch (InvalidOperationException ex)
+  {
+  }
+}</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-remind-a-Windows-Phone-use_A4CE/ReviewApp.png"><img title="ReviewApp" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="ReviewApp" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-remind-a-Windows-Phone-use_A4CE/ReviewApp_thumb.png" width="158" align="right" height="277"></a>The only drawback is that the user can click OK, go to the Store, and then hit cancel. There is no way around cheaters, but if someone does not want to review, whatever – at least he/she then won’t give a bad review either.</p>
+<p>The four dependency properties I leave out for the sake of brevity.</p>
+<p>I have put the code into upcoming version of the wp7nl library, but for now you can get it from the demo solution. I have changed MaxReminders to 20 and RemindFrequency to 2 so <a href="http://www.schaikweb.net/dotnetbyexample/DemoRemindBehavior.zip" target="_blank">the demo app</a> will ask you every other time to rate it, for 20 times. This is a setting I would definitely not recommend in the wild, but it shows the point.</p>
+<p>Now Matthijs, Rajen, me and several others have showed you multiple ways to get this done. Mine does not even require you to code – just drag and drop. Now make sure you implement any of these solutions. Whether you are in the Windows Phone game for fun, glory, money or all of the above – you want those apps downloaded. And ratings are crucial for that.</p>  

@@ -1,0 +1,70 @@
+---
+layout: post
+title: Handling Windows Phone 8 NFC startup events using the MVVMLight Messenger
+date: '2012-12-26T16:49:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- NFC
+- wpnl
+- wpdev
+- dotnetmag
+- MVVM
+- MVVM Light
+modified_time: '2013-01-11T22:21:38.566+01:00'
+thumbnail: http://lh4.ggpht.com/-tJ-SVIn8D8s/UNscbRrDjPI/AAAAAAAAKCc/hZVmz-OS7Zg/s72-c/wp_ss_20121226_0002_thumb.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4750936549221110658
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/12/handling-windows-phone-8-nfc-startup.html
+---
+
+<p><a href="http://lh3.ggpht.com/-DVoWlgNW6co/UNscaHmnlMI/AAAAAAAAKCY/LMZK7CMcEz4/s1600-h/wp_ss_20121226_0002%25255B2%25255D.png"><img title="wp_ss_20121226_0002" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="wp_ss_20121226_0002" align="right" src="http://lh4.ggpht.com/-tJ-SVIn8D8s/UNscbRrDjPI/AAAAAAAAKCc/hZVmz-OS7Zg/wp_ss_20121226_0002_thumb.png?imgmax=800" width="148" height="244"></a>As regular readers of this blog know, I am currently playing around with <a href="http://nl.wikipedia.org/wiki/Near_field_communication" target="_blank">NFC</a> on <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 8. I peeked a little in the <a title="Bluetooth app to app sample at MSDN" href="http://code.msdn.microsoft.com/wpapps/Bluetooth-app-to-app-sample-890f8303?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Bluetooth app to app sample at MSDN</a> to understand how to find a ‘peer’. A peer is defined as the same app, installed on a different phone. So basically you go around installing the app on two phones, start it on phone 1, make sure it calls <a href="http://msdn.microsoft.com/en-us/library/windows/apps/windows.networking.proximity.peerfinder.start.aspx?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">PeerFinder.Start()</a>, tap the phones together and presto - the popup as displayed in the image on the right appears. If you check ‘open app’ – or whatever it shows in the language you have selected – the app is started on the second phone as well.</p> <p>You can distinguish between an app being started by itself, or with the “open app” button by overriding the OnNavigatedTo method from the app’s main startup page. If the app is all started up by itself, the NavigationEventArgs.Uri just contains the name of the main page, for instance “MainPage.xaml”. But if it is started by an NFC event, the Uri ends with the following rather funny long string:</p><pre>ms_nfp_launchargs=Windows.Networking.Proximity.PeerFinder:StreamSocket</pre>
+<p>Annoyingly, the OnNavigatedTo event is only available inside the page’s code. If you want to handle this the MVVM way, you want this to be taken care of by a view model or a model, not by the page’s code behind. </p>
+<p>I have gone the following route. First, I define a little extension method that easily helps me to determine if the app was initiated by the user or by an NFC event:</p><pre style="font-size: 9pt">using System.Windows.Navigation;
+
+namespace Wp7nl.Devices
+{
+  public static class NavigationEventArgsExtensions
+  {
+    public static bool IsStartedByNfcRequest(this NavigationEventArgs e)
+    {
+      var isStartedByNfcRequest = false;
+      if (e.Uri != null)
+      {
+        isStartedByNfcRequest = 
+          e.Uri.ToString()
+          .Contains("ms_nfp_launchargs=Windows.Networking.Proximity.PeerFinder:StreamSocket");
+      }
+      return isStartedByNfcRequest;
+    }
+  }
+}</pre>
+<p>And as I don’t like to pass bare events around, I make a little wrapper class to use as a message:</p><pre style="font-size: 9pt">using System.Windows.Navigation;
+using Wp7nl.Devices;
+
+namespace PullTheRope.Logic.Messages
+{
+  public class NavigationMessage
+  {
+    public NavigationEventArgs NavigationEvent { get; set; }
+
+    public bool IsStartedByNfcRequest
+    {
+      get 
+      { 
+        return NavigationEvent != null &amp;&amp; NavigationEvent.IsStartedByNfcRequest();
+      }
+    }
+  }
+}</pre>
+<p>And it contains a convenient shortcut method as well. Then the only thing you have to do is indeed override the OnNavigatedTo method, like this:</p><pre style="font-size: 9pt">protected override void OnNavigatedTo(NavigationEventArgs e)
+{
+  base.OnNavigatedTo(e);
+  Messenger.Default.Send(new NavigationMessage {NavigationEvent = e});
+}</pre>
+<p>This is the only ‘breaking’ of the purist's MVVM approach – but as the event is nowhere else available, it’s also the only way to get it done. Sometimes you have to take the pragmatic approach. Anyway, somewhere in your model or view model you define which method should be called when the message is received</p><pre>Messenger.Default.Register&lt;NavigationMessage&gt;(this, ProcessNavigationMessage);</pre>
+<p>a method to trap it</p><pre>private void ProcessNavigationMessage(NavigationMessage message)
+{
+  // whatever – we are back in MVVM territory
+}</pre>
+<p>and I trust you can take it from there ;-) .</p>
+<p>Be aware the events generated are generated outside the GUI thread, so if you try to data bind properties changed from the event method, you might run into cross thread access errors. Deployment.Current.Dispatcher.BeginInvoke is your friend, then.</p>  

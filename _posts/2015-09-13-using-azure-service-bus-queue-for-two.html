@@ -1,0 +1,146 @@
+---
+layout: post
+title: Using an Azure Service bus queue for two-way (IoT) communication
+date: '2015-09-13T19:12:00.000+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- Azure
+- IoT
+- Raspberry PI2
+- Windows 10
+modified_time: '2015-09-15T17:56:35.041+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5632182396830798303
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/09/using-azure-service-bus-queue-for-two.html
+---
+
+&nbsp; <h4><font size="2">Part 2 of Reading temperatures &amp; controlling a fan with a RP2, Azure Service Bus and a Microsoft Band</font></h4> <p><font size="4">Intro</font><br>In this post I will explain how the <a href="http://www.windows.com" target="_blank">Windows</a> 10 device to which the Band is paired and the Raspberry PI2 'talk' to each other. As the <a href="http://dotnetbyexample.blogspot.com/2015/09/reading-temperatures-controlling-fan.html" target="_blank">previous post</a> (and the title of this post) already shows, this is done using an Azure Service Bus queue. The code for this is in two of the five projects in the <a href="https://github.com/LocalJoost/TemperatureReaderDemo" target="_blank">demo solution</a> </p> <ul> <li>TemperatureReader.Shared contains the data objects shuttled over the Azure Service Bus queue, as well as all the global definitions  <li>TemperatureReader.ServiceBus contains the actual code for the Service Bus code.</li></ul> <p><font size="4">Getting started</font><br>Before you can get the code working, you will need to define an Azure Service Bus, because you cannot use mine - I like to keep it for demos myself and keep my Azure bill reasonable, thank you :). If you look into the TemperatureReader.Shared project in the <a href="https://github.com/LocalJoost/TemperatureReaderDemo" target="_blank">demo solution</a> you will find a class "Settings" that, amongst other things, has the following pretty long and rather cryptic definition:</p><pre>public static readonly string TemperatureBusConnectionString =
+"Endpoint=sb://yournamespacehere.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=XXXXXXXXXXXXXXXXXYOURKEYHEREXXXXXXXXXXXXXXXX";
+</pre>
+<p>To be able to use queues in a Service Bus, you must first claim a <em>namespace</em>. Doing so currently is only supported by <a href="https://manage.windowsazure.com" target="_blank">the 'old' Azure Portal</a>, so you need to go there to create it:<br><a href="http://www.schaikweb.net/dotnetbyexample/Reading-temperatures--controlling-a-fan-_1195A/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Reading-temperatures--controlling-a-fan-_1195A/image_thumb_3.png" width="644" height="465"></a><br><br><a href="http://www.schaikweb.net/dotnetbyexample/Reading-temperatures--controlling-a-fan-_1195A/image33.png"><img title="image[33]" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image[33]" src="http://www.schaikweb.net/dotnetbyexample/Reading-temperatures--controlling-a-fan-_1195A/image33_thumb.png" width="272" align="right" height="274"></a>You need to select the tab "Service Bus" below, then hit the "Create" button. Then you get the pop-up as displayed on the right. Make up a nice namespace name (Azure will tell you if it's available or not), then select a region. As I am living in the Netherlands, I typically choose "West Europe" but feel free to choose otherwise. The rest of the settings can be left as they are - although you might consider setting the message tier to 'basic'. Hit the check mark, and you get the image below.</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Reading-temperatures--controlling-a-fan-_1195A/image_4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; margin: 0px 0px 0px 5px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Reading-temperatures--controlling-a-fan-_1195A/image_thumb_4.png" width="504" align="right" height="140"></a></p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>Your Azure Service bus namespace has been been created. This is stage 1 - now the actual queues need to be created. From the code in Settings.cs you can see there will need to be two queues on this Service Bus:</p><pre>public static readonly string TemperatureQueue = "temperaturedatabus";
+public static readonly int TemperatureQueueTtl = 10;
+
+public static readonly string FanSwitchQueue = "fanswitchcommandbus";
+public static readonly int FanSwitchQueueTtl = 10;</pre>
+<p>The first one is for sending temperature data from the PI2 to the Windows 10 device (and ultimately the Band) and the second one to send commands to switch the fan on and off. I have set the time to live (TTL) for messages on each queue at 10 seconds, meaning that any data older than 10 seconds can be discarded if it's not picked up. You can go ahead and click the arrow that I emphasized using a red box next to "thisisademo" and <a href="http://www.schaikweb.net/dotnetbyexample/Reading-temperatures--controlling-a-fan-_1195A/image_5.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Reading-temperatures--controlling-a-fan-_1195A/image_thumb_5.png" width="56" align="right" height="41"></a>configure the queue manually, or just let the code (see below) to take care of it. There is only one more thing you will <em>need</em> to do: select the Azure Service Bus namespace that you just have created, then hit "Connection Information" at the bottom. By hovering over the text that starts with "Endpoint=sb://" you get a blue "copy" icon at the right and if you click that, that whole connection string gets put into the clipboard for your convenience.Then you can paste that into the TemperatureBusConnectionString constant in Settings.cs<br><a href="http://www.schaikweb.net/dotnetbyexample/Reading-temperatures--controlling-a-fan-_1195A/image_6.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Reading-temperatures--controlling-a-fan-_1195A/image_thumb_6.png" width="644" height="410"></a></p>
+<p><font size="4">A base queue client</font><br>In any project that you want to use Azure Service Bus in, you will need to use the NuGet package "WindowsAzure.Messaging.Managed" (assuming your are using a managed language like C# or VB.NET). <br><a href="http://www.schaikweb.net/dotnetbyexample/Reading-temperatures--controlling-a-fan-_1195A/image_7.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Reading-temperatures--controlling-a-fan-_1195A/image_thumb_7.png" width="644" height="95"></a><br>Then it's important to know that any client (and with that I mean an object of type Microsoft.WindowsAzure.Messaging.Queue) can both put objects in the queue as well as read them - and doing so is pretty stupid as I found out the hard way. A Queue object that does <em>both</em> basically eats his own messages - most of the time, but not <em>all</em> of the time. Happy debugging. Anyway, I wanted a queue client that</p>
+<ul>
+<li>I could either ask to read from the queue or put data on the queue, but not both 
+<li>could only send or receive data of a specified type 
+<li>would automatically create a queue on the service bus if it does not exists</li></ul>
+<p>I came up with this:</p><pre>using System;
+using System.Diagnostics;
+using System.Threading.Tasks;
+using Microsoft.WindowsAzure.Messaging;
+
+namespace TemperatureReader.ServiceBus
+{
+  public class QueueClient&lt;T&gt; : IQueueClient&lt;T&gt;
+  {
+    private readonly string _queueName;
+    private readonly string _connectionString;
+    private readonly int _messageTimeToLive;
+    private readonly QueueMode _queueMode;
+    private Queue _queue;
+    
+    public QueueClient(string queueName, string connectionString, 
+      QueueMode mode = QueueMode.Send, int messageTimeToLive = 10)
+    {
+      _queueName = queueName;
+      _connectionString = connectionString;
+      _queueMode = mode;
+      _messageTimeToLive = messageTimeToLive;
+    }
+
+    public async virtual Task Start()
+    {
+      try
+      {
+        var settings = new QueueSettings 
+          { DefaultMessageTimeToLive = TimeSpan.FromSeconds(_messageTimeToLive) };
+        await Queue.CreateAsync(_queueName, _connectionString, settings);
+        Debug.WriteLine($"Queue {_queueName} created");
+      }
+      catch (Exception)
+      {
+        Debug.WriteLine($"Queue {_queueName} already exists");
+      }
+
+      _queue = new Queue(_queueName, _connectionString);
+      if (_queueMode == QueueMode.Listen)
+      {
+        _queue.OnMessage(message =&gt;
+        {
+          var data = message.GetBody&lt;T&gt;();
+          OnDataReceived?.Invoke(this, data);
+        });
+      }
+    }
+
+    public virtual async Task PostData(T tData)
+    {
+      if (this._queueMode == QueueMode.Send)
+      {
+        await _queue.SendAsync(tData);
+      }
+      else
+      {
+        throw new ArgumentException(
+          "Cannot send data using a QueueMode.Listen client");
+      }
+    }
+
+    public void Stop()
+    {
+      if (_queue != null)
+      {
+        _queue.Dispose();
+        _queue = null;
+      }
+    }
+
+    public event EventHandler&lt;T&gt; OnDataReceived;
+  }
+}
+</pre>
+<p>If a QueueClient object is created, it accepts the name of the queue, the queue connection string (that impossible long string in Settings.TemperatureBpusConnectionString), a message time-to-live and a QueueMode (can be either Send or Listen). Notice it has a type parameter - that is the type of object you are allowed to put on the queue - or can expect to come off it.</p>
+<p>To get the thing going, you will need to call Start. This first tries to create the queue. Unfortunately I have not been able to find out how to check if a queue exists first, so I have resorted to the rather crude method of swallowing an exception if creating the queue fails - and assume that the exception was caused by an already existing queue. Then it will create an actual Queue object (Microsoft.WindowsAzure.Messaging) - and if it's a Listen QueueClient, it will attach an anonymous method to the OnMessage method of that queue. That method will hoist the data object from the queue and pass it on to whoever is subscribed to the OnDataReceived event of the QueueClient itself.</p>
+<p>The QueueClient's post method is basically a typed wrapper on the Queue PostData method, except that it will prohibit from posting if this is a Listen client - to prevent it swallowing it's own message.</p>
+<p>Finally there is the Stop method, that just disposes the queue.</p>
+<p><font size="4">Using specific implementations</font><br>Both TemperatureQueueClient and FanSwitchQueueClient are child classes, providing specific implementations of a queue client. For instance, TemperatureClient just handles temperature data and all you have to do is provide an override constructor to prevent you from having to set all that properties every time you use them:</p><pre>using TemperatureReader.Shared;
+
+namespace TemperatureReader.ServiceBus
+{
+  public class TemperatureQueueClient : QueueClient&lt;TemperatureData&gt;
+  {
+    public TemperatureQueueClient(QueueMode mode = QueueMode.Listen) :
+      base(Settings.TemperatureQueue, 
+        Settings.TemperatureBusConnectionString, mode, 
+        Settings.TemperatureQueueTtl)
+    {
+    }
+  }
+}</pre>
+<p>The only thing there is left to set is the QueueMode, since you typically want to create one listening and one sending queue client.</p>
+<p>If you now look in the MainPage_Loaded in MainPage.Xaml.cs in TemperatureReader (the IoT project) you will see a TempeatureQueueClient, processing temperature data, being set up as Send queue client while a FanSwitchQueueClient is a Listen queue client - which makes sense, as the Raspberry PI2 <em>sends</em> temperature data, but <em>listens</em> for commands to switch on or off the fan (ultimately coming from a Microsoft Band, somewhere in the world).</p><pre>private async void MainPage_Loaded(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+{<br>  // stuff omitted
+  var poster = new TemperatureQueueClient(QueueMode.Send);
+  var fanCommandListener = new FanSwitchQueueClient(QueueMode.Listen);
+</pre>
+<p>In the client app that is intended for a Windows 10 device to which the Band is paired (typically a phone) it's the other way around. In MainViewModel.CreateNew you will see </p><pre>public static MainViewModel CreateNew()
+{
+  var fanStatusPoster = new FanSwitchQueueClient(QueueMode.Send);
+</pre>
+<p>Indicating the queue client FanSwitchQueueClient is <em>sending</em> here, while the TempeatureQueueClient - embedded in TemperatureListener - is created in the constructor as a <em>Listen</em> client:</p><pre>public TemperatureListener() 
+{ 
+  _client = new TemperatureQueueClient(QueueMode.Listen); 
+  _client.OnDataReceived += ProcessTemperatureData; 
+}</pre>
+<p><font size="4">Conclusion<br></font>An Azure Service Bus client is a great way for simple one-to-one real time connections that can allow for some lag to happen between connected devices. It's very simple to use, can partly be created from code, is secured by default and does no require you to deploy a separate website to Azure to host a connection hub - the queue is hosted on Azure itself. And the awesome thing is - the code runs on both a Phone and a Raspberry PI2. It's in the same assembly. That is the power of the Universal Windows Platform.</p>
+<p>Next time I will show how to actually measure temperature on a Raspberry PI2.</p>  

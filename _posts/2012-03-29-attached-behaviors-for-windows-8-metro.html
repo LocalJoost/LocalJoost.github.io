@@ -1,0 +1,263 @@
+---
+layout: post
+title: Attached behaviors for Windows 8 Metro Style XAML
+date: '2012-03-29T22:33:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Metro
+- dotnetmag
+- Windows 8
+- XAML
+- behavior
+- Win8nl
+modified_time: '2012-04-05T08:30:13.036+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1238061991114530634
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/03/attached-behaviors-for-windows-8-metro.html
+---
+
+<p><strong>This post was updated substantially at March 31, 2012</strong></p> <p>Regular readers of my blog know that there are some recurring themes: MVVM, maps and behaviors. I am a big fan of using behaviors ever since I learned how to use this rooting trough the sources of <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a>. When I saw the BUILD videos I was elated. I saw a great merger of the best things of Windows and&nbsp; <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank"><a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone 7</a></a> styles and I knew I was going to get on board too. Five months later, I found myself being an MVP and <em>on the Microsoft Campus</em> of all places, and got a pretty unpleasant surprise: a lady presenting the new Expression Blend version said there would be no behaviors in <a href="http://windows.microsoft.com/en-US/windows-8/consumer-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> Metro Style XAML. I was quite disappointed at the time. I still think it’s is quite an omission, but then again, when it’s not <em>your</em> deadline it’s always easy to criticize others. </p> <p>And then for some reason, this week, I remembered a single line from a presentation by <a href="http://twitter.com/lbugnion" target="_blank">Laurent Bugnion</a> on the 2012 Microsoft Techdays in The Hague. “You can’t use behaviors but you can use attached dependency properties”. It kept reverbing trough my brain for a few moments. </p> <p>“Use the Force, Luke” ;-) </p> <p>And the result is this. It’s crude, it’s clumsy, it has no Blend support, but it works, more or less – I have been able to port my <a href="http://dotnetbyexample.blogspot.com/2011/03/simple-windows-phone-7-silverlight.html" target="_blank">DragFlickBehavior</a> to Windows 8 and it bloody works, too. This blog post will be split in two parts: in this part, I will show how to make a behavior in Windows 8 XAML in general, and in a next one I will specifically show the DragFlickBehavior itself.</p> <p>First of all, the behavior class itself:</p><pre>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Windows.UI.Xaml;
+
+namespace WinRtBehaviors
+{
+  public abstract class Behavior : DependencyObject
+  {
+    private FrameworkElement associatedObject;
+    public FrameworkElement AssociatedObject
+    {
+      get
+      {
+        return associatedObject;
+      }
+      set
+      {
+        if (associatedObject != null)
+        {
+          OnDetaching();
+        }
+        associatedObject = value;
+        if (associatedObject != null)
+        {
+          OnAttached();
+        }
+      }
+    }
+
+    protected virtual void OnAttached()
+    {
+      AssociatedObject.Unloaded += AssociatedObjectUnloaded;
+    }
+
+    protected virtual void OnDetaching()
+    {
+      AssociatedObject.Unloaded -= AssociatedObjectUnloaded;
+    }
+
+    void AssociatedObjectUnloaded(object sender, RoutedEventArgs e)
+    {
+      OnDetaching();
+    }
+  }
+}</pre>
+<p>This is partially ‘borrowed’ from the <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> System.Windows.Interactivity.dll, courtesy of Reflector.&nbsp; I don’t have a real ‘detached’ event so I’ve decided to call the “OnDetaching’ method when the FrameworkElement is <em>unloaded</em>. Gotta use what’s available, right? The next class, which is the typed version of AttachedBehavior, is also courtesy of Reflector:</p><pre>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Windows.UI.Xaml;
+
+namespace WinRtBehaviors
+{
+  public abstract class Behavior&lt;T&gt; : Behavior 
+    where T : FrameworkElement
+  {
+    protected Behavior()
+    {
+    }
+
+    public T AssociatedObject
+    {
+      get
+      {
+        return (T)base.AssociatedObject;
+      }
+      set
+      {
+        base.AssociatedObject = value;
+      }
+    }
+  }
+}</pre>
+<p>I’ve closely followed naming conventions as used in Windows Phone and Silverlight, but I took a different root namespace “WinRtBehaviors”. Should the Windows 8 team decide to add behaviors to the API in the future, removing this classes and changing the namespaces should do the trick</p>
+<p>Finally there is this pretty crazy piece of code, which is basically a giant Attached Dependency property. This connects the ‘behaviors’ to the FrameworkElements:</p><pre style="font-size: 12px">using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Windows.UI.Xaml;
+using Windows.ApplicationModel;
+
+namespace WinRtBehaviors
+{
+  /// &lt;summary&gt;
+  /// Attached dependency property storing 'behaviors'
+  /// &lt;/summary&gt;
+  public static class Interaction
+  {
+    public static readonly DependencyProperty BehaviorsProperty =
+       DependencyProperty.RegisterAttached("Behaviors",
+       typeof(ObservableCollection&lt;Behavior&gt;),
+       typeof(Interaction),
+       new PropertyMetadata(
+         DesignMode.DesignModeEnabled ? new ObservableCollection&lt;Behavior&gt;() : null,         
+       BehaviorsChanged));
+
+
+    /// &lt;summary&gt;
+    /// Called when Property is retrieved
+    /// &lt;/summary&gt;
+    /// &lt;param name="obj"&gt;&lt;/param&gt;
+    /// &lt;returns&gt;&lt;/returns&gt;
+    public static ObservableCollection&lt;Behavior&gt; GetBehaviors(DependencyObject obj)
+    {
+      var associatedObject = obj as FrameworkElement;
+      var behaviors = obj.GetValue(BehaviorsProperty) as ObservableCollection&lt;Behavior&gt;;
+      if (behaviors == null)
+      {
+        behaviors = new ObservableCollection&lt;Behavior&gt;();
+        SetBehaviors(obj, behaviors);
+      }
+
+      return behaviors;
+    }
+
+    /// &lt;summary&gt;
+    /// Called when Property is retrieved
+    /// &lt;/summary&gt;
+    /// &lt;param name="obj"&gt;&lt;/param&gt;
+    /// &lt;param name="value"&gt;&lt;/param&gt;
+    public static void SetBehaviors(
+       DependencyObject obj,
+       ObservableCollection&lt;Behavior&gt; value)
+    {
+      obj.SetValue(BehaviorsProperty, value);
+    }
+
+    /// &lt;summary&gt;
+    /// Called when the property changes
+    /// &lt;/summary&gt;
+    /// &lt;param name="sender"&gt;&lt;/param&gt;
+    /// &lt;param name="args"&gt;&lt;/param&gt;
+    private static void BehaviorsChanged(
+     object sender,
+     DependencyPropertyChangedEventArgs args)
+    {
+      var associatedObject = sender as FrameworkElement;
+      if (associatedObject != null)
+      {
+        var oldList = args.OldValue as ObservableCollection&lt;Behavior&gt;;
+        if (oldList != null)
+        {
+          foreach (var behavior in oldList)
+          {
+            behavior.AssociatedObject = null;
+          }
+        }
+
+        var newList = args.NewValue as ObservableCollection&lt;Behavior&gt;;
+        if (newList != null)
+        {
+          foreach (var behavior in newList)
+          {
+            behavior.AssociatedObject = sender as FrameworkElement;
+          }
+          newList.CollectionChanged += (collectionSender, collectionArgs) =&gt;
+          {
+            switch (collectionArgs.Action)
+            {
+              case NotifyCollectionChangedAction.Add:
+                {
+                  foreach (Behavior behavior in collectionArgs.NewItems)
+                  {
+                    behavior.AssociatedObject = associatedObject;
+                  }
+                  break;
+                }
+              case NotifyCollectionChangedAction.Reset:
+              case NotifyCollectionChangedAction.Remove:
+                {
+                  foreach (Behavior behavior in collectionArgs.NewItems)
+                  {
+                    behavior.AssociatedObject = null;
+                  }
+                  break;
+                }
+            }
+          };
+        }
+      }
+    }
+  }
+}</pre>
+<p>So what do we have here? On top, a pretty standard way of registering an attached dependency property – an ObservableCollection of Behavior. Notice the fact the initial value is null in runtime, but an empty collection in design time. This is because of the next part, the mandatory GetBehaviors method. This is normally ‘just a getter’, but it checks if the collection is null first. And then something interesting happens:</p>
+<ul>
+<li>If it is null, it creates a new empty collection and initializes the attached dependency property itself with it. 
+<li>That, in turn, fires BehaviorsChanged 
+<li>BehaviorsChanged attaches an internal anonymous method to the ObservableCollectionChanged event of the behavior collection. 
+<li>That anonymous method basically rams the FrameworkElement to which this ObservableCollection is attached in the AssociatedObject property of every new behavior that’s added the list. 
+<li>This will fire the overrideable OnAttached method in the bavhior and boom – your behavior is ready to go. </li></ul>
+<p>The SetBehaviors method then is pretty standard. The basic pattern of a behavior is then something like this:</p><pre>namespace Win8nl.Behaviors
+{
+  public class DragFlickBehavior : AttachedBehavior&lt;FrameworkElement&gt;
+  {
+    protected override void OnAttached()
+    {
+      // Do something
+      base.OnAttached();
+    }
+    protected override void OnDetaching()
+    {
+      // Do something
+      base.OnDetaching();
+    }
+  }
+}</pre>
+<p>Which, not entirely by accident, looks quite a lot like an behavior looks in Windows Phone or Silverlight. And you call it in XAML like this:</p><pre style="font-size: 12px">&lt;Page
+  x:Class="Catchit8.BlankPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:Catchit8"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:Win8nl_Behaviors="using:Win8nl.Behaviors"
+  xmlns:WinRtBehaviors="using:WinRtBehaviors"
+  mc:Ignorable="d"&gt;
+
+  &lt;Grid Background="{StaticResource ApplicationPageBackgroundBrush}"&gt;
+    &lt;TextBlock HorizontalAlignment="Left" Margin="503,213,0,0" TextWrapping="Wrap" 
+   VerticalAlignment="Top" FontSize="18" Text="Drag me"&gt;
+<font color="#ff0000">      &lt;WinRtBehaviors:Interaction.Behaviors&gt;
+         &lt;Win8nl_Behaviors:DragFlickBehavior BrakeSpeed ="5"/&gt;
+      &lt;/WinRtBehaviors:Interaction.Behaviors&gt;</font>
+    &lt;/TextBlock&gt;
+    &lt;Button Content="Drag me too!" HorizontalAlignment="Left" Margin="315,269,0,0" 
+   VerticalAlignment="Top" &gt;
+<font color="#ff0000">      &lt;WinRtBehaviors:Interaction.Behaviors&gt;
+          &lt;Win8nl_Behaviors:DragFlickBehavior BrakeSpeed ="5"/&gt;
+      &lt;/WinRtBehaviors:Interaction.Behaviors&gt;</font>
+     &lt;/Button&gt;
+
+  &lt;/Grid&gt;
+&lt;/Page&gt;
+</pre>
+<p>Like I said: crude, clumsy and no Blend support. There are a few issues with it. The anonymous method doing all the work, is never detached. I wonder how much memory leaks this will produce. But at least I can move forward now porting a lot of stuff I made for Windows Phone to Windows 8. Unfortunately, contrary to what I hoped, data binding to dependency properties of the behavior itself does not seem to work yet (thanks to <a href="http://www.twitter.com/xyzzer" target="_blank">Filip Skakun</a> for pointing that out in a reaction to that this post) <strong>[It does now, see below]</strong>. I hope people smarter than me can improve this to a possible better solution. I will soon post a demo solution with the DragFlickBehavior in working condition in it, after I have traced back how I got it working it the first place. </p>
+<p>In the mean time, I’ve started an CodePlex project that will be the home of this stuff. I was initially planning of including it in my Win8nl CodePlex library (coming soon) but after careful consideration and advice, I decided to make a separate library. After all, if people would like to go ahead and expand this, adding triggers and whatnot, it would probably interfere with my own ‘hobby’ library and vice versa. </p>
+<p>So Metro, meet behaviors, at “<a href="http://winrtbehaviors.codeplex.com" target="_blank">WinRtBehaviors</a>”.</p>
+<p><strong>Very much thanks to </strong><a href="http://www.twitter.com/GeertvanHorrik" target="_blank"><strong>Geert van Horrik</strong></a><strong> for the suggestions that led to the improvement of my first version.&nbsp; </strong>He is as of now registered as a developer on WinRtBehaviors.</p>
+<p><strong>Update 04-04-2012 The WinRtBehaviors library is adapted: a) it no longer introduces memory leaks as described, (thanks to Geert van Horrik), and b) Filip Skakun provided me with code to actually enable data binding.</strong></p>

@@ -1,0 +1,293 @@
+---
+layout: post
+title: AngularJS + TypeScript – using $resource to talk to a WebApi backend
+date: '2014-08-05T08:08:00.000+02:00'
+author: Joost van Schaik
+tags:
+- TypeScript
+- Angularjs
+- WebApi
+modified_time: '2014-08-07T12:33:49.653+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6874715733403752482
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/07/angularjs-typescript-using-resource-to.html
+---
+
+<h2>Intro – multiple stacks to choose from</h2> <p>There are a number of ways to talk to a backend (i.e. communicate over JSON services) in Angular. I know at least of two built-in: the $http api, which basically gives you a bit raw, jQuery-like API, and the $resource API, which kind of builts on top of that, using a more formalized approach. Also, you can choose to forego the whole built-in stack and use something like <a href="http://www.breezejs.com/" target="_blank">Breezejs</a> which has it own pros and cons. I used both successfully. And I don’t doubt there are more. But in this article I will concentrate on $resource.</p> <p>Once again, I don’t claim ultimate wisdom nor do I claim this is the best way, but I describe a way that <em>works</em> and is complete.</p> <h2>Setting up the backend</h2> <p>I continue where I left off in <a href="http://dotnetbyexample.blogspot.com/2014/07/angularjs-typescript-how-to-setup-watch.html" target="_blank">my previous post</a>, and proceed to add a model class in the Models folder. Mind you, this the folder in the root, not that in the app folder with <a href="http://www.typescriptlang.org/" target="_blank">TypeScript</a> stuff in it. We are talking C#. Our application will be extended to maintain a list of phones.</p><pre>namespace AtsDemo.Models
+{
+  public class Phone
+  {
+    public long Id { get; set; }
+
+    public string Name { get; set; }
+
+    public double ScreenSize { get; set; }
+  }
+}</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/AngularJS--WebP_107B8/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/AngularJS--WebP_107B8/image_thumb.png" width="244" align="right" height="169"></a>Then add a WebApi controller in the Controllers folder. I right-clicked the Controllers folder, clicked “Add/Controller”, selected “Web API 2 Controller with read/write actions” and called it – very originally – “PhonesController”. I implemented only the Get and the Post method, to prove the communication actually works:</p><pre>using System.Collections.Generic;
+using System.Linq;
+using System.Web.Http;
+using AtsDemo.Models;
+
+namespace AtsDemo.Controllers
+{
+  public class PhonesController : ApiController
+  {
+    private static List&lt;Phone&gt; phoneDb;
+
+    private List&lt;Phone&gt; PhoneDb
+    {
+      get
+      {
+        if (phoneDb == null)
+        {
+          phoneDb = new List&lt;Phone&gt;
+          {
+            new Phone {Id = 1, Name = "Lumia 1020", ScreenSize = 4.5},
+            new Phone {Id = 2, Name = "Lumia 1520", ScreenSize = 6.0},
+            new Phone {Id = 3, Name = "Lumia 625",  ScreenSize = 4.7},
+            new Phone {Id = 3, Name = "Lumia 930",  ScreenSize = 5.0}
+          };
+        }
+
+        return phoneDb;
+      }
+    }
+    // GET: api/Phones
+    public IEnumerable&lt;Phone&gt; Get()
+    {
+      return PhoneDb;
+    }
+
+    // POST: api/Phones
+    public void Post([FromBody]Phone value)
+    {
+      value.Id = PhoneDb.Max(p =&gt; p.Id) + 1;
+      PhoneDb.Add(value);
+    }
+  }
+}
+</pre>
+<p>As you can see this implements an ‘in memory database’ ;-) to list and store phones. To make sure WebApi honors the JavaScript convention of using camel casing, the following code needs to be added at the end of the Register method of the WebApi class in App_Start:</p><pre>var jsonFormatter = 
+  config.Formatters.OfType&lt;JsonMediaTypeFormatter&gt;().First();
+jsonFormatter.SerializerSettings.ContractResolver = 
+  new CamelCasePropertyNamesContractResolver();
+config.Formatters.JsonFormatter.SupportedMediaTypes.Add(
+  new MediaTypeHeaderValue("text/html"));</pre>The last statement is actually only to make WebApi default output JSON – this is not actually necessary, but it makes testing WebApi a bit easier. To get this to work, three extra usings will be necessary: <pre>using System.Net.Http.Formatting;
+using Newtonsoft.Json.Serialization;
+using System.Net.Http.Headers;</pre>
+<p>If your run the project and then change the url in <a title="http://localhost:3987/api/phones" href="http://localhost:3987/api/phones">http://localhost:3987/api/phones</a> you get the following data:</p>
+<p><strong>[{"id":1,"name":"Lumia 1020","screenSize":4.5},{"id":2,"name":"Lumia 1520","screenSize":6.0},{"id":3,"name":"Lumia 625","screenSize":4.7},{T"id":3,"name":"Lumia 930","screenSize":5.0}]</strong></p>
+<p>This is easiest in Chrome, as it has no qualms about displaying raw JSON in the browser. In Internet Explorer it works as well, but IE insist on saving the file to disk, refusing it to display for security reasons. The backend now works.</p>
+<h2>Creating model and interface</h2>
+<p>If you have installed the <a href="http://visualstudiogallery.msdn.microsoft.com/56633663-6799-41d7-9df7-0f2a504ca361">Web Essentials 2013 for Update 2</a> as I recommended in the <a href="http://dotnetbyexample.blogspot.com/2014/07/angularjs-typescript-setting-up-basic.html" target="_blank">first part of this series</a> you can now do something fun, although with such a little model not very useful yet:</p>
+<ul>
+<li>Right-click Phone.cs 
+<li>Select Web Essentials (all the way to the top) 
+<li>The select “Create TypeScript Intellisense file. This will generate a file “Phone.cs.d.ts” with the following contents:</li></ul><pre>declare module server {
+    interface Phone {
+        id: number;
+        name: string;
+        screenSize: number;
+    }
+}</pre>Which gives a nice skeleton that we can use. I don't like client side models sitting next to C# code, so I create a folder "models" in my "app" folder and moved this file over to that location (for some reason that does not work in the Solution Explorer; I used the Windows Explorer to do that). I addition, I renamed the file to Phone.cs, made a class of it and put the class inside the App.Models namespace, so the net result is:<pre>module App.Models {
+    "use strict"; 
+     export class Phone {
+        id: number;
+        name: string;
+        screenSize: number;
+    }
+}</pre>Now this is where is gets a little complicated and it had me reeling some time. If you want to use a resource to get models from and to a backend, you will need to define a resource on an <em>interface</em>, not on a class. <a href="http://stackoverflow.com/questions/21685104/extending-resource-of-angularjs-using-iresourceclass-of-typescript" target="_blank">According to this Stack Overflow example</a> – the only one I have been able to find, although it is parroted on several other places (up to and including the errors that were – and still are – in it) – we need <em>two</em> interfaces like this: <pre>module App.Models {
+    export interface IPhone extends ng.resource.IResource&lt;IPhone&gt; {
+        id: number;
+        name: string;
+        screenSize: number;
+    }
+
+    export interface IPhoneResource extends
+       ng.resource.IResourceClass&lt;IPhone&gt; {
+    }
+}</pre>
+<p>This works fine – <em>as long as you never need a concrete implementation of IPhone. </em>But if you do, and you make your Phone class implement IPhone like this:</p><pre> export class Phone implements Models.IPhone</pre>
+<p>You will be rewarded with a compilation error.</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/AngularJS--WebP_107B8/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/AngularJS--WebP_107B8/image_thumb_3.png" width="484" height="157"></a></p>
+<p>Simply because an IPhone now not only needs to implement it’s three properties but also the whole kit and caboodle that comes with being a resource.&nbsp; </p>
+<p>What I came up with was to define actually <em>three</em> interfaces. First, we define a simple interface for the object itself:</p><pre>module App.Models {
+    "use strict"; 
+     export interface IPhone {
+         id: number;
+         name: string;
+         screenSize: number;
+    }
+}</pre>
+<p>Then we define a simple interface that only extends a resource on IPhone. I define these in the “resources” folder (and namespace) as I like to keep related stuff together. First, I define a resource <em>definition</em> interface</p><pre>/// &lt;reference path="../models/iphone.ts" /&gt;
+ module App.Resources {
+    "use strict"; 
+     export interface IPhoneResourceDef
+     extends ng.resource.IResource&lt;Models.IPhone&gt; {
+     }
+ }</pre>And then we define the Resource Class<em>&nbsp;</em>on the resource definition<pre>/// &lt;reference path="iphoneresourcedef.ts" /&gt;
+module App.Resources {
+    "use strict"; 
+    export interface IPhoneResource
+    extends ng.resource.IResourceClass&lt;Resources.IPhoneResourceDef&gt; {
+    }
+}</pre>
+<p>Now you can still reference to an IPhone object <em>and </em>have a concrete implementation of it <em>and</em> have a resource. As you can see, having type safety comes at a price. Remember that interfaces in JavaScript don’t exist and that this code won’t translate to <em>any</em> JavaScript code. All you are basically doing is providing scaffolding for type checking at compile time. Pure JavaScript fans will say they can write a lot more with a lot less code. I think they are right. I assume rock star programmers with an IQ of 200 can also go a lot faster if they don’t write unit tests for .NET code as well. The rest of us, the mere mortals, need all the help we can get. </p>
+<h2>Adding a resource builder</h2>
+<p>Now this may also seem like a lot of overkill, but believe me – when you start adding more and more resources to your app, you will se a lot of repetitive code in your AppBuilder. Me se not like that, to quote a beloved ;-) Star Wars character. So I came up with this Factory to build services for me:</p><pre>module App.Factories {
+    "use strict"; 
+    export class ResourceBuilder{
+
+        static $inject = ['$resource'];
+
+        constructor(private $resource: ng.resource.IResourceService) {
+        }
+
+        public getPhoneResource(): Resources.IPhoneResource {
+            return <resources.iphoneresource> this.$resource('/api/phones/:id', { id: '@id' }, { 
+            });
+        }
+    }
+} </pre>
+<p>So then we mosey over to the AppBuilder.ts to add this factory and the resource we are building with it:</p><pre>this.app.factory("ResourceBuilder", ['$resource',
+    ($resource) =&gt; new Factories.ResourceBuilder($resource)]);
+
+this.app.factory("PhoneResource",
+    ["ResourceBuilder",
+        (builder: App.Factories.ResourceBuilder) =&gt; builder.getPhoneResource()]);
+</pre>
+<p>This is added just below the declaration of the Angular modules, and just before the only controller we currently have.</p>
+<h2>Testing the setup</h2>
+<p>Basically we are done now – the only thing is to add code to show that all this actually <em>works</em>. So here we go again, as explained in the <a href="http://dotnetbyexample.blogspot.com/2014/07/angularjs-typescript-setting-up-basic.html" target="_blank">first post</a>:</p>
+<ul>
+<li>You add a new scope interface 
+<li>You add a new controller 
+<li>You add a view 
+<li>You add the controller to the app and update the router.</li></ul>
+<h2>Scope</h2>
+<p>For a quick demo, I am going to put some objects directly on the scope, which you normally would not do to prevent issues with sub scopes:</p><pre>/// &lt;reference path="../models/iphone.ts" /&gt;
+module App.Scope {
+    "use strict";
+
+    export interface IPhoneScope {
+        listOfPhones: Models.IPhone[];
+        newPhone: Models.IPhone
+    }
+}</pre>
+<h2>Add a new controller</h2><pre>/// &lt;reference path="../models/iphone.ts" /&gt;
+/// &lt;reference path="../models/phone.ts" /&gt;
+/// &lt;reference path="../resources/iphoneresource.ts" /&gt;
+/// &lt;reference path="../scope/iphonescope.ts" /&gt;
+/// &lt;reference path="../models/phone.ts" /&gt;
+
+module App.Controllers {
+    "use strict";
+    export class PhoneController {
+        constructor(private $scope: Scope.IPhoneScope, 
+                    private phoneResource: Resources.IPhoneResource) {
+            $scope.listOfPhones = [];
+            $scope.newPhone = new Models.Phone();
+        }
+
+        public doLoadPhones(): void {
+            this.phoneResource.query({}, (d: Models.IPhone[]) =&gt; this.onLoaded(d));
+        }
+
+        private onLoaded(d: Models.IPhone[]): void {
+            this.$scope.listOfPhones = d;
+        }
+         
+        public doSavePhone(): void {
+            this.phoneResource.save(this.$scope.newPhone,
+                () =&gt; this.saveCallback(),
+                () =&gt; { alert('failure'); });
+        }
+
+        private saveCallback() {
+            alert('success');
+            this.$scope.newPhone = new Models.Phone();
+            this.doLoadPhones();
+        }
+    }
+}
+
+</pre>
+<p>Not really rocket science here – a method to load phones from the server using the resource “query” method, and a method to save a phone using the resource “save” method. By inheriting ng.resource.IResourceClass we got all this methods for free, in stead of that we had to implement that all by ourselves using the $http stack.</p>
+<h2>Interlude - ways to mess up TypeScript callbacks<br><font style="font-size: 9px"><em>"I have not failed. I've just found 10,000 ways that won't work"</em> - Thomas A. Edison</font> </h2>
+<p>Sometimes you make typos, or honest mistakes. TypeScript, although being very powerful, has, like every other programming language, it’s own unique set of particular devious pitfalls that sometimes makes you wonder if someone made them on purpose. Observe way the callback is called: </p><pre>public doSavePhone(): void {
+    this.phoneResource.save(this.$scope.newPhone,
+        () =&gt; this.saveCallback(),
+        () =&gt; { alert('failure'); });
+}
+</pre>
+<p>This works as intended. Now the fun thing is, if you just forget the parentheses at the end, e.g. </p><pre>public doSavePhone(): void {
+    this.phoneResource.save(this.$scope.newPhone,
+        () =&gt; this.saveCallback,
+        () =&gt; { alert('failure'); });
+}
+</pre>
+<p>This will compile flawlessly. Only - the callback never gets called. Even more fun is this one: </p><pre>public doSavePhone(): void {
+    this.phoneResource.save(this.$scope.newPhone,
+        this.saveCallback,
+        () =&gt; { alert('failure'); });
+}
+</pre>
+<p>This will compile, and saveCallBack will even be called. Only you will notice you have lost the "this" inside saveCallback. Ain’t life fun sometimes? Please take care when making callbacks. Don't fall into the same traps I did. </p>
+<h2>Add a new view</h2>
+<p>Then we add a new view phonesView.html in views:</p><pre id="name" style="font-size: 11px">&lt;div&gt;
+  &lt;div&gt;
+    Phones
+    &lt;div data-ng-repeat="phone in listOfPhones"&gt;
+      &lt;div&gt;Name: {{ "{{" }}phone.name}}; screen size: {{ "{{" }}phone.screenSize}}"&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;button data-ng-click="phoneController.doLoadPhones()"&gt;Load phones from server&lt;/button&gt;
+  &lt;br /&gt;&lt;br /&gt;
+  Add a new phone&lt;br /&gt;
+  &lt;label for="name" style="width:40px"&gt;Name&lt;/label&gt;
+  &lt;input id="name" type="text" data-ng-model="newPhone.name" /&gt;&lt;br /&gt;
+  &lt;label for="name" style="width:40px"&gt;Size&lt;/label&gt;
+  &lt;input id="screensize" type="text" data-ng-model="newPhone.screenSize" /&gt;&lt;br /&gt;
+  &lt;button data-ng-click="phoneController.doSavePhone()"&gt;Save&lt;/button&gt;
+&lt;/div&gt;
+</pre>
+<p>Nothing special here, a div to show loaded fields and two text boxes to input a new one. </p>
+<h2>Update the AppBuilder with the new controller and route</h2>First, we add the new controller. Nothing that we haven't seen before. <pre>this.app.controller("phoneController", [
+    "$scope", "PhoneResource", 
+    ($scope: Scope.IPhoneScope, phoneResource: Resources.IPhoneResource)
+        =&gt; new App.Controllers.PhoneController($scope, phoneResource )
+]);</pre>Then we add the new route to the controller, and make it the new default route. Also nothing new<pre>this.app.config([
+    "$routeProvider",
+    ($routeProvider: ng.route.IRouteProvider) =&gt; { 
+        $routeProvider
+            .when("/person",
+            {
+                controller: "personController",
+                controllerAs: "myController",
+                templateUrl: "app/views/personView.html"
+            })
+<strong>            .</strong><font color="#ff0000"><strong>when("/phones",
+            {
+                controller: "phoneController",
+                controllerAs: "phoneController",
+                templateUrl: "app/views/phonesView.html"
+            })</strong></font>
+            .otherwise({
+                redirectTo: "/<strong><font color="#ff0000">phones</font></strong>"
+            });
+    }
+]);</pre>
+<h2>Running the test</h2>
+<p>If you start the web application, you will initially see this:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/AngularJS--WebP_107B8/image_4.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/AngularJS--WebP_107B8/image_thumb_4.png" width="244" height="166"></a></p>
+<p>Then, if you hit “Load phones from server”, it will show:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/AngularJS--WebP_107B8/image_5.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/AngularJS--WebP_107B8/image_thumb_5.png" width="244" height="235"></a></p>
+<p>Then suppose we add the 530: </p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/AngularJS--WebP_107B8/image_6.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/AngularJS--WebP_107B8/image_thumb_6.png" width="225" height="244"></a></p>
+<p>and hit save, we will see the “success” alert pop up, and finally,</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/AngularJS--WebP_107B8/image_7.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/AngularJS--WebP_107B8/image_thumb_7.png" width="217" height="244"></a></p>
+<p>Success at last.</p>
+<h2>Conclusion</h2>
+<p>This took me quite some time to figure out, and I am not one to sing my own praise but this may just be the only complete – and running – sample of using Angularjs resources with TypeScript. Most of what I wrote here is out there somewhere on the web, in bits and pieces, and sometimes partially wrong. Anyway. This works. Running sample solution, as always, <a href="http://www.schaikweb.net/dotnetbyexample/atsdemo3.zip" target="_blank">can be downloaded here</a>.</p>
+<p>Now my only hope is that I won’t get sued over violating some copyright rules by defining a TypeScript interface whose name resembles a popular brand of phones made by a company whose name resembles a common fruit ;-)</p>  

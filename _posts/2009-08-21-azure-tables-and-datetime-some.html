@@ -1,0 +1,88 @@
+---
+layout: post
+title: 'Azure Tables and DateTime: some limitations'
+date: '2009-08-21T19:18:00.003+02:00'
+author: Joost van Schaik
+tags:
+- DateTime
+- Azure
+- dotnetmag
+- Azure Tables
+modified_time: '2010-04-06T11:17:29.867+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8258518164263839567
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/08/azure-tables-and-datetime-some.html
+---
+
+A nice thing I ran into yesterday: if you have a TableStorageEntity child class containing a DateTime property, you have two thing to remember:<ul><li>You cannot use DateTime.Now, just should use <strong>DateTime.UtcNow</strong> when defining "now"</li><li>Make sure your DateTime does default to <strong>TableStorageConstants.MinSupportedDateTime</strong> (and not the standard DateTime.MinValue)</li></ul>I had a class like this<pre>using System;
+using Microsoft.Samples.ServiceHosting.StorageClient;
+
+namespace LocalJoost.CloudMapper.Data.MapBuild
+{
+  public class Job : TableStorageEntity
+  {
+    #region Properties
+    public string JobId { get; set; }
+    public string MapName { get; set; }
+
+    public DateTime QueuedAt { get; set; }
+    public DateTime StartedAt { get; set; }
+    public DateTime FinishedAt { get; set; }
+    #endregion
+
+    public Job()
+    {
+      QueuedAt = DateTime.Now;
+    }
+
+    public override string PartitionKey
+    {
+      get{return MapName;}
+      set{}
+    }
+
+    public override string RowKey
+    {
+      get{return JobId;}
+      set
+      { }
+    }
+  }
+}</pre>and I simply could not store it. "There was an error processing the request". Yeah. I was able to find out the restrictions mentioned above, changed the class to<pre>using System;
+using Microsoft.Samples.ServiceHosting.StorageClient;
+
+namespace LocalJoost.CloudMapper.Data.MapBuild
+{
+  public class Job : TableStorageEntity
+  {
+    #region Properties
+    public string JobId { get; set; }
+    public string MapName { get; set; }
+
+    public DateTime QueuedAt { get; set; }
+    public DateTime StartedAt { get; set; }
+    public DateTime FinishedAt { get; set; }
+    #endregion
+
+    public Job()
+    {
+      QueuedAt = <span style="color:red">DateTime.UtcNow;
+      StartedAt = TableStorageConstants.MinSupportedDateTime;
+      FinishedAt = TableStorageConstants.MinSupportedDateTime;</span>
+    }
+
+    public override string PartitionKey
+    {
+      get{return MapName;}
+      set{}
+    }
+
+    public override string RowKey
+    {
+      get{return JobId;}
+      set
+      { }
+    }
+  }
+}</pre>and then it worked.
+
+Thanks to <a href="http://twitter.com/smarx">Steve Marx</a> for pointing me to the TableStorageConstants on twitter live while I was debugging

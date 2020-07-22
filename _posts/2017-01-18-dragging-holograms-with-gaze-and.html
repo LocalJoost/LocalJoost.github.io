@@ -1,0 +1,228 @@
+---
+layout: post
+title: Dragging holograms with gaze and tapping them in place on a surface
+date: '2017-01-18T08:00:00.001+01:00'
+author: Joost van Schaik
+tags:
+- UWP
+- HoloLens
+- Unity3D
+modified_time: '2017-03-01T11:18:13.994+01:00'
+thumbnail: https://i.ytimg.com/vi/en1DzTZXdU4/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6136471972720356548
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2017/01/dragging-holograms-with-gaze-and.html
+---
+
+<h2>Intro</h2> <p>Simply put – what I was trying to do create is the effect of what you get in the – in the meantime good old – Holograms app: when you pull a hologram out a menu, it ‘sticks to your gaze’ and follows it. You can air tap and then it stays hanging in the air where you left it, but you can also put it on a floor, on a table, or next to a wall. You can’t push it through a surface. That is, most of the time ;). So, like this:  <p><iframe height="365" src="https://www.youtube.com/embed/en1DzTZXdU4" frameborder="0" width="650" allowfullscreen></iframe></p> <p>In the video, you can see it follows the gaze cursor floating through the air till it hits a wall to the left and then stops, then goes down till it hits the bed and then stops, then up again till I finally place it on the floor.</p> <h2>A new year, a new toolkit</h2> <p>As happens often in the bleeding end of technology, things tend to change pretty fast. This is also the case in HoloLens country. I have taken the plunge to Unity 5.5 and the new <a href="https://github.com/Microsoft/HoloToolkit-Unity">HoloToolkit</a> which has a few breaking changes. Things have gotten <i>way </i>simpler since the previous iteration. Also, I would like to point out that for this tutorial I am using <a href="https://unity3d.com/unity/qa/patch-releases">the latest patch release</a>, which at the time of this writing it 5.5.0p3, released December 22, 2016. </p> <h2>Setting up the initial project</h2> <p>This is best illustrated by a picture. If you have setup the project we basically only need this. Both Managers and HologramCollection are simply empty game objects meant to group stuff together, then don’t have any specific other function here. Drag and drop the four blue prefabs in the indicated places, then set some properties for the cube  <p><a href="https://lh3.googleusercontent.com/-RgfMEgPGNz0/WH8dDRfnh0I/AAAAAAAAOlI/eL3c18z0e-Q/s1600-h/image%25255B3%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-ylgbNWYC15U/WH8dD0Ws0DI/AAAAAAAAOlM/Tvi_YallNdU/image_thumb%25255B1%25255D.png?imgmax=800" width="161" height="210"></a><a href="https://lh3.googleusercontent.com/-yrUi4xeXyDo/WG6fkJSabKI/AAAAAAAAOkE/dIp4ZnvZbxk/s1600-h/image%25255B9%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px 0px 0px 13px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-SD-ajNS86ZM/WG6fkvOOPOI/AAAAAAAAOkI/-sFp_871RNU/image_thumb%25255B5%25255D.png?imgmax=800" width="421" height="124"></a></p> <p>The Cube is the thing that will be moved. Now it’s time for ‘some’ code.</p> <h2>The main actors</h2> <p>There are two scripts that play the leading role, with a few supporting roles. </p> <ul> <li>MoveByGaze  <li>IntialPlaceByTap</li></ul> <p>The first one makes an object move, the second one actually ends it. Apropos, the actual moving is done by our old friend <a href="http://itween.pixelplacement.com/gettingstarted.php">iTween</a>, whose usefulness and application was already described in <a href="http://dotnetbyexample.blogspot.com/2016/10/a-hololens-airplane-tracker-5-smooth.html">part 5 of the AMS HoloATC series</a>. So, you will need to include this in the project to prevent all kind of nasty errors. Anyway, let’s get to he star of the show, MoveByGaze. </p> <h2>Moving with gaze</h2> <p>It starts like this:</p><pre style="font-size: 12px">using UnityEngine;
+using HoloToolkit.Unity.InputModule;
+using HoloToolkit.Unity.SpatialMapping;
+
+namespace LocalJoost.HoloToolkitExtensions
+{
+    public class MoveByGaze : MonoBehaviour
+    {
+        public float MaxDistance = 2f;
+        public bool IsActive = true;
+        public float DistanceTrigger = 0.2f;
+        public BaseRayStabilizer Stabilizer = null;
+        public BaseSpatialMappingCollisionDetector CollisonDetector;
+
+        private float _startTime;
+        private float _delay = 0.5f;
+        private bool _isJustEnabled;
+        private Vector3 _lastMoveToLocation;
+        private bool _isBusy;
+
+        private SpatialMappingManager MappingManager
+        {
+            get { return SpatialMappingManager.Instance; }
+        }
+
+        void OnEnable()
+        {
+            _isJustEnabled = true;
+        }
+
+        void Start()
+        {
+            _startTime = Time.time + _delay;
+            _isJustEnabled = true;
+            if (CollisonDetector == null)
+            {
+                CollisonDetector = 
+                  gameObject.AddComponent&lt;DefaultMappingCollisionDetector&gt;();
+            }
+        }
+    }
+}</pre>
+<p>Up above are the settings: 
+<ul>
+<li>MaxDistance is the maximum distance from your head the behaviour will try to place the object on a surface. Further than that, and it will just float in the air. 
+<li>IsActive determines whether the behaviour is active (duh) 
+<li>DistanceTrigger is the distance your gaze has to be from the object your are moving, before it actual starts to move. It kind of trails your gaze. This prevents the object from moving in a very nervous way. 
+<li>Stabilizer is the stabilizer made, used and maintained by the InputManager. You will have to drag the InputManager from your scene on this field to use the stabilizer. It’s not mandatory, but <i>highly </i>recommended 
+<li>CollisionDetector is a class we will see later – it basically makes sure the object that you are dragging is not pushed through any surfaces. You will need to add a collision detector to the game object that you are dragging along – or maybe a game object that is part of the game object that you are dragging. That collision detector needs then to be dragged on this field on the MoveByGaze This is <i>not</i> mandatory. If you don’t add one, the object you attach the MoveByGaze to will just simply follow your gaze, and move right through any object. That’s the work of the DefaultMappingCollisionDetector who is essentially a <a href="https://en.wikipedia.org/wiki/Null_Object_pattern">null pattern</a> implementation.&nbsp; </li></ul>
+<p>Anyway, in the Update method all the work is done: <pre style="font-size: 12px">void Update()
+{
+    if (!IsActive || _isBusy || _startTime &gt; Time.time)
+        return;
+    _isBusy = true;
+
+    var newPos = GetPostionInLookingDirection();
+    if ((newPos - _lastMoveToLocation).magnitude &gt; DistanceTrigger || _isJustEnabled)
+    {
+        _isJustEnabled = false;
+        var maxDelta = CollisonDetector.GetMaxDelta(newPos - transform.position);
+        if (maxDelta != Vector3.zero)
+        {
+            newPos = transform.position + maxDelta;
+            iTween.MoveTo(gameObject,
+                iTween.Hash("position", newPos, "time", 2.0f * maxDelta.magnitude,
+                    "easetype", iTween.EaseType.easeInOutSine, "islocal", false,
+                    "oncomplete", "MovingDone", "oncompletetarget", gameObject));
+            _lastMoveToLocation = newPos;
+        }
+        else
+        {
+            _isBusy = false;
+        }
+    }
+    else
+    {
+        _isBusy = false;
+    }
+}
+
+private void MovingDone()
+{
+    _isBusy = false;
+}</pre>
+<p>Only if the behaviour is active, not busy, and the first half second is over we are doing anything at all. And the first thing is – telling the world we are busy indeed. Thid method, like all Updates, is called 60 times a second and we want to keep things a bit controlled here. Race conditions are annoying. 
+<p>Then we get a position in the direction the user is looking, and if that exceeds the distance trigger – or this is the first time we are getting here – we start off finding how far ahead along this gaze we can place the actual object by using CollisionDetector. If that’s is possible – that is, if the CollisionDetector does not find any obstacles, we can actually move the object using iTween. Important is to note that whenever the move is <i>not</i> possible, _isBusy immediately gets set to false. Also, note the fact that the smaller the distance, the faster the move. This is to make sure the final tweaks of setting the object in the right place don’t take a long time. Otherwise, _isBusy is only reset after a successful move. 
+<p>Then the final pieces of this behaviour: <pre style="font-size: 12px">private Vector3 GetPostionInLookingDirection()
+{
+    RaycastHit hitInfo;
+
+    var headReady = Stabilizer != null
+        ? Stabilizer.StableRay
+        : new Ray(Camera.main.transform.position, Camera.main.transform.forward);
+
+    if (MappingManager != null &amp;&amp;
+        Physics.Raycast(headReady, out hitInfo, MaxDistance, MappingManager.LayerMask))
+    {
+        return hitInfo.point;
+    }
+
+    return CalculatePositionDeadAhead(MaxDistance);
+}
+
+private Vector3 CalculatePositionDeadAhead(float distance)
+{
+    return Stabilizer != null
+        ? Stabilizer.StableRay.origin + <br>             Stabilizer.StableRay.direction.normalized * distance
+        : Camera.main.transform.position + 
+            Camera.main.transform.forward.normalized * distance;
+}</pre>
+<p>GetPostionInLookingDirection first tries to get the direction in which you are looking. It tries to use the Stabilizer’s StableRay for that. The Stabilizer is a component of the InputManager that stabilizes your view – and the cursor uses it as well. This prevents the cursor from wobbling too much when you don’t keep your head perfectly still (which most people don’t – this includes me). The stabilizer takes an average movement of 60 samples and that makes for a much less nervous-looking experience. If you don’t have a stabilizer defined, it just takes your actual looking direction – the camera’s position and your looking direction. 
+<p>Then it tries to see if the resulting ray hits a wall or a floor – but no further than MaxDistance away. If it sees a hit, it returns this point, if it does not, if gives a point in the air MaxDistance away along an invisible ray coming out of your eyes. That’s what CalculatePositionDeadAhead does – but also trying to use the Stabilizer first to find the direction.</p>
+<h2>Detect collisions</h2>
+<p>Okay, so what is this famous collision detector that prevents stuff from being pushed through walls and floors, using the spatial perception that makes the HoloLens such a unique device? It’s actually very simple, although it took me a while to actually <em>get</em> it this simple.</p><pre style="font-size: 12px">using UnityEngine;
+
+namespace LocalJoost.HoloToolkitExtensions
+{
+    public class SpatialMappingCollisionDetector : BaseSpatialMappingCollisionDetector
+    {
+        public float MinDistance = 0.0f;
+
+        private Rigidbody _rigidbody;
+
+        void Start()
+        {
+            _rigidbody = GetComponent&lt;Rigidbody&gt;() ?? gameObject.AddComponent&lt;Rigidbody&gt;();
+            _rigidbody.isKinematic = true;
+            _rigidbody.useGravity = false;
+        }
+
+        public override bool CheckIfCanMoveBy(Vector3 delta)
+        {
+            RaycastHit hitInfo;
+            // Sweeptest wisdom from 
+            //http://answers.unity3d.com/questions/499013/cubecasting.html
+            return !_rigidbody.SweepTest(delta, out hitInfo, delta.magnitude);
+        }
+
+        public override Vector3 GetMaxDelta(Vector3 delta)
+        {
+            RaycastHit hitInfo;
+            if(!_rigidbody.SweepTest(delta, out hitInfo, delta.magnitude))
+            {
+                return KeepDistance(delta, hitInfo.point); ;
+            }
+
+            delta *= (hitInfo.distance / delta.magnitude);
+            for (var i = 0; i &lt;= 9; i += 3)
+            {
+                var dTest = delta / (i + 1);
+                if (!_rigidbody.SweepTest(dTest, out hitInfo, dTest.magnitude))
+                {
+                    return KeepDistance(dTest, hitInfo.point);
+                }
+            }
+            return Vector3.zero;
+        }
+
+        private  Vector3 KeepDistance(Vector3 delta, Vector3 hitPoint)
+        {
+            var distanceVector = hitPoint - transform.position;
+            return delta - (distanceVector.normalized * MinDistance);
+        }
+    }
+}
+</pre>
+<p>This behaviour first tries to find a RigidBody, and failing that, adds it. We will need this to check the presence of anything ‘in the way’. But – this is important – we will set ‘isKinematic’ to true and ‘useGravity’ to false, or else or object will come under control of the Unity physics engine and drop on the floor. In this case, <i>we</i> want to control the movement of the object. 
+<p>So, this class has two public methods (it’s abstract base class demands that). One, CheckIfCanMoveBy (that we don’t use now), just says if you can move your object in the intended direction over the intended distance without hitting anything. The other essentially does the same, but if it finds something in the way, it also tries to find a distance over which you <i>can </i>move in the desired direction. For this, we use the SweepTest method of RigidBody. Essentially you give it a vector, a distance along that vector, and it has an out variable that gives you info about a hit, should any occur. If a hit <i>does</i> occur, it tries at again at 1/4th, 1/7th and 1/10th of that initially found distance. Failing everything, it returns a zero vector. By using this rough approach, and object moves quickly in a few steps till it can no more. 
+<p>And then it also moves the object back over a distance you can set from the editor. This keeps the object just a little above the floor or from the wall, show that be desired. That’s what KeepDistance is for. 
+<p>The whole point of having a base class BaseSpatialMappingCollisionDetector, by the way, is a) enabling null pattern implementation which as implemented by DefaultMappingCollisionDetector and b) make different collision detectors based upon different needs. A bit of architectural considerations within the sometimes-bewildering universe of Unity development. 
+<h2>Making it stop – InitialPlaceByTap</h2>
+<p>Making the MoveByGaze stop is very simple – set the IsActive field to false. Now we only need something to actually make that happen. With the new HoloToolkit, this is actually very very simple:</p><pre style="font-size: 12px">using UnityEngine;
+using HoloToolkit.Unity.InputModule;
+
+namespace LocalJoost.HoloToolkitExtensions
+{
+    public class InitialPlaceByTap : MonoBehaviour, IInputClickHandler
+    {
+        protected AudioSource Sound;
+        protected MoveByGaze GazeMover;
+
+        void Start()
+        {
+            Sound = GetComponent&lt;AudioSource&gt;();
+            GazeMover = GetComponent&lt;MoveByGaze&gt;();
+
+            InputManager.Instance.PushFallbackInputHandler(gameObject);
+        }
+
+        public void OnInputClicked(InputEventData eventData)
+        {
+            if (!GazeMover.IsActive)
+            {
+                return;
+            }
+
+            if (Sound != null)
+            {
+                Sound.Play();
+            }
+
+            GazeMover.IsActive = false;
+        }
+    }
+}</pre>
+<p>By implementing IInputClickHandler the InputManager will send an event to this object when you air tap <em>and </em>it is selected by gaze. But by pushing it as fallback handler it will get this event <em>also</em> when it’s not selected. The event processing is pretty simple – if the GazeMover in this object is active, it’s de-activated. Also, if there’s an AudioSource detected, it’s sound is played. I very much recommend this kind of audio feedback.</p>
+<h2>Wiring it all together</h2>
+<p>On your cube, you drag the MoveByGaze, SpatialMappingCollisionDetector, and InitialPlaceByTap scripts. Then you drag the cube itself again on the CollisionDetector field of MoveByGaze, and the InputManager on the Stabilizer field. Unity itself will select the right component.</p>
+<p><a href="https://lh3.googleusercontent.com/-PjQZ_i9MgCc/WHJH-sVUhvI/AAAAAAAAOkk/nNHBLUHxksk/s1600-h/image%25255B4%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-MF5W9I776GI/WHJH_NapeLI/AAAAAAAAOko/z0ZCKst6TSM/image_thumb%25255B2%25255D.png?imgmax=800" width="654" height="630"></a></p>
+<p>So, in this case I could also have used GetComponent&lt;SpatialMappingCollisionDetector&gt; in stead of a field where you need to drag something on. But this way is more flexible – in app I did not want to use the whole object’s collider, but only that of a child object. Note I have set the MinDistance for the SpatialMappingCollisionDetector for 1 cm – it will keep an extra centimeter distance from the wall or the floor.</p>
+<h2>Concluding remarks</h2>
+<p>So this is how you can more or less replicate part of the behavior of the Holograms App, by moving around objects with your gaze and placing them on surfaces using air tap. The unique capabilities of the HoloLens allow us to place objects next to or on top of physical objects, and the new HoloToolkit makes using those capabilities pretty easy.</p>
+<p>Full code, as per my MVP ‘trademark’, <a href="https://github.com/LocalJoost/HoloDragByGaze" target="_blank">can be found here</a></p>

@@ -1,0 +1,156 @@
+---
+layout: post
+title: Using a style replacing behavior for making UWP adaptive layouts – REVISED
+date: '2016-01-30T11:14:00.001+01:00'
+author: Joost van Schaik
+tags: 
+modified_time: '2016-02-14T16:59:59.781+01:00'
+thumbnail: https://lh3.googleusercontent.com/-Qaib1_nlWQc/Vr9zjmeiikI/AAAAAAAANfQ/vUYXlPZButk/s72-c/image_thumb%25255B1%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6824197738212315239
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/01/using-style-replacing-behavior-for.html
+---
+
+<h2>Preface to revision</h2> <p><a href="https://lh3.googleusercontent.com/-yqFVkniNjqU/Vr9zjBnrJEI/AAAAAAAANfM/q2av0xQ4_-s/s1600-h/image%25255B1%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-Qaib1_nlWQc/Vr9zjmeiikI/AAAAAAAANfQ/vUYXlPZButk/image_thumb%25255B1%25255D.png?imgmax=800" width="212" align="right" height="215"></a>This post was updated significantly on February 13, 2016 as I realized I had once again not adhered to the advice my late Math teacher, Mr. Rang, gave my class somewhere in the 80’s – “do not try to be clever”. My previous attempt at doing this used a clever mechanism indeed to find and replace styles based upon the style names – names which you had to supply as a string. This limited the use to local resources, and also gave some stability issues. It took me some two weeks to realize I don’t need code for looking up styles by name - XAML has a perfectly built-in mechanism for that. It’s been there for ages. It’s called <em>StaticResource. </em>Yeah. Indeed. For current status – see image on the right. Anyway, I have adapted my behavior, sample code, and now this post.&nbsp; </p> <h2>Intro</h2> <p>As I was in the process of porting my app <a href="https://www.microsoft.com/en-US/store/Apps/Map-Mania-8/9NBLGGH08D4P" target="_blank">Map Mania</a> to the <a href="https://www.visualstudio.com/en-us/features/universal-windows-platform-vs.aspx" target="_blank">Universal Windows Platform</a>, I of course extensively used <a href="https://msdn.microsoft.com/en-us/library/windows/apps/windows.ui.xaml.adaptivetrigger.aspx" target="_blank">Adaptive Triggers</a>. Now that works pretty darn well, unless you have a whole lot of elements that need to be changed. The credits page of my app looks like this</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Using-a-style-replacing-behavior-for-mak_8C7F/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Using-a-style-replacing-behavior-for-mak_8C7F/image_thumb.png" width="255" height="180"></a></p> <p>that is to say, that is what is looks on a narrow screen. When I have a wider screen, like a <a href="https://www.microsoft.com/surface" target="_blank">Surface Pro</a>, I want it to look like this:</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Using-a-style-replacing-behavior-for-mak_8C7F/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Using-a-style-replacing-behavior-for-mak_8C7F/image_thumb_3.png" width="383" height="180"></a></p> <p>The font size of all the texts need to increase. This is rather straightforward, but also a rather cumbersome experience when there are a lot of elements to change. To get this done with the normal Adaptive Triggers in a <a href="https://msdn.microsoft.com/en-us/library/system.windows.visualstategroup(v=vs.110).aspx" target="_blank">VisualStateGroup</a>, you have to:</p> <ul> <li>Give all elements an x:Name  <li>Refer to them by name into your trigger’s setter  <li>For every element you have set the change to the font size.</li></ul> <p>This very quickly becomes a copy &amp; paste experience, especially if you have a lot of elements and states. And of course, when you add a new element (adding new credits, for example translators), you might forget to add it to the VSM, so you have to go back again… Don’t get me wrong, the Adaptive Trigger is an awesome idea, but in some situations it’s a lot of work to get things done. If you have been reading this blog for some time you already know what is coming: my castor oil for all XAML related challenges – a behavior.</p> <h2>Introducing StyleReplaceBehavior</h2> <p>I have created a simple behavior that, in a nutshell, does the following:</p> <ul> <li>You supply the StyleReplaceBehavior with the names of styles you want to have ‘observed’. For instance “MySmallStyle”, “MyMediumStyle”, “MyBigStyle”. This is the property ObservedStyles.  <li>From the Visual State Manager, you set the behavior’s CurrentState property to the style you want to be activated. For instance, “MyMediumStyle”  <li>The StyleReplaceBehavior traverses the whole visual tree from it’s location and finds every element that has an observed style that is <em>not</em> the currently <em>wanted</em> style, and changes it’s style to the wanted style. So following with the example I just used, if finds everything that is “MySmallStyle” or “MyBigStyle” and changes it to “MyMediumStyle”.</li></ul> <h2>Usage example</h2> <p>As usual, I have supplied a <a href="https://github.com/LocalJoost/DemoStyleReplacer" target="_blank">demo project</a>, but I will explain in more detail how it works. About halfway down in the MainPage.Xaml you will find the XAML that defines the credits grid:</p><pre style="font-size: 12px">&lt;Grid x:Name="ContentPanel" Height="Auto" VerticalAlignment="Top" &gt;
+  &lt;Grid.RowDefinitions&gt;
+    &lt;RowDefinition Height="Auto"/&gt;
+    &lt;RowDefinition Height="Auto"/&gt;
+    &lt;RowDefinition Height="Auto"/&gt;
+    &lt;RowDefinition Height="Auto"/&gt;
+    &lt;RowDefinition Height="Auto"/&gt;
+
+  &lt;/Grid.RowDefinitions&gt;
+  &lt;Grid.ColumnDefinitions&gt;
+    &lt;ColumnDefinition Width="Auto"/&gt;
+    &lt;ColumnDefinition Width="Auto"/&gt;
+  &lt;/Grid.ColumnDefinitions&gt;
+
+  &lt;HyperlinkButton Content="Laurent Bugnion" Tag="http://www.twitter.com/lbugnion"
+                   Style="{StaticResource <strong><font color="#ff0000"><u>CreditHyperlinkButtonStyle</u></font></strong>}" 
+                   Click="HyperlinkButtonClick" /&gt;
+  &lt;TextBlock Text="MVVMLight" Grid.Row="0" Grid.Column="1 " 
+             Style="{StaticResource <font color="#ff0000"><strong><u>CreditItemStyle</u></strong></font>}" /&gt;
+
+  &lt;HyperlinkButton Content="Mike Talbot" Tag="http://whydoidoit.com/" Grid.Row="1" 
+                   Style="{StaticResource CreditHyperlinkButtonStyle}" 
+                   Click="HyperlinkButtonClick"  /&gt;
+  &lt;TextBlock Text="SilverlightSerializer" Grid.Row="1" Grid.Column="1" 
+             Style="{StaticResource CreditItemStyle}" /&gt;
+
+  &lt;HyperlinkButton Content="Matteo Pagani" Tag="http://www.twitter.com/qmatteoq" 
+                   Grid.Row="2" 
+                   Style="{StaticResource CreditHyperlinkButtonStyle}" 
+                   Click="HyperlinkButtonClick"  /&gt;
+  &lt;TextBlock Text="General advice, explanation Template10" Grid.Row="2" Grid.Column="1" 
+             Style="{StaticResource CreditItemStyle}" /&gt;
+
+  &lt;HyperlinkButton Content="Morten Nielsen" Tag="http://www.twitter.com/dotmorten" 
+                   Grid.Row="3" 
+                   Style="{StaticResource CreditHyperlinkButtonStyle}" 
+                   Click="HyperlinkButtonClick" /&gt;
+  &lt;TextBlock Text="WindowsStateTriggers" Grid.Row="3" Grid.Column="1" 
+             Style="{StaticResource CreditItemStyle}" /&gt;
+
+  &lt;HyperlinkButton Content="Microsoft" Tag="http://www.microsoft.com/" Grid.Row="4" 
+                   Style="{StaticResource CreditHyperlinkButtonStyle}" 
+                   Click="HyperlinkButtonClick"   /&gt;
+  &lt;TextBlock Text="Windows, Visual Studio &amp; Template10" Grid.Row="4" Grid.Column="1" 
+             Style="{StaticResource CreditItemStyle}" /&gt;
+
+&lt;/Grid&gt;
+</pre>
+<p>This may look impressive, but I can assure you it is not – it’s only a bunch of texts and buttons, and the only interesting thing is the usage of CreditHyperlinkButtonStyle and CreditItemStyle. A little but further up, in the page’s resources, you will see the actual styles that are used getting defined:</p><pre style="font-size: 12px">&lt;Style x:Key="PageTextBaseStyle" TargetType="TextBlock" 
+       BasedOn="{StaticResource BaseTextBlockStyle}"&gt;
+  &lt;Setter Property="FontSize" Value="15"/&gt;
+&lt;/Style&gt;
+
+&lt;Style x:Key="CreditItemStyle" TargetType="TextBlock" 
+       BasedOn="{StaticResource PageTextBaseStyle}" &gt;
+  &lt;Setter Property="FontStyle" Value="Italic"/&gt;
+  &lt;Setter Property="VerticalAlignment" Value="Center"/&gt;
+  &lt;Setter Property="TextWrapping" Value="Wrap"/&gt;
+  &lt;Setter Property="Margin" Value="20,5,0,0"/&gt;
+&lt;/Style&gt;
+
+&lt;Style x:Key="CreditItemStyleBig" TargetType="TextBlock" 
+       BasedOn="{StaticResource CreditItemStyle}"&gt;
+  &lt;Setter Property="FontSize" Value="25"/&gt;
+&lt;/Style&gt;
+
+&lt;Style x:Key="HyperlinkTextStyle" TargetType="TextBlock"  
+       BasedOn="{StaticResource PageTextBaseStyle}" &gt;
+&lt;/Style&gt;
+
+&lt;Style x:Key="HyperlinkTextStyleBig" TargetType="TextBlock"
+       BasedOn="{StaticResource PageTextBaseStyle}" &gt;
+  &lt;Setter Property="FontSize" Value="25"/&gt;
+&lt;/Style&gt;</pre>
+<p>And basically the only difference between the normal and the –Big styles is that their font size is not 15 but 25.</p>
+<p>The behavior – which needs to be attached to the <em>page</em> itself - is used as follows:</p><pre style="font-size: 12px">&lt;interactivity:Interaction.Behaviors&gt;
+  &lt;behaviors:StyleReplaceBehavior x:Name="CreditItemStyler"&gt;
+    &lt;behaviors:StyleReplaceBehavior.ObservedStyles&gt;
+      &lt;behaviors:ObservedStyle Style="{StaticResource CreditItemStyle}"/&gt;
+      &lt;behaviors:ObservedStyle Style="{StaticResource CreditItemStyleBig}"/&gt;
+    &lt;/behaviors:StyleReplaceBehavior.ObservedStyles&gt;
+  &lt;/behaviors:StyleReplaceBehavior&gt;
+
+  &lt;behaviors:StyleReplaceBehavior x:Name="HyperlinkTextStyler"&gt;
+    &lt;behaviors:StyleReplaceBehavior.ObservedStyles&gt;
+      &lt;behaviors:ObservedStyle Style="{StaticResource HyperlinkTextStyle}"/&gt;
+      &lt;behaviors:ObservedStyle Style="{StaticResource HyperlinkTextStyleBig}"/&gt;
+    &lt;/behaviors:StyleReplaceBehavior.ObservedStyles&gt;
+  &lt;/behaviors:StyleReplaceBehavior&gt;
+&lt;/interactivity:Interaction.Behaviors</pre>
+<p>In fact, you see that there are <em>two</em>, each for every style pair that needs to be changed. Also note the behaviors have <em>names</em>. This we need to be able to address them from the Visual State Manager:</p><pre style="font-size: 12px">&lt;VisualStateManager.VisualStateGroups&gt;
+  &lt;VisualStateGroup x:Name="WindowStates"&gt;
+
+    &lt;VisualState x:Name="NarrowState"&gt;
+      &lt;VisualState.StateTriggers&gt;
+        &lt;AdaptiveTrigger MinWindowWidth="0"&gt;&lt;/AdaptiveTrigger&gt;
+      &lt;/VisualState.StateTriggers&gt;
+      &lt;VisualState.Setters&gt;
+        &lt;Setter Target="CreditItemStyler.CurrentStyle" 
+                Value="{StaticResource CreditItemStyle}"/&gt;
+        &lt;Setter Target="HyperlinkTextStyler.CurrentStyle" 
+                Value="{StaticResource HyperlinkTextStyle}"/&gt;
+      &lt;/VisualState.Setters&gt;
+    &lt;/VisualState&gt;
+
+    &lt;VisualState x:Name="WideState"&gt;
+      &lt;VisualState.StateTriggers&gt;
+        &lt;AdaptiveTrigger MinWindowWidth="700"&gt;&lt;/AdaptiveTrigger&gt;
+      &lt;/VisualState.StateTriggers&gt;
+      &lt;VisualState.Setters&gt;
+        &lt;Setter Target="CreditItemStyler.CurrentStyle" 
+                        Value="{StaticResource CreditItemStyleBig}"/&gt;
+        &lt;Setter Target="HyperlinkTextStyler.CurrentStyle" 
+                        Value="{StaticResource HyperlinkTextStyleBig}"/&gt;
+      &lt;/VisualState.Setters&gt;
+    &lt;/VisualState&gt;
+  &lt;/VisualStateGroup&gt;
+
+&lt;/VisualStateManager.VisualStateGroups&gt;</pre>
+<p>Which is, apart from that it is setting <em>behavior</em> properties in stead of <em>element</em> properties, as bog standard as you can think of. And that is all. An Adaptive Trigger and some settings.</p>
+<h2>Caveats and limitations</h2>
+<p>The behavior is not very forgiving. If you use a style that is not applicable to the element you want to change, it will probably hard crash on you. It does the job, but it’s not intended to catch all your mistakes. Intentionally, by the way, because it might become silently defunct if you change style names and you forget to edit the behavior’s use. The revised version, though, is no longer limited to local resources. It can use any resource that can be identified by StaticResource. </p>
+<h2>A little peek behind the curtains</h2>
+<p>The behavior itself pretty simple – two dependency properties, ObservedStyles and CurrentStyle, but those are not interesting in itself. There is one little method that actually does all the work when the behavior initializes, or CurrentStyle changes:</p><pre style="font-size: 12px">private void ReplaceStyles(Style newStyle)
+{
+  if (!Windows.ApplicationModel.DesignMode.DesignModeEnabled)
+  {
+    // Find all other styles observed by this behavior
+    var otherStyles = ObservedStyles.Where(
+        p =&gt; p.Style != newStyle).Select(p=&gt; p.Style);
+    // Find all the elements having the other styles
+    var elementsToStyle = AssociatedObject.GetVisualDescendents().Where(
+        p =&gt; otherStyles.Contains(p.Style));
+    // Style those with the new style
+    foreach (var elementToStyle in elementsToStyle)
+    {
+      elementToStyle.Style = newStyle;
+    }
+  }
+}</pre>
+<p>Four lines of code – that is basically all there is to it. And since nearly every line has comments to describe it, I will refrain from further detailing, except for one thing – <a href="https://github.com/LocalJoost/WpWinNl/blob/uwp/uap10.0/WpWinNl.External/VisualTreeHelperExtensions.cs" target="_blank">GetVisualDescendents</a> is not a normal method, but an extension method sitting in <a href="https://github.com/LocalJoost/WpWinNl/tree/uwp" target="_blank">WpWinNl</a> – the one and only reason I attached my package to it.</p>
+<h2>Conclusion</h2>
+<p>I realize this is huge overkill if you have only two or three elements to change, but when it becomes a lot, this may help you to you make your UWP apps even more awesome pretty easily. For me it saved a lot of work. Once again, the link to the <a href="https://github.com/LocalJoost/DemoStyleReplacer" target="_blank">demo project</a>, where you can see everything running.</p>
+<p>An additional conclusion is that Mr. Rang – may he rest in peace – once again was right. Don’t try to be clever. Simply using the tools that are already there usually works better.</p>

@@ -1,0 +1,140 @@
+---
+layout: post
+title: Writing a simple HTTP proxy using WCF
+date: '2008-11-29T21:22:00.023+01:00'
+author: Joost van Schaik
+tags:
+- ".NET 3.5SP1"
+- ".NET 3.5"
+- Proxy
+- REST
+- HTTP
+- WCF
+modified_time: '2009-06-05T12:48:52.521+02:00'
+thumbnail: http://1.bp.blogspot.com/_QXPoKuE9q6k/STGoUuwT2qI/AAAAAAAADJo/5YMTzNN-qlM/s72-c/Network.png
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-841418142193917017
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2008/11/writing-simple-http-proxy-using-wcf.html
+---
+
+I ran into a situation with the following network topology:
+<a href="http://1.bp.blogspot.com/_QXPoKuE9q6k/STGoUuwT2qI/AAAAAAAADJo/5YMTzNN-qlM/s1600-h/Network.png"><img id="BLOGGER_PHOTO_ID_5274181712729070242" style="FLOAT: left; MARGIN: 0px 10px 10px 0px; WIDTH: 320px; CURSOR: hand; HEIGHT: 209px" alt="" src="http://1.bp.blogspot.com/_QXPoKuE9q6k/STGoUuwT2qI/AAAAAAAADJo/5YMTzNN-qlM/s320/Network.png" border="0" /></a>
+The intranet server served PDF documents via IIS, but was only accessible from the WCF server - which, for technical and political reasons, could not run in IIS but had to be a Windows Managed service that hosted a WCF service. Yet I needed to be able to download files from the <em>intranet</em> server via an ordinary URL.
+
+It turns out that you can write a WCF service mimicking a HTTP server pretty easily. If you can utilize .NET 3.5SP1, that is.
+
+<span style="font-size:130%;">1. Data contract</span>
+There are few key points to the contract:<ul><li>Make a reference to System.ServiceModel.Web.dll</li>
+<li>Add a "using System.ServiceModel.Web"</li>
+<li>Define a method returning a <em>Stream</em></li>
+<li>Decorate that method with a <em>WebGet</em> attribute</li></ul>Your datacontract could look like this:<pre>using System.IO;
+using System.ServiceModel;
+using System.ServiceModel.Web;
+
+namespace ProxyService
+{
+    /// <summary>
+    /// Service contract for a proxy that forwards a http request
+    [ServiceContract]
+    public interface IHttpProxy
+    {
+        [OperationContract, WebGet]
+        Stream GetProxyRequest(string target);
+    }
+}</pre><span style="font-size:130%;">2. Implementation class</span>
+This is basically a modified version of a solution <a href="http://dotnetbyexample.blogspot.com/2007/11/creating-simple-proxy.html">based upon an ASP.NET page I described before.</a><pre>using System.IO;
+using System.Net;
+using System.ServiceModel.Web;
+using System.Web;
+
+namespace ProxyService
+{
+    /// <summary>
+    /// A proxy that forwards a http request
+    /// </summary>
+    public class HttpProxy : IHttpProxy
+    {
+        public Stream GetProxyRequest(string target)
+        {
+            var urlToLoadFrom = HttpUtility.UrlDecode(target);
+            HttpWebRequest webRequest = 
+               HttpWebRequest.Create(urlToLoadFrom) as HttpWebRequest;
+
+            // Important! Keeps the request from blocking after the first
+            // time!
+            webRequest.KeepAlive = false;
+            webRequest.Credentials = CredentialCache.DefaultCredentials;
+            using (var backendResponse = 
+              (HttpWebResponse)webRequest.GetResponse())
+            {
+                using (var receiveStream = 
+                  backendResponse.GetResponseStream())
+                {
+                    var ms = new MemoryStream();
+                    var response = 
+                      WebOperationContext.Current.OutgoingResponse;
+                    // Copy headers
+                    // Check if header contains a contenth-lenght since IE
+                    // goes bananas if this is missing
+                    bool contentLenghtFound = false;
+                    foreach (string header in backendResponse.Headers)
+                    {
+                        if (string.Compare(header, 
+                          "CONTENT-LENGTH", true) == 0)
+                        { 
+                          contentLenghtFound = true;
+                        }
+                        response.Headers.Add(header, 
+                          backendResponse.Headers[header]);
+                    }
+
+                    // Copy contents
+                    var buff = new byte[1024];
+                    var length = 0;
+                    int bytes;
+                    while ((bytes = receiveStream.Read(buff, 0, 1024)) > 0)
+                    {
+                        length += bytes;
+                        ms.Write(buff, 0, bytes);
+                    }
+
+                    // Add contentlength if it is missing
+                    if (!contentLenghtFound) response.ContentLength = length;
+
+                    // Set the stream to the start
+                    ms.Position = 0;
+                    return ms;
+                }
+            }
+        }
+    }
+}</pre><span style="font-size:130%;">3. Configuration settings</span>
+To get it all to work, you will need some configuration settings in the App.config of the hosting application:<pre>&lt;system.serviceModel&gt;
+  &lt;services&gt;
+    &lt;service name="ProxyService.HttpProxy" &gt;
+      &lt;endpoint address="" binding="webHttpBinding"
+                behaviorConfiguration="WebHttpBehavior"
+                contract="ProxyService.IHttpProxy" &gt;
+      &lt;/endpoint&gt;
+
+      &lt;host&gt;
+        &lt;baseAddresses&gt;
+          &lt;add baseAddress="http://localhost:8002/ProxyService.HttpProxy" /&gt;
+        &lt;/baseAddresses&gt;
+      &lt;/host&gt;
+    &lt;/service&gt;
+
+  &lt;/services&gt;
+  &lt;behaviors&gt;
+    &lt;endpointBehaviors&gt;
+      &lt;behavior name="WebHttpBehavior"&gt;
+        &lt;webHttp /&gt;
+      &lt;/behavior&gt;
+    &lt;/endpointBehaviors&gt;
+  &lt;/behaviors&gt;
+&lt;/system.serviceModel&gt;</pre>Notice the <em>endpointBehaviors</em> section: this is really important to get the stuff to work.
+
+<span style="font-size:130%;">4. Using the proxy</span>
+You can now simply enter "http://yourhost:8002/ProxyService.HttpProxy/GetProxyRequest?target=<em>urlencodedurl</em>" in your browser, and the WebGet attributes will automatically make the GetProxyRequest method get called with the value of target as value for the target parameter. The code of the proxy expects target to contain an URLEncoded URL (use HttpUtility.UrlEncode to encode the actual url to something that can be passed as a parameter on an URL).
+
+<span style="font-size:130%;">Concluding remarks</span>
+The magic of the WebGet attribute is barely scratched by this example, but it makes creating REST services with WCF a real piece of cake. I am not sure if it was intended to be used this way, but it sure works like hell ;-)

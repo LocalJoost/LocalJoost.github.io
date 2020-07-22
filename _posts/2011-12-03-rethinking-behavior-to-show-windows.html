@@ -1,0 +1,124 @@
+---
+layout: post
+title: Re-imagining the behavior to show the Windows Phone 7 camera as background
+date: '2011-12-03T13:44:00.001+01:00'
+author: Joost van Schaik
+tags:
+- wpdev
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- behavior
+- WP7
+modified_time: '2012-03-04T10:24:50.323+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7382731371873658108
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/12/rethinking-behavior-to-show-windows.html
+---
+
+<p>This blog turns out not only to be a collection of how-to samples but also a record of my evolution as a <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone 7</a> developer. At the end of my previous post, <a href="http://dotnetbyexample.blogspot.com/2011/11/safe-event-detachment-base-class-for.html">Safe event detachment base class for Windows Phone 7 behaviors</a>, I promised a usage example and I decided to re-implement the <a href="http://dotnetbyexample.blogspot.com/2011/10/behavior-to-show-windows-phone-7-camera.html">behavior to show the Windows Phone 7 camera as background</a> using the SafeBehavior as a base class. This makes the code considerable easier.</p> <p>The base setup of the re-implemented behavior is pretty simple:</p><pre style="font-size: 12px">using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Navigation;
+using Microsoft.Devices;
+using Microsoft.Phone.Controls;
+
+namespace Wp7nl.Behaviors
+{
+  /// &lt;summary&gt;
+  /// A behavior that shows a camera view on the background of a panel
+  /// &lt;/summary&gt;
+  public class CameraViewBackgroundBehavior : SafeBehavior&lt;Panel&gt;
+  {
+
+    private PhotoCamera camera;
+    private VideoBrush backgroundBrush;
+
+    public CameraViewBackgroundBehavior()
+    {
+      ListenToPageBackEvent = true;
+    }
+  }
+}</pre>
+<p>Note this behavior needs to detect the user navigating back to the page – this in necessary because we need to do something with the camera.</p>
+<p>In stead of all the song and dance for attaching and detaching events using the <a href="http://www.schaikweb.net/dotnetbyexample/beh.zip" target="_blank">snippet</a> I published earlier, it’s now a matter of overriding the OnSetup and OnCleanup methods to initialize the camera:</p><pre style="font-size: 12px">protected override void OnSetup()
+{
+  if (camera == null)
+  {
+    camera = new PhotoCamera();
+    ParentPage.OrientationChanged += ParentPageOrientationChanged;
+  }
+
+  // Create a video brush with the right parameters
+  backgroundBrush = new VideoBrush
+                      {
+                        Stretch = Stretch.UniformToFill,
+                        AlignmentX = AlignmentX.Left,
+                        AlignmentY = AlignmentY.Top
+                      };
+
+  // Set the video brush to the background of the panel 
+  // and and do an initial display
+  AssociatedObject.Background = backgroundBrush;
+  backgroundBrush.SetSource(camera);
+  SetVideoOrientation(ParentPage.Orientation);
+}
+
+protected override void OnCleanup()
+{
+  ParentPage.OrientationChanged -= ParentPageOrientationChanged;
+  camera.Dispose();
+  camera = null;
+}</pre>
+<p>This behavior also needs to do some action when the user actually navigates back to the page, which you can do by override the OnParentPageNavigated method - in this case, re-initializing the whole behavior</p><pre style="font-size: 12px">/// &lt;summary&gt;
+/// Fired whe page navigation happens
+/// &lt;/summary&gt;
+/// &lt;param name="sender"&gt;&lt;/param&gt;
+/// &lt;param name="e"&gt;&lt;/param&gt;
+protected override void OnParentPageNavigated(object sender, NavigationEventArgs e)
+{
+  // Re-setup when this page is navigated BACK to
+ if( IsNavigatingBackToBehaviorPage(e))
+ {
+   if (camera != null)
+   {
+     OnCleanup();
+     OnSetup();
+   }
+  }
+}</pre>
+<p>The actual implementation of showing the camera background has hardly changed, and is only mentioned here for the sake of completeness:</p><pre style="font-size: 12px">private void ParentPageOrientationChanged(object sender, OrientationChangedEventArgs e)
+{
+  SetVideoOrientation(e.Orientation);
+}
+
+/// &lt;summary&gt;
+/// Sets background video brush parameters based upon page orientation
+/// &lt;/summary&gt;
+/// &lt;param name="orientation"&gt;&lt;/param&gt;
+private void SetVideoOrientation(PageOrientation orientation)
+{
+  System.Diagnostics.Debug.WriteLine("Switching to {0}", orientation);
+  switch (orientation)
+  {
+    case PageOrientation.PortraitUp:
+      backgroundBrush.Transform = 
+        new CompositeTransform { Rotation = 90, TranslateX = 480 };
+      break;
+    case PageOrientation.LandscapeLeft:
+      backgroundBrush.Transform = null;
+      break;
+    case PageOrientation.LandscapeRight:
+      if (Microsoft.Phone.Shell.SystemTray.IsVisible )
+      {
+        backgroundBrush.Transform = 
+          new CompositeTransform { Rotation = 180, TranslateX = 728, TranslateY = 480 };
+      }
+      else
+      {
+        backgroundBrush.Transform = 
+            new CompositeTransform { Rotation = 180, TranslateX = 800, TranslateY = 480 };
+      }
+      break;
+  }
+}</pre>
+<p>As this post demonstrated, using the SafeBehavior as a base class makes life a lot easier than implementing the whole pattern over and over again, even when using a snippet. </p>
+<p>Code is part of the the #<a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a> and can be found <a href="http://wp7nl.codeplex.com/SourceControl/changeset/view/11210#214133" target="_blank">here</a></p>

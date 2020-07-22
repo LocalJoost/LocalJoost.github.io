@@ -1,0 +1,81 @@
+---
+layout: post
+title: Adapting Custom Vision Object Recognition Windows ML code for use in Mixed
+  Reality applications
+date: '2019-01-27T18:47:00.000+01:00'
+author: Joost van Schaik
+tags:
+- Custom Vision
+- Windows Machine Learning
+- HoloLens
+- Unity3D
+- ONNX
+- Windows ML
+modified_time: '2019-01-29T15:21:15.171+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-804227521408422196
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2019/01/adapting-custom-vision-object.html
+---
+
+<h2>Intro</h2><p>In November <a href="http://dotnetbyexample.blogspot.com/2018/11/using-azure-custom-vision-object.html" target="_blank">I wrote about a Custom Vision Object Detection</a> experiment that I did, which allowed the <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> I was wearing to recognize not only what objects where in view, but also where they approximately were in space. You might remember this picture:</p><p><img width="640" height="360" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20190127/20181114_131716_HoloLens.jpg" border="0"></p><p>You might also remember this one:</p><p><img width="366" height="302" align="left" style="margin: 0px 12px 1px 0px; border: 0px currentcolor; border-image: none; float: left; display: inline; background-image: none;" src="https://www.schaikweb.net/blog/20190127/Project1.png" border="0">Apart from being a very cool new project type, it also showed a great limitation. You could only use an <em>online </em>model. You could not download it in the form of, for instance, an ONNX model to use with <a href="https://docs.microsoft.com/en-us/windows/ai/" target="_blank">Windows ML</a>. It worked pretty well, don't get me wrong, but maybe you are out and about and your device can't always reach the online model. Well guess what recently changed:</p><p><img width="149" height="123" src="https://www.schaikweb.net/blog/20190127/Compact.png"></p><p>Yay! <a href="https://customvision.ai/" target="_blank">Custom Vision Object Detection</a> now support downloadable models that can be use in Windows ML.</p><h2>Download model and code</h2><p>After you have changed the type from 'General" to "General (compact)" and saved that change, hit the "Performance" tab, then you will see the "Export" option appear (no idea why this is at "Performance", but what the heck:</p><p><img width="640" height="328" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20190127/Download.png" border="0"></p><p>So if you click that, you get a bit of an unwieldy screen that looks like this:</p><p><img width="292" height="480" align="left" style="border: 0px currentcolor; border-image: none; float: left; display: inline; background-image: none;" src="https://www.schaikweb.net/blog/20190127/SelectType.png" border="0">We are going to select the ONNX standard because that is what we can in Windows Machine Learning - inside an UWP app running on the HoloLens. Please select version 1.2:</p><p><img width="316" height="255" align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" src="https://www.schaikweb.net/blog/20190127/Version.png" border="0"></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><img align="right" style="float: right; display: inline;" src="https://www.schaikweb.net/blog/20190127/Files.png">The result is a ZIP file containing the following folders and files:</p><p><br></p><p><br></p><p><br></p><p>We are only going to need the model.onnx file (in the next blog post). For now I want to concentrate on the file that is inside the CSharp folder - ObjectDetection.cs. That file is very fine for using in a regular UWP app. However, although they are running on top of UWP, HoloLens apps are all but regular UWP apps.</p><h2>Challenges in incorporating the C# code in an Unity project</h2><p>Some interesting challenges lay ahead:</p><ul><li>Unity for HoloLens knows this unusual concept of having two Visual studio solutions: one for use in the Unity editor, and a second one that is generated from the first. But the first one, the Unity solution needs to be able to swallow all the code, even if it's UWP and will never run in the editor. To make that possible, we will have to put some stuff into preprocessor directives to be able to generate the deployment project at all</li><li>The code uses C# 7.0 concepts - tuples - that are not supported by the C# version (4.0) supported in all but the newest versions of Unity, that I am not using here for various reasons</li><li>I also found a pretty subtle bug in the code that <em>only</em> happens in a Unity runtime</li></ul><p>I will address all three things.</p><h2>Testing in a bare bones project - here come the errors</h2><p>So, I created an empty HoloLens project basically doing nothing: just imported the <a href="https://github.com/Microsoft/MixedRealityToolkit-Unity" target="_blank">Mixed Reality Toolkit</a> and hit all three configuration options in the Mixed Reality Toolkit/config menu. Then I added the ObjectDetection.cs to the project and immediately Unity started to balk:</p><p><img width="640" height="237" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20190127/Errors.png" border="0"></p><h2>Round 1 - preprocessor directives</h2><p>The first round of fixing is pretty simple - just put everything he editor balks about between preprocessor directives:</p><pre style="font-size: 12px;">#if !UNITY_EDITOR 
+#endif</pre><p>You can do this the rough way - by basically putting the whole file in these directives - or only put the minimum stuff in directives. I usually opt for the second way. So we need to put the following parts between these preprocessor directives.</p><p>First, this part in the using section of the start of the file:</p><pre style="font-size: 12px;">    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Linq;
+<strong>#if !UNITY_EDITOR</strong>
+    using System.Threading.Tasks;
+    using Windows.AI.MachineLearning;
+    using Windows.Media;
+    using Windows.Storage;
+<strong>#endif</strong></pre><p>Then this part, at the start of the ObjectDetection class:</p><pre style="font-size: 12px;">    public class ObjectDetection
+    {
+        private static readonly float[] Anchors = ....
+
+        private readonly IList&lt;string&gt; labels;
+        private readonly int maxDetections;
+        private readonly float probabilityThreshold;
+        private readonly float iouThreshold;
+<strong>#if !UNITY_EDITOR</strong>
+        private LearningModel model;
+        private LearningModelSession session;
+<strong>#endif</strong></pre><p>Then the following methods need to be put into entirely between these preprocessor directives:</p><ul><li>Init</li><li>ExtractBoxes</li><li>Postprocess</li></ul><p>And then both Unity and Visual Studio stop complaining about errors. So let's build the UWP solution...<img width="640" height="25" src="https://www.schaikweb.net/blog/20190127/Errors2.png"></p><p>Oops. Well I already warned you about this.</p><h2>Round 2 - Tuples are a no-no</h2><p>Although the very newest versions of Unity support C# 7.0 the majority of the versions that are used today for various reasons (mainly hologram stability) do not. But the code generated by CustomVision has some tuples in it. The culprit is ExtractBoxes:</p><pre style="font-size: 12px;">private (IList&lt;BoundingBox&gt;, IList&lt;float[]&gt;) ExtractBoxes(TensorFloat predictionOutput,<br>                                                          float[] anchors)</pre><p>So we need to refactor this to C# 4 style code. Fortunately, this is not quite rocket science. </p><p>First of all, we define a class with the same properties as the tuple:</p><pre style="font-size: 12px;">internal class ExtractedBoxes
+{
+    public IList&lt;BoundingBox&gt; Boxes { get; private set; }
+    public IList&lt;float[]&gt; Probabilities { get; private set; }
+
+    public ExtractedBoxes(IList&lt;BoundingBox&gt; boxes, IList&lt;float[]&gt; probs)
+    {
+        Boxes = boxes;
+        Probabilities = probs;
+    }
+}</pre><p>I have added this to the ObjectDetection.cs file, just behind the end of the ObjectDetection class definition. Then, we only need to change the return value of the method ExtractBoxes from</p><pre style="font-size: 12px;">private (IList&lt;BoundingBox&gt;, IList&lt;float[]&gt;)</pre><p>to</p><pre style="font-size: 12px;"> return new ExtractedBoxes(boxes, probs);</pre><p>We also have to change the mode PostProcess, the place where ExtractBoxes is used:</p><pre style="font-size: 12px;">private IList&lt;PredictionModel&gt; Postprocess(TensorFloat predictionOutputs)
+{
+    var (boxes, probs) = this.ExtractBoxes(predictionOutputs, ObjectDetection.Anchors);
+    return this.SuppressNonMaximum(boxes, probs);
+}</pre>
+<p>needs to become</p><pre style="font-size: 12px;">private IList&lt;PredictionModel&gt; Postprocess(TensorFloat predictionOutputs)
+{
+    var extractedBoxes = this.ExtractBoxes(predictionOutputs, ObjectDetection.Anchors);
+    return this.SuppressNonMaximum(extractedBoxes.Boxes, extractedBoxes.Probabilities);
+}</pre><p>and then, dear reader, Unity will finally build the deployment UWP solution. But there is still more to do.</p><h2>Round 3 - fix a weird crashing bug</h2><p>When I tried this in my app - and you will have to take my word for it - my app randomly crashed. The culprit, after long debugging, turned out to be this line:</p><pre>private IList&lt;PredictionModel&gt; SuppressNonMaximum(IList&lt;BoundingBox&gt; boxes, <br>                                                  IList&lt;float[]&gt; probs)
+{
+    var predictions = new List&lt;PredictionModel&gt;();
+    var maxProbs = probs.Select(x =&gt; x.Max()).ToArray();
+
+    while (predictions.Count &lt; this.maxDetections)
+    {
+        <strong><font color="#ff0000">var max = maxProbs.Max();</font></strong></pre><p>I know, it doesn't make sense. I have not checked this in plain UWP, but <em>apparently</em> the implementation of Max() in the Unity player on top of UWP doesn't like to calculate the Max of and empty list. My app worked fine as long as there were recognizable object in view. If there were none, it crashed. So, I changed that piece to check for probs not being empty first:</p><pre style="font-size: 12px;">private IList&lt;PredictionModel&gt; SuppressNonMaximum(IList&lt;BoundingBox&gt; boxes, IList&lt;float[]&gt; probs)
+{
+    var predictions = new List&lt;PredictionModel&gt;();
+<strong><font color="#ff0000">    // Added JvS
+    if (probs.Any())
+    {</font></strong>
+        var maxProbs = probs.Select(x =&gt; x.Max()).ToArray();
+
+        while (predictions.Count &lt; this.maxDetections)
+        {
+            var max = maxProbs.Max();</pre>
+<p>And then your app will still be running when there's no predictions.</p><h2>Round 4 - some minor fit &amp; finish</h2><p>Because I am lazy and it makes life easier when using this from a Unity app, I added this little overload of the Init method:</p><pre style="font-size: 12px;">public async Task Init(string fileName)
+{
+    var file = await StorageFile.GetFileFromApplicationUriAsync(new Uri(fileName));
+    await Init(file);
+}</pre><p>This will need to be in and <strong>#if !UNITY_EDITOR </strong>preprocessor directive as well. This method allows me to call the method like this without first getting a StorageFile:</p><pre style="font-size: 12px;">_objectDetection.Init("ms-appx:///Data/StreamingAssets/model.onnx");</pre><h2>Conclusion</h2><p>With these adaptions you have a C# file that will allow you to use Windows ML from both Unity and regular UWP apps. In a following blog post I will actually show a refactored version of the Toy Aircraft Finder to show how things work IRL. </p><p>There is no real demo project this time (yet) but if you want to download the finished file already, <a href="https://www.schaikweb.net/blog/20190127/ObjectDetection.zip" target="_blank">you can do so here</a>. </p>

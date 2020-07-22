@@ -1,0 +1,101 @@
+---
+layout: post
+title: Running a Hololens app on a Raspberry PI2–and controlling it with a keyboard
+date: '2016-10-29T22:30:00.000+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- HoloLens
+- IoT
+- Raspberry PI2
+modified_time: '2016-10-31T15:22:42.749+01:00'
+thumbnail: https://i.ytimg.com/vi/1D7NxUwqrQg/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5288502641489079305
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/10/running-hololens-app-on-raspberry.html
+---
+
+<h2>Intro</h2> <p>No, I am not drunk, nor did I smoke some peculiar produce our capital Amsterdam is famous for, and I did not bump my head a bit too hard on my car while getting out of it either. I was just curious how far the U of UWP would carry me. And it turns out, a lot further than I thought. It’s actually possible to run a HoloLens app on a Raspberry PI2. When I saw it happen, I actually had a bit trouble believing my own eyes, but it is possible indeed. With surprisingly little work. Although I added a little extra work to make it more fun.</p> <h2>Parts required &amp; base material</h2> <ul> <li>One Raspberry PI2 or 3 running the latest version of <a href="https://developer.microsoft.com/en-us/windows/iot" target="_blank">Windows 10 IoT Core</a>.  <li>A keyboard that plays nice with the above  <li>A screen to see the result on</li></ul> <p>I used a Raspberry PI2 running the latest Windows 10 IoT Core Insider’s build and a <a href="http://nexdock.com/" target="_blank">NexDock</a>. Mainly because I have one, it’s handy and it looks cool. Be aware that to connect the NexDock <em>keyboard</em> you will need a Bluetooth dongle for your RP2 – or you will need use a RP3 which has it on board.</p> <p>This post builds upon my (as of the time of this writing still incomplete) series about the <a href="http://dotnetbyexample.blogspot.com/2016/10/a-hololens-airplane-tracker-1.html" target="_blank">Hololens Aircraft tracker</a>, but that’s only because that’s a cool app to demo the idea on. It is no part of the series. I made a separate branch of the app at the end of the 6th episode. So this is like an interlude. </p> <h2>Some brute-force demolishing to get things to compile</h2> <p>Basically it’s as simple as setting the build target to ARM:</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Running-a-Hololens-app-on-a-Raspberry-PI_13865/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Running-a-Hololens-app-on-a-Raspberry-PI_13865/image_thumb.png" width="304" height="35"></a></p> <p>The only problem is, if you do that and then rebuild the project, it will complain about this</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Running-a-Hololens-app-on-a-Raspberry-PI_13865/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Running-a-Hololens-app-on-a-Raspberry-PI_13865/image_thumb_3.png" width="604" height="96"></a></p> <p>For the very simple reason this dll, which is part of the HoloToolkit, is not available for ARM. Hell, HoloLens runs x86 only, so why <em>should</em> it be available. No-one ever anticipated using a <strike>dolt</strike> peculiar person like me trying to run it on a bloody Raspberry PI2. </p> <p>There is a rather crude way of fixing it. We are not using SpatialUnderstanding anyway, most certainly not on the Raspberry PI2. So I got rid of the plugin that Visual Studio complained about, by going to this folder in Unity:</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Running-a-Hololens-app-on-a-Raspberry-PI_13865/image_4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Running-a-Hololens-app-on-a-Raspberry-PI_13865/image_thumb_4.png" width="304" height="371"></a></p> <p>And hitting delete. Rebuild project in Unity, try to compile it in Visual Studio. Alas. Still no success</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Running-a-Hololens-app-on-a-Raspberry-PI_13865/image_5.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Running-a-Hololens-app-on-a-Raspberry-PI_13865/image_thumb_5.png" width="604" height="116"></a></p> <p>But this is a <em>different</em> plugin dll – PlaneFinding. Also something we don’t use. Now this is a bit confusing, as there are three folder containing a Planefinding.dll. Maybe that’s an error in the HoloToolkit.</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Running-a-Hololens-app-on-a-Raspberry-PI_13865/image_6.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Running-a-Hololens-app-on-a-Raspberry-PI_13865/image_thumb_6.png" width="182" height="244"></a>&nbsp;</p> <p>Whatever. Let’s get rid of the whole plugins folder under SpatialMappping. Once again, rebuild in Unity, compile in Visual Studio. And wouldn’t you know it…</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Running-a-Hololens-app-on-a-Raspberry-PI_13865/image_7.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Running-a-Hololens-app-on-a-Raspberry-PI_13865/image_thumb_7.png" width="604" height="249"></a></p> <p><img style="float: right; display: inline" src="https://mymorningmeditations.files.wordpress.com/2013/09/square-peg-round-hole-smash.jpg" width="100" align="right" height="113">The sweet smell of success. Now I want you to understand this is no way to go about to make a HoloLens project compatible with a Raspberry PI2. This is using a mallet to hit very hard on a square peg to make it go through a round hole. I have demolished two components you might want to use in the future version of your HoloLens app. But this is not serious development – this is hacking for fun’s sake to prove a point. That is why I have made a separate branch ;).</p> <h2>Controlling the app’s viewpoint</h2> <p>When you run the app on the HoloLens this is no issue at all. If you want to see the airport and it’s planes from closer up or from a different angle, you just move your head, walk to the object of your interest – or around it. If if runs on a screen, things are a bit different. So I created this little behaviour (with “ou” indeed, which suggests the good folks at Unity have been educated in The Queen’s English) that more or less replicates the key mappings of the HoloLens emulator:</p> <p>It’s crude, ugly, the result is a bit stuttering – but it does the job.</p><pre>using UnityEngine;
+
+public class KeyboardCameraController : MonoBehaviour
+{
+  public float Rotatespeed = 0.4f;
+  public float MoveSpeed = 0.02f;
+  public float FastSpeedAccleration = 7.5f;
+
+  private Quaternion _initialRotation;
+  private Vector3 _initialPosition;
+  void Start()
+  {
+    _initialRotation = Camera.main.transform.rotation;
+    _initialPosition = Camera.main.transform.position;
+  }
+
+  void Update()
+  {
+    var speed = 1.0f;
+    if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+    {
+      speed = FastSpeedAccleration * speed;
+    }
+
+    if (Input.GetKey(KeyCode.LeftArrow))
+    {
+      Camera.main.transform.RotateAround(Camera.main.transform.position,
+          Camera.main.transform.up, -Rotatespeed * speed);
+    }
+
+    if (Input.GetKey(KeyCode.RightArrow))
+      Camera.main.transform.RotateAround(Camera.main.transform.position,
+          Camera.main.transform.up, Rotatespeed * speed);
+
+    if (Input.GetKey(KeyCode.UpArrow))
+    {
+      Camera.main.transform.RotateAround(Camera.main.transform.position,
+          Camera.main.transform.right, -Rotatespeed * speed);
+    }
+
+    if (Input.GetKey(KeyCode.DownArrow))
+      Camera.main.transform.RotateAround(Camera.main.transform.position,
+          Camera.main.transform.right, Rotatespeed * speed);
+
+    if (Input.GetKey(KeyCode.A))
+      Camera.main.transform.position +=
+          Camera.main.transform.right * -MoveSpeed * speed;
+
+    if (Input.GetKey(KeyCode.D))
+      Camera.main.transform.position +=
+          Camera.main.transform.right * MoveSpeed * speed;
+
+    if (Input.GetKey(KeyCode.W))
+      Camera.main.transform.position +=
+          Camera.main.transform.forward * MoveSpeed * speed;
+
+    if (Input.GetKey(KeyCode.S))
+      Camera.main.transform.position +=
+          Camera.main.transform.forward * -MoveSpeed * speed;
+
+    if (Input.GetKey(KeyCode.PageUp))
+      Camera.main.transform.position +=
+          Camera.main.transform.up * MoveSpeed * speed;
+
+    if (Input.GetKey(KeyCode.PageDown))
+      Camera.main.transform.position +=
+          Camera.main.transform.up * -MoveSpeed * speed;
+
+    if (Input.GetKey(KeyCode.Escape))
+    {
+      Camera.main.transform.position = _initialPosition;
+      Camera.main.transform.rotation = _initialRotation;
+    }
+
+  }
+}</pre>
+<p>Drag this behaviour on top of the camera (or for what matters, anything at all). You will be able to control the camera’s standpoint via what I have been told is the the standard PC gamer’s WASD and arrow key mappings. PageUp/PageDown will move the camera standpoint up and down, ESC will bring you back to the original viewpoint when the app started, and using SHIFT will make things go faster. </p>
+<h2>Deploy and run</h2>
+<p>Deploy the app to your Raspberry PI2 or 3 using Visual Studio – and select your PI as remote machine. Use either “Release” or “Master” build configuration. The latter should - in theory – go faster, but takes much longer (as in <em>very much</em> longer) to compile and deploy. Also, if you choose “Master”, the app does not always start on my PI, it’s sometimes only deployed – so you have to get it going via the device’s Device Portal. This may have something to do with me running an Insider’s build.</p>
+<p>Either way – if you have WiFi either built-in or via dongle, that’s fine, but unless you particularly like waiting, connect your PI2/3 to a wired connection while deploying. I also observed issues when the app runs while only having WiFi connectivity – data comes in pretty slow, it can take minutes before the first airplanes appear, while on wired it takes like 30 seconds, max. Apparently my 2.4Ghz network (which the PIs use) is not that strong compared to the 5G all the other devices in the house employ.</p>
+<p>And it works. Here are some pictures and a video of the app in action. The performance is not stellar (big surprise here, matching a $35 device against a $3000 device that comes straight out of Star Trek), but still – it works pretty reasonable. </p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Running-a-Hololens-app-on-a-Raspberry-PI_81D2/IMG_4786.jpg"><img title="IMG_4786" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="IMG_4786" src="http://www.schaikweb.net/dotnetbyexample/Running-a-Hololens-app-on-a-Raspberry-PI_81D2/IMG_4786_thumb.jpg" width="324" height="217"></a><a href="http://www.schaikweb.net/dotnetbyexample/Running-a-Hololens-app-on-a-Raspberry-PI_81D2/IMG_4792.jpg"><img title="IMG_4792" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="IMG_4792" src="http://www.schaikweb.net/dotnetbyexample/Running-a-Hololens-app-on-a-Raspberry-PI_81D2/IMG_4792_thumb.jpg" width="324" height="217"></a></p><iframe height="396" src="https://www.youtube.com/embed/1D7NxUwqrQg" frameborder="0" width="650" allowfullscreen></iframe>
+<h2>Conclusion</h2>
+<p>Looks like the U in Universal Windows Platform is pretty universal indeed. Microsoft weren’t talking <strike>BS</strike> rubbish about this promise. This app can also be deployed to PCs (I learned that by accidentally choosing “Local Machine” as a target) and I don’t doubt it will run on phones and even XBox One, although I think I would have to ponder a little about the way to control the viewpoint on those devices as they don’t have a keyboard. Yet, an impressive result. </p>
+<p>Code <a href="https://github.com/LocalJoost/HoloATC_Demo/tree/Blog6a" target="_blank">can be found here</a>.</p>

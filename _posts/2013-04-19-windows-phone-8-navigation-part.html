@@ -1,0 +1,346 @@
+---
+layout: post
+title: Windows Phone 8 navigation part 1–geocoding, tombstoning–and testing
+date: '2013-04-19T12:45:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- Mapping
+- wpnl
+- wpdev
+- dotnetmag
+- MVVM
+- Unit Test
+- MVVM Light
+modified_time: '2013-04-26T10:00:52.031+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8655649466651746822
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/04/windows-phone-8-navigation-part.html
+---
+
+<p>After <a href="http://dotnetbyexample.blogspot.nl/2013/03/simple-reverse-geocoding-with-windows.html" target="_blank">my post about reverse geocoding</a> I set out to make a little app to demonstrate routing in <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 8. The demo app went quite out of hand, so I decided to split the post up in a few smaller posts. In the course of it I am going to build a basic navigation app that enables the user to determine two locations, find a route between those locations, and display them on a map – all using <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a>, of course. </p> <p>And now the <a href="http://blogs.msdn.com/b/bharry/archive/2013/04/04/vs-tfs-2012-2-update-2-released-today.aspx?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">2012.2 update to Visual Studio</a> is released, we can finally build Windows Phone MVVM apps the way things are intended to be: by writing some unit test first, getting the basic functions right, before creating an all-out app. This makes it especially handy to test one important requirement that go for all my apps – all the models and viewmodels <em>must be serializabe,</em> so I can <a href="http://dotnetbyexample.blogspot.nl/2011/01/tombstoning-mvvmlight-viewmodels-with.html" target="_blank">tombstone using SilverlightSerializer</a> like I have been doing for over two years now.</p> <p>At this point I am not really sure how much blog posts this will take me, but I guess at least three, maybe four.</p> <p><font size="4">What is unit testing and why should I do that?</font></p> <p>Professional software developers are usually all in on this. What you basically do is write code that asserts that pieces of your code are behaving the way you expect them to do. I am sure everyone has had the episode that you change one little thing that <em>should</em> be inconsequential and suddenly, at some seemingly totally unrelated place, things start going South. Unit tests call little pieces of of your code and test if the result of calling a method, setting a property or whatever gives the result you expect. If you write unit tests, and then change something, and test start failing in unrelated places – it’s like a smoke detector going off. Your code starts detecting bugs for you. Nice, eh? I also gives you the a way to mess around with all kinds of APIs getting things right before you start wasting time on a complex GUI that you can’t get to work because the underlying code cannot work the way you want. </p> <p><font size="4">What is geocoding?</font></p> <p>Geocoding is what we GIS buffs say when we mean ‘finding a location on earth by it’s name”. If I put “Boston&nbsp; USA” in a geocoder I expect to get a coordinate that puts me somewhere on the east coast of the United States, if I enter “Springerstraat 36 Netherlands” I expect a coordinate that shows me my own house, or somewhere nearby. Some geocoders can take info that’s not tied to an address, but things like, like ‘town hall Little Rock USA”. In general – in goes a descriptive text, out come one or more matches with coordinates.</p> <p>Enough introduction. Let’s code.</p> <p><font size="4">Setting the stage</font></p> <p>I started out doing the following:</p> <ul> <li>Create a new Windows Phone App “NavigationDemo”. Target framework 8.0  <li>Add a Windows Phone Class Library “NavigationDemo.Logic”  <li>Add a Windows Phone Unit Test app “NavigationDemo.Logic.Test”  <li>In NavigationDemo, create a reference to NavigationDemo.Logic  <li>In NavigationDemo.Logic.Test, make a reference to NavigationDemo.Logic as well.  <li>In both NavigationDemo and NavigationDemo.Logic.Test, select WMAppManifest.xml in Properties and enable the “ID_CAP_MAP” capbility</li></ul> <p>Now, because I am a lazy ******* and like to re-use I did things before, bring in the following nuget packages:</p> <ul> <li>wp7nl (this will pull in MVVMLight Libraries-only version and the Windows Phone toolkit as well)  <li>Microsoft.Bcl.Async</li></ul> <p>wp7nl also has a Windows Phone 8 version (it’s name is retained for historic reasons). Install both packages in all three projects.</p> <p><font size="4">GeocodeModel – take one</font></p> <p>In “NavigationDemo.Logic”, add a folder “GeocodeModel” and put the following class in there:</p><pre>using System;
+using System.Collections.Generic;
+using System.Device.Location;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.Phone.Maps.Services;
+using Wp7nl.Utilities;
+
+namespace NavigationDemo.Logic.Models
+{
+  public class GeocodeModel
+  {
+    public GeocodeModel()
+    {
+      MapLocations = new List&lt;MapLocation&gt;();
+      SearchLocation = new GeoCoordinate();
+    }
+    public string SearchText { get; set; }
+
+    public GeoCoordinate SearchLocation { get; set; }
+
+    public MapLocation SelectedLocation { get; set; }
+
+    public List&lt;MapLocation&gt; MapLocations { get; set; }
+
+    public async Task SearchLocations()
+    {
+      MapLocations.Clear();
+      SelectedLocation = null;
+      var geoCoder = new GeocodeQuery
+      {
+        SearchTerm = SearchText,
+        GeoCoordinate = SearchLocation
+      };
+      MapLocations.AddRange(await geoCoder.GetMapLocationsAsync());
+      SelectedLocation = MapLocations.FirstOrDefault();
+    }
+  }
+}
+</pre>
+<p>To perform geocoding, we need the GeocodeQuery class. So we embed that into a class with a method to perform the actual geocoding, a search string to holds the user input, a list of MapLocation (the output of GeocodeQuery) and SelectedLocation to the user’s selection.</p>
+<p>Note there is also a SearchLocation property of type GeoCoordinate. That’s because the GeocodeQuery also needs a location to start searching from. If the programmer using my model doesn’t set it, I choose a default value. But you can imagine this being useful if someone just enters ‘Amersfoort’ for SearchText and a coordinate somewhere in the Netherlands – that way the GeocodeQuery knows that you want to have Amersfoort in the Netherlands, and not the Amersfoort in South Africa. Anyway, it’s now time for</p>
+<p><font size="4">Writing the search test</font></p>
+<p>Add a new class GeocodeModelTest to NavigationDemo.Logic.Test and let’s write our first test:</p><pre>using System;
+using System.Threading;
+using System.Windows;
+using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
+using NavigationDemo.Logic.Models;
+
+namespace NavigationDemo.Logic.Test
+{
+  [TestClass]
+  public class GeocodeModelTest
+  {
+    [TestMethod]
+    public void TestFindBoston()
+    {
+      var m = new GeocodeModel { SearchText = "Boston USA" };
+      var waitHandle = new AutoResetEvent(false);
+
+      Deployment.Current.Dispatcher.BeginInvoke(async () =&gt;
+      {
+        await m.SearchLocations();
+        waitHandle.Set();
+       });
+      waitHandle.WaitOne(TimeSpan.FromSeconds(5));
+
+      Assert.AreEqual(m.SelectedLocation.GeoCoordinate.Latitude, 42, 1);
+      Assert.AreEqual(m.SelectedLocation.GeoCoordinate.Longitude, -71, 1);
+      Assert.AreEqual(m.SelectedLocation.Information.Address.City, 
+         "Boston");
+      Assert.AreEqual(m.SelectedLocation.Information.Address.State,
+        "Massachusetts");
+      Assert.AreEqual(m.SelectedLocation.Information.Address.Country, 
+        "United States of America");
+    }
+  }
+}</pre>
+<p>The GeocodeQuery runs async and needs to run on the UI thread as well. If you have no idea what I am fooling around here with the Dispatcher and the AutoResetEvent, <a href="http://dotnetbyexample.blogspot.nl/2013/03/unit-testing-async-windows-phone-8-code.html" target="_blank">please read this article first</a>. Anyway, this test works. Boston is indeed on the east coast of the United States and still in Massachusetts. Most reassuring. Now let’s see if SilverlightSerializer will indeed serialize this. </p>
+<p><font size="4">Writing the serialization test – take one</font></p>The first part is basically a repeat of the first test – writing unit test sometimes involves a lot of boring copy &amp; paste work – but the last part is different:<pre> [TestMethod]
+ public void TestStoreAndRetrieveBoston()
+ {
+   var m = new GeocodeModel { SearchText = "Boston USA" };
+   var waitHandle = new AutoResetEvent(false);
+
+   Deployment.Current.Dispatcher.BeginInvoke(async () =&gt;
+   {
+     await m.SearchLocations();
+     waitHandle.Set();
+   });
+   waitHandle.WaitOne(TimeSpan.FromSeconds(5));
+   Assert.IsNotNull(m.SelectedLocation);
+
+   // Actual test
+   var h = new IsolatedStorageHelper&lt;GeocodeModel&gt;();
+   if (h.ExistsInStorage())
+   {
+     h.DeletedFromStorage();
+   }
+   h.SaveToStorage(m);
+
+   var retrievedModel = h.RetrieveFromStorage();
+   Assert.AreEqual(retrievedModel.SelectedLocation.Information.Address.City,
+	"Boston");
+ }
+}</pre>
+<p>Adding this test to GeocodeModelTest will reveal a major bummer – a couple of the classes that are returned by GeocodeQuery – starting with MapLocation - have private constructors and cannot be serialized. Our model cannot be serialized. The usual approach to this kind of problem is to write a kind of wrapper class that <em>can</em> be serialized. But… using MVVMLight you are most of the time making wrapper classes <em>anyway – </em>that’s what a ViewModel is, after all, so let’s use that.</p>
+<p><font size="4">Writing the serialization test - take two</font></p>
+<p>First, adorn the stuff that cannot be serialized in the GeocodeModel with the [DoNotSerialize] attribute, like this:</p><pre>[DoNotSerialize]
+public MapLocation SelectedLocation { get; set; }
+
+[DoNotSerialize]
+public List<maplocation> MapLocations { get; set; }</pre>and the test is reduced to this: <pre>[TestMethod]
+public void TestStoreAndRetrieveBoston()
+{
+  var m = new GeocodeModel { SearchText = "Boston USA" };
+  // Actual test
+  var h = new IsolatedStorageHelper<geocodemodel>();
+  if (h.ExistsInStorage())
+  {
+    h.DeletedFromStorage();
+  }
+  h.SaveToStorage(m);
+
+  var retrievedModel = h.RetrieveFromStorage();
+  Assert.AreEqual(retrievedModel.SearchText, "Boston USA");
+}</pre>
+<p>Hurray, this works, but the model’s results are now no longer storing stuff. MapLocations is empty, so is SelectedLocation, if they are deserialized. Bascially we are now only testing if indeed the search test is retained after storage and retrieval. Well, it is.</p>
+<p><font size="4">Enter the viewmodels</font></p>
+<p>So far I mainly showed what does <em>not</em> work. Now it’s time to show what does. First, we make a viewmodel around MapLocation:</p><pre>using System.Device.Location;
+using GalaSoft.MvvmLight;
+using Microsoft.Phone.Maps.Services;
+
+namespace NavigationDemo.Logic.ViewModels
+{
+  public class MapLocationViewModel : ViewModelBase
+  {
+    public MapLocationViewModel()
+    {
+    }
+
+    public MapLocationViewModel(MapLocation model)
+    {
+      var a = model.Information.Address;
+
+      Address = string.Format("{0} {1} {2} {3} {4}", 
+            a.Street, a.HouseNumber, a.PostalCode,
+            a.City,a.Country).Trim();
+      Location = model.GeoCoordinate;
+    }
+
+    private string address;
+    public string Address
+    {
+      get { return address; }
+      set
+      {
+        if (address != value)
+        {
+          address = value;
+          RaisePropertyChanged(() =&gt; Address);
+        }
+      }
+    }
+
+    private GeoCoordinate location;
+    public GeoCoordinate Location
+    {
+      get { return location; }
+      set
+      {
+        if (location != value)
+        {
+          location = value;
+          RaisePropertyChanged(() =&gt; Location);
+        }
+      }
+    }
+  }
+}
+</pre>
+<p>That takes care of the MapLocation not being serializable. Once it is initialized, it does no longer need the model anymore. Which is a good thing, since it cannot be serialized ;-). Next is the GeocodeViewModel itself:</p><pre>using System.Collections.ObjectModel;
+using System.Threading.Tasks;
+using System.Windows.Input;
+using GalaSoft.MvvmLight;
+using GalaSoft.MvvmLight.Command;
+using NavigationDemo.Logic.Models;
+using Wp7nl.Utilities;
+using System.Linq;
+
+namespace NavigationDemo.Logic.ViewModels
+{
+  public class GeocodeViewModel : ViewModelBase
+  {
+    public GeocodeViewModel()
+    {
+      MapLocations = new ObservableCollection&lt;MapLocationViewModel&gt;();
+    }
+
+    public string Name { get; set; }
+
+    public GeocodeViewModel( GeocodeModel model) : this()
+    {
+      Model = model;
+    }
+
+    public GeocodeModel Model{get;set;}
+
+    public ObservableCollection&lt;MapLocationViewModel&gt; MapLocations { get; set; }
+
+    [DoNotSerialize]
+    public string SearchText
+    {
+      get { return Model.SearchText; }
+      set
+      {
+        if (Model.SearchText != value)
+        {
+          Model.SearchText = value;
+          RaisePropertyChanged(() =&gt; SearchText);
+        }
+      }
+    }
+
+    private MapLocationViewModel selectedLocation;
+    public MapLocationViewModel SelectedLocation
+    {
+      get { return selectedLocation; }
+      set
+      {
+        if (selectedLocation != value)
+        {
+          selectedLocation = value;
+          RaisePropertyChanged(() =&gt; SelectedLocation);
+        }
+      }
+    }
+    
+    public async Task SearchLocations()
+    {
+      MapLocations.Clear();
+      SelectedLocation = null;
+      await Model.SearchLocations();
+      MapLocations.AddRange(Model.MapLocations.Select( 
+        p=&gt; new MapLocationViewModel(p)));
+      SelectedLocation = MapLocations.FirstOrDefault();
+    }
+    
+    [DoNotSerialize]
+    public ICommand SearchLocationCommand
+    {
+      get
+      {
+        return new RelayCommand(async () =&gt; await SearchLocation());
+      }
+    }
+  }
+}</pre>
+<p>Notice that the only attribute that <em>is</em> serialized by the model, is now marked [DoNotSerialize]. This is really important – since the model may not be around yet when deserializing takes place, it would result in a null reference. If you pass things to the model, let the model serialize it. If you don’t let the viewmodel take care of it.</p>
+<p><font size="4">Writing the search test for the viewmodel</font></p>
+<p>So since we are now no longer testing the model but the viewmodel, I added a new class “GeocodeViewModeTest” to, well, test the viewmodel.</p><pre>using System;
+using System.Threading;
+using System.Windows;
+using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
+using NavigationDemo.Logic.Models;
+using NavigationDemo.Logic.ViewModels;
+using Wp7nl.Utilities;<br>
+namespace NavigationDemo.Logic.Test
+{
+  [TestClass]
+  public class GeocodeViewModelTest
+  {
+    [TestMethod]
+    public void TestFindBostonWithViewModel()
+    {
+      var vm = new GeocodeViewModel(
+        new GeocodeModel { SearchText = "Boston USA" });
+      var waitHandle = new AutoResetEvent(false);
+
+      Deployment.Current.Dispatcher.BeginInvoke(async () =&gt;
+        {
+          await vm.SearchLocations();
+          waitHandle.Set();
+      });
+      waitHandle.WaitOne(TimeSpan.FromSeconds(5));
+      Assert.AreEqual(vm.SelectedLocation.Address, 
+         "Boston United States of America");
+      Assert.AreEqual(vm.SelectedLocation.Location.Latitude, 42, 1);
+      Assert.AreEqual(vm.SelectedLocation.Location.Longitude, -71, 1);
+    }
+  }
+}</pre>
+<p>Lo and behold, this test succeeds as well. Now the second test is actually a lot more interesting:</p><pre>[TestMethod]
+public void TestStoreAndRetrieveBostonWithViewModel()
+{
+  var vm = new GeocodeViewModel(
+    new GeocodeModel { SearchText = "Boston USA" });
+  var waitHandle = new AutoResetEvent(false);
+
+  Deployment.Current.Dispatcher.BeginInvoke(async () =&gt;
+  {
+    await vm.SearchLocations();
+    waitHandle.Set();
+  });
+  waitHandle.WaitOne(TimeSpan.FromSeconds(5));
+  Assert.IsNotNull(vm.SelectedLocation);
+
+  var h = new IsolatedStorageHelper&lt;GeocodeViewModel&gt;();
+  if (h.ExistsInStorage())
+  {
+    h.DeletedFromStorage();
+  }
+  h.SaveToStorage(vm);
+
+  var retrievedViewModel = h.RetrieveFromStorage();
+  Assert.AreEqual(retrievedViewModel.SelectedLocation.Address,
+    "Boston United States of America");
+  Assert.AreEqual(
+    retrievedViewModel.SelectedLocation.Location.Latitude, 42, 1);
+  Assert.AreEqual(
+    retrievedViewModel.SelectedLocation.Location.Longitude, -71, 1);
+}</pre>
+<p>And indeed, after retrieving the viewmodel from storage, the same asserts are fired and the test passes. Success: we can now find location <em>and</em> tombstone</p>
+<p><font size="4">Conclusion</font></p>
+<p>I showed you some basic geocoding – how to find a location using a text input. I hope I have showed you also that unit tests are not only a way to assure some basic code quality and behavior, but are also a way to determine ahead if things are going to work the way you envisioned. Unit test make scaffolding and proof-of-concept approach of development a lot easier – you need a lot less starting up an app, clicking the right things and then finding breakpoint-by-breakpoint what goes wrong. Quite early in my development stage I ran into the fact that some things were not serializable. Imagine finding that out when the whole app was already mostly done, and then somewhere deep down something goes wrong with the tombstoning. Not fun.</p>
+<p>Complete code – that is, complete for such an incomplete app – <a href="http://www.schaikweb.net/dotnetbyexample/NavigationDemo1.zip" target="_blank">can be found here</a>. Next time, we will do some actual navigation.</p>
+<p>To prevent flames from Test Driven Design (TDD) purists: a variant of unit tests are integration test. Technically a unit test tests only tiny things that have no relation to another, like one object, method or property. Integration tests test the workings of larger pieces of code. So technically I am mostly writing integration tests. There, I’ve said it.</p>  

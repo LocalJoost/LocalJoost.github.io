@@ -1,0 +1,150 @@
+---
+layout: post
+title: HoloLens CubeBouncer application part 4-integrating speech commands and moving
+  cubes by code
+date: '2016-07-23T11:06:00.000+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- HoloLens
+- Unity3D
+- C#
+modified_time: '2016-07-23T11:06:31.140+02:00'
+thumbnail: https://lh3.googleusercontent.com/-z7nLDw1lvaY/V5MyEhzOA_I/AAAAAAAAOJI/2BziHFk7VYk/s72-c/image_thumb%25255B2%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-539224006706846078
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/07/hololens-cubebouncer-application-part-4.html
+---
+
+<h2>Preface</h2> <p>In the <a href="http://dotnetbyexample.blogspot.com/2016/07/hololens-cubebouncer-application-part-3.html" target="_blank">previous post</a> I showed how you could interact with the cubes using air taps, utilizing the physics engine. In this blog post I am going to show how to move the cubes by code (bypassing the physics engine) – and doing so using speech commands.</p> <h2>But first…</h2> <p>The funny thing is - when retracing you steps and documenting them, you are found out things can be done in a smarter way. It’s like giving a code review to your slightly younger, slightly less knowledgeable self. In <a href="http://dotnetbyexample.blogspot.com/2016/07/hololens-cubebouncer-application-part-2.html" target="_blank">post 2</a>, I state you should drag the MainStarter script onto the HologramCollection game object. Although that works, in hindsight it’s better to put that under the HologramCollection/Managers object. So please remove the script from the HologramCollection object, drag it anew from your assets on top of the <em>Managers </em>object, then drag the WortellCube prefab on top of the Cube field again.</p> <h2>HoloLens speech recognition 101</h2> <p>The speech recognition API for <a href="https://www.microsoft.com/microsoft-hololens/" target="_blank">HoloLens</a> in Unity3D is so simple that there’s basically not much else than 101. I had a look at <a href="https://twitter.com/rschu" target="_blank">Rene Schulte</a>’s <a href="https://github.com/teichgraf/HoloWorld/blob/master/HoloWorld/Assets/Scripts/SpeechHandler.cs" target="_blank">HoloWorld speech manager</a> and was like… is that<em> all? </em>Well, apparently it is. So I created my own SpeechManager script, and added it to the Managers object. It’s basically a modified copy of Rene’s. Why re-invent the wheel when people smarter than yourself already have done so, right?</p> <p>The speech manager at this point implements only two commands:</p> <ul> <li>“create new grid”  <li>“go to start”</li></ul> <p>and looks like this:</p><pre>using UnityEngine;
+using HoloToolkit.Unity;
+using UnityEngine.Windows.Speech;
+
+public class SpeechManager : MonoBehaviour
+{
+  public string GoToStartCommand = "go to start";
+
+  public string NewGridCommand = "create new grid";
+
+  private KeywordRecognizer _keywordRecognizer;
+
+  private MainStarter _mainStarter;
+
+  // Use this for initialization
+  void Start()
+  {
+    _mainStarter = GetComponent&lt;MainStarter&gt;();
+    _keywordRecognizer = new KeywordRecognizer(
+      new[] { GoToStartCommand, NewGridCommand });
+    _keywordRecognizer.OnPhraseRecognized += KeywordRecognizer_OnPhraseRecognized;
+    _keywordRecognizer.Start();
+  }
+
+  private void KeywordRecognizer_OnPhraseRecognized(PhraseRecognizedEventArgs args)
+  {
+    var cmd = args.text;
+
+    if (cmd == NewGridCommand)
+    {
+      _mainStarter.CreateNewGrid();
+    }
+
+    if (cmd == GoToStartCommand)
+    {
+      if (GazeManager.Instance.Hit)
+      {
+        GazeManager.Instance.HitInfo.collider.gameObject.SendMessage(
+          "OnRevert");
+      }
+    }
+  }
+
+  private void OnDestroy()
+  {
+    if (_keywordRecognizer != null)
+    {
+      if (_keywordRecognizer.IsRunning)
+      {
+        _keywordRecognizer.Stop();
+      }
+      _keywordRecognizer.Dispose();
+    }
+  }
+}</pre>
+<p>In short – when the keywords “go to start” are recognized, “OnRevert” is called on the game object that you are looking at. We have seen this kind of message sending in the <a href="http://dotnetbyexample.blogspot.com/2016/07/hololens-cubebouncer-application-part-3.html" target="_blank">previous post</a> already.If you say “create new grid” the CreateNewGrid method is called. This tries to find the MainStarter class as a component (it being at the same level in the Managers game object, it fill find it) and call the method directly. But neither methods are implemented, you will even notice the squiggly lines under CreateNewGrid. So let’s tackle that first, because now our project does not even compile.</p>
+<h2>(Re)creating a grid. </h2>
+<p>Creating a new grid is, simply put, deleting the old cubes are creating a new set. This implies that we must <em>know which cubes are present now</em>, something we don’t know now. This actually requires very little extra code:</p><pre>private readonly List&lt;GameObject&gt; _cubes = new List&lt;GameObject&gt;();
+
+public void CreateNewGrid()
+{
+  foreach (var c in _cubes)
+  {
+      Destroy(c);
+  }
+  _cubes.Clear();
+
+  _distanceMeasured = false;
+  _lastInitTime = DateTimeOffset.Now;
+}</pre>
+<p>Very simple – all cubes created are stored in a list. So we need to destroy them one by one, and then we set the _distanceMeasured and _lastInitTime back to their start value – and the Update method that is called once per frame will do the rest. We also have to add one extra line to the CreateCube method in order to collect the created cube, at the end:</p><pre>private void CreateCube(int id, Vector3 location, Quaternion rotation)
+{
+  var c = Instantiate(Cube, location, rotation) as GameObject;
+  //Rotate around it's own up axis so up points TO the camera
+  c.transform.RotateAround(location, transform.up, 180f);
+  var m = c.GetComponent&lt;CubeManipulator&gt;();
+  m.Id = id;
+<strong><font color="#ff0000">  _cubes.Add(c);</font></strong>
+}</pre>
+<p><a href="https://lh3.googleusercontent.com/-lPahLjgSgjY/V5MyESQmQQI/AAAAAAAAOJE/NDyDQ5sfSOQ/s1600-h/image%25255B4%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-z7nLDw1lvaY/V5MyEhzOA_I/AAAAAAAAOJI/2BziHFk7VYk/image_thumb%25255B2%25255D.png?imgmax=800" width="304" align="right" height="314"></a>So now the only thing you need to do is drag the SpeechManager script on top of the Managers object too. When you are done, the Managers object should look like you see at the right.</p>
+<p>Rebuild the UWP app from Unity, and deploy it using Visual Studio. And there we are. When you said “create new grid” the grid is immediately updated. Still without the ringing sound that shows in my initial video, but we will add that in a later stage. </p>
+<h2>Sending a cube back to where it came from</h2>
+<p>As we saw, we already implemented a call to an OnRevert method in the Speech Manager to recall the cube we are looking at to its original position, but we have not implemented it. To this intent, a cube needs to know where it came from and how it was rotated when it was created. So we add the following private fields to the cube:</p><pre>private Vector3 _orginalPosition;
+
+private Quaternion _originalRotation;</pre>
+<p>And we set those fields in Start by reading the information from the transform:</p><pre>void Start()
+{
+  _rigidBody = GetComponent&lt;Rigidbody&gt;();
+  _audioSource = GetComponent&lt;AudioSource&gt;();
+
+  _orginalPosition = transform.position;
+  _originalRotation = transform.rotation;
+}</pre>
+<p>So now we need to implement the “OnRevert” method itself like this:</p><pre>public IEnumerator OnRevert()
+{
+   var recallPosition = transform.position;
+   var recallRotation = transform.rotation;
+
+  _rigidBody.isKinematic = true;
+
+  while (transform.position != _orginalPosition &amp;&amp;
+         transform.rotation != _originalRotation)
+  {
+    yield return StartCoroutine(
+      MoveObject(transform, recallPosition, _orginalPosition,
+                 recallRotation, _originalRotation, 1.0f));
+  }
+
+  _rigidBody.isKinematic = false;
+}</pre>
+<p>So first we we make sure we retain the current position and rotation. Then we set the isKinematic property of the rigid body to true. This effectively turns off the physics engine, so now we can move the cube ourselves. And then we loop over a so-called <a href="http://docs.unity3d.com/Manual/Coroutines.html" target="_blank">coroutine</a> until the cube is back to it’s original position and rotation. I think of it as Unity’s equivalent of an async operation. Basically it says – animate the current transform smoothly from the current position to the original position, and at the same time rotate it from it’s current rotation to the original rotation, in 1.0 second. The coroutine itself is implemented like this:</p><pre>// See http://answers.unity3d.com/questions/711309/movement-script-2.html
+IEnumerator MoveObject(Transform thisTransform, Vector3 startPos, Vector3 endPos, 
+  Quaternion startRot, Quaternion endRot, float time)
+{
+  var i = 0.0f;
+  var rate = 1.0f / time;
+  while (i &lt; 1.0f)
+  {
+      i += Time.deltaTime * rate;
+      thisTransform.position = Vector3.Lerp(startPos, endPos, Mathf.SmoothStep(0f, 1f, i));
+      thisTransform.rotation = Quaternion.Lerp(startRot, endRot, Mathf.SmoothStep(0f, 1f, i));
+      yield return null;
+  }
+}</pre>
+<p>How this works, is – as you can read in the source – is explained <a href="http://answers.unity3d.com/questions/711309/movement-script-2.html" target="_blank">here</a>. That sample only applies to moving an object - I have applied that knowledge to both moving and rotating. It basically is a way to smooth out the animation – if you&nbsp; pay close attention, you will see that the cube starts slows, speeds up very fast, and then slows down again. I must admit that I am quite missing some of the finer points myself still, but this is how it can be done. Important, by the way, is that isKinematic gets set to false again once the cube is back on its place. Fun detail – if a cube that is moving back to it’s start position hits <em>another</em> cube, it is bumped out of the way, because for the cube that is hit, the physics engine is still working ;)</p>
+<p>Finally, at the top of the OnCollision method we need to make sure returning objects don’t interfere with other cubes in terms of making sound and other stuff.</p><pre>void OnCollisionEnter(Collision coll)
+{
+<font color="#ff0000"><strong>  // Ignore returning bodies
+  if (_rigidBody.isKinematic) return;</strong></font>
+</pre>
+<p>And now, if you say “go to start” when you are looking at a specific cube, it will move to the location it came from.</p>
+<h2>Concluding remarks</h2>
+<p>In the <a href="http://dotnetbyexample.blogspot.com/2016/07/hololens-cubebouncer-application-part-3.html" target="_blank">previous post</a> I have showed you how to move objects using the physics engine - this post has showed you have how to integrate speech commands and move objects via code – remarkably little code, yet again. Once again, you can see the code of the project so far <a href="https://github.com/LocalJoost/CubeBouncer/tree/blog4" target="_blank">here</a>. </p>

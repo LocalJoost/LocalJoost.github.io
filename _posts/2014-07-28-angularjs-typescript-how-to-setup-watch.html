@@ -1,0 +1,86 @@
+---
+layout: post
+title: AngularJS + TypeScript – how to setup a watch (and 2 ways to do it wrong)
+date: '2014-07-28T22:20:00.001+02:00'
+author: Joost van Schaik
+tags:
+- TypeScript
+- Angularjs
+modified_time: '2015-02-27T08:43:18.489+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8381914371056069583
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/07/angularjs-typescript-how-to-setup-watch.html
+---
+
+<h2>Introduction</h2> <p>After setting up <a href="http://dotnetbyexample.blogspot.com/2014/07/angularjs-typescript-setting-up-basic.html" target="_blank">my initial application as described in my previous post</a>, I went about to set up a <em>watch</em>. For those who don’t know what that is – it’s basically a function that gets triggered when a scope object or part of that changes. I have found 3 ways to set it up, and only one seems to be (completely) right.</p> <p>In JavaScript, you would set up a watch <a href="http://stackoverflow.com/questions/15112584/using-scope-watch-and-scope-apply" target="_blank">like this sample I nicked from Stack Overflow</a>:</p><pre>function MyController($scope) {
+   $scope.myVar = 1;
+
+   $scope.$watch('myVar', function() {
+       alert('hey, myVar has changed!');
+   });
+   $scope.buttonClicked = function() {
+      $scope.myVar = 2; // This will trigger $watch expression to kick in
+   };
+}</pre>
+<p>So how would you go about in <a href="http://www.typescriptlang.org/" target="_blank">TypeScript</a>? Turns out there are a couple of ways that compile but don’t work, partially work, or have unexpected side effects.</p>
+<p>For my demonstration, I am going to use the DemoController that I made in my previous post.</p>
+<h2>Incorrect method #1 – 1:1 translation.</h2><pre>/// &lt;reference path="../scope/idemoscope.ts" /&gt;
+/// &lt;reference path="../scope/person.ts" /&gt;
+module App.Controllers {
+    "use strict";
+    export class DemoController {
+
+        static $inject = ["$scope"];
+
+        constructor(private $scope: Scope.IDemoScope) {
+            if (this.$scope.person === null || this.$scope.person === undefined) {
+                this.$scope.person = new Scope.Person();
+            }
+ <strong><font color="#ff0000">           this.$scope.$watch(this.$scope.person.firstName, () =&gt; {
+                alert("person.firstName changed to " +
+                    this.$scope.person.firstName);</font></strong>
+            });
+        }
+
+        public clear(): void {
+            this.$scope.person.firstName = "";
+            this.$scope.person.lastName = "";
+        }
+    }
+} </pre>
+<p>The new part is in red. Very cool – we even use the inline ‘delegate-like’ notation do define the handler inline. This seems plausible, but does not work. What it does is, on startup, give the message “person.firstName changed to undefined” and then it never, ever does anything again. I have spent quite some time looking at this. Don’t do the same – read on.</p>
+<h2>Incorrect method #2 – not catching the first call</h2>
+<p>To fix the problem above, you need to use the delegate notation<em> at the start as well:</em></p><pre>this.$scope.$watch(<font color="#ff0000"><strong>() =&gt; </strong></font>this.$scope.person.firstName, () =&gt; {
+    alert("person.firstName changed to " +
+        this.$scope.person.firstName);
+});</pre>
+<p>See the difference? As you now type a “J” in the top text box, you immediately get a “person.firstName changed to J” alert. Making it almost impossible to type. But you get the drift.</p>
+<p>But then we arrive at the next problem – this is still not correct: it goes off initially, when nothing has changed yet. This is undesirable in most occasions.</p>
+<h2>The correct way</h2>
+<p>It appears the callback actually has a few overloads with a couple of parameters, of which I usually only use oldValue and newValue to detect a real change. Kinda like you do in an INotifyPropertyChanged property:</p><pre>this.$scope.$watch(() =&gt; this.$scope.person.firstName, 
+                         (<strong><font color="#ff0000">newValue: string, oldValue: string) =&gt; {
+    if (oldValue !== newValue)</font></strong> {
+        alert("person.firstName changed to " +
+            this.$scope.person.firstName);
+    }
+});</pre>
+<p>Now it only goes off when there’s a real change in the watched property.</p>
+<h2>…and possibly an even better way</h2>
+<p>I am not really a fan of a lambda calling a lambda in a method call, so I would most probably refactor this to</p><pre>constructor(private $scope: Scope.IDemoScope) {
+    if (this.$scope.person === null || this.$scope.person === undefined) {
+        this.$scope.person = new Scope.Person();
+    }
+    this.$scope.$watch(() =&gt; this.$scope.person.firstName, 
+                            (newValue: string, oldValue: string) =&gt; {
+        <font color="#ff0000"><strong>this.tellmeItChanged(oldValue, newValue);</strong></font>
+    });
+}
+
+<strong><font color="#ff0000">private tellmeItChanged(oldValue: string, newValue: string) {
+    if (oldValue !== newValue) {
+        alert("person.firstName changed to " +
+            this.$scope.person.firstName);
+    }
+}</font></strong></pre>
+<p>as I think this is just a bit more readable, especially if you are going to do more complex things in the callback.</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/atsdemo2.zip" target="_blank">Demo solution can be found here</a></p>
+<p>Update 27-02-2015: in the original post I swapped oldValue and newValue. No-one apparently even caught that, until my colleague Adrian Tudorache actually tried to follow this post. Thanks Adrian!</p>  

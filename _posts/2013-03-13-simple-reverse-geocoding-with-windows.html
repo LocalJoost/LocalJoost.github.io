@@ -1,0 +1,135 @@
+---
+layout: post
+title: Simple reverse geocoding with Windows Phone 8 and MVVMLight
+date: '2013-03-13T16:07:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- Mapping
+- wpnl
+- wpdev
+- dotnetmag
+- MVVM
+- behavior
+- MVVM Light
+modified_time: '2013-03-13T16:07:17.233+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4457715978674132878
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/03/simple-reverse-geocoding-with-windows.html
+---
+
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Simple-reverse-geocoding-with-Windows-Ph_CC75/screenshot.png"><img title="screenshot" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; margin: 0px 0px 12px 4px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="screenshot" align="right" src="http://www.schaikweb.net/dotnetbyexample/Simple-reverse-geocoding-with-Windows-Ph_CC75/screenshot_thumb.png" width="197" height="336"></a>Having worked in Geographical Information Systems over 20 years, I can tell you rightfully the new <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> 8 mapping and location abilities are more than enough to make a map maniac like me getting twinkly eyes. It has capabilities that are unheard of even just a couple of years ago – and I don’t need a big workstation, I don’t even need a PC - it’s running on my phone. The world in my pocket – in the most literal sense possible.</p> <p>Two popular applications of GIS are <em>geocoding</em> and <em>reverse geocoding</em>. Geocoding enables you to find the position of earth for a descriptive text – say an address, city, building name, or any other phrase indicating a place on Earth. This is usually rather straightforward. <em>Reverse</em> geocoding is exactly the opposite – it’s the “what’s here?” question – given a location, <em>what do I</em>&nbsp;<em>find here? </em>Incidentally, answering questions like this is how I make a living at <a href="http://www.vicrea.nl" target="_blank">Vicrea</a>. </p> <p>Windows Phone 8 makes reverse geocoding almost embarrassingly easy. Even when using <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a>. So I made a simple app that show the address(es) found at the location where you tap on the map.</p> <p>We start off with a simple model with two properties:</p><pre>using System.Collections.ObjectModel;
+using System.Device.Location;
+using System.Linq;
+using GalaSoft.MvvmLight;
+using Microsoft.Phone.Maps.Services;
+
+namespace TapReverseGeocode.Logic.ViewModels
+{
+  public class MapViewModel : ViewModelBase
+  {
+    public MapViewModel()
+    {
+      Addresses = new ObservableCollection&lt;string&gt;();
+    }
+
+    private GeoCoordinate tapCoordinate;
+    public GeoCoordinate TapCoordinate
+    {
+      get { return tapCoordinate; }
+      set
+      {
+        tapCoordinate = value;
+        RaisePropertyChanged(() =&gt; TapCoordinate);
+        StartReverseGeoCoding();
+      }
+    }
+
+    public ObservableCollection&lt;string&gt; Addresses { get; set; }
+  }
+}</pre>
+<p>The ObservableCollection “Addresses” will hold the results, and as usual when binding to ObservableCollection you must make sure it is initialized before anything else – the constructor is a good place for that. The designer can bind this to some kind of GUI element that displays the result. </p>
+<p>The TapCoordinate property is a GeoCoordinate and that fires off the actual reverse geocoding – and I have omitted the usual “<strong>if (viewModelPropertyName != value)</strong>” check on purpose. Even when the user taps the same location twice, I want to have the reverse geocoding code to fire every time.</p>
+<p>The code that starts the reverse geocoding itself ain’t quite rocket science:</p><pre>private void StartReverseGeoCoding()
+{
+  var reverseGeocode = new ReverseGeocodeQuery();
+  reverseGeocode.GeoCoordinate = 
+    new GeoCoordinate(TapCoordinate.Latitude, TapCoordinate.Longitude);
+  reverseGeocode.QueryCompleted += ReverseGeocodeQueryCompleted;
+  reverseGeocode.QueryAsync();
+}</pre>
+<p>To prevent race conditions I make a new GeoCoordinate from the one provided by the user, set up a call back, and fire off the async query.</p>
+<p>The final piece is this simple callback that processes the result of the reverse geocoding.</p><pre>private void ReverseGeocodeQueryCompleted(object sender, 
+  QueryCompletedEventArgs&lt;System.Collections.Generic.IList&lt;MapLocation&gt;&gt; e)
+{
+  var reverseGeocode = sender as ReverseGeocodeQuery;
+  if (reverseGeocode != null)
+  {
+    reverseGeocode.QueryCompleted -= ReverseGeocodeQueryCompleted;
+  }
+  Addresses.Clear();
+  if (!e.Cancelled)
+  {
+    foreach (var adress in e.Result.Select(adrInfo =&gt; adrInfo.Information.Address))
+    {
+      Addresses.Add(string.Format("{0} {1} {2} {3} {4}", 
+        adress.Street, adress.HouseNumber, adress.PostalCode,
+        adress.City,adress.Country).Trim());
+    }
+  }
+}</pre>
+<p>It clears up the callback, clears the Addresses list, and then processes the parts of the result into a single string per address. Like any good reverse geocoding service Microsoft have implemented this to return a <em>set</em> of results – there may be more addresses on one location, for instance in a large apartment building – although I never got more than one result back per location when I tested this in the Netherlands.</p>
+<p>This a complete reverse geocoding viewmodel that basically does not care where the GeoCoordinate comes from, or the result goes to. So this is very versatile. There isn’t any GUI, and yet we already have a working app</p>
+<p>The initial XAML for binding this stuff – after setting the datacontext to this viewmodel – looks pretty simple:</p><pre>&lt;Grid x:Name="ContentPanel" Grid.Row="1" Margin="12,0,12,0"&gt;
+  &lt;maps:Map/&gt;
+  &lt;Grid Height="58" VerticalAlignment="Top" Background="#7F000000"&gt;
+    &lt;phone:LongListSelector ItemsSource="{Binding Addresses}" 
+      HorizontalContentAlignment="Left" Margin="12,0"/&gt;
+  &lt;/Grid&gt;
+&lt;/Grid&gt;</pre>
+<p>… and then we run into a challenge. Two actually. The last tapped location <em>is not a property we can bind to</em>, and that the location is a <em>Point</em> – a <em>screen location</em>, not a GeoCoordinate in real world coordinates. </p>
+<p>This can be solved by using an Attached Dependency Property (I think), by some Code Behind or my trademark way - by creating a simple behavior. After all, I don’t want to bother designers with code and I like the easy reusability of a behavior:</p><pre>using System.Device.Location;
+using System.Windows;
+using Microsoft.Phone.Maps.Controls;
+using Wp7nl.Behaviors;
+
+namespace Wp8nl.Behaviors
+{
+  public class TapToCoordinateBehavior : SafeBehavior&lt;Map&gt;
+  {
+    protected override void OnSetup()
+    {
+      AssociatedObject.Tap += AssociatedObjectTap;
+    }
+
+    void AssociatedObjectTap(object sender, 
+      System.Windows.Input.GestureEventArgs e)
+    {
+      var tapPosition = e.GetPosition((UIElement)sender);
+      TappedCoordinate = 
+        AssociatedObject.ConvertViewportPointToGeoCoordinate(tapPosition);
+    }
+
+    protected override void OnCleanup()
+    {
+      AssociatedObject.Tap -= AssociatedObjectTap;
+    }
+
+ // GeoCoordinate TappedCoordinate dependency property omitted
+
+   }
+}</pre>
+<p>This behavior is implemented as a <a href="http://dotnetbyexample.blogspot.com/2011/11/safe-event-detachment-base-class-for.html">SafeBehavior</a> child class, to prevent memory leaks. It’s actually pretty simple – it traps the ‘Tap’ event, determines the location, converts it to a GeoCoordinate and puts it into the TappedCoordinate Dependency Property. Which, in turn, can be bound to the view model. The designer can simply drag this behavior on top of the map and set up the data binding. Don’t you love Blend? XAML take 2:</p><pre>&lt;Grid x:Name="ContentPanel" Grid.Row="1" 
+   Margin="12,0,12,0"&gt;
+  &lt;maps:Map&gt;
+    &lt;i:Interaction.Behaviors&gt;
+      <font color="#ff0000"><em>&lt;Behaviors:TapToCoordinateBehavior 
+          TappedCoordinate="{Binding TapCoordinate, Mode=TwoWay}"/&gt;
+    &lt;/i:Interaction.Behaviors&gt;</em></font>
+  &lt;/maps:Map&gt;
+  &lt;Grid Height="58" VerticalAlignment="Top" Background="#7F000000"&gt;
+    &lt;phone:LongListSelector ItemsSource="{Binding Addresses}" 
+           HorizontalContentAlignment="Left" Margin="12,0"/&gt;
+  &lt;/Grid&gt;
+&lt;/Grid&gt;</pre>
+<p>And that’s all there is to it. Reverse geocoding is Windows Phone 8 is insanely easy.</p>
+<p>Full source code, as usual, <a href="http://www.schaikweb.net/dotnetbyexample/TapReverseGeocode.zip" target="_blank">can be downloaded here</a>.</p>  

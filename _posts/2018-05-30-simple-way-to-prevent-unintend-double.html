@@ -1,0 +1,45 @@
+---
+layout: post
+title: Simple way to prevent an unintended double tap in Mixed Reality apps
+date: '2018-05-30T08:15:00.001+02:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Windows Mixed Reality
+- Unity3D
+modified_time: '2018-05-30T08:18:03.858+02:00'
+thumbnail: https://lh3.googleusercontent.com/-hN7x99TVNaI/Ww5B38nTW0I/AAAAAAAAP6Y/Fhx9EMNlbMkJP9RCvT0yse6nS7w6M6uRACHMYCw/s72-c/image_thumb2?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1222605576634116241
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2018/05/simple-way-to-prevent-unintend-double.html
+---
+
+<p>This is an easy and simple tip, but one that I use in almost every <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality</a> app at one point. It’s mostly applicable to <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a>: especially new users tend to double (triple, or even more) tap when the are operating an app, because the gestures are new. This can lead to undesirable and confusing results, especially with toggles. So it can help a little to ‘dampen out’ those double clicks. </p><p>I created this very simple helper class called DoubleClickPreventer:</p><pre style="font-size: 12px;">using UnityEngine;
+
+namespace HoloToolkitExtensions.Utilities
+{
+    public class DoubleClickPreventer
+    {
+        private readonly float _clickTimeOut;
+
+        private float _lastClick;
+
+        public DoubleClickPreventer(float clickTimeOut = 0.1f)
+        {
+            _clickTimeOut = clickTimeOut;
+        }
+
+        public bool CanClick()
+        {
+            if (!(Time.time - _lastClick &lt; _clickTimeOut))
+            {
+                return false;
+            }
+            _lastClick = Time.time;
+            return true;
+        }
+    }
+}
+</pre><p>Basically, every time you ask it it you can click, it checks if a set amount of time (default 0.1 second) has passed since the <em>last</em> click. It’s usage is pretty simple: just make a behaviour that implements IInputClickHandler (from the <a href="https://github.com/Microsoft/MixedRealityToolkit-Unity" target="_blank">Mixed Reality Toolkit</a>) as usual, define a DoubleClickPreventer member, create it in Start like this</p><pre style="font-size: 12px;">_doubleClickPreventer = new DoubleClickPreventer(0.5f);</pre><p>and then in your OnInputClicked implementation use something like this:</p><pre style="font-size: 12px;">if (_doubleClickPreventer.CanClick())
+{
+  // do stuff
+}</pre><p>and this will prevent a second click happening more than once every half second.</p><p>I made a little <a href="https://github.com/LocalJoost/DoubleClickPrevention">demo project</a>, in which one cube has a GuardedClicker behaviour, that implements the DoubleClickPreventer, and the other a SimpleClickPreventer, that just registers every click.</p><p><a href="https://lh3.googleusercontent.com/-wyN_hxwXlEE/Ww5B3KZqymI/AAAAAAAAP6U/c4a3q0tO-8AF5iyFB_yWlc659-40kE84gCHMYCw/s1600-h/image4"><img width="640" height="237" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-hN7x99TVNaI/Ww5B38nTW0I/AAAAAAAAP6Y/Fhx9EMNlbMkJP9RCvT0yse6nS7w6M6uRACHMYCw/image_thumb2?imgmax=800" border="0"></a></p><p>If you click like a maniac for about a second or two on both cubes, you will clearly see a different result.</p><p>Note: the InputClickedEventData that you get in OnInputClicked.IInputClickHandler contains a “TapCount” property, but I have found that’s usually just 1, and however that does not stop the ‘stuttery double tap’ we are trying to prevent here. Also, this solution allows for fast clicks on <em>separate</em> objects, but not fast clicks <em>on the same object</em>. </p><p>The demo project (although it’s very little) can be downloaded <a href="https://github.com/LocalJoost/DoubleClickPrevention">here</a>.</p>

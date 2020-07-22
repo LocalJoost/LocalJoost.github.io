@@ -1,0 +1,128 @@
+---
+layout: post
+title: Using extension methods to compress and decompress strings
+date: '2009-08-12T21:43:00.013+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- GZip
+- Compress
+- C#
+- string
+- Extension methods
+modified_time: '2010-04-06T11:17:29.871+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1023432909095252716
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/08/using-extension-methods-to-compress-and.html
+---
+
+After some <a href="http://twitter.com/peSHIr/status/2833760773">rightful comments</a> by <a href="http://peshir.nl/">Jarno Peschier</a> I decided to once again look into my blog post about putting compressed object on the Azure message queue and came up with the following set of extensions methods that allow you to compress a string via gzip into a byte array, and unzip a byte array containing a compressed string to a regular string again:<pre>using System.IO;
+using System.IO.Compression;
+using System.Text;
+
+namespace LocalJoost.Utilities.Compression
+{
+ public static class StringZipExtensions
+ {
+  /// &lt;summary&gt;
+  /// Compresses the specified string a byte array using the specified
+  /// encoding.
+  /// &lt;/summary&gt;
+  /// &lt;param name="stringToCompress"&gt;The string to compress.&lt;/param&gt;
+  /// &lt;param name="encoding"&gt;The encoding.&lt;/param&gt;
+  /// &lt;returns&gt;bytes array with compressed string&lt;/returns&gt;
+  public static byte[] Compress(
+   this string stringToCompress, 
+    Encoding encoding )
+   {
+    var stringAsBytes = encoding.GetBytes(stringToCompress);
+    using (var memoryStream = new MemoryStream())
+    {
+     using (var zipStream = new GZipStream(memoryStream,
+      CompressionMode.Compress))
+     {
+      zipStream.Write(stringAsBytes, 0, stringAsBytes.Length);
+      zipStream.Close();
+      return (memoryStream.ToArray());
+     }
+    }
+   }
+
+   /// &lt;summary&gt;
+   /// Compresses the specified string a byte array using default
+   /// UTF8 encoding.
+   /// &lt;/summary&gt;
+   /// &lt;param name="stringToCompress"&gt;The string to compress.&lt;/param&gt;
+   /// &lt;returns&gt;bytes array with compressed string&lt;/returns&gt;
+  public static byte[] Compress( this string stringToCompress )
+  {
+   return Compress(stringToCompress, new UTF8Encoding());
+  }
+
+  /// &lt;summary&gt;
+  /// Decompress an array of bytes to a string using the specified
+  /// encoding
+  /// &lt;/summary&gt;
+  /// &lt;param name="compressedString"&gt;The compressed string.&lt;/param&gt;
+  /// &lt;param name="encoding"&gt;The encoding.&lt;/param&gt;
+  /// &lt;returns&gt;Decompressed string&lt;/returns&gt;
+  public static string DecompressToString(
+   this byte[] compressedString, 
+   Encoding encoding)
+  {
+   const int bufferSize = 1024;
+   using (var memoryStream = new MemoryStream(compressedString))
+   {
+    using (var zipStream = new GZipStream(memoryStream,
+     CompressionMode.Decompress))
+    {
+     // Memory stream for storing the decompressed bytes
+     using (var outStream = new MemoryStream())
+     {
+      var buffer = new byte[bufferSize];
+      var totalBytes = 0;
+      int readBytes;
+      while ((readBytes = zipStream.Read(buffer,0, bufferSize)) &gt; 0)
+      {
+       outStream.Write(buffer, 0, readBytes);
+       totalBytes += readBytes;
+      }
+      return encoding.GetString(
+       outStream.GetBuffer(),0, totalBytes);     
+     }
+    }
+   }
+  }
+
+  /// &lt;summary&gt;
+  /// Decompress an array of bytes to a string using default
+  /// UTF8 encoding.
+  /// &lt;/summary&gt;
+  /// &lt;param name="compressedString"&gt;The compressed string.&lt;/param&gt;
+  /// &lt;returns&gt;Decompressed string&lt;/returns&gt;
+  public static string DecompressToString(this byte[] compressedString )
+  {
+   return DecompressToString(compressedString, new UTF8Encoding());
+  }
+ }
+}</pre>You can now quite simply do something like<pre>using LocalJoost.Utilities.Compression;
+using NUnit.Framework;
+
+namespace LocalJoost.Utilities.Test
+{
+  [TestFixture]
+  public class TestCompress
+  {
+    [Test]
+    public void TestZipUnzip()
+    {
+      const string test = "The quick brown fox jumps over the lazy dog";
+      var compressed = test.Compress();
+      var uncompressed = compressed.DecompressToString();
+      Assert.AreEqual(test, uncompressed);
+    }
+  }
+}</pre>and that will work, of course ;-)
+
+Both the Compress and the DecompressToString methods use UTF8 as default encoding as Jarno suggested by Live Messenger, but both methods also sport an overload which allow you to provide an encoding yourself. This will support almost any encoding - provided of course you use the same encoding to compress and decompress. So, this can even be used to compress strings containing Klingon messages - I hope this will earn me a fond majQa' from Jarno ;-)
+
+Code downloadable <a href="http://schaikweb.net/dotnetbyexample/StringZipExtensions.zip">here</a>

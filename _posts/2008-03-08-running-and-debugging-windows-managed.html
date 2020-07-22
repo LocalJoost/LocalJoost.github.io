@@ -1,0 +1,92 @@
+---
+layout: post
+title: Running and debugging a Windows Managed Service directly from Visual Studio.NET
+date: '2008-03-08T09:45:00.021+01:00'
+author: Joost van Schaik
+tags:
+- Debugging
+- C#
+- Service
+- Running from Visual Studio
+modified_time: '2010-05-06T11:17:06.452+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7203516930118078185
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2008/03/running-and-debugging-windows-managed.html
+---
+
+Developing a Windows Managed Service (i.e. a service written in .NET ;-) ) is a lot easier than it used to be, still it can be a real PITA to debug, especially in the early stages, and even more so when the service is a kind of server and something goes wrong with the communication. You are continually running in circles:
+<ol><li>Stop running service</li><li>Replace binaries</li><li>Start services</li><li>Attach Visual Studio debugger to process</li><li>Launch your client process</li><li>Find bug</li><li>Fix bug</li><li>Repeat until no more bug.</li></ol><p>Life could be so much easier if you could launch the service from Visual Studio and see how it behaves. And the fun thing is, <em>you can.</em>
+<p><span style="font-size:130%;">1. Create a new service project in your solution</span><br/>
+If you already have a service project you can skip this step. I'll add a service project DemoService with a Service MyService in it with not too complicated functionality:<pre>using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Diagnostics;
+using System.ServiceProcess;
+using System.Text;
+
+namespace DemoService
+{
+  public partial class MyService : ServiceBase
+  {
+    public MyService()
+    {
+      InitializeComponent();
+    }
+
+    protected override void OnStart(string[] args)
+    {
+      Console.WriteLine("OnStart");
+    }
+
+    protected override void OnStop()
+    {
+      Console.WriteLine("OnEnd");
+    }
+  }
+}</pre></p><span style="font-size:130%;">2. Change the application output type</span>
+<br/>Right-click the DemoService project, choose "Properties", click tab "Application". Default this says "Windows application" - change this to <em>Console application</em></p><p><span style="font-size:130%;">3. Add debug mode methods to your service class
+</span><br/><pre>#if DEBUG
+
+  public void StartService()
+  {
+   OnStart(null);
+   Console.WriteLine("MyService started, press &gt;ENTER&lt; to terminate");
+   Console.ReadLine();
+  }
+
+  public void StopService()
+  {
+   OnStop();
+  }
+#endif</pre><span style="font-size:130%;">4. Add debug mode code to the Main method</span><br/>
+Open the "Program.cs" file in the service project, and change it so it looks like this<pre>using System;
+using System.Collections.Generic;
+using System.ServiceProcess;
+using System.Text;
+
+namespace DemoService
+{
+  static class Program
+  {
+    /// <summary>
+    /// The main entry point for the application.
+    /// </summary>
+    static void Main()
+    {
+#if DEBUG
+      MyService s = new MyService();
+      s.StartService();
+      s.StopService();
+
+#else
+      ServiceBase[] ServicesToRun;
+
+      ServicesToRun = new ServiceBase[] { new MyService() };
+
+      ServiceBase.Run(ServicesToRun);
+#endif
+    }
+  }
+}</pre></p><p>And that's it. You can now run the 'service' as a program in debug mode - it will pop-up a console window in which the 'service' runs and says
+<code>OnStart
+MyService started, press &gt;ENTER&lt; to terminate</code></p><p>If you hit enter, you will just be able to see "OnEnd" passing by before the window closes. Of course, normally you will launch a thread of some kind in the OnStart method, or you will start a WCF service, and then you can see the dynamic behaviour of the 'service' while it runs by adding more "Console.WriteLine" calls - or, since it is already a process inside VS.NET, see it hit breakpoints or the exception you have been hunting all week now. And by setting the solution to "Multiple Startup" you can start both 'service' and client in one go.</p><p>And if you make a release build, all this stuff will be left out and the service will be compiled as a proper service which can be installed and will run in the usual way.</p><p>CAVEAT: be aware that the 'service' is running with <strong>your</strong> login credentials when it runs in a console window, and not as 'System'. This method is therefore not applicable when debugging access releated problems. </p>

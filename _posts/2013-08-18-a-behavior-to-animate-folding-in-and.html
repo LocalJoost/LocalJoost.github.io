@@ -1,0 +1,299 @@
+---
+layout: post
+title: A behavior to animate folding in and out of GUI elements on Windows Phone
+date: '2013-08-18T17:44:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- wpnl
+- wpdev
+- dotnetmag
+- Windows Phone
+- behavior
+modified_time: '2013-08-18T19:18:43.480+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-26151757561346976
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/08/a-behavior-to-animate-folding-in-and.html
+---
+
+<p><a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-animate-folding-in-and-out_E2AE/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; margin: 0px 5px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-animate-folding-in-and-out_E2AE/image_thumb.png" width="321" height="341"></a>Like I wrote in my earlier <a href="http://dotnetbyexample.blogspot.nl/2013/08/extension-methods-to-animate-scaling.html" target="_blank">post about extension methods for animating scales and opacity</a> – those were merely building building blocks for something bigger. Today, as part two of my opacity and scaling animation series, I present you a behavior that kind of automates all the stuff you had to do in code. </p> <p>Say hello to UnfoldBehavior, another offspring of the game I have just submitted. All you basically have to do is drag it on top of an element you want to control, bind it’s “Activated” property to a boolean in your view model, and off you go. Activate == true means panel is unfolded (open), Activated == false means panel is closed. Of course, to make stuff more fun, in the <a href="http://www.schaikweb.net/dotnetbyexample/UnfoldBehaviorDemo.zip" target="_blank">demo app that goes with this post</a> I have bound some more properties as well, so you can control how the panel folds and unfolds. How this works, you can see in this video below:</p> <p>&nbsp;</p> <p> <div id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:9ac06265-a948-4970-a720-716549937a82" class="wlWriterEditableSmartContent" style="float: none; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px"><div><object width="448" height="277"><param name="movie" value="http://www.youtube.com/v/tGdQs3gJj-k?hl=en&amp;hd=1"></param><embed src="http://www.youtube.com/v/tGdQs3gJj-k?hl=en&amp;hd=1" type="application/x-shockwave-flash" width="448" height="277"></embed></object></div><div style="width:448px;clear:both;font-size:.8em">The UnfoldBehavior in action</div></div></p> <p>The view model controlling the demo app is laughingly simple:</p><pre style="font-size: 11px">using System.Windows.Input;
+using GalaSoft.MvvmLight;
+using GalaSoft.MvvmLight.Command;
+using Wp7nl.Behaviors;
+
+namespace UnfoldBehaviorDemo.Viewmodel
+{
+  public class DemoViewModel : ViewModelBase
+  {
+    private bool isUnFolded = true;
+    public bool IsUnFolded
+    {
+      get { return isUnFolded; }
+      set
+      {
+        if (isUnFolded != value)
+        {
+          isUnFolded = value;
+          RaisePropertyChanged(() =&gt; IsUnFolded);
+        }
+      }
+    }
+
+    public ICommand FoldCommand
+    {
+      get
+      {
+        return new RelayCommand(
+            () =&gt;
+            {
+              IsUnFolded = !IsUnFolded;
+            });
+      }
+    }
+
+    private bool horizontalChecked = true;
+    public bool HorizontalChecked
+    {
+      get { return horizontalChecked; }
+      set
+      {
+        if (horizontalChecked != value)
+        {
+          horizontalChecked = value;
+          RaisePropertyChanged(() =&gt; HorizontalChecked);
+          RaisePropertyChanged(() =&gt; FoldDirection);
+        }
+      }
+    }
+
+    private bool verticalChecked;
+    public bool VerticalChecked
+    {
+      get { return verticalChecked; }
+      set
+      {
+        if (verticalChecked != value)
+        {
+          verticalChecked = value;
+          RaisePropertyChanged(() =&gt; VerticalChecked);
+          RaisePropertyChanged(() =&gt; FoldDirection);
+        }
+      }
+    }
+
+    public Direction FoldDirection
+    {
+      get
+      {
+        if (HorizontalChecked &amp;&amp; VerticalChecked)
+        {
+          return Direction.Both;
+        }
+
+        if (VerticalChecked)
+        {
+          return Direction.Vertical;
+        }
+
+        return Direction.Horizontal;
+      }
+    }
+  }
+} </pre>
+<p>A property to control the actual folding and unfolding, a command to toggle that value, two properties for the check boxes where you can choose the fold direction with and one property to bind the behavior to. So how does this work?</p>
+<p>It’s actually much more simple than you would expect, as all the heavy lifting is done by the stuff that was put into my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a>. But to start at the very bottom, we need an enum to determine direction:</p><pre style="font-size: 11px">namespace Wp7nl.Behaviors
+{
+  public enum Direction
+  {
+    Horizontal,
+    Vertical,
+    Both
+  }
+}</pre>and then I defined a base class for this type of behaviors - as there are lots of more fun things to be done with scaling and opacity than just folding and unfolding alone. This base class looks like this and is (of course) built again as a <a href="http://dotnetbyexample.blogspot.com/2011/11/safe-event-detachment-base-class-for.html" target="_blank">SafeBehavior</a> : <pre style="font-size: 11px">using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+
+namespace Wp7nl.Behaviors
+{
+  /// &lt;summary&gt;
+  /// A base class for behaviors doing 'something' with scaling
+  /// &lt;/summary&gt;
+  public abstract class BaseScaleBehavior : SafeBehavior&lt;FrameworkElement&gt;
+  {
+    protected override void OnSetup()
+    {
+      base.OnSetup();
+      SetRenderTransForm();
+      AssociatedObject.RenderTransform = BuildTransform();
+    }
+
+    private void Activate()
+    {
+      if (AssociatedObject != null &amp;&amp; 
+          AssociatedObject.RenderTransform is CompositeTransform)
+      {
+        var storyboard = BuildStoryBoard();
+        if (storyboard != null)
+        {
+          storyboard.Begin();
+        }
+      }
+    }
+
+    private void SetRenderTransForm()
+    {
+      if (AssociatedObject != null)
+      {
+        AssociatedObject.RenderTransformOrigin = <br>           new Point(RenderTransformX, RenderTransformY);
+      }
+    }
+
+    protected abstract CompositeTransform BuildTransform();
+
+    protected abstract Storyboard BuildStoryBoard();
+
+    // Direction Dependency Property (Direction) ommitted
+
+    // Duration Property (double) ommitted
+    
+    // Activated Property (bool) ommitted
+
+    /// &lt;summary&gt;
+    /// Activated property changed callback.
+    /// &lt;/summary&gt;
+    public static void ActivatedChanged(DependencyObject d, 
+                          DependencyPropertyChangedEventArgs e)
+    {
+      var thisobj = d as BaseScaleBehavior;
+      if (thisobj != null &amp;&amp; e.OldValue != e.NewValue)
+      {
+        thisobj.Activate();
+      }
+    }
+
+    // RenderTransformX Property (bool) ommitted
+
+    // RenderTransformY Property (bool) ommitted
+ 
+    /// &lt;summary&gt;
+    /// RenderTransform X/Y property changed callback.
+    /// &lt;/summary&gt;
+    public static void RenderTransformChanged(DependencyObject d, 
+                          DependencyPropertyChangedEventArgs e)
+    {
+      var thisobj = d as BaseScaleBehavior;
+      if (thisobj != null)
+      {
+        thisobj.SetRenderTransForm();
+      }
+    }
+  }
+}</pre>
+<p>What we have here are five dependency properties, for which I have omitted most of the code because it’s pretty boring repetitive stuff, save for some callback methods that actually do something. The properties are:</p>
+<ul>
+<li>Direction – in which direction should the object be scaled. Horizontal, Vertical, or Both 
+<li>Duration – the time in milliseconds the animated transition should take. 
+<li>Activated – it’s up to the implementing behavior to what that means (in the case of UnfoldingBehavior, false = invisible, true = visible)
+<li>RenderTransformX – 0 to 1, the horizontal origin of the animation. <a href="http://msdn.microsoft.com/en-us/library/system.windows.uielement.rendertransformorigin.aspx" target="_blank">See here for more explanation</a> 
+<li>RenderTransformY – 0 to 1, the vertical origin of the animation</li></ul>
+<p>We have two abstract methods that should be implemented in by the actual behavior: </p>
+<ul>
+<li>BuildTransform should build a suitable <a href="http://msdn.microsoft.com/en-us/library/system.windows.media.compositetransform(v=VS.95).aspx" target="_blank">CompositeTransform</a> for use in the animation 
+<li>BuildStoryBoard should build a suitable <a href="http://msdn.microsoft.com/en-us/library/system.windows.media.animation.storyboard(v=VS.95).aspx" target="_blank">Storyboard</a> to perform the actual animation.</li></ul>
+<p>All that’s left is the SetRenderTransForm, that sets the RenderTransformOrigin based upon RenderTransformX and RenderTransformY, and the Activate method that checks if the animation can be performed and if so, builds and executes the storyboard. Oh, and the OnSetup does the initial setup. Duh ;). So basically all child classes need to do is fill in those two abstract methods!</p>
+<p>Which is exactly what UnfoldBehavior does:</p><pre style="font-size: 11px">using System;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using Wp7nl.Utilities;
+
+namespace Wp7nl.Behaviors
+{
+  /// &lt;summary&gt;
+  /// Behavior that unfolds an object using an animation
+  /// &lt;/summary&gt;
+  public class UnfoldBehavior : BaseScaleBehavior
+  {
+    protected override void OnSetup()
+    {
+      base.OnSetup();
+      AssociatedObject.Opacity = GetOpacity();
+      ListenToPageBackEvent = true;
+    }
+
+    protected override Storyboard BuildStoryBoard()
+    {
+      var transform = BuildTransform();
+      if (AssociatedObject.GetOpacityProperty() != GetOpacity() ||
+          transform.ScaleX != AssociatedObject.GetScaleXProperty() ||
+          transform.ScaleY != AssociatedObject.GetScaleYProperty())
+      {
+        var storyboard = new Storyboard {FillBehavior = FillBehavior.HoldEnd};
+        var duration = new Duration(TimeSpan.FromMilliseconds(Duration));
+        storyboard.AddScalingAnimation(
+          AssociatedObject,
+          AssociatedObject.GetScaleXProperty(), transform.ScaleX,
+          AssociatedObject.GetScaleYProperty(), transform.ScaleY,
+          duration);
+        storyboard.AddOpacityAnimation(AssociatedObject, 
+                 AssociatedObject.GetOpacityProperty(), 
+                 GetOpacity(), duration);
+        return storyboard;
+      }
+      return null;
+    }
+
+    protected override CompositeTransform BuildTransform()
+    {
+      return new CompositeTransform
+      {
+        ScaleX = (Direction == Direction.Horizontal || Direction == Direction.Both) &amp;&amp; <br>                 !Activated ? 0 : 1,
+        ScaleY = (Direction == Direction.Vertical || Direction == Direction.Both) &amp;&amp; <br>                 !Activated ? 0 : 1
+      };
+    }
+
+    private double GetOpacity()
+    {
+      return Activated ? 1 : 0;
+    }
+  }
+}
+</pre>
+<p>OnSetup does the necessary extract setup, the BuildTransform is used in BaseScaleBehavior to set the initial state of the element based upon the initial property values, but in this child class also for something else – in BuildStoryBoard is it used to build a transformation base upon the <em>desired </em>new state if anything changes. In the same way works the GetOpacity method – it returns the desired opacity based upon the currrent state of the behavior’s properties. So then the behavior checks if the desired state is different from the AssociatedObject’s <em>current</em> state, and if so, it uses the <a href="http://dotnetbyexample.blogspot.nl/2013/08/extension-methods-to-animate-scaling.html" target="_blank">extension methods described in the previous post</a> to build the actual animation Storyboard. </p>
+<p>And that’s (almost) all there’s to it. An attentive reader might have noticed, though, that there are no such things as methods to get the value of&nbsp; <em>current</em> scaling and opacity of an UI element, which are after all dependency properties too. That is why I have created this little batch of extension methods as a shortcut:</p><pre style="font-size: 11px">using System;
+using System.Windows;
+using System.Windows.Media;
+
+namespace Wp7nl.Utilities
+{
+  /// &lt;summary&gt;
+  /// Class to help animations from code using the CompositeTransform
+  /// &lt;/summary&gt;
+  public static class FrameworkElementExtensions2
+  {
+    public static double GetDoubleTransformProperty(this FrameworkElement fe, 
+                            DependencyProperty property)
+    {
+      var translate = fe.GetCompositeTransform();
+      if (translate == null) throw new ArgumentNullException("CompositeTransform");
+      return (double)translate.GetValue(property);
+    }
+
+    public static double GetScaleXProperty(this FrameworkElement fe)
+    {
+      return fe.GetDoubleTransformProperty(CompositeTransform.ScaleXProperty);
+    }
+
+    public static double GetScaleYProperty(this FrameworkElement fe)
+    {
+      return fe.GetDoubleTransformProperty(CompositeTransform.ScaleYProperty);
+    }
+
+    public static double GetOpacityProperty(this FrameworkElement fe)
+    {
+      return (double)fe.GetValue(UIElement.OpacityProperty);
+    }
+  }
+}</pre>
+<p>Nothing special, just a way to extract the date a little easier. </p>
+<p>So, with some drag, drop and binding actions in Blend you know have a reusable piece of code that can be easily applied to multiple user interface elements without have to duplicate storyboards and timelines again and again. With this behavior, Blend indeed is your friend ;-). Oh and by the way – this should work in both Windows Phone 7 and 8. For Windows 8 I don’t dare to give any guarantees – just have not tried it out yet.</p>
+<p>Demo application of course <a href="http://www.schaikweb.net/dotnetbyexample/UnfoldBehaviorDemo.zip" target="_blank">available here</a>, and I will soon add all this stuff to the wp7nl Nuget package. Stay tuned.</p>  

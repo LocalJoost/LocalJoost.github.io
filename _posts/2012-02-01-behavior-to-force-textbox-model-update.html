@@ -1,0 +1,48 @@
+---
+layout: post
+title: Behavior to force TextBox model update to prevent trouble with the ApplicationBar
+date: '2012-02-01T20:12:00.001+01:00'
+author: Joost van Schaik
+tags:
+- DataBinding
+- Application Bar
+- wpdev
+- dotnetmag
+- WP7NL
+- behavior
+- WP7
+modified_time: '2012-03-04T10:18:08.735+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4265293998871597340
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/02/behavior-to-force-textbox-model-update.html
+---
+
+<p>A small quicky this time:</p> <p>Problem:</p> <ul> <li>TextBox, Text property bound to a string in my ViewModel  <li>I type text in the TextBox  <li>I click a “Save” button on my ApplicationBar  <li>The string in my ViewModel is not updated. It never gets updated. WTF???</li></ul> <p>It appears the TextBox only updates it’s value to a bound string when it loses focus. And a TextBox does not lose focus when you click an ApplicationBar Button. Meh.</p> <p>I have found a few solutions and workarounds, and in the end rolled my own:&nbsp; a very small behavior that updates the binding every time you type something in your textbox. That’s a bit wasteful, but it works for me. It builds on the <a href="http://dotnetbyexample.blogspot.com/2011/11/safe-event-detachment-base-class-for.html" target="_blank">SafeBehavior</a> pattern I wrote about earlier, and it’s so small I post it in one go:</p><pre>using System.Windows.Controls;
+
+namespace Wp7nl.Behaviors
+{
+  /// &lt;summary&gt;
+  /// A behavior to for text box model update when text changes
+  /// &lt;/summary&gt;
+  public class TextBoxChangeModelUpdateBehavior : SafeBehavior&lt;TextBox&gt;
+  {
+    protected override void OnSetup()
+    {
+      AssociatedObject.TextChanged += AssociatedObjectTextChanged;
+    }
+
+    protected override void OnCleanup()
+    {
+      AssociatedObject.TextChanged -= AssociatedObjectTextChanged;
+    }
+
+    void AssociatedObjectTextChanged(object sender, TextChangedEventArgs e)
+    {
+      var binding = AssociatedObject.GetBindingExpression(TextBox.TextProperty);
+      if (binding != null)
+      {
+        binding.UpdateSource();
+      }
+    }
+  }
+}</pre>
+<p>I have read amongst other things Prism has a UpdateTextBindingOnPropertyChanged behavior. Well this one will be in the next version of my <a href="http://twitter.com/#!/search/%23wp7nl" target="_blank">#<a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a>&nbsp;</a></p>

@@ -1,0 +1,364 @@
+---
+layout: post
+title: Executing and testing geofencing background tasks in Universal Apps
+date: '2014-11-12T15:56:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Windows phone 8.1
+- Geofencing
+- Mapping
+- Universal Apps
+- windows 8.1
+- XAML
+modified_time: '2014-11-12T21:59:22.683+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-915059436176108752
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/11/executing-and-testing-geofencing.html
+---
+
+<h2>Intro</h2> <p>On October 18th the Dutch and Belgian Windows Platform Development communities got together for an event called “Lowlands WPdev 2014”- yours truly was one of the conference organizers, and gave a talk about geofencing. This blog post is basically a partial write-down, just explaining the code and how to test it.</p> <h2>The ShopAlerter application</h2> <p>The application is very simple and shows itself like this on <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> 8.1 and <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a>.1:</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_thumb.png" width="138" height="244"></a><a href="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px 0px 0px 20px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_thumb_3.png" width="401" height="244"></a></p> <p>It shows the created geofences on the map. On Windows Phone, we use Here Maps, on Windows we use Bing Maps. As both banners show, you should get a key for both map platforms to get you app certified. As the enters a geofence, a trigger is fired to show you are approaching a shop and a toast message is being displayed. That is – in theory. In practice stuff is not so easy, especially in Windows. </p> <h2>Project structure</h2> <p><a href="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; margin: 0px 4px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_thumb_4.png" width="232" align="left" height="304"></a></p> <p>The project consists out of what nowadays is a pretty standard Universal App structure, with a Windows, Windows Phone and a Shared Project. In the shared project is the App.xaml and a partial class MainPage.cs, basically holding some of the code behind stuff that normally goes into MainPage.xaml.cs. But we want to share as much code as possible – and we can.</p> <p>The Mapping.Utilities.Pcl contains helper methods to visualize geofences on the map – <a href="http://dotnetbyexample.blogspot.com/2014/09/visualizing-geofences-as-circles-on-map.html" target="_blank">described in an earlier article about visualizing geofences</a>. </p> <p>The MappingUtilities.Windows contains one helper class to convert to the common Geopoint type to the specific Location and LocationCollection types used by Bing Maps.</p> <p>Finally, the ShopAlerter.Background is a so-called Windows Runtime Component. Background tasks need to be defined specifically in such a component. I am not entirely sure why, but that’s the way it is. </p> <h2>Windows Phone project</h2> <p>The Windows Phone project is pretty simple: a little bit of XAML, and some code behind. The XAML is just this:</p><pre>&lt;Page[Name space stuff omitted]&gt;
+  &lt;Page.BottomAppBar&gt;
+    &lt;CommandBar&gt;
+      &lt;AppBarButton Icon="ZoomOut" Label="zoom out" Click="ZoomOut"/&gt;
+      &lt;AppBarButton Label="Geofences" Icon="View" Click="ToggleGeofences"/&gt;
+      &lt;AppBarButton Label="Task" Icon="Target" Click="ToggleTask"/&gt;
+    &lt;/CommandBar&gt;
+  &lt;/Page.BottomAppBar&gt;
+
+  &lt;Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"&gt;
+    &lt;Grid Margin="12,0,12,0" &gt;
+      &lt;Grid.RowDefinitions&gt;
+        &lt;RowDefinition Height="Auto"/&gt;
+        &lt;RowDefinition Height="*"/&gt;
+      &lt;/Grid.RowDefinitions&gt;
+      &lt;StackPanel Margin="0,0,0,5"&gt;
+        &lt;TextBlock TextWrapping="Wrap" Text="ShopAlerter" FontSize="26.667"/&gt;
+      &lt;/StackPanel&gt;
+      &lt;maps:MapControl Grid.Row="1" x:Name="MyMap" &gt;
+      &lt;/maps:MapControl&gt;
+    &lt;/Grid&gt;
+  &lt;/Grid&gt;
+&lt;/Page&gt;</pre>
+<p>A command bar with three buttons, and a grid containing the header text and the map itself. The user hits the middle geofences button to turn the geofences on and off, and hits the right button to register the task. The left(zoom out) button is only there for demo purposes – believe me, sometimes the touch screen and the emulator suddenly decide no longer to play together, and while zooming <em>in </em>with a mouse is easy (just double click), zooming out is not possible. So although I don’t consider myself a pro presenter, I feel I can give pro tip here for demoing something with maps – always include a zoom out button to save your … behind when something goes wrong ;-)</p>
+<p>It’s hard to believe, but the Windows Phone specific <em>code</em>, in MainPage.Xaml.cs is just this:</p><pre>protected override void OnNavigatedTo(NavigationEventArgs e)
+{
+  GeofenceMonitor.Current.Geofences.Clear();
+  MyMap.Center = new Geopoint(
+    new BasicGeoposition { Latitude = 52.155915, Longitude = 5.390376 });
+  MyMap.ZoomLevel = 16;
+}
+
+const int fenceIndex = 1;
+private void DrawGeofences()
+{
+  //Draw semi transparent purple circles for every fence
+  var color = Colors.Purple;
+  color.A = 80;
+
+  // Note GetFenceGeometries is a custom extension method
+  foreach (var pointlist in GeofenceMonitor.Current.GetFenceGeometries())
+  {
+    var shape = new MapPolygon
+    {
+      FillColor = color,
+      StrokeColor = color,
+      Path = new Geopath(pointlist.Select(p =&gt; p.Position)),
+      ZIndex = fenceIndex
+
+    };
+    MyMap.MapElements.Add(shape);
+  }
+}
+
+private void RemoveGeofences()
+{
+  var routeFences = MyMap.MapElements.Where(
+      p =&gt; p.ZIndex == fenceIndex).ToList();
+  foreach (var fence in routeFences)
+  {
+    MyMap.MapElements.Remove(fence);
+  }
+}</pre>
+<p>This is the power of the Universal App. All the rest is either in the shared project or the Windows Runtime Component that is also used both on Windows and Windows Phone. What you basically see is the OnNavigatedTo method that clears the geofences, and sets the zoom level and center point of the map. The other two methods are just used for drawing circles on the map and removing them – also <a href="http://dotnetbyexample.blogspot.com/2014/09/visualizing-geofences-as-circles-on-map.html" target="_blank">showed in the same article I wrote earlier in my article about visualizing geofences</a>.</p>
+<h2>The Shared project</h2>
+<p>So what's in this famous shared project then, huh? Well, just the partial class MainPage.cs. This adds methods to both the Windows and the Windows Phone MainPage.xaml.cs. The key thing is to understand <em>code</em> is shared, not binaries. Every line is compiled twice, both into the Windows and the Windows Phone project. Unlike Portable Class Libraries or Windows Runtime Components, which are shared <em>binary</em>.</p>
+<p>So. The method called by pressing the middle button adds (and shows) or removes the geofences. This is a simple toggle function like this. </p><pre>private void ToggleGeofences(object sender, RoutedEventArgs e)
+{
+  if (!GeofenceMonitor.Current.Geofences.Any())
+  {
+    foreach (var location in LocationObject.GetLocationObjects())
+    {
+      AddFence(location.Id, location.Location);
+    }
+
+    DrawGeofences(); // Actual implementation deferred to none shared portion
+  }
+  else
+  {
+    GeofenceMonitor.Current.Geofences.Clear();
+    RemoveGeofences(); // Actual implementation deferred to none shared portion
+  }
+}</pre>
+<p>Note the actual drawing and removing is done by none shared code. This implies that both in Windows <em>and</em> in Windows Phone there must be methods "DrawGeofences" and "RemoveGeofences" implemented. You can also see here a method "AddFence" being called. This creates an actual geofence that is being monitored by the device:</p><pre>  public void AddFence(string key, Geopoint position)
+  {
+    // Replace if it already exists for this key
+    var oldFence = GeofenceMonitor.Current.Geofences.FirstOrDefault(p =&gt; p.Id == key);
+    if (oldFence != null)
+    {
+      GeofenceMonitor.Current.Geofences.Remove(oldFence);
+    }
+
+    var geocircle = new Geocircle(position.Position, 150);
+    const bool singleUse = false;
+    MonitoredGeofenceStates mask = 0;
+    mask |= MonitoredGeofenceStates.Entered;
+
+    // NOTE: Dwelling time!
+    var geofence = new Geofence(key, geocircle, mask, singleUse, 
+                                TimeSpan.FromSeconds(1));
+    GeofenceMonitor.Current.Geofences.Add(geofence);
+}</pre>
+<p>The key thing about geofences is that they, well, have a key as well as a location. So if you add a geofence, you should first check if a geofence with the given key is already present. If it is, delete it first before adding one with the same key.</p>
+<p>Then I create the shape for the geofence. Currently, only circles are supported so I create a circle with 150 meters in diameter. Then I define the geofence should be used multiple times – setting singleUse to true will make it disappear from the GeofenceMonitor automatically after it has been triggered. The mask will determine to what events the GeofenceMonitor will respond on this particular geofence. You can choose between Entered, Exited, Removed and None – to respond to multiple events, just OR ( +| ) to the mask like I show in the code.</p>
+<p>Finally a word on dwelling time. This feature is here to prevent edge cases, in the most literal sense of the word. Suppose you are sitting on the edge of a fence – geo positioning is never that accurate, and the phone would probably detect it’s in, out, in, out, in (etc) the fence. If your App user gets a bazillion notifications showing that, you will probably not hit a 5 star rating anytime soon. So the <em>default</em> value is 10 seconds – only if you are 10 seconds in a geofence (or left it for 10 seconds) something will happen. For my demos I usually take 1 second because well, audiences tend to get uncomfortable watching a screen where nothing much happens (and the presenter too, for what matters). For production scenario’s, take some time to think about the speed your typical user will move with, the size of your geofences, and the dwelling time you select. I spent some time figuring out why none of my triggers ever went off – using the default 10 seconds, geofences with a 25 m diameter, and moving at 50km/h. I was already out of any fence again before even half the dwelling time had passed ;-)</p>
+<p>Finally the method to register the background task, which is pretty simple:</p><pre>private async void ToggleTask(object sender, RoutedEventArgs e)
+{
+  var registered = AlertTask.IsTaskRegistered();
+  if (registered)
+  {
+     AlertTask.Unregister();
+  }
+  else
+  {
+    await AlertTask.Register();
+  }
+
+  var dlg = new MessageDialog(
+     string.Format("Task {0}", !registered ? "registered" : "unregistered"));
+  await dlg.ShowAsync();
+}</pre>
+<h2>The Background task</h2>
+<p>The background task is defined in one class containing the actual implementation of the task, as well as some static methods to handle registering and unregistering – an idea from <a href="twitter.com/rajen_k" target="_blank">our local DX guru Rajen Kishna</a>, that I improved a little upon. The basic class definition with the required Run method is pretty simple:</p><pre>public sealed class AlertTask : IBackgroundTask
+{
+  public void Run(IBackgroundTaskInstance taskInstance)
+  {
+    var monitor = GeofenceMonitor.Current;
+    if (monitor.Geofences.Any())
+    {
+      var reports = monitor.ReadReports();
+      foreach (var report in reports)
+      {
+        var l = LocationObject.GetLocationObject(report.Geofence.Id);
+
+        switch (report.NewState)
+        {
+          case GeofenceState.Entered:
+            {
+              ShowToast("Approaching shop", l.Name);
+              break;
+            }
+        }
+      }
+    }
+  }
+}</pre>
+<p>Mind you – in a Windows Runtime Component classes are sealed. This is mandatory. Anyway, when the background task is triggered, I first check if there are any geofences – logically there should be, for what else could have triggered this task. But they have been deleted on some other thread – it never hurts to be careful. Then I follow this procedure:</p>
+<ol>
+<li>Read all the <em>reports</em> from the monitor 
+<li>Each report should hold a Geofence object 
+<li>That has an id 
+<li>Use the id to retrieve the original object the geofence was created from</li></ol>
+<p>For the last step I use a LocationObject helper method. That is kind of my ‘data base’, which I will show later. Having retrieved the object, I can show it’s name in a toast.</p><pre>private static void ShowToast(string firstLine, string secondLine)
+{
+  var toastXmlContent = 
+    ToastNotificationManager.GetTemplateContent(ToastTemplateType.ToastText02);
+
+  var txtNodes = toastXmlContent.GetElementsByTagName("text");
+  txtNodes[0].AppendChild(toastXmlContent.CreateTextNode(firstLine));
+  txtNodes[1].AppendChild(toastXmlContent.CreateTextNode(secondLine));
+
+  var toast = new ToastNotification(toastXmlContent);
+  var toastNotifier = ToastNotificationManager.CreateToastNotifier();
+  toastNotifier.Show(toast);
+
+  Debug.WriteLine("Toast: {0} {1}", firstLine, secondLine);
+}</pre>
+<p>A simple helper method, that I kinda stole from Rajen as well. My only improvement is the Debug.WriteLine at the end, which we unfortunately will need badly further down the road. </p>
+<p>The methods to query the background task’s state, to register and unregister is are also based upon Rajen’s sample, only I have made the Register task actually awaitable. That’s a real live application of <a href="http://dotnetbyexample.blogspot.com/2014/11/returning-task-from-windows-runtime.html" target="_blank">the trick I blogged about yesterday</a>.</p><pre>private const string TaskName = "ShopAlerterTask";
+//NOTE:  WinRT component cannot return a Task&lt;T&gt;, but CAN return 
+//IAsyncOperation&lt;T&gt;/&gt;
+public static IAsyncOperation&lt;bool&gt; Register()
+{
+  return RegisterInternal().AsAsyncOperation();
+}
+
+private async static Task&lt;bool&gt; RegisterInternal()
+{
+  if (!IsTaskRegistered())
+  {
+    await BackgroundExecutionManager.RequestAccessAsync();
+    var builder = new BackgroundTaskBuilder 
+      { Name = TaskName, TaskEntryPoint = typeof(AlertTask).FullName };
+
+    builder.SetTrigger(new LocationTrigger(LocationTriggerType.Geofence));
+    builder.Register();
+    return true;
+  }
+  return false;
+}
+
+public static void Unregister()
+{
+  var entry = BackgroundTaskRegistration.AllTasks.FirstOrDefault(
+     t =&gt; t.Value.Name == TaskName);
+
+  if (entry.Value != null)
+  {
+    entry.Value.Unregister(true);
+  }
+}
+
+public static bool IsTaskRegistered()
+{
+  return BackgroundTaskRegistration.AllTasks.Any(t =&gt; t.Value.Name == TaskName);
+}</pre>
+<p>In the RegisterInternal method I simply make a fairly standard background task, only it’s now triggered by a LocationTrigger. The odd thing is, the only parameter you can – and must – supply to the LocationTrigger’s constructor is a LocationTriggerType enum, and that only has one value – Geofence. I assume the API designers originally planned to implement more options here but in it’s current state it’s looking a bit strange. But anyway, it works, that’s the important part. If now anyone enters or exits a geofence, the Run method will be called.</p>
+<h2>Location object</h2>
+<p>This is not very interesting, but only showed here for the sake of completeness. It’s basically an object with an ID and a location (which I need for creating a geofence) and a name to display. Two static helper methods help me to create a list of fake hard coded objects, or retrieve one by ID. The area is real – it’s the main shopping street of my home town Amersfoort – but the data is completely fake. There is, unfortunately, no Microsoft store on this continent, let alone in Amersfoort. </p><pre>public sealed class LocationObject
+{
+  public LocationObject()
+  {
+  }
+
+  public LocationObject(string id, string name, 
+     double latitude, double longitude)
+  {
+    Id = id;
+    Name = name;
+    Location = new Geopoint(
+        new BasicGeoposition 
+          { Latitude = latitude, Longitude = longitude });
+  }
+
+  public string Id { get; set; }
+
+  public string Name { get; set; }
+
+  public Geopoint Location { get; set; }
+
+  public static IEnumerable&lt;LocationObject&gt; GetLocationObjects()
+  {
+    return new List&lt;LocationObject&gt;
+           {
+             new LocationObject("1","Microsoft Store", 52.157043, 5.392407),
+             new LocationObject("5","Colruyt", 52.156339, 5.391015),
+             new LocationObject("9","The PhoneHouse", 52.154651, 5.388553),
+
+           };
+  }
+  public static LocationObject GetLocationObject(string id)
+  {
+    return GetLocationObjects().FirstOrDefault(p =&gt; p.Id == id);
+  }
+}</pre>
+<h2>Testing the Windows Phone project</h2>
+<p>This is pretty easy, thanks to the awesome Windows Phone emulator and it’s tools. Deploy the Windows Phone 8.1 project to the emulator, then proceed as follows (I kind of like that Bothell is displayed by default, as I spend two nights there recently visiting an old friend):</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_5.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_thumb_5.png" width="644" height="461"></a></p>
+<ol>
+<li><a href="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_6.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_thumb_6.png" width="244" align="right" height="217"></a>Press the “Additional tools” button 
+<li>Select the “Location” tab 
+<li>Select the “Load” button 
+<li>Find the file “Locations.xml” that comes with the <a href="http://www.schaikweb.net/dotnetbyexample/ShopAlerter.zip" target="_blank">demo solution</a> (it is in the project root) and select it.</li></ol>
+<p>Note I also marked the play button – we will need that later. After you have loaded the xml file, zoom in about five times (press the zoom in button) and you should see about as displayed on the right.</p>
+<p>Then proceed as follows:</p>
+<ul>
+<li>Press the middle button on the application bar (the one that is labeled “Geofences”). The geofences should appear as semi translucent circles as displayed in the very first image on top of this post. 
+<li>Then press the right button on the application bar (“Task”) – this should pop up a message box indicating the task has been registered 
+<li>The press the “Play” button on the Location Tools</li></ul>
+<p>Now if you have done everything right, pretty soon you should see the first toast pop up, and they should appear in the notification center as well. Since the phone should move on walking speed (it’s a pedestrian area) you might need to wait for a while for them all to appear.</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_7.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_thumb_7.png" width="172" height="304"></a><a href="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_8.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px 0px 0px 10px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_thumb_8.png" width="172" height="304"></a></p>
+<p>Awesome. Now it’s time to have a look at the Windows project.</p>
+<h2>The Windows project</h2>
+<p>Since we are using <em>maps</em> we are actually in a quite bad position, as the convergence story is still pretty weak in this area. For Windows uses Bing Maps – you will need to install the Bing Maps toolkit, use a different kind type of object for map positions (Location in stead of Geopoint), and Bing Maps is a native component so this will make your app a native app, too (i.e. not AnyCPU). And yet… This is all the XAML we need</p><pre>&lt;Page&gt;
+  &lt;Page.BottomAppBar&gt;
+    &lt;CommandBar IsOpen="True"&gt;
+      &lt;CommandBar.SecondaryCommands&gt;
+        &lt;AppBarButton Icon="ZoomOut" Label="zoom out" Click="ZoomOut"/&gt;
+      &lt;/CommandBar.SecondaryCommands&gt;
+      &lt;AppBarButton Label="Geofences" Icon="View" Click="ToggleGeofences"/&gt;
+      &lt;AppBarButton Label="Task" Icon="Target" Click="ToggleTask"/&gt;
+    &lt;/CommandBar&gt;
+  &lt;/Page.BottomAppBar&gt;
+  &lt;Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"&gt;
+    &lt;maps:Map x:Name="MyMap"&gt;&lt;/maps:Map&gt;
+    &lt;TextBlock HorizontalAlignment="Left" TextWrapping="Wrap" Text="ShopAlerter" 
+               VerticalAlignment="Top" Foreground="Black" FontSize="48"
+               Margin="150,5,0,0"/&gt;
+  &lt;/Grid&gt;
+&lt;/Page&gt;
+</pre>
+<p>Granted, different, but not <em>that</em> different and I also choose a little bit different layout anyway. The only Windows specific code is this:</p><pre> MapShapeLayer fenceLayer;
+
+protected override void OnNavigatedTo(NavigationEventArgs e)
+{
+  base.OnNavigatedTo(e);
+  GeofenceMonitor.Current.Geofences.Clear();
+
+  MyMap.Center = 
+  new Location { Latitude = 52.155915, Longitude = 5.390376 };
+  MyMap.ZoomLevel = 17;
+
+  fenceLayer = new MapShapeLayer { ZIndex = 1 };
+  MyMap.ShapeLayers.Add(fenceLayer);
+}
+
+private void DrawGeofences()
+{
+  var color = Colors.Purple;
+  color.A = 80;
+  foreach (var pointlist in GeofenceMonitor.Current.GetFenceGeometries())
+  {
+    var shape = new MapPolygon
+    {
+      FillColor = color,
+      Locations = pointlist.ToLocationCollection()
+    };
+    fenceLayer.Shapes.Add(shape);
+  }
+}
+
+private void RemoveGeofences()
+{
+  fenceLayer.Shapes.Clear();
+}</pre>
+<p>That is <em>all</em>.&nbsp; I love the Universal App model. All I need are methods to set the initial zoom level and location of the map, and methods to draw and delete geofence geometries. The rest is shared code in some way or the other. </p>
+<p>You can see here Bing Maps uses the concept of layers. That’s about the only thing Bing Maps handles better than Here Maps IMHO – the z-index of map objects is handled by a layer object rather than on a per-object basis. This makes certain display manipulations a lot easier and faster. The real pain, though, is in testing this.</p>
+<h2>Testing the Windows project</h2>
+<p>We will need to test in the Windows <em>Simulator</em>. After all, we will need to test using locations, and I don’t feel like running around our main shopping street testing my app. Now there are some interesting challenges:</p>
+<ol>
+<li>The Simulator does not support a notion of route – only of <em>location</em>. You can basically appear on one location and then on another, but not make it smoothly move from a to b, like the Windows Phone simulator. But that is the <em>least</em> of our worries. 
+<li>The Windows simulator does not display toast notifications. This apparently has something to do with the simulator being a kind-of-copy of your actual PC, with all your apps installed. 
+<li>The Windows simulator does not allow the registration of background tasks. Try it. You will simply get an exception saying “This request not supported”. You can unregister, but not register. I have no idea why.</li></ol>
+<p>This sounds like a classical catch-22 – we need the Simulator to simulate locations, but we cannot register background task to actually <em>use</em> those locations, and even if we could, we cannot display the result. But there is a way out. Kind of. A long and winding way. Follow these steps:</p>
+<ol>
+<li>Run the app from Visual Studio <em>on your local machine</em> first. 
+<li>Make sure the “Debug Location” toolbar is visible. If it’s not: click View/Toolbars and check “Debug Location”. You will need to do this step only once. 
+<li>Press the “Task” Application bar button. This will show the following pop up, that you may have seen before on other apps asking for background access<br><a href="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image15.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image15_thumb.png" width="304" height="82"></a><br>and if you press “Allow” you will get<br><a href="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_9.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_thumb_9.png" width="304" height="53"></a>
+<li>The task is now registered. Now stop the application (just from Visual Studio).
+<li>Deploy and run the app from Visual Studio <em>on the simulator</em>. Remember I wrote about this being a kind of copy of your PC? Guess what, your app is already there, <em>including the background task.</em>
+<li>Hit the “Geofence” application bar button. You will now see the geofences.
+<li>You will now have to set the location of the simulator. There’s a button for that on the right hand side of it’s window. I picked the location of the ‘Microsoft Store’ as location.<a href="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_10.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_thumb_10.png" width="304" height="196"></a>
+<li>Nothing happens if you press the “Set Location” button. Now go to the Debug/Location toolbar. Click the Lifecyle Events drop down. It should show the following, if it does not, try to reselect the <br>ShopAlerter.Windows.exe again first<br><a href="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_11.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_thumb_11.png" width="304" height="94"></a>
+<li><em>Still</em> nothing seems to happen. But if you mosey back to Visual Studio and have a look at your output window….<br><a href="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_12.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Geofencing-in-background-tasks-in-Univer_11FFF/image_thumb_12.png" width="304" height="158"></a><br>Lo and behold – the result of the Debug.WriteLine. The toast code <em>has</em> fired, the geofence therefore has been activated, thus our code works.</li></ol>
+<h2>Some thoughts and things to take into account</h2>
+<ul>
+<li>To make this app work at all, you will need to set some capabilities. For both apps, you will need the “Location” capabilities, and both applications needs to be Toast capable. </li>
+<li>For the Windows application, you will need to set a Badge logo.</li>
+<li>To save battery and to prevent you app from hogging the processor, LocationTriggers will only fire <em>once every 2 minutes</em> – at most, at least on the phone. So this technique is not very suitable for high-precision, high-speed tracking. Geofence events will “coalesce”, as it is so beautifully called – meaning they happen about every two minutes all at the same time.</li>
+<li>The Windows Simulator – to put it <em>very</em> mildly – is not quite on par with the Windows Phone emulator. Particularly the situation around location simulation, background tasks and notifications could benefit significantly from <em>quite</em> some attention. I <em>sincerely</em> hope this will be addressed in some future release – preferably the very next one.</li></ul>
+<h2>Credits</h2>
+<p>I have been standing on the shoulders of giants cobbling this all together, most notably:</p>
+<ul>
+<li><a href="https://twitter.com/rajen_k" target="_blank">Rajen Kishna</a> with <a href="http://blog.rajenki.com/2014/04/trigger-background-task-using-geofence-windows-phone-8-1/" target="_blank">this pretty comprehensive article on geofencing</a></li>
+<li><a href="https://twitter.com/qmatteoq" target="_blank">Matteo Pagani</a> with <a href="http://wp.qmatteoq.com/how-to-create-and-debug-a-background-task-in-windows-8-part-2/" target="_blank">this awesome article describing a way to debug background tasks</a> – I would never have thought of that myself</li>
+<li><a href="http://blogs.windows.com/buildingapps/2014/05/28/using-the-windows-phone-emulator-for-testing-apps-with-geofencing" target="_blank">This article</a> by the Windows Apps Team</li></ul>
+<p>Demo solution available <a href="http://www.schaikweb.net/dotnetbyexample/ShopAlerter.zip" target="_blank">here</a>.</p>  

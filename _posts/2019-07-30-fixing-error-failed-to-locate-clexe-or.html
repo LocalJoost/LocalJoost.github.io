@@ -1,0 +1,16 @@
+---
+layout: post
+title: Fixing error Failed to locate “CL.exe” or MSB8020 when deploying IL2CPP solution
+date: '2019-07-30T15:55:00.000+02:00'
+author: Joost van Schaik
+tags:
+- Unity
+- MRTK2
+- IL2CPP
+- Visual Studio 2019
+modified_time: '2019-07-30T20:32:24.520+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2849863121185056432
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2019/07/fixing-error-failed-to-locate-clexe-or.html
+---
+
+<h2>Symptom</h2><p>You have created a Unity project to create an app using MRTK2, and you want to use the new IL2CPP backend. You open the solution in Visual Studio 2019, you try to deploy it by using Build/Deploy and all the way at the end the compiler complains about “CL.exe” missing.</p><p>Alternatively, you might get the slightly more verbose error:</p><p><strong>error MSB8020: The build tools for Visual Studio 2017 (Platform Toolset = 'v141') cannot be found. To build using the v141 build tools, please install Visual Studio 2017 build tools.&nbsp; Alternatively, you may upgrade to the current Visual Studio tools by selecting the Project menu or right-click the solution, and then selecting "Retarget solution".</strong></p><h2>Cause</h2><p>You have most likely used the the recommended Unity version (2018.4.2f1) to create the project. This version – the name gives it away – was released before Visual Studio 2019, and therefore assumes the presence of Visual Studio <em>2017 </em>and it’s accompanying C++ tools set, ‘V141’. So Unity generated a C++ solution referencing that tool set. </p><p>But now it’s 2019, you have kissed Visual Studio 2017 goodbye, installed Visual Studio 2019. And that comes with tool set V142. </p><h2>Solution</h2><p>Either you install V141 using the Visual Studio Installer, or you tell the generated solution to use V142. I personally prefer the last one, because newer is always better right ;)</p><p>Simply right-click the project in the solution that has “(Universal Windows)” behind it’s name, select properties, tab general and then the problem is already pretty evident:</p><p><img width="640" height="434" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://schaikweb.net/blog/20190730/Properties.png" border="0"></p><p>Simply select Visual Studio 2019 (142) for Project Toolset and you are good to go. This setting will stay as long as you don’t delete the generated project – Unity will simply change what needs to be changed, and leave as much as it can (to speed up the generation process).</p><h2>Conclusion</h2><p>Simple fix, but can be hard to find. Hence a simple blog about it</p>

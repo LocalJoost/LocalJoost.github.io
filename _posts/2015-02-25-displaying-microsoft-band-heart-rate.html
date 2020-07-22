@@ -1,0 +1,312 @@
+---
+layout: post
+title: Displaying Microsoft Band heart rate via Raspberry PI2 using Mono, C#, OWIN
+  and a Windows Phone
+date: '2015-02-25T18:31:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Windows phone 8.1
+- Microsoft Band
+- C#
+- OWIN
+- Raspberry PI2
+- Mono
+- WebApi
+modified_time: '2015-02-26T09:39:19.168+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8849724864502348288
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/02/displaying-microsoft-band-heart-rate.html
+---
+
+<h2>Intro – what? WHY?</h2> <p>As regular readers of my blog might have seen, I got myself a <a href="http://dotnetbyexample.blogspot.com/2015/02/controlling-led-with-raspberry-pi-2.html">Raspberri PI 2 and a Sunfounders</a> sensor kit, and was happily dabbling a little with it. And then suddenly, out of the blue, Microsoft dropped a <a href="http://developer.microsoftband.com/">development kit for the Microsoft Band</a> – and <a href="http://twitter.com/gervercom">Gerard Verbrugge</a> (Microsoft DX Netherlands) challenged me to make something with it. So I thought to combine a number of gadgets: my <a href="http://www.microsoft.com/Microsoft-Band">Microsoft Band</a>, my Windows Phone and&nbsp; the Raspberry PI plus some of the stuff from the sensor kit.</p> <p>I created an application that shows your heart rate with a blinking led connected to the Raspberry PI, with a connected buzzer making sound as well. The LED blinks at the heart rate as reported by the Band, and using the&nbsp; buzzer, the PI also emits and audible tick-sound as the LED blinks. At low heart rate the LED blinks blue, at medium rate green, and at high rate red:</p> <div id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:ff1aefef-dfb7-4802-99ca-0a2c7b6b0e1d" class="wlWriterSmartContent" style="float: none; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px"> <div><embed type="application/x-shockwave-flash" height="369" width="658" src="http://www.youtube.com/v/QZGj9-1Ir68?hl=en&amp;hd=1"></embed></div> <div style="font-size: 0.8em; width: 658px; clear: both">Raspberry PI2 controlled by Microsoft band at heart rate &lt; 80</div></div> <div id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:6cd67043-6030-4ca4-8f48-ec9a98d55eec" class="wlWriterSmartContent" style="float: none; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px"> <div><embed type="application/x-shockwave-flash" height="367" width="657" src="http://www.youtube.com/v/Zw50AcDrqvA?hl=en&amp;hd=1"></embed></div> <div style="font-size: 0.8em; width: 657px; clear: both">Raspberry PI2 controlled by Microsoft band at heart rate &gt; 80</div></div> <p>If you crank up the sound, you can hear the ticking of the buzzer at the heartbeat. I think this is one of the coolest stuff I ever made. So, Gerard, challenge accepted. And, IMHO, achievement unlocked ;)</p> <h2>Hardware used</h2> <ul> <li>1 Microsoft Band  <li>1 Windows Phone running Windows Phone 8.1  <li>1 Raspberry PI 2  <li>1 4-pins RGB LED from the SunFounders kit  <li>1 3-pins Active buzzer from the Sunfounders kit  <li>Breadboard, GPIO cable (connecting PI to breadboard), miscellaneous connecting wires</li></ul> <p>Don’t give up reading if you don’t have a Band – that part can be simulated and the technique to control hardware peripherals from a WebAPI endpoint is useful on it’s own. </p> <h2>Global setup</h2> <p>How this thing works is, in essence, pretty simple:</p> <ul> <li>On the Raspberry PI2 runs a OWIN server hosting  <ul> <li>a little WebAPI endpoint that accepts heart rate data  <li>an endless running task making the LED blink in the right color and cadence, again using <a href="https://github.com/danriches">Daniel Riches</a>’ wrapper around <a href="https://twitter.com/drogon">Gordon Henderson</a>’s <a href="http://wiringpi.com/">wiringPI</a> C library. Once again, with some adaptions.</li></ul> <li>A Windows Phone 8.1 application listening to the paired Microsoft Band’s heartrRate sensor’s events, and posting those to the RaspBerry PI2’s OWIN server upon receiving those.</li></ul> <p>The <a href="https://github.com/LocalJoost/WebBlinker" target="_blank">demo solution</a> contains 5 projects:</p> <ul> <li>A Universal app (with only the Windows Phone project actually used)  <li>An project holding the OWIN server  <li>A PCL holding two simple classes: an object to post data with to the OWIN server, and a Settings object with some hard coded settings shared over several projects  <li>A test project posting a single simulated hearth rate update to the server  <li>The WiringPi project – the wrapper around the C library that I used before.</li></ul> <h2>A little PCL</h2> <p>I started a with a little PCL library WebLinker.Pcl that contains only two classes: a simple payload class that I can post from my <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> to my OWIN server:</p><pre>namespace WebBlinker
+{
+  public class Pulse
+  {
+    public int HeartRate { get; set; }
+  }
+}
+</pre>
+<p>and a little class to host some settings</p><pre>namespace WebBlinker
+{
+  public static class Settings
+  {
+    public const string ServiceUrl = "http://192.168.0.188:5001/api/singleblink";
+    public const string BaseListenUrl = "http://*:5001/";
+  }
+}
+</pre>
+<p>Rather primitive, indeed. But I want the class that I post as JSON and deserialize from JSON to be shared over client and server, and I don't like magic strings (especially not repeated magic strings) so I tend to gather those in settings classes. </p>
+<h2>The OWIN server</h2>
+<p>OWIN is a self hosted web server inside a console app – more or less Microsoft’s answer to nodejs and the like. It’s pretty simple to get started: make a console app, then add the Microsoft.AspNet.WebApi.OwinSelfHost nuget package and that brings everything you need – it’s even simpler than I described in <a href="http://dotnetbyexample.blogspot.com/2015/02/starting-owin-aspnet-server-on.html" target="_blank">this post</a>. Oh, and add a reference to the PCL while you are at it.</p>
+<p>The server contains four parts:</p>
+<ul>
+<li>A “Program” class with a static void Main – like every console app – kicking and keeping the OWIN server alive 
+<li>A “Startup” class containing the configuration of the OWIN server 
+<li>A “BlinkController” WebAPI controller hosting two methods (one for test, one for the real thing) 
+<li>A “Blinker” class that hosts a thread that does the actual blinking.</li></ul>
+<p>The Program class is, well, not very complicated:</p><pre>using System;
+using System.Threading;
+using Microsoft.Owin.Hosting;
+
+namespace WebBlinker
+{
+  class Program
+  {
+    static void Main(string[] args)
+    {
+      // Start OWIN host and keep it running
+      using (WebApp.Start&lt;Startup&gt;(url: Settings.BaseListenUrl))
+      {
+        while (true)
+        {
+          Console.WriteLine("Server still alive...");
+          Thread.Sleep(60000);
+        }
+      }
+    }
+  }
+}
+</pre>
+<p>The startup class does the actual configuration and is simple but noteworthy:</p><pre>using System.Web.Http;
+using Owin;
+
+namespace WebBlinker
+{
+  public class Startup
+  {
+    public void Configuration(IAppBuilder appBuilder)
+    {
+      var config = new HttpConfiguration();
+
+      //Use attribute routes!
+      config.MapHttpAttributeRoutes();
+      appBuilder.UseWebApi(config);
+      Blinker.GetBlinker().Start();
+    }
+  }
+}
+</pre>
+<p>Although in general I am a fan of Microsoft technology, there are some tiny parts I hate with a vengeance. One of those things is ASP.NET MVC / WebAPI default routing. So whenever I get the chance, I go for <em>attribute based routing</em>. I’d rather like to have the minor chore of having to define all my routes explicitly and <em>know</em> they will be there, in stead of having to deal with <em>inferred</em> routes that might just disappear because someone else adds a route that ‘steals’ or invalidates mine. Just a pet peeve. So I did not include the default routing – I just added a call to MapHttpAttributeRoutes. Now I can control my routes pretty easily in my BlinkController by adding attributes:</p><pre>using System;
+using System.Web.Http;
+
+namespace WebBlinker
+{
+  public class BlinkController : ApiController
+  {
+    [HttpPost]
+    [Route("api/singleblink")]
+    public void PostBlink([FromBody] Pulse pulse)
+    {
+      Console.WriteLine( "Got update: {0}", pulse.HeartRate);
+      Blinker.GetBlinker().HeartRate = pulse.HeartRate;
+    }
+
+    [HttpGet]
+    [Route("api/helloworld")]
+    public string HelloWorld()
+    {
+      Console.WriteLine("Hello world called");
+      return "Hello world!";
+    }
+  }
+}
+</pre>
+<p>So now I have an explicitly defined route “api/singleblink” where I can post a Pulse object containing a heart rate to, as well as a simple “api/helloworld” method whose URL I can enter in a browser to see if the WebAPI is up and running at all. </p>
+<p>In the “PostBlink” method our Blinker’s HeartRate property is updated. And we come to the heart of the matter – pun intended – as far as the server is concerned. What is important to understand is that the Microsoft Band does not post an update per heartbeat. <em>It posts at a quite regular interval what your current heartbeat is</em>. So in order to let the LED blink at the rate of a heartbeat, we actually have to calculate how often the LED needs to flash. As a matter of fact – the LED does not show your actual heartbeat.<em> It just blinks at the same rate</em>. More or less.</p>
+<p>The basic setup of the Blinker is:</p><pre>using System;
+using System.Threading;
+using System.Threading.Tasks;
+using WiringPi;
+
+namespace WebBlinker
+{
+  public class Blinker
+  {
+    private DateTime lastReceivedUpdate = DateTime.MinValue;
+    private int heartRate;
+    private Task task;
+
+    private Blinker()
+    {
+      if (Init.WiringPiSetup() != -1)
+      {
+        GPIO.pinMode(BluePin, (int)GPIO.GPIOpinmode.Output);
+        GPIO.pinMode(GreenPin, (int)GPIO.GPIOpinmode.Output);
+        GPIO.pinMode(RedPin, (int)GPIO.GPIOpinmode.Output);
+        GPIO.pinMode(SoundPin, (int)GPIO.GPIOpinmode.Output);
+      }
+    }
+
+    public void Start()
+    {
+      if (task == null)
+      {
+        cancellationTokenSource = new CancellationTokenSource();
+        task = new Task(() =&gt; ShowHeartRateBlinking(cancellationTokenSource.Token), 
+           cancellationTokenSource.Token);
+        task.Start();
+      }
+    }
+
+    public void Stop()
+    {
+      if (cancellationTokenSource != null)
+      {
+        cancellationTokenSource.Cancel();
+        task = null;
+      }
+    }
+
+    private CancellationTokenSource cancellationTokenSource = null;
+
+
+    private static Blinker blinker;
+    public static Blinker GetBlinker()
+    {
+      return blinker ?? (blinker = new Blinker());
+    }
+
+    public const int RedPin = 27;
+    public const int GreenPin = 28;
+    public const int BluePin = 29;
+    public const int SoundPin = 0;
+  }
+}
+</pre>
+<p>On creation, it initializes the pins we are going to use for output (these are GPIO16, GPIO20 and GPIO21 for RGB, and GPIO17 for sound). See picture for connection details. To make things easier for myself, I actually selected a blue wire for the blue pin, a red for the red ping, and green for the green pin ;):<a href="http://www.schaikweb.net/dotnetbyexample/Displaying-Microsoft-band-heart-rate-via_1138D/WP_20150225_21_02_33_Pro__highres.jpg"><img title="WP_20150225_21_02_33_Pro__highres" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="WP_20150225_21_02_33_Pro__highres" src="http://www.schaikweb.net/dotnetbyexample/Displaying-Microsoft-band-heart-rate-via_1138D/WP_20150225_21_02_33_Pro__highres_thumb.jpg" width="644" height="364"></a></p><p>I am using a different API than before, for this one is – amongst other reasons reasons - a lot simpler to use and does not hinge on C threading. With a caveat I will come to a little later. Important to see is that’s a singleton – there’s only a private constructor and a static method GetBlinker() to create it. Normally you would not get away with this in a web environment, but as OWIN is not hosted in IIS, we actually can use statics here. Scalable? No. But who cares on a mini device like this. Usable? Yes!</p>
+<p>So the Startup class initializes and starts the Blinker. That fires of a cancellable task. The Blinker actually has some more code, amongst other the implementation of said task:</p><pre>private async Task ShowHeartRateBlinking(CancellationToken cancellationToken)
+{
+  while (!cancellationToken.IsCancellationRequested)
+  {
+    if (DateTime.Now - lastReceivedUpdate &lt; TimeSpan.FromSeconds(5))
+    {
+      DoBlink();
+      await Task.Delay(60000/HeartRate, cancellationToken);
+    }
+    else
+    {
+      await Task.Delay(10000, cancellationToken);
+    }
+  }
+}
+
+public int HeartRate
+{
+  get { return heartRate; }
+  set
+  {
+    if (value &gt;= 0 &amp;&amp; value &lt;= 200)
+    {
+      lastReceivedUpdate = DateTime.Now;
+      Console.WriteLine("Got updated: {0}", value);
+      heartRate = value;
+    }
+  }
+}
+
+private async Task DoBlink()
+{
+  var pin = GetPin();
+  GPIO.digitalWrite(pin, 1);
+  GPIO.digitalWrite(SoundPin, 1);
+  await Task.Delay(50);
+  GPIO.digitalWrite(pin, 0);
+  GPIO.digitalWrite(SoundPin, 0);
+}
+
+private int GetPin()
+{
+  if( HeartRate &lt; 80) return BluePin;
+  return HeartRate &lt; 130 ? GreenPin : RedPin;
+}
+</pre>
+<p>The ShowHeartRateBlinking actually is an endless loop, that runs while no cancellation is given (or until the OWIN server is simply killed). If the last update was less than 5 seconds ago, it will blink the LED and give a sound pulse, wait for 60000ms divided by the beats per minute – and goes into the next blink. If it does not get updates after 5 seconds, it goes into a 10-seconds polling mode. </p>
+<p>The HeartRate property is set by the BlinkController when new data from the Band is posted to the OWIN server’s endpoint, and it’s setter also keeps track of the last update time. The DoBlink method actually does the blinking and the activating of the buzzer (at pin 0). The GetPin method, by means of extra fun, determines what color the LED will flash based upon the posted heart rate: blue for below 80, green for below 130, and red for 130 and up.</p>
+<p>In <a href="https://github.com/LocalJoost/WebBlinker" target="_blank">the demo solution</a> there is actually a test project with a test method that posts a single update to the OWIN server. That should at least get you a “Got updated” line on the screen when you run the server. If you run the method multiple times, the LED should start to blink at 75bmp and the buzzer gives a ticking sound. </p>
+<h2>Adapting the WiringPi wrapper</h2>
+<p>I already warned about a caveat concerning the API I am using now. Unfortunately, if you compile and run the OWIN server in this stage on the Raspberry PI2, you will get an error. Apparently the WiringPi wrapper is a bit outdated or things have changed for the Raspberry PI2. In the WrapperClass.cs file there’s a class GPIO with on top the following part:</p><pre>public class GPIO
+{
+  [DllImport("libwiringPi.so", EntryPoint = "pinModeGpio")] 
+  public static extern void pinMode(int pin, int mode);
+
+  [DllImport("libwiringPi.so", EntryPoint = "digitalWriteGpio")]
+  public static extern void digitalWrite(int pin, int value);</pre>
+<p>Studying the original C code, I found that the entry points should be just “pinMode” and “digitalWrite”, not “pinModeGpio” and “digitalWriteGpio”. That was easily fixed:</p><pre>public class GPIO
+{
+  [DllImport("libwiringPi.so", EntryPoint = "pinMode")] 
+  public static extern void pinMode(int pin, int mode);
+
+  [DllImport("libwiringPi.so", EntryPoint = "digitalWrite")]
+  public static extern void digitalWrite(int pin, int value);</pre>
+<p>If you compile the OWIN server now, and copy the .EXE and all DLLs in the bin/debug directory to your Raspberry PI2, you should now be able to run the server (<strong><em>sudo</em></strong> mono WebBlinker.exe – since settings.BaseListenerUrl is set to “http://*:5001/” it listens to port 5001 on all hostnames assigned to your Raspberry PI, and this means you have to start the webserver as root). It should print “Server still alive…” every 60 seconds on the command line, as well as any heart beat postings coming by.</p>
+<h2>The Windows Phone app</h2>
+<p>I hope my Windows Phone friends will forgive me for skimping a little on this, because I really made quite a horrible and above all ugly app. I first installed the Microsoft ASP.NET WebAPI 2.2 Client libraries in it. Then I created this model to actually listen to the Band’s heart rate events and post them to the OWIN server:</p><pre>using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Net.Http;
+using Microsoft.Band;
+using Microsoft.Band.Sensors;
+using WebBlinker;
+
+namespace BlinkerPhone
+{
+  public class BlinkerModel
+  {
+    public async void SendSimulatedPulse(int value)
+    {
+      var pulse = new Pulse { HeartRate = value };
+      using (var client = new HttpClient())
+      {
+        await client.PostAsJsonAsync(new Uri(Settings.ServiceUrl), pulse);
+      }
+    }
+
+    private IBandClient bandClient;
+
+    public async void StartListening()
+    {
+      var pairedBands = await BandClientManager.Instance.GetBandsAsync();
+      if (pairedBands.Any())
+      {
+        var band = pairedBands.First();
+        bandClient = await BandClientManager.Instance.ConnectAsync(band);
+        var sensor = bandClient.SensorManager.HeartRate;
+        sensor.ReadingChanged += SensorReadingChanged;
+        await sensor.StartReadingsAsync();
+      }
+    }
+
+    public async void StopListening()
+    {
+      var sensor = bandClient.SensorManager.HeartRate;
+      sensor.ReadingChanged -= SensorReadingChanged;
+      await sensor.StopReadingsAsync();
+      bandClient.Dispose();
+    }
+
+    async void SensorReadingChanged(object sender, 
+      BandSensorReadingEventArgs&lt;IBandHeartRateReading&gt; e)
+    {
+      try
+      {
+        if (e.SensorReading != null)
+        {
+          var pulse = new Pulse { HeartRate = e.SensorReading.HeartRate };
+          using (var client = new HttpClient())
+          {
+            await client.PostAsJsonAsync(new Uri(Settings.ServiceUrl), pulse);
+            Debug.WriteLine("Sending update, pulserate = {0}", pulse.HeartRate);
+          }
+        }
+      }
+      catch (Exception ex)
+      {
+        Debug.WriteLine("Error reading/sending data: {0}", ex);
+      }
+    }
+  }
+}</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Displaying-Microsoft-band-heart-rate-via_1138D/wp_ss_20150225_0001.png"><img title="wp_ss_20150225_0001" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="wp_ss_20150225_0001" src="http://www.schaikweb.net/dotnetbyexample/Displaying-Microsoft-band-heart-rate-via_1138D/wp_ss_20150225_0001_thumb.png" width="139" align="right" height="244"></a>This is not exactly rocket science, and it’s mostly 1:1 nicked from the heart rate sensor sample in the <a href="http://developer.microsoftband.com/download/Microsoft%20Band%20SDK%20Preview%20WP.zip" target="_blank">Windows Phone Band SDK samples</a> anyway. If there’s a heart rate event coming in, a new Pulse object is created and posted to the Raspberry PI2’s OWIN Web API endpoint and the LED starts blinking in the right rate.</p>
+<p>To give the user the ability to start, stop and send test data I created this awesome UI with buttons to start and stop the phone sending band data to the OWIN server, as well as a button to send a simulated heart rate as typed in the textbox. Quite the pinnacle of minimalistic design I’d say, don’t you think? ;)</p>
+<h2>Conclusion</h2>
+<p>With a little imagination, out-of-the-box thinking and of course some kick *ss hardware and awesome SDKs it’s not that hard these days to let three devices dance together and make a single system – all C#, mostly Microsoft technology and mostly standard knowledge. The hardest part is now writing the C# code that runs on Mono, as it’s impossible to debug a running instance from Visual Studio. We are so spoiled by Visual Studio and the awesome tools it offers, it’s sometimes very hard to have to do without. Let’s hope Windows 10 for devices makes life as good for device developers as for all other Windows Platform developers.</p>
+<p>For those who missed the link in between – a complete solution can be <a href="https://github.com/LocalJoost/WebBlinker" target="_blank">downloaded here</a>.</p>  

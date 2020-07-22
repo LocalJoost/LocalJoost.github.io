@@ -1,0 +1,152 @@
+---
+layout: post
+title: Easy access to WMAppManifest.xml App properties like version and title
+date: '2011-03-05T12:26:00.001+01:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- XML
+- WP7
+modified_time: '2011-04-20T11:34:57.083+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5036057046843649258
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/03/easy-access-to-wmappmanifestxml-app.html
+---
+
+<p>Every <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> application must have an <a href="http://msdn.microsoft.com/en-us/library/ff769509(v=vs.92).aspx" target="_blank">Application Manifest file called WMAppManifest.xml</a>. In this you must state title, author, version and some other things. A quote from the link above:</p>  <p><em>“The primary purpose of this file is the following:</em></p>  <ul>   <li><em>The Windows Phone Marketplace application submission process uses information from the manifest file. The manifest file supports the submission of applications to the Windows Phone Marketplace (including certification), device marketplace filtering, marketplace-to-device deployment, and device execution.</em> </li>    <li><em>The information from the manifest file is used as the application metadata that will be stored in the application database.”</em> </li> </ul>  <p>For some reason it’s not common knowledge that information in this file can accessed runtime as well. This can come in very handy, for example for showing a consistent app title and even more important, it’s version number. There are some examples of this to be found on the web but they are not very clear or pretty limited, so I cobbled together this little helper class to make retrieving attributes from the App tag a little easier:</p>  <pre>using System.Collections.Generic;
+using System.Xml.Linq;
+
+namespace LocalJoost.Utilities
+{
+  /// &lt;summary&gt;
+  /// A helper class to easily retrieve data from the WMAppManifest.xml
+  /// App tag
+  /// &lt;/summary&gt;
+  public class ManifestAppInfo
+  {
+    public ManifestAppInfo()
+    {
+    }
+
+    static Dictionary&lt;string, string&gt; _properties;
+
+    static Dictionary&lt;string, string&gt; Properties
+    {
+      get
+      {
+        if (null == _properties)
+        {
+          _properties = new Dictionary&lt;string, string&gt;();
+          var appManifestXml = XDocument.Load(&quot;WMAppManifest.xml&quot;);
+          using (var rdr = appManifestXml.CreateReader(ReaderOptions.None))
+          {
+            rdr.ReadToDescendant(&quot;App&quot;);
+            if (!rdr.IsStartElement())
+            {
+              throw new System.FormatException(
+                 &quot;App tag not found in WMAppManifest.xml &quot;);
+            }
+            rdr.MoveToFirstAttribute();
+            while (rdr.MoveToNextAttribute())
+            {
+              _properties.Add(rdr.Name, rdr.Value);
+            }
+          }
+        }
+        return _properties;
+      }
+    }
+
+    public string Version
+    {
+      get { return Properties[&quot;Version&quot;]; }
+    }
+
+    public string ProductId
+    {
+      get { return Properties[&quot;ProductID&quot;]; }
+    }
+
+    public string Title
+    {
+      get { return Properties[&quot;Title&quot;]; }
+    }
+
+    public string TitleUc
+    {
+      get { return !string.IsNullOrEmpty(Title) ? 
+                     Title.ToUpperInvariant() : null; }
+    }
+
+    public string Genre
+    {
+      get { return Properties[&quot;Genre&quot;]; }
+    }
+
+    public string Description
+    {
+      get { return Properties[&quot;Description&quot;]; }
+    }
+
+    public string Publisher
+    {
+      get { return Properties[&quot;Publisher&quot;]; }
+    }
+  }
+}</pre>
+
+<p>I got some feedback from <a href="http://twitter.com/#!/mahoekst" target="_blank">Matthijs Hoekstra</a>&#160; on the <a href="http://dotnetbyexample.blogspot.com/2011/01/standard-about-page-for-windows-phone-7.html" target="_blank">Standard About Page</a> that it actually showed<em> the version number of the dll in which the AboutViewModel is stored</em>, and not that of the app. This is because Assembly.GetExecutingAssembly() is used. There is also Assembly.GetCallingAssembly() but that shows the version of System.Windows.dll. What we <em>need</em> is Assembly.GetEntryAssembly() but that’s not available in the current version of the Windows Phone 7 framework. But we can now adapt the first part of the AboutViewModel as follows:</p>
+
+<pre>public class AboutViewModelBase : ViewModelBase
+{
+  private ManifestAppInfo _manifestAppInfo;
+  public void LoadValuesFromResource&lt;T&gt;()
+  {
+    _manifestAppInfo = new ManifestAppInfo();
+    var targetType = GetType();
+    var sourceType = typeof(T);
+    foreach (var targetProperty in targetType.GetProperties())
+    {
+      var sourceProperty = sourceType.GetProperty(targetProperty.Name, 
+	     BindingFlags.Static | BindingFlags.Public);
+      if (sourceProperty != null)
+      {
+        if (targetProperty.CanWrite)
+        {
+          targetProperty.SetValue(this, 
+		    sourceProperty.GetValue(null, null), null);
+        }
+      }
+    }
+  }
+  /// &lt;Summary&gt;A string value for the AppTitle&lt;/Summary&gt;
+  public string AppTitle
+  {
+    get
+    {
+      if (DesignerProperties.IsInDesignTool)
+      {
+        return &quot;APPLICATION TITLE&quot;;
+      }
+      return _manifestAppInfo.Title;
+      
+    }
+  }
+  
+  public string ApplicationVersion
+  {
+    get
+    {
+      if (DesignerProperties.IsInDesignTool)
+        return &quot;version x.x.x&quot;;
+
+      var version = _manifestAppInfo.Version;
+      return version.Substring(0, version.LastIndexOf(&quot;.&quot;));
+    }
+  }
+}</pre>
+
+<p>And have the ViewModel show the version from the Application Manifest file regardless of actual assembly versions - as well as the title. You can even binding directly to its properties.</p>
+
+<p>Now you might not want to use all of its properties directly in text – if your App Title shows up differently in different languages you still might want to get that from a resource file. That is why the LoadValuesFromResource method now checks if a property is writable. If you omit that check, it will try to write to every property for which a key with the same name can be found in the resource file – and if that’s now read-only, it will crash. </p>  

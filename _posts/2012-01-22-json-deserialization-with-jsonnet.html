@@ -1,0 +1,119 @@
+---
+layout: post
+title: 'JSON deserialization with JSON.net: basics'
+date: '2012-01-22T20:35:00.001+01:00'
+author: Joost van Schaik
+tags:
+- wpdev
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- JSON
+- WP7
+modified_time: '2012-11-22T21:05:02.886+01:00'
+thumbnail: http://lh6.ggpht.com/-B614r5ue5rM/TxxlBC2NHHI/AAAAAAAAHEQ/Hwahqj_hsYM/s72-c/Json2Csharp_thumb%25255B1%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6921523340631367310
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/01/json-deserialization-with-jsonnet.html
+---
+
+<p>I’ve been contemplating an article about handling JSON for some time now, but it turned out to be a rather long article. So I’d thought to try something new, and write a short series in three parts. </p> <ul> <li>Part 1 handles the basics  <li><a href="http://dotnetbyexample.blogspot.com/2012/02/json-deserialization-with-jsonnet-class.html" target="_blank">Part 2</a> handles advanced deserialization with class hierarchies  <li><a href="http://dotnetbyexample.blogspot.nl/2012/05/json-deserialization-with-jsonnet.html" target="_blank">Part 3</a> handles a caching-and-updating scenarios.</li></ul> <p>And this is part 1 ;-)</p> <p>This whole article actually boils down to <em>one line of code</em>, but I need to go trough some hooplah to show you how to use it. It all begins with the data. Consider this piece of quite readable JSON, describing a few recent <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> models. </p><pre>[
+  {
+    "Brand": "Nokia","Type" : "Lumia 800",
+    "Specs":{"Storage" : "16GB", "Memory": "512MB","Screensize" : "3.7"}
+  },
+  {
+    "Brand": "Nokia", "Type" : "Lumia 710",
+    "Specs":{"Storage" : "8GB","Memory": "512MB","Screensize" : "3.7"}
+  },  
+  { "Brand": "Nokia","Type" : "Lumia 900",
+    "Specs":{"Storage" : "8GB", "Memory": "512MB","Screensize" : "4.3" }
+  },
+  { "Brand": "HTC ","Type" : "Titan II",
+    "Specs":{"Storage" : "16GB", "Memory": "512MB","Screensize" : "4.7" }
+  },
+  { "Brand": "HTC ","Type" : "Radar",
+    "Specs":{"Storage" : "8GB", "Memory": "512MB","Screensize" : "3.8" }
+  }
+]</pre>
+<p>JSON is rather compact, which is a great feature when you are developing for mobile devices. It has also a few downsides as far as client programming is concerned: </p>
+<ul>
+<li>generating client code for it that does all the parsing and calling, as for SOAP, is not a standard feature of Visual Studio, 
+<li>it’s almost impossible to read for an ordinary human being, 
+<li>deciphering it into classes is a lot of work, 
+<li>hand coding a parser for it is not fun. </li></ul>
+<p>Which is why you don’t. There are several ways of generating classes from JSON, the simplest way is this website: <a href="http://json2csharp.com/" target="_blank">json2csharp by Jonathan Keith</a>. You copy a JSON result into the upper textbox, hit the “Generate” button and out come your classes:<a href="http://lh4.ggpht.com/-xMRvNkMvoHw/TxxlACmjF8I/AAAAAAAAHEI/dwzKe78iBdY/s1600-h/Json2Csharp%25255B3%25255D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="Json2Csharp" border="0" alt="Json2Csharp" src="http://lh6.ggpht.com/-B614r5ue5rM/TxxlBC2NHHI/AAAAAAAAHEQ/Hwahqj_hsYM/Json2Csharp_thumb%25255B1%25255D.png?imgmax=800" width="617" height="591"></a></p>
+<p>There are more sites that do the same, by the way, but this is what I use. Next steps:</p>
+<ul>
+<li>Fire up Visual Studio 
+<li>Create a new Windows Phone project (for instance JsonDemo) 
+<li>Plonk the classes generated above in the project. Bonus cookies if you split them in separate files and add namespaces to them. Bonus donut if you, like me, think “RootObject” is actually a pretty ugly name for an object - <b>so change it to "<i>Phone</i>"</b>. 
+<li>Click Tools/Library Package Manager/Manage NuGet Packages for Solution (you <em>do</em> have the NuGet Package Manager installed, don’t you? If not, stop whatever you are doing now and get it <em><a href="http://visualstudiogallery.msdn.microsoft.com/27077b70-9dad-4c64-adcf-c7cf6bc9970c?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">right this instance</a></em>, you hear me ;)? ) 
+<li>Search for JSON.Net 
+<li>Click install. This will add a reference to NewtonSoft.Json.dll to your product. 
+<li>Add references to Microsoft.Phone.Reactive and System.Observable because they are going to be needed in the next step.</li></ul>
+<p>To make the result visible, add some XAML to the default content panel in Mainpage.Xaml – just a button and a templated ListBox, no rocket science here:</p><pre>&lt;StackPanel&gt;
+  &lt;Button Name="Load"
+      VerticalAlignment="Top"
+      Content="Load phones" Click="Load_Click" /&gt;
+  &lt;ListBox x:Name="PhoneList" Height="532"&gt;
+    &lt;ListBox.ItemTemplate&gt;
+      &lt;DataTemplate&gt;
+        &lt;StackPanel Orientation="Horizontal"&gt;
+          &lt;TextBlock Text="{Binding Brand}" 
+                 Margin="0,0,12,0" /&gt;
+          &lt;TextBlock Text="{Binding Type}"/&gt;
+        &lt;/StackPanel&gt;
+      &lt;/DataTemplate&gt;
+    &lt;/ListBox.ItemTemplate&gt;
+  &lt;/ListBox&gt;
+&lt;/StackPanel&gt;</pre>
+<p>Finally, open MainPage.Xaml.cs and add the method Load_Click as displayed below. </p><pre>using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Windows;
+using Microsoft.Phone.Controls;
+using Microsoft.Phone.Reactive;
+using Newtonsoft.Json;
+
+namespace JsonDemo
+{
+  public partial class MainPage : PhoneApplicationPage
+  {
+    // Constructor
+    public MainPage()
+    {
+      InitializeComponent();
+    }
+
+    private void Load_Click(object sender, RoutedEventArgs e)
+    {
+      var w = new WebClient();
+      Observable
+        .FromEvent&lt;DownloadStringCompletedEventArgs&gt;(w, "DownloadStringCompleted")
+        .Subscribe(r =&gt;
+        {
+          <font color="#ff0000"><strong>var deserialized = 
+            JsonConvert.DeserializeObject&lt;List&lt;Phone&gt;&gt;(r.EventArgs.Result);</strong></font>
+          PhoneList.ItemsSource = deserialized;
+        });
+      w.DownloadStringAsync(
+        new Uri("http://www.schaikweb.net/dotnetbyexample/JSONPhones1.txt"));
+    }
+  }
+}
+
+</pre>
+<p><a href="http://lh4.ggpht.com/-YWUjM24StU4/TxxlBkdV2CI/AAAAAAAAHEU/7SJI7Bg1T3Q/s1600-h/JsonSerializer%25255B3%25255D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="JsonSerializer" border="0" alt="JsonSerializer" align="right" src="http://lh6.ggpht.com/-_WHR6AzqZLM/TxxlCC1xDqI/AAAAAAAAHEg/2PXWjQSpbPM/JsonSerializer_thumb%25255B1%25255D.png?imgmax=800" width="141" height="265"></a>And there it is, the one line of code that this is all about. Call the DeserializeObject method, template it with the return type you want, and stuff the JSON string in it. Result: a list of objects with their properties filled, even if there are things like nested objects (specs in these case) and arrays in there.</p>
+<p>If you run <a href="http://www.schaikweb.net/dotnetbyexample/JSONDemo1.zip" target="_blank">the demo solution</a> you get the result displayed in the image on the right. Keep in mind this code is by no means Windows Phone specific. There are JSON.Net implementations for virtually all frameworks available. So should you feel the need to use this from Silverlight or full .NET: it’s there.</p>
+<p><b>You should, by the way, pay attention to the structure of the JSON</b>. The code I show works for a <i>list</i>. A list in JSON starts with a square bracket: <b>[</b>. If your JSON starts with a <i>curly brace: </i><b>{</b> then you get returned a <i>single object</i> - a so called root object. In that case, your deserialization should code return a single object in stead of a list as well, i.e. something like</p>
+<pre>var deserialized = 
+     JsonConvert.DeserializeObject&lt;Phone&gt;(r.EventArgs.Result);</pre>
+<p><em><strong>Finally, a ninja tip:</strong> </em></p>
+<ul>
+<li>Click Tools/Library Package Manager/Manage NuGet Packages for Solution&nbsp; again</li>
+<li>Search for <a href="http://nuget.org/packages/SharpGIS.GZipWebClient" target="_blank">SharpGIS.GZipWebClient</a></li>
+<li>Click install</li>
+<li>Change “WebClient” in the Load_Click method to <strong>SharpGIS.GZipWebClient</strong></li></ul>
+<p>This plug-in replacement for WebClient by <a href="http://twitter.com/dotmorten" target="_blank">Morten Nielsen</a> adds support for GZIP compressed web requests – this reduces network traffic even further, apparently boosting load performance significantly. You won’t really notice the difference on such a small data files as used in this sample, but as your JSON return values get larger, so will be the impact of using this library.</p>
+<p>For the record: I am not ill nor do I have forsaken MVVM, but I tried to make the example as simple as possible so yes, I used a little code behind, as to not to cloud the solution in architectural frills. ;-)</p>
+<p>Thanks to <a href="http://blogs.microsoft.nl/blogs/mhoekstra/default.aspx" target="_blank">Matthijs Hoekstra</a> for putting me on track to this, and to fellow #wp7nl developer <a href="https://twitter.com/#!/leonzandman" target="_blank">Leon Zandman</a> for correcting some annoying typos.</p>

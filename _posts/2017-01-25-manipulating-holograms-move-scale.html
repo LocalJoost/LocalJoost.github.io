@@ -1,0 +1,388 @@
+---
+layout: post
+title: Manipulating Holograms (move, scale, rotate) by gestures
+date: '2017-01-25T12:15:00.000+01:00'
+author: Joost van Schaik
+tags:
+- UWP
+- HoloLens
+- Unity3D
+modified_time: '2017-02-22T13:51:22.634+01:00'
+thumbnail: https://i.ytimg.com/vi/XCHK1T3AHVs/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2876854214767719033
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2017/01/manipulating-holograms-move-scale.html
+---
+
+<h2>
+Intro</h2>
+This tutorial will show you how to manipulate (move, rotate and scale) Holograms by using gestures. It uses speech commands to change between moving, rotating and scaling. It will build upon <a href="http://dotnetbyexample.blogspot.com/2017/01/dragging-holograms-with-gaze-and.html" target="_blank">my previous blog post</a>, re-using the collision detection. The app we are going to create will work like this (turn on sound to hear the voice commands):<br />
+<iframe allowfullscreen="" frameborder="0" height="365" src="https://www.youtube.com/embed/XCHK1T3AHVs" width="650"></iframe> <br />
+<h2>
+Setting the stage</h2>
+Once again, we start off with a rather standard setup… <br />
+<a href="https://lh3.googleusercontent.com/-9qtGVqs1ezg/WH9OH5-ab-I/AAAAAAAAOlc/22nbd0NjGks/s1600-h/clip_image001%25255B4%25255D%25255B2%25255D.png"><img alt="clip_image001[4]" border="0" height="220" src="https://lh3.googleusercontent.com/-Dv1So8wsUwQ/WH9OIecOM9I/AAAAAAAAOlg/6VgMrLNM5JQ/clip_image001%25255B4%25255D_thumb.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="clip_image001[4]" width="215" /></a>  <br />
+only now we have a cube and a sphere. Neither of their settings are particularly spectacular, and this will show the sphere initially a bit to the left, and a rectangular box a bit to the right  <br />
+<a href="https://lh3.googleusercontent.com/-WXo0ASYt2bg/WH9OIyvKHXI/AAAAAAAAOlk/f28FcLfDRwI/s1600-h/clip_image002%25255B9%25255D%25255B16%25255D.png"><img align="left" alt="clip_image002[9]" border="0" height="107" src="https://lh3.googleusercontent.com/-fb5xsd0l0-Q/WH9OJVhr6MI/AAAAAAAAOlo/MlUIRoZ27W0/clip_image002%25255B9%25255D_thumb%25255B14%25255D.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: left; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="clip_image002[9]" width="329" /></a><a href="https://lh3.googleusercontent.com/-rvyP2Gztt34/WH9OJ92vidI/AAAAAAAAOls/H98csOnUzH4/s1600-h/clip_image003%25255B4%25255D%25255B10%25255D.png"><img align="right" alt="clip_image003[4]" border="0" height="107" src="https://lh3.googleusercontent.com/-KjtsbjBqZ2k/WH9OKnURlGI/AAAAAAAAOlw/8be0tGhJWgM/clip_image003%25255B4%25255D_thumb%25255B8%25255D.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: right; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="clip_image003[4]" width="329" /></a>  <br />
+&nbsp; <br />
+&nbsp; <br />
+&nbsp; <br />
+&nbsp; <br />
+If we actually want this Holograms to do something we need to code some stuff:  <br />
+<ul>
+<li>A behaviour to select and activate Holograms – TapToSelect  </li>
+<li>A behaviour that acts on speech commands, so the next behaviour knows what to do – this is SpeechCommandExecuter  </li>
+<li>A behaviour that responds to tap-hold-and-move gesture and does the actual moving, rotating and scaling – this is SpatialManipulator  </li>
+<li>Something to wire the whole thing together, a kind of app state manager – AppStateManager and its base class, very originally called BaseAppStateManager.</li>
+</ul>
+<h2>
+Selecting a hologram</h2>
+The fun thing with the new <a href="https://github.com/Microsoft/HoloToolkit-Unity" target="_blank">HoloToolkit</a> is that we don’t need do much anymore to listen or track hand movements and speech. It’s all done by the InputManager. We only need to implement the right interfaces to be called with whatever we want to know. So when we want an object to receive a tap, we only need to add a behaviour that implements IInputClickHandler:<br />
+<pre style="font-size: 12px;">public class TapToSelect : MonoBehaviour, IInputClickHandler
+{
+    public virtual void OnInputClicked(InputEventData eventData)
+    {
+        if (BaseAppStateManager.IsInitialized)
+        {
+            // If not already selected - select, otherwise, deselect
+            if (BaseAppStateManager.Instance.SelectedGameObject != gameObject)
+            {
+                BaseAppStateManager.Instance.SelectedGameObject = gameObject;
+            }
+            else
+            {
+                BaseAppStateManager.Instance.SelectedGameObject = null;
+            }
+            var audioSource = GetAudioSource(gameObject);
+            if (audioSource != null)
+            {
+                audioSource.Play();
+            }
+        }
+        else
+        {
+            Debug.Log("No BaseAppStateManager found or initialized");
+        }
+    }
+}</pre>
+This basically just gives the object to the App State Manager – or more it’s base class, later more about it, and optionally plays a sound – if the omitted GetAudioSource method can find and AudioSource in either the object or its parent. In the app it does, it plays a by now very recognizable ‘ping’ confirmation sound. <br />
+<h2>
+Speech command the new way – listen to me, just hear me out*</h2>
+Using speech commands has very much changed with the new HoloToolkit. There are actually two ways to go about it: 
+<br />
+<ul>
+<li>Using a SpeechInputSource and implementing an ISpeechHandler ‘somewhere’. This is rather straightforward and is very much and analogy of how the IInputClickHandler works. Disadvantage is that you have to define your keywords twice – both in the SpeechInputSource and in the ISpeechHandler implementation 
+</li>
+<li>Using a KeywordManager to define your keywords and map them to some object’s method(s).</li>
+</ul>
+This sample uses the latter method. It’s a bit of an odd workflow to get it working, but once that’s clear, it’s rather elegant. It’s also more testable, as the <em>interpretation</em> of keywords is separated from the <em>execution</em>. We are implementing that execution in the SpeechCommandExecuter. Its public methods are Move, Rotate, Scale, Done, Faster and Slower which pretty much maps to the available speech commands. And if you look in the code, you will see what it does internally is just call private methods, which in turn try to find the selected objects’ SpatialManipulator and call methods there.<br />
+<pre style="font-size: 12px;">private void TryChangeMode(ManipulationMode mode)
+{
+    var manipulator = GetSpatialManipulator();
+    if (manipulator == null)
+    {
+        return;
+    }
+
+    if (manipulator.Mode != mode)
+    {
+        manipulator.Mode = mode;
+        TryPlaySound();
+    }
+}
+
+private void TryChangeSpeed(bool faster)
+{
+    var manipulator = GetSpatialManipulator();
+    if (manipulator == null)
+    {
+        return;
+    }
+
+    if (manipulator.Mode == ManipulationMode.None)
+    {
+        return;
+    }
+
+    if (faster)
+    {
+        manipulator.Faster();
+    }
+    else
+    {
+        manipulator.Slower();
+
+    }
+    TryPlaySound();
+}
+
+private SpatialManipulator GetSpatialManipulator()
+{
+    var lastSelectedObject = AppStateManager.Instance.SelectedGameObject;
+    if (lastSelectedObject == null)
+    {
+        Debug.Log("No selected element found");
+        return null;
+    }
+    var manipulator = lastSelectedObject.GetComponent&lt;SpatialManipulator&gt;();
+    if (manipulator == null)
+    {
+        manipulator = lastSelectedObject.GetComponentInChildren&lt;SpatialManipulator&gt;();
+    }
+
+    if (manipulator == null)
+    {
+        Debug.Log("No manipulator component found");
+    }
+    return manipulator;
+}</pre>
+So why this odd arrangement? That’s because KeywordManager needs an object with parameterless methods to call on keyword recognition. So, we add this SpeechCommandExecuter and a KeywordManager (from the HoloToolkit) to the Managers object, and then we are going to make this work. The easiest way to get going is 
+<br />
+<ul>
+<li>Expand “Keywords and Responses”, 
+</li>
+<li>Change “size” initially in one. 
+</li>
+<li>Type “move object” into keyword, 
+</li>
+<li>Click + under “Response” 
+</li>
+<li>Drag the “Managers” object in the now visible “None” field. This is best explained by an image:</li>
+</ul>
+<a href="https://lh3.googleusercontent.com/-S073nKoJ27c/WH9OLBqEbNI/AAAAAAAAOl0/EnvPB_0kPiI/s1600-h/clip_image002%25255B11%25255D%25255B4%25255D.png"><img alt="clip_image002[11]" border="0" height="486" src="https://lh3.googleusercontent.com/-v0ZKEohEWJA/WH9OLhzVL1I/AAAAAAAAOl4/fKtDXEM4B_I/clip_image002%25255B11%25255D_thumb%25255B2%25255D.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="clip_image002[11]" width="604" /></a><br />
+And then you have to select to what method of which object you want to map this speech command. To do this, click the dropdown menu next to “Runtime Only”, that will initially say “no function”. From the drop down first select the object you want (SpeechCommandExecuter) and then the method you want (Move). 
+<br />
+<a href="https://lh3.googleusercontent.com/-VeJgXVA1BRU/WH9OMoxYFsI/AAAAAAAAOl8/P8L4cFNEV4U/s1600-h/clip_image004%25255B6%25255D.png"><img alt="clip_image004" border="0" height="362" src="https://lh3.googleusercontent.com/-flOvPmsJDQU/WH9ONeOxBrI/AAAAAAAAOmA/3bQgc5xKusE/clip_image004_thumb%25255B3%25255D.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="clip_image004" width="304" /></a> 
+<br />
+Unfortunately, all objects in the game object are displayed, as are all public methods and properties from every object you select – plus those of its parent classes. You sometimes really have to hunt them down. It’s a bit confusing at first, but once you have done it a couple of time you will get the hang of it. It might feel as an odd way of programming if you are used to the formal declarative approach of things in XAML, but that’s the way it is. 
+<br />
+Then change the size to 6 and add all the other keyword/method combinations. By using this method you only have to drag the Managers object once, as the Unity editor will copy all values of the first entry to the new ones.<br />
+<h2>
+Spatial Manipulation</h2>
+This is the behaviour that does most of the work. And it’s surprisingly simple. The most important (new) part is like this: <br />
+<pre style="font-size: 12px;">using UnityEngine;
+using HoloToolkit.Unity.InputModule;
+
+namespace LocalJoost.HoloToolkitExtensions
+{
+    public class SpatialManipulator : MonoBehaviour
+    {
+        public float MoveSpeed = 0.1f;
+
+        public float RotateSpeed = 6f;
+
+        public float ScaleSpeed = 0.2f;
+
+        public ManipulationMode Mode { get; set; }
+
+
+        public void Manipulate(Vector3 manipulationData)
+        {
+            switch (Mode)
+            {
+                case ManipulationMode.Move:
+                    Move(manipulationData);
+                    break;
+                case ManipulationMode.Rotate:
+                    Rotate(manipulationData);
+                    break;
+                case ManipulationMode.Scale:
+                    Scale(manipulationData);
+                    break;
+            }
+        }
+
+        void Move(Vector3 manipulationData)
+        {
+            var delta = manipulationData * MoveSpeed;
+            if (CollisonDetector.CheckIfCanMoveBy(delta))
+            {
+                transform.localPosition += delta;
+            }
+        }
+
+        void Rotate(Vector3 manipulationData)
+        {
+            transform.RotateAround(transform.position, Camera.main.transform.up, 
+                -manipulationData.x * RotateSpeed);
+            transform.RotateAround(transform.position, Camera.main.transform.forward, 
+                manipulationData.y * RotateSpeed);
+            transform.RotateAround(transform.position, Camera.main.transform.right, 
+                manipulationData.z * RotateSpeed);
+        }
+
+        void Scale(Vector3 manipulationData)
+        {
+            transform.localScale *= 1.0f - (manipulationData.z * ScaleSpeed);
+        }
+    }
+}</pre>
+The manipulation mode can be either Move, Rotate, Scale – or None, in which case this behaviour does nothing at all. So, when ‘something’ supplies a Vector3 to the Manipulate method, it will either move, rotate or scale the object. 
+<br />
+<ul>
+<li>In move mode, when you move your hand, the object will follow the direction. So, if you pull towards you, it will come toward you. Move up, it will move up. Elementary. 
+</li>
+<li>Scale is even more simple. Pull toward you, the object will grow, push from you, it will shrink. 
+</li>
+<li>Rotate is a bit tricky. Push from you, the object will rotate around the horizontal axis. That is, an axis running through your view from left to right. Effectively, the top of the object will be moving <i>from</i> you and the bottom <i>to </i>you. Move your hand from left to right, or right to left, and the object will rotate around and axis that is running from top to bottom of your view. Last and most tricky – and least intuitive: move your hand from top to bottom and the object will rotate clockwise over the z axis – that is, the axis ‘coming out of your eyes’ </li>
+</ul>
+There are two more methods – Faster and Slower, which are called via the SpeechManager as you have seen, and their function is not very spectacular: they either multiply the speed value of the currently active manipulation mode by two, or divide it by two. So by saying “go faster” you will make the actual speed at which your Hologram moves, rotates or scales go twice as fast, depending on what you are doing. “Go slower” does the exact opposite.<br />
+<pre style="font-size: 12px;">using UnityEngine;
+using HoloToolkit.Unity.InputModule;
+
+namespace LocalJoost.HoloToolkitExtensions
+{
+    public class SpatialManipulator : MonoBehaviour
+    {
+        public float MoveSpeed = 0.1f;
+
+        public float RotateSpeed = 6f;
+
+        public float ScaleSpeed = 0.2f;
+
+        public ManipulationMode Mode { get; set; }
+
+
+        public void Manipulate(Vector3 manipulationData)
+        {
+            switch (Mode)
+            {
+                case ManipulationMode.Move:
+                    Move(manipulationData);
+                    break;
+                case ManipulationMode.Rotate:
+                    Rotate(manipulationData);
+                    break;
+                case ManipulationMode.Scale:
+                    Scale(manipulationData);
+                    break;
+            }
+        }
+
+        void Move(Vector3 manipulationData)
+        {
+            var delta = manipulationData * MoveSpeed;
+            if (CollisonDetector.CheckIfCanMoveBy(delta))
+            {
+                transform.localPosition += delta;
+            }
+        }
+
+        void Rotate(Vector3 manipulationData)
+        {
+            transform.RotateAround(transform.position, Camera.main.transform.up, 
+                -manipulationData.x * RotateSpeed);
+            transform.RotateAround(transform.position, Camera.main.transform.forward, 
+                manipulationData.y * RotateSpeed);
+            transform.RotateAround(transform.position, Camera.main.transform.right, 
+                manipulationData.z * RotateSpeed);
+        }
+
+        void Scale(Vector3 manipulationData)
+        {
+            transform.localScale *= 1.0f - (manipulationData.z * ScaleSpeed);
+        }
+    }
+}</pre>
+It’s not quite rocket science as you can see. Notice the re-use of the collision detector <a href="http://dotnetbyexample.blogspot.com/2017/01/dragging-holograms-with-gaze-and.html" target="_blank">I introduced in my previous blog post</a>. <br />
+<h2>
+App state – the missing piece</h2>
+The only thing missing now is how it’s all stitched together. That’s actually done using two classes – a BaseStateManager and a descendant, AppStateManager 
+<br />
+The BaseStateManager doesn’t do much special. Its main feats are having a property for a selected object and notifying the rest of the world of getting one. And that’s not even used in this sample app but I consider it useful for other purposes, so I left it in. It also calls a virtual method if the selected object is changed.<br />
+<pre style="font-size: 12px;">using System;
+using HoloToolkit.Unity;
+using UnityEngine;
+
+namespace LocalJoost.HoloToolkitExtensions
+{
+    public class BaseAppStateManager : Singleton&lt;BaseAppStateManager&gt;
+    {
+        private GameObject _selectedGameObject;
+
+        public GameObject SelectedGameObject
+        {
+            get { return _selectedGameObject; }
+            set
+            {
+                if (_selectedGameObject != value)
+                {
+                    ResetDeselectedObject(_selectedGameObject);
+                    _selectedGameObject = value;
+                    if (SelectedObjectChanged != null)
+                    {
+                        SelectedObjectChanged(this, 
+                        new GameObjectEventArgs(_selectedGameObject));
+                    }
+                }
+            }
+        }
+
+        protected virtual void ResetDeselectedObject(GameObject oldGameObject)
+        {
+        }
+
+        public event EventHandler&lt;GameObjectEventArgs&gt; SelectedObjectChanged;
+    }
+}</pre>
+There is also a class GameObjectEventArgs but that’s too trivial to show here. Note, by the way, I stick to C# 4.0 concepts as this is what Unity currently is limited to.<br />
+The actual AppStateManager glues the whole thing together:<br />
+<pre style="font-size: 12px;">public class AppStateManager : BaseAppStateManager, IManipulationHandler
+{
+    void Start()
+    {
+        InputManager.Instance.AddGlobalListener(gameObject);
+    }
+
+    public static new AppStateManager Instance
+    {
+        get { return (AppStateManager)BaseAppStateManager.Instance; }
+    }
+
+    protected override void ResetDeselectedObject(GameObject oldGameObject)
+    {
+        var manipulator = GetManipulator(oldGameObject);
+        if (manipulator != null)
+        {
+            manipulator.Mode = ManipulationMode.None;
+        }
+    }
+
+    public void OnManipulationUpdated(ManipulationEventData eventData)
+    {
+        if (SelectedGameObject != null)
+        {
+            var manipulator = GetManipulator(SelectedGameObject);
+            if (manipulator != null)
+            {
+                manipulator.Manipulate(eventData.CumulativeDelta);
+            }
+        }
+    }
+
+    protected SpatialManipulator GetManipulator(GameObject obj)
+    {
+        if (obj == null)
+        {
+            return null;
+        }
+        var manipulator = obj.GetComponent&lt;SpatialManipulator&gt;() ??
+            obj.GetComponentInChildren&lt;SpatialManipulator&gt;();
+        return manipulator;
+    }
+}</pre>
+It implements the IManipulationHandler, which means our almighty IManipulationHandler will call it’s OnManipulationUpdated whenever it detects hand with a tap-and-hold gesture (thumb and index finger pressed together) while moving. And it will give that data to the SpatialManipulator in the select object, that is – if the selected object <i>has</i> one. It also makes sure the currently active object gets deactivated once you select a new one. Note, IManipulationHandler requires you to implement three more methods, omitted here, as they are not used in this app. 
+<br />
+There is an important line in the Start method, that will define this object as a <em>global input handler</em>. Its OnManipulationUpdated always gets called. Normally, this get only called when it is selected – that is, if your gaze strikes the object. That makes it very hard to move it, as your gaze most likely will most likely fall <em>off</em> the object as you move it. This approach has the advantage you can even manipulate objects even if you are not exactly looking at them. 
+<br />
+<h2>
+Wiring it all together in Unity </h2>
+<a href="https://lh3.googleusercontent.com/-Bblu2wB25ew/WH9sRGGSknI/AAAAAAAAOmc/Wx4YIQZBYbA/s1600-h/image3%25255B1%25255D.png"><img align="right" alt="image" border="0" height="328" src="https://lh3.googleusercontent.com/-DewL4r04cPc/WH9sRifqnsI/AAAAAAAAOmg/k8C2uPEl6Nc/image3_thumb.png?imgmax=800" style="background-image: none; border-bottom: 0px; border-left: 0px; border-right: 0px; border-top: 0px; display: inline; float: right; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="image" width="349" /></a>This is actually really simple now we have all the components. Just go to the Cube in your hierarchy and add these three components:<br />
+<br />
+And don’t forget to drag the InputManager and the Cube itself on the Stabilizer and the Collision Detector fields as I explained in my previous blog post. Repeat for the Sphere object. Build your app, and you should get the result I show in the video.<br />
+<h2>
+Concluding remarks</h2>
+It’s fairly easy to wire together something to move stuff around using gestures. There are a few limitations as to the intuitiveness of the rotation gesture, and you might also notice that while moving the object around uses collision detection, rotating and scaling do not. I leave those as ‘exercise to the reader’ ;). But I do hope this takes you forward as a HoloLens developer.<br />
+Full code <a href="https://github.com/LocalJoost/HoloManipulateByGesture" target="_blank">can be found here</a><br />
+<br />
+<br />
+<span style="font-size: xx-small;">*bonus points if you actually immediately recognized this phrase</span>

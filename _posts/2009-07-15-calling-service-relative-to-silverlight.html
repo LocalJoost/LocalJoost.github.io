@@ -1,0 +1,45 @@
+---
+layout: post
+title: Calling a service relative to the Silverlight XAP
+date: '2009-07-15T21:37:00.011+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- Service
+- Silverlight
+- WCF
+- Web Services
+modified_time: '2010-04-06T11:17:29.883+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4718513438767461884
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/07/calling-service-relative-to-silverlight.html
+---
+
+<span style="color:red">This post is deprecated and left here for link reference only. See <a href="http://dotnetbyexample.blogspot.com/2009/07/calling-service-relative-to-silverlight_18.html">this post </a> or a better way to do this.</span>
+
+A small tidbit that I developed when I was following a training by <a href="http://bloggingabout.net/blogs/dennis/">Dennis van der Stelt</a> of <a href="http://www.class-a.nl">Class-A</a>. One of the assigments was to consume a service and display data. The lab contained a string with a hard coded path. I thought of the following, IMHO much cleaner solution. I also discovered that WCF services are defined in a ServiceReferences.ClientConfig that contains a full path to the service. That is not nice on deployment time. This may have been caused by the fact I hosted the Silverlight App in an Azure project, I am not sure yet.
+
+But anyhow, I made an extension method to the <em>Silverlight</em> System.Windows.Controls.Control like this<pre>using System;
+using System.ServiceModel;
+using System.Windows;
+using System.Windows.Controls;
+
+namespace LocalJoost.Utilities.Silverlight
+{
+  public static class UserControlExtensions
+  {
+    public static EndpointAddress GetRelativeEndpointAdress(
+      this UserControl control, string path)
+    {
+      var clientbinLocation = 
+          Application.Current.Host.Source.ToString().Substring(0,
+          Application.Current.Host.Source.ToString().LastIndexOf("/"));
+      return new EndpointAddress(new Uri(string.Format("{0}/{1}",
+        clientbinLocation.Substring(0,
+        clientbinLocation.LastIndexOf("/")), path)));
+    }
+  }
+}</pre>If you now want to call a service that is sitting in the root of your web application that is hosting you can call it like this:<pre>var client = new CloudMapperDataServiceClient();
+client.Endpoint.Address = 
+ this.GetRelativeEndpointAdress("CloudMapperDataService.svc");</pre>Substitute "CloudMapperDataServiceClient" by your own client proxy class and "CloudMapperDataService.svc" by your own svc and you are ready to roll.
+
+Seeing this again while I blog it I think it might be even better to get the name of the svc from the original Endpoint.Address setting. Well, that's something for later

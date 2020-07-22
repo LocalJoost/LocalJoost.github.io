@@ -1,0 +1,58 @@
+---
+layout: post
+title: A KnockOut.js binding helper for a JQuery Mobile Slider
+date: '2013-02-07T08:59:00.001+01:00'
+author: Joost van Schaik
+tags:
+- DataBinding
+- jquery
+- dotnetmag
+- jquery mobile
+- html
+- Javascript
+- knockout
+modified_time: '2016-02-08T20:46:47.225+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3466209564189349924
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/02/a-knockoutjs-binding-helper-for-jquery.html
+---
+
+<p>For those who have missed it – besides all the things I do on <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> and <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> I actually have a job, and in that job I am currently doing a lot of HTML5/Javascript development – now focusing on a Single Page App using (amongst others) <a href="http://knockoutjs.com/" target="_blank">Knockout.js</a> and <a href="http://jquerymobile.com/" target="_blank">JQuery Mobile</a>. For those who don’t know: Knockout is a great tool that makes data binding possible in a web environment, making the way I think about making applications – using MVVM – possible in an HTML/Javascript&nbsp; environment as well. If you use <a href="http://amplifyjs.com/" target="_blank">Amplify.js</a> you even have messaging. Oh goody!</p> <p>Now don’t get me wrong – I am not forsaking XAML and C# (like some others *ahem*), but I tried to find a way to bind a JQuery Mobile slider to Knockout.js. That’s not supported out of the box, so you have to make or find a customer ‘binding helper’ and I found <em>so</em> much examples that were plainly wrong or incomplete that I had to blog mine, which is complete <em>and actually works:</em></p><pre>ko.bindingHandlers.jQuerySliderValue = {
+  // Initialize slider
+  init: function (element, valueAccessor)
+  {
+    var val = valueAccessor()();
+    var el = $(element);
+    el.slider({ value: val });
+
+    el.bind("change", function (event, ui)
+    {
+      var value = valueAccessor()();
+      if (value !== el.val)
+      {
+        valueAccessor()(<font color="#ff0000">parseInt(el.val())</font>);
+      }
+    });
+  },
+
+  //handle the model value changing
+  update: function (element, valueAccessor)
+  {
+    var el = $(element);
+
+    var value = ko.utils.unwrapObservable(valueAccessor()());
+    if (value !== el.val())
+    {
+      el.val(value);
+      el.slider("refresh");
+    }
+  }
+};</pre>
+<p>You can use this in HTML like this:</p><pre>&lt;input type="range" name="slider-1" id="slider-1" 
+  min="0" max="5"
+  data-bind="jQuerySliderValue: locationDataIndex" /&gt;</pre>
+<p>Now I haven’t all conjured this up out of thin air, there are plenty of samples on, for instance, stackoverflow. Actually my most important addition to the samples out there is the red parseInt piece. All samples seem to fail to take into account that a) data binding can happen both way and b) a Jquery mobile slider <em>apparently returns a string value</em>.&nbsp; This leads to some interesting results if you try to manipulate the return value in your javascript view model by adding 1 to it. What you think happens is:</p>
+<p> 0+1=1 , 1+1=2 etc. </p>
+<p>But like I said, used this way a range return a string, so you get </p>
+<p>“0” + 1 = “01” , “01” +1 = “011”. </p>
+<p>And an interesting out of range error. The really gotcha is that it seems to go well the first time, the error only occurs the second time. It seems to make no sense at all. Sure, I could have used input type="number" data-type="range", maybe that would have helped as well, but that ain’t in the samples either. Either way, this fixes it for all cases.</p>
+<p>So, this is a very old type of blog post, not so much written from the desire to teach and share but borne from sheer annoyance about the incompleteness and incorrectness of what’s out there – the feeling that actually fuelled the creation of this blog ;-)</p>  

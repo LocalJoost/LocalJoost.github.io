@@ -1,0 +1,262 @@
+---
+layout: post
+title: A WinRT behavior to turn a FlipView into a kind of Windows 8 Panorama
+date: '2012-08-10T22:50:00.001+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- Windows 8
+- WinRt
+- behavior
+- Win8nl
+modified_time: '2012-11-14T08:09:32.798+01:00'
+thumbnail: http://lh4.ggpht.com/-Bt9L9FvU5kU/UCV0AbeF7yI/AAAAAAAAJ9s/swl07epR3JU/s72-c/IC425813_thumb4.jpg?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1662020199302629958
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/08/a-winrt-behavior-to-turn-flipview-into.html
+---
+
+<a href="http://lh5.ggpht.com/-0fuBgrwWG08/UCVz_nsRlLI/AAAAAAAAJ9o/Utej8D2XTAU/s1600-h/IC4258136.jpg"><img align="right" alt="IC425813" border="0" height="202" src="http://lh4.ggpht.com/-Bt9L9FvU5kU/UCV0AbeF7yI/AAAAAAAAJ9s/swl07epR3JU/IC425813_thumb4.jpg?imgmax=800" style="background-image: none; border-width: 0px; display: inline; float: right; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="IC425813" width="269" /></a><strong>(UPDATED for RTM August 18 2012)</strong> <br />
+One of the most beautiful controls of <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> is the Panorama. It’s ideal for showing a lot related content on a small screen and enable the user to easily pan trough it. A visual cue for ‘there is more’ is provided by showing a little part of the next panel to the very right of the current data. A typical example is showed right.<br />
+<br />
+It’s also one of the most abused controls (guilty as charged Your Honor), but still I wanted to port <a href="http://catalog.zune.net/v3.2/en-US/apps/48fd8097-f07e-e011-986b-78e7d1fa76f8/primaryImage?width=100&amp;height=100&amp;resize=true&amp;ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Catch’em Birds</a> to <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> – and I found out there was no ready-to-use control. After fighting with ScrollViewers and GridViewers and whatnot I came to this very simple behavior, which basically takes a FlipView and hammers it into a kind of Panorama.<br />
+<br />
+Now the FlipView is designed to be a full-screen control so the behavior basically walks past all the items in the FlipView, shrinks them horizontally by a configurable percentage of the screen, and displaces the ‘next’ panel a little to the left (making it appear at the right side of the screen on the current panel). To make this look a little bit more fast and fluid, I have made the displacement itself animated, so that the ‘next’ screen not so much snaps as <em>glides</em> into view. The overall effect looks pretty nice to me. I hope Microsoft will think so as well, as my app is up for an App Excellence Lab soon ;-)<br />
+<div class="separator" style="clear: both; text-align: left;">
+<object class="BLOGGER-youtube-video" classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,40,0" data-thumbnail-src="http://i.ytimg.com/vi/fdWNnMayuDk/0.jpg" height="532" width="640"><param name="movie" value="http://www.youtube.com/v/fdWNnMayuDk?version=3&f=user_uploads&c=google-webdrive-0&app=youtube_gdata" /><param name="bgcolor" value="#FFFFFF" /><param name="allowFullScreen" value="true" /><embed width="640" height="532"  src="http://www.youtube.com/v/fdWNnMayuDk?version=3&f=user_uploads&c=google-webdrive-0&app=youtube_gdata" type="application/x-shockwave-flash" allowfullscreen="true"></embed></object></div>
+In my app it looks like this. I still lack a decent screen recorder for Windows 8, so I took out the video camera<br />
+<div class="wlWriterEditableSmartContent" id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:6ed5f125-690a-4d16-aab7-3bbd3ef5b2a1" style="display: inline; float: none; margin: 0px; padding: 0px;">
+<div class="wlWriterSmartContent" id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:6ed5f125-690a-4d16-aab7-3bbd3ef5b2a1" style="display: inline; float: none; margin: 0px; padding: 0px;">
+<br />
+So this behavior, most originally called “FlipViewPanoramaBehavior” is of course based upon my earlier <a href="http://winrtbehaviors.codeplex.com/" target="_blank">WinRtBehaviors</a> CodePlex project. It starts out like this, with the following dependency properties:<br />
+<pre>using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Win8nl.External;
+using Win8nl.Utilities;
+using WinRtBehaviors;
+using Windows.Foundation;
+using Windows.UI.Xaml;
+using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Media.Animation;
+
+namespace Win8nl.Behaviors
+{
+  /// &lt;summary&gt;
+  /// A behavior to turn a FlipView into a kind of panorama
+  /// &lt;/summary&gt;
+  public class FlipViewPanoramaBehavior : Behavior&lt;FlipView&gt;
+  {
+    #region AnimationTime
+
+    /// &lt;summary&gt;
+    /// AnimationTime Property name
+    /// &lt;/summary&gt;
+    public const string AnimationTimePropertyName = "AnimationTime";
+
+    public int AnimationTime
+    {
+      get { return (int)GetValue(AnimationTimeProperty); }
+      set { SetValue(AnimationTimeProperty, value); }
+    }
+
+    /// &lt;summary&gt;
+    /// AnimationTime Property definition
+    /// &lt;/summary&gt;
+    public static readonly DependencyProperty AnimationTimeProperty = 
+      DependencyProperty.Register(
+        AnimationTimePropertyName,
+        typeof(int),
+        typeof(FlipViewPanoramaBehavior),
+        new PropertyMetadata(250));
+
+    #endregion
+
+    #region NextPanelScreenPercentage
+
+    /// &lt;summary&gt;
+    /// NextPanelScreenPercentage Property name
+    /// &lt;/summary&gt;
+    public const string NextPanelScreenPercentagePropertyName = 
+      "NextPanelScreenPercentage";
+
+    public double NextPanelScreenPercentage
+    {
+      get { return (double)GetValue(NextPanelScreenPercentageProperty); }
+      set { SetValue(NextPanelScreenPercentageProperty, value); }
+    }
+
+    /// &lt;summary&gt;
+    /// NextPanelScreenPercentage Property definition
+    /// &lt;/summary&gt;
+    public static readonly DependencyProperty NextPanelScreenPercentageProperty = 
+      DependencyProperty.Register(
+        NextPanelScreenPercentagePropertyName,
+        typeof(double),
+        typeof(FlipViewPanoramaBehavior),
+        new PropertyMetadata(10.0));
+    #endregion
+  }
+}</pre>
+So “AnimationTime” is the number of milliseconds the behavior takes to glide the next panel into view, and NextPanelScreenPercentage is an indication of how much screen real estate the next panel will take. Nothing special here yet.<br />
+<br />
+If I want to muck around with a FlipView contents, I first have to <em>find</em> these contents. With some breakpoints and watches I found out I could use the following code to find the FlipViewItems:<br />
+<pre>/// &lt;summary&gt;
+/// Find all Flip view items
+/// &lt;/summary&gt;
+/// &lt;returns&gt;&lt;/returns&gt;
+private List&lt;FlipViewItem&gt; GetFlipViewItems()
+{
+  var grid = AssociatedObject.GetVisualChildren().FirstOrDefault();
+  if (grid != null)
+  {
+    return grid.GetVisualDescendents().OfType&lt;FlipViewItem&gt;().ToList();
+  }
+  return null;
+}</pre>
+Attentive readers might observe that neither GetVisualChildren nor GetVisualDescendents are part of the <a href="http://msdn.microsoft.com/en-us/library/windows/apps/br211377.aspx?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">WinRT</a> api, which is perfectly correct – they come from the <a href="http://dotnetbyexample.blogspot.nl/2012/04/porting-dragflickbehavior-from-windows.html" target="_blank">VisualTreeHelperExtensions I ported from Windows Phone some time ago</a>. Don’t start to download this stuff and build it together yourself – wait till the end and I will show the lazy way to do this.<br />
+<br />
+Anyway – I wanted to move the FlipView’s contents <em>fluently</em>. That means I will use some Storyboards to work on Translations. So we identify the contents of each FlipViewItem and set its <em>fist visual child’s </em>Rendertransform to CompositeTransform, if that’s not already present:<br />
+<pre>/// &lt;summary&gt;
+/// At compositions transforms to every item within every flip view item
+/// &lt;/summary&gt;
+private void AddTranslates()
+{
+  var items = GetFlipViewItems();
+  if (items != null &amp;&amp; items.Count &gt; 1)
+  {
+    foreach (var item in items)
+    {
+      var firstChild = item.GetVisualChild(0);
+      if (!(firstChild.RenderTransform is CompositeTransform))
+      {
+        firstChild.RenderTransform = new CompositeTransform();
+        firstChild.RenderTransformOrigin = new Point(0.5, 0.5);
+      }
+    }
+  }
+}</pre>
+<em>This assumes every FlipViewItem contains just one child.</em> You better make sure it does for this to work, so put a Grid around it if you need more than one thing to sit in there.<br />
+<br />
+Now the core of the whole behavior is this one piece of code:<br />
+<pre>/// &lt;summary&gt;
+/// Does the actual repositioning and sizing of the items displayed in the Flipview
+/// &lt;/summary&gt;
+private void SizePosFlipViewItems()
+{
+  AddTranslates(); <strong>// &lt;-- moved from AssociatedObjectLoaded for RTM</strong>
+  var size = AssociatedObject.ActualWidth*(NextPanelScreenPercentage/100);
+  var shift = size - 15;
+
+  var items = GetFlipViewItems();
+  if (items != null &amp;&amp; items.Count &gt; 1)
+  {
+    // Make all items a bit smaller and make sure they are aligned left
+    foreach (var item in items)
+    {
+      item.GetVisualChild(0).HorizontalAlignment = HorizontalAlignment.Left;
+      item.GetVisualChild(0).Width = items[0].ActualWidth - size;
+    }
+
+    var selectedIndex = AssociatedObject.SelectedIndex;
+
+    if (selectedIndex &gt; 0)
+    {
+      StartTranslateStoryBoard(0, 0, 
+                               items[selectedIndex - 1].GetVisualChild(0), 0);
+    }
+
+    StartTranslateStoryBoard(0, 0, items[selectedIndex].GetVisualChild(0), 
+                             AnimationTime);
+
+    if (selectedIndex + 1 &lt; items.Count)
+    {
+      StartTranslateStoryBoard(-shift, 0,
+                                items[selectedIndex + 1].GetVisualChild(0), 
+                                AnimationTime);
+    }
+  }
+}
+</pre>
+First it calculates the new size of the FlipViewItems, and then it calculates how much it can shift the ‘next panel’ – basically, how much room is there between this panel and the next. This is currently a hard coded number, but feel free to make that a property as well ;-). <br />
+<br />
+Then, for every FlipViewItem it makes the first visual child “size” smaller, and makes sure it’s aligned to the left (so space comes free and the right side). Then:<br />
+<ol>
+<li>It moves the panel that just disappeared to the left (if any) back&nbsp; to it’s normal position, in no time (i.e. not animated – it’s invisible to the leftanyway, so why bother).
+<li>It moves the <em>current</em> panel to its normal position, but it animates it. This is because if it’s moved in from the left, it moves a bit too far, as you might have noticed in the movie – so it glides back
+<li>It moves the <em>next</em> panel (if any) a little bit to the left – animated, so it glides into view on the right hand side of the screen.</li>
+</li>
+</li>
+</ol>
+Now of course there is the slight matter of the method that make the storyboards to make it happen:<br />
+<pre>private static void StartTranslateStoryBoard(double desiredX, double desiredY, 
+                                             FrameworkElement fe, int time)
+{
+  var translatePoint = fe.<u>GetTranslatePoint</u>();
+  var destinationPoint = new Point(desiredX, desiredY);
+  if (destinationPoint.<u>DistanceFrom</u>(translatePoint) &gt; 1)
+  {
+    var storyboard = new Storyboard { FillBehavior = FillBehavior.HoldEnd };
+    storyboard.<u>AddTranslationAnimation</u>(
+         fe, translatePoint, destinationPoint,
+         new Duration(TimeSpan.FromMilliseconds(time)),
+         new CubicEase { EasingMode = EasingMode.EaseOut });
+    storyboard.Begin();
+  }
+}</pre>
+Once again, I use some extension methods from code ported from Windows Phone in <a href="http://dotnetbyexample.blogspot.nl/2012/04/porting-dragflickbehavior-from-windows.html" target="_blank">the article I mentioned before</a>, I underlined them to make them distinguishable from the standard API. Basically: this method accepts a FrameworkElement and moves it to a desired position in a desired time, using a storyboard that animates a translation. That is to say, unless it is already <em>in</em> that desired position. I think I will make this into a separate extension method in a utilities library one day but for the moment it’s doing fine. <br />
+<br />
+All that’s left now is some wiring up, I cobbled that all together in one code block:<br />
+<pre>protected override void OnAttached()
+{
+  AssociatedObject.Loaded += AssociatedObjectLoaded;
+  base.OnAttached();
+}
+protected override void OnDetaching()
+{
+  AssociatedObject.Loaded -= AssociatedObjectLoaded;
+  AssociatedObject.SelectionChanged -= AssociatedObjectSelectionChanged;
+  AssociatedObject.SizeChanged -= AssociatedObjectSizeChanged;
+}
+
+private void AssociatedObjectLoaded(object sender, RoutedEventArgs e)
+{
+  //AddTranslates(); deleted for RTM
+  SizePosFlipViewItems();
+  AssociatedObject.SelectionChanged += AssociatedObjectSelectionChanged;
+  AssociatedObject.SizeChanged += AssociatedObjectSizeChanged;
+}
+
+private async void AssociatedObjectSelectionChanged(object sender, 
+                                                    SelectionChangedEventArgs e)
+{
+  await Task.Delay(250); // Updated after bug report from SCPRedMage
+  SizePosFlipViewItems();
+}
+
+private async void AssociatedObjectSizeChanged(object sender, 
+                                               SizeChangedEventArgs e)
+{
+  await Task.Delay(250);
+  SizePosFlipViewItems();
+}</pre>
+OnAttached and OnDetaching do their usual basic wiring and unwiring of events. <br />
+When the AssociatedObject (i.e. the FlipView) is first loaded the FlipViewItems’ first child gets their CompositeTransforms, then the initial screen layout is created by calling SizePosFlipViewItems. Then two events are wired up:<br />
+<ul>
+<li>SelectionChanged
+<li>SizeChanged </li>
+</li>
+</ul>
+Now the first one is logical – when the user selects the next panel (i.e. he scrolls it in from the left or right) the panels need to be arrange again so that the newly selected panel stays in view (it scrolls too much to the right, remember) and the ‘new’ next panel comes into view at the left hand side of the screen.<br />
+<br />
+<em>The SizeChanged intercept is necessary for when the user rotates his screen or snaps the application. </em>For then the size of the screen changes, and the portion of the screen that the next panel may use is considerably smaller – in pixels. In my app this is taken care of by a Visual State Manager that listens to page events – basically something stolen from the LayoutAwarePage that’s in every template project – <em>but that takes a while</em>. Now I know I am going to be lambasted for this (and I have a pretty good idea by whom), but to solve this the SizeChanged handler waits a bit for actually calling SizePosFlipViewItems. And to prevent UI blocking I interestingly abused Task.Delay for that. It’s crude, but it works. As you may have seen in the movie when I snapped the app.<br />
+<br />
+So there you have it. The code works, you have seen it in action. Its usage is ridicilously simple: make a FlipView, add items, and add this behavior to the FlipView. Done. You can download the the behavior <a href="http://win8nl.codeplex.com/SourceControl/changeset/view/18472#349520" target="_blank">here</a> but you will need quite some base libs to get it working – as it uses a lot of my <a href="http://win8nl.codeplex.com/" target="_blank">win8nl</a> library on CodePlex. If you want to go the easy and quick way: just <a href="http://nuget.org/packages/Win8nl" target="_blank">use the Win8nl NuGet package</a>. That will get you the behavior and all the prerequisites, including MVVMLight.<br />
+<br />
+Be aware that win8nl now uses the Reactive extensions. They are included in the NuGet package and they will come with it as a dependency<br />
+<br />
+UPDATE: Please note there is a tiny code change since original publication: due to Microsoft optimizing the FlipView not all elements are initially loaded, so the check if every FlipViewItem child has a CompositeTransform has to performed at <em>every</em> manipulation. </div>
+<br />
+UPDATE 2: There's a tiny update to AssociatedObjectSelectionChanged. And those who want a simple working sample, download the sources from codeplex and fire up FlipViewTest.XAML as the start page.
+</div>

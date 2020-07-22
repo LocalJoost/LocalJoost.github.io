@@ -1,0 +1,53 @@
+---
+layout: post
+title: Workaround for selecting the last vertex of a Windows Phone MapPolyline
+date: '2013-05-28T19:46:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- Mapping
+- wpdev
+- dotnetmag
+modified_time: '2013-06-11T10:47:24.534+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7659161411923508094
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/05/workaround-for-selecting-last-vertex-of.html
+---
+
+<p>Fellow MVP - and fellow map maniac - <a href="http://www.twitter.com/dotmorten" target="_blank">Morten Nielsen</a> brought me into contact with a <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> developer called Jonathan Aghachi. He was struggling to select MapPolylines drawn on a Map using Map.GetMapElementsAt. For those not familiar with he concept of selecting stuff on a Wiindows Phone 8 map – you cannot select the shapes on the map directly like on Windows RT – they do not expose any events. In stead, you can trap the Tap event of the Map object, and retrieve all objects on that location like this:</p><pre>private void Map_Tap(object sender, GestureEventArgs e)
+{
+  var selected = Map.GetMapElementsAt(e.GetPosition(Map));
+}</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/ebc13c95b5de_1145A/selectbug.png"><img title="selectbug" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="selectbug" align="right" src="http://www.schaikweb.net/dotnetbyexample/ebc13c95b5de_1145A/selectbug_thumb.png" width="148" height="244"></a></p>
+<p><font size="4">The problem</font></p>
+<p>There is apparently a bug in Map.GetMapElementsAt when trying to select the line by using a point on the last vertex, i.e. that piece of the MapPolyline that runs between the 2nd to last point and the last point. If a MapPolyline has only one vertex (that is, only a start and an end point, with no points in between) you will not be able <em>at all</em> to select it using Map.GetMapElementsAt&nbsp; This was exactly what Jonathan was experiencing. It can be clearly demonstrated by <a href="http://www.schaikweb.net/dotnetbyexample/MapPolygonBug.zip" target="_blank">this very simple application</a>, that looks like displayed on the right. It draws thee MapPolylines on the map, each with a different color. The Tap function of the map is a more extended version of the sample above and looks like displayed below:</p>
+<p>&nbsp;</p><pre>private void Map_Tap(object sender, GestureEventArgs e)
+{
+  var selected = <br>     Map.GetMapElementsAt(e.GetPosition(Map)).FirstOrDefault() as MapPolyline;
+  if (selected != null)
+  {
+    TitleText.Foreground = new SolidColorBrush( selected.StrokeColor);
+    MessageBox.Show("MapPolyline selected");
+  }
+}</pre>
+<p>This should show the TitleText text (showing “MAPPOLYGON BUG") in the color of the selected MapPolyline, and show a message box as well. If you download <a href="http://www.schaikweb.net/dotnetbyexample/MapPolygonBug.zip" target="_blank">the sample solution that goes with this post</a>, you will notice:</p>
+<ul>
+<li>You can tap on the red line as much as you want – but you will never get the message box 
+<li>You can select the yellow line, but only if you tap on the horizontal part. The part that runs diagonally to the north-east will never get you a message box</li></ul>
+<p><font size="4">The workaround</font></p>
+<p>As you may have noticed, the green line, although it has only two points, <em>can be selected</em> by tapping on it. The reason for that is very simple – it does not have two points, but three. I have added the last point twice to the to the line, effectively creating a vertex of zero length. Then the first vertex isn’t the last anymore, and presto. See this little code excerpt:</p><pre>var line1 = new MapPolyline();
+line1.Path.Add(new GeoCoordinate(52.154346, 5.36974));
+line1.Path.Add(new GeoCoordinate(52.154346, 5.411282));
+line1.StrokeColor = Colors.Red;
+line1.StrokeThickness = 10;
+Map.MapElements.Add(line1);
+
+var line3 = new MapPolyline();
+line3.Path.Add(new GeoCoordinate(52.165509, 5.36974));
+<font color="#ff0000"><u>line3.Path.Add(new GeoCoordinate(52.165509, 5.411282));
+line3.Path.Add(new GeoCoordinate(52.165509, 5.411282));</u></font>
+line3.StrokeColor = Colors.Green;
+line3.StrokeThickness = 10;
+Map.MapElements.Add(line3);</pre>
+<p><font size="4">Some concluding remarks</font></p>
+<p>My contacts at the Windows Phone team have confirmed this as a bug. I think this is very minor indeed, and using this simple work around makes circumventing it pretty easy. I know Jonathan is happily moving forward now with my workaround.</p>
+<p>For the record: I actually wrote both code and blog post in Plön, in the north of Germany, during my holiday there. It was quite rainy that day, so what the heck ;-)</p>  

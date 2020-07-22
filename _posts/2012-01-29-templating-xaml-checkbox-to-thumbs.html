@@ -1,0 +1,289 @@
+---
+layout: post
+title: Templating a XAML CheckBox to a thumbs-up/down control using Expression Blend
+date: '2012-01-29T13:15:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Blend
+- wpdev
+- dotnetmag
+- WP7NL
+- XAML
+- WP7
+modified_time: '2012-03-04T10:19:04.080+01:00'
+thumbnail: http://lh4.ggpht.com/-JA2sVHPDJh8/TyU4HE5aW0I/AAAAAAAAHE4/3103kPz5n24/s72-c/checkbox_thumb.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8931341196290208521
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/01/templating-xaml-checkbox-to-thumbs.html
+---
+
+<span style="color: #333333; font-size: medium;">Preface</span><br />
+The checkbox has been been around in the Graphical User Interface for as long as I can remember <em>doing</em> GUI – since the early 90’s I guess. You know what, let’s make that “it’s been around for<em> longer than I care to remember”</em> ;). For my newest <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> project I wanted something different. In stead of boring old&nbsp; <br />
+<a href="http://lh4.ggpht.com/-OAhxfT317GU/TyU4GomU0hI/AAAAAAAAHE0/vIF1NoDXOsw/s1600-h/checkbox2.png"><img align="left" alt="checkbox" border="0" height="46" src="http://lh4.ggpht.com/-JA2sVHPDJh8/TyU4HE5aW0I/AAAAAAAAHE4/3103kPz5n24/checkbox_thumb.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: left; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="checkbox" width="99" /></a>&nbsp; <br />
+&nbsp; <br />
+I wanted something like this:  <br />
+<a href="http://lh5.ggpht.com/-py9n2zpwLwc/TyU4Hjihc-I/AAAAAAAAHFE/Gv6zoUtoono/s1600-h/thumbsupdown2.png"><img alt="thumbsupdown" border="0" height="46" src="http://lh6.ggpht.com/-jdwKwMC4l8Y/TyU4IXAHPFI/AAAAAAAAHFM/zdcBq-Y-RP4/thumbsupdown_thumb.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="thumbsupdown" width="99" /></a><br />
+Turns out you can do this in pure XAML. And almost entirely in Expression Blend, too. I could just post the XAML and be done with it, but I like to document the track I took, not only to educate you, but also to remember <em>myself</em> how the hell I got here in the first place ;-). <br />
+<span style="font-size: medium;">Setting the stage</span><br />
+<ul>
+<li>Open Visual Studio 2010  </li>
+<li>Create a new Windows Phone 7 (7.1 of course!) project,  </li>
+<li>Make a folder “icons”<a href="http://lh6.ggpht.com/-jTLcNBC-9qY/TyU4Ja9_n2I/AAAAAAAAHFU/HwZ618iY8LI/s1600-h/build-actions1.png"><img align="right" alt="build actions" border="0" height="114" src="http://lh5.ggpht.com/-g-8lfLVhBBE/TyU4J-tEnhI/AAAAAAAAHFY/sMnn1bAnSgI/build-actions_thumb1.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: right; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="build actions" width="275" /></a>  </li>
+<li>Download <a href="http://www.schaikweb.net/dotnetbyexample/thumbsup.png" target="_blank">this image</a> to your computer  </li>
+<li>Paste it in the “icons” folder in Visual Studio  </li>
+<li>Double check the image’s properties, they should be as showed to the right.  </li>
+<li>Save the project </li>
+</ul>
+<span style="font-size: medium;">Creating style and control template</span><br />
+<ul>
+<li>Open the project in Expression blend  </li>
+<li>Put one (or more, for all I care) CheckBoxes on the phone page. </li>
+</ul>
+<ul>
+<li>Select one of them, then click in the main Blend menu “Object/Edit Style/Create Empty”.  </li>
+<li>In the dialog that follows, enter “Thumbupdowncheckboxstyle” for a name and select “Application” under “Define in”  </li>
+<li>You will get a screen with a single CheckBox. Right click it, select “Edit template/Create Empty”.  </li>
+<li>In the dialog that follows, enter “Thumbupdowncheckboxtemplate” for a name and select “Application” under “Define in”</li>
+</ul>
+First thing you will notice is that the selected CheckBox completely disappears from your design surface. That’s because basically you have replaced the entire look for the CheckBox by an <em>empty template</em>, which is essentially well, pretty empty indeed. It only contains a grid, and even that’s gonna go.<br />
+<ul>
+<li>Delete the Grid  </li>
+<li>Add a Rectangle to the template by double clicking on the Rectangle button from the Assets toolbar on the left</li>
+</ul>
+This is a good moment to turn on Split View in the designer, because that shows you what the designer is actually doing. Right-click the rectangle in the Objects and Timeline panel, and select “View XAML”. At this point you will see only this:<br />
+<pre style="font-size: 11px;">&lt;Application.Resources&gt;
+
+  &lt;ControlTemplate x:Key="Thumbupdowncheckboxtemplate" TargetType="CheckBox"&gt;
+    &lt;Rectangle Fill="#FFF4F4F5" Stroke="Black"/&gt;
+  &lt;/ControlTemplate&gt;
+
+  &lt;Style x:Key="Thumbupdowncheckboxstyle" TargetType="CheckBox"&gt;
+    &lt;Setter Property="Template" Value="{StaticResource Thumbupdowncheckboxtemplate}"/&gt;
+  &lt;/Style&gt;
+
+&lt;/Application.Resources&gt;
+</pre>
+And the design surface will only show a horizontal white rectangle with a black border.<br />
+<span style="font-size: medium;">Default control size</span><br />
+<a href="http://lh4.ggpht.com/-c9nkiSQVOVk/TyU4KaFtMcI/AAAAAAAAHFg/g1cVf4Q6CV4/s1600-h/Resources2.png"><img align="right" alt="Resources" border="0" height="119" src="http://lh6.ggpht.com/-tLZKOqR_zIA/TyU4KkdyK2I/AAAAAAAAHFo/3KyX6YI0g7I/Resources_thumb.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: right; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="Resources" width="244" /></a>First and foremost, set the default size of your control. To get this done, look right top, select the Resources tab and expand App.Xaml. Then proceed as follows:<br />
+<ul>
+<li>Right-click Thumbupdowncheckboxstyle 
+</li>
+<li>Select “Edit” 
+</li>
+<li>Select the “Properties” tab left of the “Resources” tab 
+</li>
+<li>Locate the “Width” and “Height” fields and enter 40 for both. </li>
+</ul>
+Your XAML now should look like this:<br />
+<pre style="font-size: 11px;">&lt;Application.Resources&gt;
+
+  &lt;ControlTemplate x:Key="Thumbupdowncheckboxtemplate" TargetType="CheckBox"&gt;
+    &lt;Rectangle Fill="#FFF4F4F5" Stroke="Black"/&gt;
+  &lt;/ControlTemplate&gt;
+
+  &lt;Style x:Key="Thumbupdowncheckboxstyle" TargetType="CheckBox"&gt;
+    &lt;Setter Property="Template" Value="{StaticResource Thumbupdowncheckboxtemplate}"/&gt;
+    &lt;Setter Property="Width" Value="40"/&gt;
+    &lt;Setter Property="Height" Value="40"/&gt;
+  &lt;/Style&gt;
+
+&lt;/Application.Resources&gt;</pre>
+<span style="font-size: medium;">Propagate default size to template </span><br />
+Now go back to editing the Control template again:<br />
+<ul>
+<li>Once again go to the “Resources” tab left top 
+</li>
+<li>Right-click Thumbupdowncheckboxtemplate 
+</li>
+<li>Select “Edit”. 
+</li>
+<li>Select the Rectangle and Click the tab “Properties” top left again<a href="http://lh6.ggpht.com/-1pp-sVCRZxg/TyU4LQg_dII/AAAAAAAAHF0/Y2aGxAaiUZ8/s1600-h/width2.png"><img align="right" alt="width" border="0" height="52" src="http://lh6.ggpht.com/-lVbRDW9VrCI/TyU4MaYPhtI/AAAAAAAAHF4/ar3sQQu03Wc/width_thumb.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: right; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="width" width="244" /></a> 
+</li>
+<li>Click the little square all the way to the right behind the field “Width” 
+</li>
+<li>This will popup a menu. Select “Template Binding/Width” 
+</li>
+<li>Click the little square behind “Height” and Select “Template Binding/Height”</li>
+</ul>
+This will set the width and height of the rectangle to the full width and height of the control. If the user does not set a specific width and height, the values in the default Setters (both 40) will be used. XAML at this point:<br />
+<pre style="font-size: 11px;">&lt;Application.Resources&gt;
+
+  &lt;ControlTemplate x:Key="Thumbupdowncheckboxtemplate" TargetType="CheckBox"&gt;
+    &lt;Rectangle Fill="#FFF4F4F5" Stroke="Black" Width="{TemplateBinding Width}" 
+    Height="{TemplateBinding Height}"/&gt;
+  &lt;/ControlTemplate&gt;
+
+  &lt;Style x:Key="Thumbupdowncheckboxstyle" TargetType="CheckBox"&gt;
+    &lt;Setter Property="Template" Value="{StaticResource Thumbupdowncheckboxtemplate}"/&gt;
+    &lt;Setter Property="Width" Value="40"/&gt;
+    &lt;Setter Property="Height" Value="40"/&gt;
+  &lt;/Style&gt;
+
+&lt;/Application.Resources&gt;</pre>
+<span style="font-size: medium;">Initial colors</span><br />
+Next steps:<br />
+<ul>
+<li><a href="http://lh4.ggpht.com/-3hrIVpbfKqQ/TyU4Mw0jBrI/AAAAAAAAHGE/wM1NsPeHYog/s1600-h/Color5.png"><img align="right" alt="Color" border="0" height="186" src="http://lh5.ggpht.com/-ZUgffVwBn8g/TyU4NexSWjI/AAAAAAAAHGM/8Gf9vwkZQEo/Color_thumb1.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: right; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="Color" width="244" /></a>Click the white white rectangle behind “Fill” 
+</li>
+<li>Don’t bother to select a color: simply type in “Green” in the text box and Blend will make a pretty hex string of it ;-) 
+</li>
+<li>After that, click the little white square behind “Stroke” 
+</li>
+<li>From the popup-menu, select “Reset”</li>
+</ul>
+The design surface now shows a<em> green</em> rectangle. Oh wow ;-) but bear with me, we will get there in the end. Your XAML should now look like this:<br />
+<pre style="font-size: 11px;">&lt;Application.Resources&gt;
+
+  &lt;ControlTemplate x:Key="Thumbupdowncheckboxtemplate" TargetType="CheckBox"&gt;
+    &lt;Rectangle Fill="Green" Width="{TemplateBinding Width}" Height="{TemplateBinding Height}"/&gt;
+  &lt;/ControlTemplate&gt;
+
+  &lt;Style x:Key="Thumbupdowncheckboxstyle" TargetType="CheckBox"&gt;
+    &lt;Setter Property="Template" Value="{StaticResource Thumbupdowncheckboxtemplate}"/&gt;
+    &lt;Setter Property="Width" Value="40"/&gt;
+    &lt;Setter Property="Height" Value="40"/&gt;
+  &lt;/Style&gt;
+
+&lt;/Application.Resources&gt;</pre>
+<span style="font-size: medium;">Including the image as an ‘opacity mask’</span><br />
+<a href="http://lh6.ggpht.com/-35uIjvrdzOM/TyU4OPVgNgI/AAAAAAAAHGQ/fXrl0BGEN0U/s1600-h/Opacity10.png"><img align="right" alt="Opacity" border="0" height="240" src="http://lh5.ggpht.com/-orawiu50t0Q/TyU4OvzZKfI/AAAAAAAAHGY/0PmAn2OOv_w/Opacity_thumb4.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: right; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="Opacity" width="222" /></a>Blend’s greatest asset – it’s enormous capabilities – unfortunately is also sometimes its Achilles’ heel: there’s a bewildering set of options that’s not always easy to find your way in. Fortunately, at the top of the Properties there’s a Search box that helps you find that hard-to-find-options. Which is extremely helpful – if you happen to know what to look for ;-). In this case: <br />
+<ul>
+<li>Enter “Opacity” in the Search box 
+</li>
+<li>Click “No Brush” 
+</li>
+<li>Select “Tile Brush” – that’s the 2nd icon from the left 
+</li>
+<li>That produces a drop-down where you can select “icons/thumbsup.png”</li>
+</ul>
+your XAML should now look like this:<br />
+<pre style="font-size: 11px;">&lt;Application.Resources&gt;
+
+  &lt;ControlTemplate x:Key="Thumbupdowncheckboxtemplate" TargetType="CheckBox"&gt;
+  &lt;Rectangle Fill="Green" Width="{TemplateBinding Width}" Height="{TemplateBinding Height}"&gt;
+    &lt;Rectangle.OpacityMask&gt;
+    &lt;ImageBrush Stretch="Fill" ImageSource="icons/thumbsup.png"/&gt;
+    &lt;/Rectangle.OpacityMask&gt;
+  &lt;/Rectangle&gt;
+  &lt;/ControlTemplate&gt;
+
+  &lt;Style x:Key="Thumbupdowncheckboxstyle" TargetType="CheckBox"&gt;
+  &lt;Setter Property="Template" Value="{StaticResource Thumbupdowncheckboxtemplate}"/&gt;
+  &lt;Setter Property="Width" Value="40"/&gt;
+  &lt;Setter Property="Height" Value="40"/&gt;
+  &lt;/Style&gt;
+
+&lt;/Application.Resources&gt;</pre>
+<a href="http://lh3.ggpht.com/-XJS9682X1yk/TyU4PFAxyxI/AAAAAAAAHGg/P6tErFm4SwM/s1600-h/desing212.png"><img align="right" alt="desing2" border="0" height="89" src="http://lh4.ggpht.com/-ZbcJfOuYgs4/TyU4PjoQh5I/AAAAAAAAHGo/fB1DRTfd_Eg/desing2_thumb8.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: right; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="desing2" width="117" /></a><a href="http://lh3.ggpht.com/-_cAq2bXpJCk/TyU4QFgRBDI/AAAAAAAAHGw/hEf9ar2puU8/s1600-h/design7.png"><img align="left" alt="design" border="0" height="88" src="http://lh5.ggpht.com/-WSV848k2hQw/TyU4Qtt1VSI/AAAAAAAAHG8/SslfL-vaRQA/design_thumb3.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: left; margin: 0px 5px 0px 0px; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="design" width="123" /></a>Your design surface should now looks like to the image to the left, which is kinda crummy. You can use the little triangle on the right bottom, and the two little lines on the right and the bottom, to resize the <em>design</em> surface. This will have no effect on the control template itself, it will make just make it look better (see right image) . <br />
+You can also manually add the attributes <strong>d:DesignWidth="75"</strong> and <strong>d:DesignHeight="75"</strong> to the Rectangle.<br />
+<span style="font-size: medium;">Defining Visual States</span><br />
+<a href="http://lh6.ggpht.com/-0gfGXuGcEgs/TyU4RXAb9KI/AAAAAAAAHHE/kyPzlpDFAaw/s1600-h/states2.png"><img align="right" alt="states" border="0" height="221" src="http://lh5.ggpht.com/-RVLo6xVKmB4/TyU4SLEbcHI/AAAAAAAAHHI/GhTuoRGWaPI/states_thumb.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: right; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="states" width="244" /></a>A CheckBox has certain states, the most obvious being Checked and Unchecked. Actually there are quite a lot more, and you can see them by clicking on the “States”&nbsp; tab. Now all these states are <em>defined</em>, but there are no <em>visuals</em> connected to it anymore, since you have replaced the control template by something empty and started filling in yourself. This next step will bring a bit of those visual states back. To prepare for that:<br />
+<ul>
+<li>Make sure the Rectangle is selected in the “Objects and Timeline”&nbsp; panel left 
+</li>
+<li>In the Properties panel to the <em>right</em> of the screen, scroll down to “Transform” 
+</li>
+<li>Expand the Transform panel if it’s collapsed 
+</li>
+<li>Selected the leftmost tab 
+</li>
+<li>Enter 0.5 in both X and Y boxes</li>
+</ul>
+<a href="http://lh6.ggpht.com/-m09RQUqmxTk/TyU4SlFmJ1I/AAAAAAAAHHQ/qKoCAIO3AUw/s1600-h/transform%25255B2%25255D.png"><img align="right" alt="transform" border="0" height="92" src="http://lh5.ggpht.com/-6iTQ2Rmiz8M/TyU4S6CQ14I/AAAAAAAAHHc/FjlDd1LTeNU/transform_thumb.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: right; margin-top: -75px; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="transform" width="244" /></a>XAML at this point:<br />
+<pre style="font-size: 11px;">&lt;Application.Resources&gt;
+
+  &lt;ControlTemplate x:Key="Thumbupdowncheckboxtemplate" TargetType="CheckBox"&gt;
+    &lt;Rectangle Fill="Green" Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" 
+       d:DesignWidth="75" d:DesignHeight="75" RenderTransformOrigin="0.5,0.5"&gt;
+      &lt;Rectangle.RenderTransform&gt;
+        &lt;CompositeTransform TranslateX="0.5" TranslateY="0.5"/&gt;
+      &lt;/Rectangle.RenderTransform&gt;
+      &lt;Rectangle.OpacityMask&gt;
+        &lt;ImageBrush Stretch="Fill" ImageSource="icons/thumbsup.png"/&gt;
+      &lt;/Rectangle.OpacityMask&gt;
+    &lt;/Rectangle&gt;
+  &lt;/ControlTemplate&gt;
+
+  &lt;Style x:Key="Thumbupdowncheckboxstyle" TargetType="CheckBox"&gt;
+    &lt;Setter Property="Template" Value="{StaticResource Thumbupdowncheckboxtemplate}"/&gt;
+    &lt;Setter Property="Width" Value="40"/&gt;
+    &lt;Setter Property="Height" Value="40"/&gt;
+  &lt;/Style&gt;
+
+&lt;/Application.Resources&gt;</pre>
+In the “States”&nbsp; panel, click on the “Checked” state. This will add quite some XAML code: you will see a “VisualStateManager.VisualStateGroups” tag appear, defining all three states of the “CheckStates”&nbsp; group, i.e. “Checked”, “Unchecked”&nbsp; and “Indeterminate”. <br />
+<ul>
+<li>Now Select the “Unchecked”&nbsp; state 
+</li>
+<li>Make sure the “Rectangle” still is selected in the “Objects and Timeline”&nbsp; panel 
+</li>
+<li>Select the “Properties” tab on the top right again 
+</li>
+<li>Select the (now green) “Fill” Rectangle again. 
+</li>
+<li>In the box where you previously typed “Green” (which will say ”#FF008000” now), type “Red”. The thumbs-up image will now turn red 
+</li>
+<li><a href="http://lh3.ggpht.com/-MzeDkV8fwPw/TyU4TqDDBrI/AAAAAAAAHHg/RBoIWO5FJH4/s1600-h/flip7.png"><img align="right" alt="flip" border="0" height="85" src="http://lh6.ggpht.com/-UtVu4FcrIBM/TyU4UKPIyZI/AAAAAAAAHHs/IzEvIt1xT60/flip_thumb3.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: right; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="flip" width="244" /></a>Scroll down to “Transform” again 
+</li>
+<li>Select the <em>right</em> most tab 
+</li>
+<li>Select the “Flip Y-axis” button, in the middle. The thumbs-up image will now flip vertically and turn into a thumbs-<em>down</em> picture. 
+</li>
+<li><a href="http://lh5.ggpht.com/-2u9n96d_slY/TyU4VMWPu4I/AAAAAAAAHH0/b-Tf-wkOmdA/s1600-h/recording8.png"><img align="right" alt="recording" border="0" height="44" src="http://lh6.ggpht.com/-yom1gCGVqxg/TyU4VyoZnSI/AAAAAAAAHH4/SpN-yQjl2Ps/recording_thumb4.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: right; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="recording" width="146" /></a>Locate the little red button on top of the design pane that says “Unchecked state recording is on”. Click it and the text should change into “Unchecked state recording is off”. </li>
+</ul>
+If you press F5, the project will compile and run (yes, that works from Blend as well), and you will see that the checkbox shows a green thumbs-up image when selected, and a red thumbs-down image when unselected.<br />
+Now, for a finale to make things a little more visually appealing:<br />
+<ul>
+<li><a href="http://lh5.ggpht.com/-nofIQzmceEQ/TyU4WAsjfxI/AAAAAAAAHIA/fpzQY450IOU/s1600-h/Animate2.png"><img align="right" alt="Animate" border="0" height="74" src="http://lh4.ggpht.com/-tcjo-PTEnus/TyU4WqScNFI/AAAAAAAAHIM/853Ihnhu6ak/Animate_thumb.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: right; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="Animate" width="244" /></a>Go back to the “States” tab again 
+</li>
+<li>Select the Textbox with “0 s” in the “Default transition” panel above state “Unchecked” 
+</li>
+<li>Type 0.5 in the text box 
+</li>
+<li>And press F5 again.</li>
+</ul>
+You will now see the thumbs not simply flip: now it <em>rotates</em> in half a second and change color from red via orange to green. By simply specifying a <em>time</em> you tell the application to actually <em>infer</em> an animation. And there you are. A completely customized, animated, thumb-up-thumbs-down control with just some clicking around. Code-wise it behaves just like a normal checkbox. And if you want to make more of these checkboxes, just select a standard CheckBox, right click it, Select “Edit template/Apply Resources/Thumbupdowncheckboxstyle” and boom – yet another Thumbup-thumbsdown control.<br />
+Final XAML:<br />
+<pre style="font-size: 10px;">&lt;Application.Resources&gt;
+
+  &lt;ControlTemplate x:Key="Thumbupdowncheckboxtemplate" TargetType="CheckBox"&gt;
+    &lt;Rectangle x:Name="rectangle" Fill="Green" Width="{TemplateBinding Width}" 
+               Height="{TemplateBinding Height}" 
+               d:DesignWidth="75" d:DesignHeight="75" RenderTransformOrigin="0.5,0.5"&gt;
+      &lt;Rectangle.RenderTransform&gt;
+        &lt;CompositeTransform TranslateX="0.5" TranslateY="0.5"/&gt;
+      &lt;/Rectangle.RenderTransform&gt;
+      &lt;Rectangle.OpacityMask&gt;
+        &lt;ImageBrush Stretch="Fill" ImageSource="icons/thumbsup.png"/&gt;
+      &lt;/Rectangle.OpacityMask&gt;
+      &lt;VisualStateManager.VisualStateGroups&gt;
+        &lt;VisualStateGroup x:Name="CheckStates"&gt;
+          &lt;VisualStateGroup.Transitions&gt;
+            &lt;VisualTransition GeneratedDuration="0:0:0.5"/&gt;
+          &lt;/VisualStateGroup.Transitions&gt;
+          &lt;VisualState x:Name="Indeterminate"/&gt;
+          &lt;VisualState x:Name="Unchecked"&gt;
+            &lt;Storyboard&gt;
+              &lt;DoubleAnimation Duration="0" To="-1" 
+                    Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.ScaleY)" 
+                    Storyboard.TargetName="rectangle" d:IsOptimized="True"/&gt;
+              &lt;ColorAnimation Duration="0" To="Red" 
+                   Storyboard.TargetProperty="(Shape.Fill).(SolidColorBrush.Color)" 
+                   Storyboard.TargetName="rectangle" d:IsOptimized="True"/&gt;
+            &lt;/Storyboard&gt;
+          &lt;/VisualState&gt;
+          &lt;VisualState x:Name="Checked"/&gt;
+        &lt;/VisualStateGroup&gt;
+      &lt;/VisualStateManager.VisualStateGroups&gt;
+    &lt;/Rectangle&gt;
+  &lt;/ControlTemplate&gt;
+
+  &lt;Style x:Key="Thumbupdowncheckboxstyle" TargetType="CheckBox"&gt;
+    &lt;Setter Property="Template" Value="{StaticResource Thumbupdowncheckboxtemplate}"/&gt;
+    &lt;Setter Property="Width" Value="40"/&gt;
+    &lt;Setter Property="Height" Value="40"/&gt;
+  &lt;/Style&gt;
+&lt;/Application.Resources&gt;
+</pre>
+You could of course go on and define all other states, but this already works pretty well IMHO ;-). Oh and by the way: this should work on any XAML platform, not just on Windows Phone. And for those who don’t like typing or copy-and-pasting, here is, as always, the complete <a href="http://www.schaikweb.net/dotnetbyexample/ThumbsUpDown.zip" target="_blank">demo solution</a>.<br />
+Thanks to <a href="http://www.twitter.com/wmeints" target="_blank">Willem Meints</a> for helping me out via twitter on default setters for styles.

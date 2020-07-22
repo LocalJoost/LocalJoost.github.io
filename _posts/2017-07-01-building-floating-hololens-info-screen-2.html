@@ -1,0 +1,273 @@
+---
+layout: post
+title: 'Building a floating HoloLens ''info screen'' - 2: adding the C# behaviours'
+date: '2017-07-01T18:51:00.001+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- HoloLens
+- Unity3D
+modified_time: '2017-07-03T08:13:28.065+02:00'
+thumbnail: https://lh3.googleusercontent.com/-uIh8659Jvtw/WVE53eFpA4I/AAAAAAAAO8A/YR3xxUCCZr07rLiv7te2D2wIDvg-VA96wCHMYCw/s72-c/image_thumb%255B26%255D?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3303129793364780709
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2017/07/building-floating-hololens-info-screen-2.html
+---
+
+<h2>Intro</h2><p>In the <a href="http://dotnetbyexample.blogspot.com/2017/06/building-floating-hololens-info-screen-1.html" target="_blank">first installment of this 2-part blog post</a> we have created the UI of the info screen, now we are going to build the dynamics.</p><ul><li>First we will make the app recognize a speech command</li><li>Then we will add the dynamics to make the screen appear and disappear when we want.</li><li>Then we will make the close button work</li><li>As a finishing touch we will add some spatial sound.</li></ul><h2>Adding a speech command – the newest new way</h2><p>For the second or maybe even the third time since I have started using the <a href="https://github.com/Microsoft/HoloToolkit-Unity" target="_blank">HoloToolkit</a>, the was the way speech commands are supposed to work has changed. The keyword manager is now obsolete, you now have to use SpeechInputSource and SpeechInputHandler. </p><p>First, we add <a href="http://dotnetbyexample.blogspot.com/2017/04/using-messenger-to-communicate-between.html" target="_blank">a Messenger, as already described in this blog post</a>, to the Managers game object. It sits in Assets/HoloToolkitExtensions/Scripts/Messaging.</p><p>Then, since we are good boy scouts that like to keep things organized, a create a folder “Scripts” under “Assets/App”. In “Scripts” we add a “Messages” folder, and in that we create the following highly complicated message class ;) </p><pre>public class ShowHelpMessage
+{
+}</pre><p>In Scripts we create the SpeechCommandExectutor, which is simply this:</p><pre>using HoloToolkitExtensions.Messaging;
+using UnityEngine;
+
+public class SpeechCommandExecutor : MonoBehaviour
+{
+    public void OpenHelpScreen()
+    {
+        Messenger.Instance.Broadcast(new ShowHelpMessage());
+    }
+}</pre><p>Add this SpeechCommandExecutor to the Managers game object. Also add a SpeechInputSource script from the HoloToolkit, click they tiny plus-button on the right and add “show help” as keyword:</p><p><a href="https://lh3.googleusercontent.com/-_0iC9OG6-M4/WVE522Gq2RI/AAAAAAAAO78/D2kv5-sxgz0odqJ_u1CTRsJ1v4OKWNyVACHMYCw/s1600-h/image%255B54%255D"><img width="300" height="98" title="image" align="left" style="border: 0px currentcolor; border-image: none; float: left; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-uIh8659Jvtw/WVE53eFpA4I/AAAAAAAAO8A/YR3xxUCCZr07rLiv7te2D2wIDvg-VA96wCHMYCw/image_thumb%255B26%255D?imgmax=800" border="0"></a><a href="https://lh3.googleusercontent.com/-y-ww-aIUUhk/WVE53w5brPI/AAAAAAAAO8E/l9m02IUbtRQIdyIZQYgq4DkPKXxSg9IawCHMYCw/s1600-h/image%255B35%255D"><img width="300" height="84" title="image" align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-0fybz6l9gls/WVE54dXHm0I/AAAAAAAAO8I/ouxkqWTYuBcZAqwpJK5YGZHRThjBA5s0gCHMYCw/image_thumb%255B15%255D?imgmax=800" border="0"><br></a></p><p><a href="https://lh3.googleusercontent.com/-FpCED4cuUZk/WVE54n8NU4I/AAAAAAAAO8M/LVp9tTi9tjQfESTlgFsm7e9JqJEma8FLgCHMYCw/s1600-h/image%255B21%255D"><br></a></p><p><br></p><p><br></p><p>Also, select a key in “key shortcut”. Although they Unity3D editor supports voice commands, you can now also use a code to test the flow. And believe me – your colleagues will thank you for that. Although lots of <em>my</em> colleagues are now quite used to me talking to devices and gesturing in empty air, repeatedly shouting at a computer because it was not possible to determine if there’s a bug in the code or the computer just did not hear you… is still kind of frowned upon.</p><p>Anyway. To connect the SpeechCommandExecutor to the SpeechInputSource we need a SpeechInputHandler. That is also in the HoloToolkit. So drag it out of there into the Managers objects. Once again you have to click a very tiny plus-button:</p><p><a href="https://lh3.googleusercontent.com/-llDoMS5wRnM/WVE55JUcSNI/AAAAAAAAO8Q/_uEm4xumkSM3Ib44laMt6aqc4_bJn5SaQCHMYCw/s1600-h/image%255B53%255D"><img width="300" height="74" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-nmqFLVqWf6w/WVE55nWU9oI/AAAAAAAAO8U/x6tyaQGb5SMzg61WNo38O1rGeeZrKaGZgCHMYCw/image_thumb%255B25%255D?imgmax=800" border="0"></a></p><p>And then the work flow is a follows</p><p><a href="https://lh3.googleusercontent.com/-mV550eSXx4o/WVE56CSAvjI/AAAAAAAAO8Y/NZ0f-xjrLrYdSuKbiujppJfKQvUcDmYqQCHMYCw/s1600-h/image%255B67%255D"><img width="650" height="341" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-ZKPPpEwI8Xo/WVE56aTMNOI/AAAAAAAAO8c/qOtWJOfsl6o5BuAo05f2EIKmTKtCjzK5gCHMYCw/image_thumb%255B35%255D?imgmax=800" border="0"></a></p><ol><li>Check the “Is Global Listener” checkbox (that is there because of a pull request by Yours Truly)</li><li>Select the plus-button under “Responses”</li><li>Select “Show help” from the keyword drop down</li><li>Drag the Managers object from the Hierachy to the box under “Runtime only”</li><li>Change “Runtime only” to “Editor and Runtime”</li><li>Select “SpeechCommandExecutor” and then “OpenHelpScreen” from the right dropdown.</li></ol><p>To test you have done everything ok:</p><p>In Assets/App/Scripts, double-click SpeechCommandExecutor. </p><p><a href="https://lh3.googleusercontent.com/-F7_tfmigxjc/WVE56wGtIYI/AAAAAAAAO8g/MtVAV7dh6jQJUib4P0JW09npcmU_P0Q0ACHMYCw/s1600-h/image%255B71%255D"><img width="304" height="148" title="image" style="display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-5hMrPaPuM1c/WVE57P7MAvI/AAAAAAAAO8k/xXUMn24KJrsmjpJ0MyYaocOlgIOaRvs1wCHMYCw/image_thumb%255B37%255D?imgmax=800" border="0"></a></p><p>This will open Visual Studio, on the SpeechCommandExecutor. Set a breakpoint on </p><pre>Messenger.Instance.Broadcast(new ShowHelpMessage());</pre><p>Hit F5, and return to Unity3D. Click the play button, and press “0”, or shout “Show help” if you think that’s funny (on my machine, speech recognition in the editor does not work on most occasions, thus I am very happy with the keys options). </p><p>If you have wired up everything correctly, the breakpoint should be hit. Stop Visual Studio and leave Unity Play Mode again. This part is done.</p><h2>Making the screen follow your gaze</h2><p>Another script from my HoloToolkitExtensions, that I already mentioned in some form, is MoveByGaze. It looks like this:</p><pre style="font-size: 10px;">using UnityEngine;
+using HoloToolkit.Unity.InputModule;
+using HoloToolkitExtensions.SpatialMapping;
+using HoloToolkitExtensions.Utilities;
+
+namespace HoloToolkitExtensions.Animation
+{
+    public class MoveByGaze : MonoBehaviour
+    {
+        public float MaxDistance = 2f;
+
+        public float DistanceTrigger = 0.2f;
+
+        public float Speed = 1.0f;
+
+        private float _startTime;
+        private float _delay = 0.5f;
+
+        private bool _isJustEnabled;
+
+        private Vector3 _lastMoveToLocation;
+
+        public BaseRayStabilizer Stabilizer = null;
+
+        public BaseSpatialMappingCollisionDetector CollisonDetector;
+
+        // Use this for initialization
+        void Start()
+        {
+            _startTime = Time.time + _delay;
+            _isJustEnabled = true;
+            if (CollisonDetector == null)
+            {
+                CollisonDetector = new DefaultMappingCollisionDetector();
+            }
+        }
+
+        void OnEnable()
+        {
+            _isJustEnabled = true;
+        }
+
+        // Update is called once per frame
+        void Update()
+        {
+            if ( _isBusy || _startTime &gt; Time.time)
+                return;
+
+            var newPos = LookingDirectionHelpers.GetPostionInLookingDirection(2.0f, 
+                GazeManager.Instance.Stabilizer);
+            if ((newPos - _lastMoveToLocation).magnitude &gt; DistanceTrigger || _isJustEnabled)
+            {
+                _isJustEnabled = false;
+                var maxDelta = CollisonDetector.GetMaxDelta(newPos - transform.position);
+                if (maxDelta != Vector3.zero)
+                {
+                    _isBusy = true;
+                    newPos = transform.position + maxDelta;
+                    LeanTween.moveLocal(gameObject, transform.position + maxDelta, 
+                        2.0f * maxDelta.magnitude / Speed).setEaseInOutSine().setOnComplete(MovingDone);
+                    _lastMoveToLocation = newPos;
+                }
+            }
+        }
+
+        private void MovingDone()
+        {
+            _isBusy = false;
+        }
+
+        private bool _isBusy;
+
+    }
+}
+</pre><p>This is an updated, LeanTween (in stead of iTween) based version of a thing I already described before <a href="http://dotnetbyexample.blogspot.com/2017/01/dragging-holograms-with-gaze-and.html" target="_blank">in this post</a> so I won’t go over it in detail. You will find it in the Animation folder of the HoloToolkitExtensions in <a href="https://github.com/LocalJoost/FloatingScreenDemo/" target="_blank">the demo projec</a>t. It uses helper classes BaseSpatialMappingCollisionDetector, DefaultMappingCollisionDetector and SpatialMappingCollisionDetector that are also described in the same post – these are in the HoloToolkitExtensions/SpatialMapping folder of <a href="https://github.com/LocalJoost/FloatingScreenDemo/" target="_blank">the demo project</a>.</p><p>The short workflow, for if you don’t want to go back to that article:</p><ul><li>Add a SpatialMappingCollisionDetector to the Plane in the HelpHolder</li><li>Add a MoveByGaze to the HelpHolder itself</li><li>Drag the InputManager on top of the “Stabilizer” field in the MoveByGaze script</li><li>Drag the Plane on top of the “Collision Detector” field</li></ul><p>The result should look like this</p><p><a href="https://lh3.googleusercontent.com/-gSwKrWfU8uE/WVNQeboZ04I/AAAAAAAAO9s/zOspYbonweYNclmSCn-Uewm77_pKbLoXACHMYCw/s1600-h/image%255B7%255D"><img width="400" height="132" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-X1eIqxaewU4/WVNQfPvI1dI/AAAAAAAAO9w/rClDj8q3uL8oZPwerwfi-eEdUauNFzrGgCHMYCw/image_thumb%255B4%255D?imgmax=800" border="0"></a></p><p>I would suggest updating “Speed” to 2.5 because although the screen moves nice and fluid, the default value is a bit slow for my taste. If you now press the Play Button in Unity, you will see the screen already following the gaze cursor if you move around with the mouse or the keyboard.</p><iframe width="650" height="365" src="https://www.youtube.com/embed/dur5C8eyfwk" frameborder="0" allowfullscreen=""></iframe><p>The only thing is, it is not always aligned to the camera. For that, we have the LookAtCamera script I already wrote about <a href="http://dotnetbyexample.blogspot.com/2016/10/a-hololens-airplane-tracker-3creating.html" target="_blank">in October in part 3 of the HoloLens airplane tracker app</a>, but I will show it here anyway:</p><pre>using UnityEngine;
+
+namespace HoloToolkitExtensions.Animation
+{
+    public class LookatCamera : MonoBehaviour
+    {
+        public float RotateAngle = 180f;
+
+        void Update()
+        {
+            gameObject.transform.LookAt(Camera.main.transform);
+            gameObject.transform.Rotate(Vector3.up, RotateAngle);
+        }
+    }
+}
+</pre><p>because it’s so small. The only change between this and the earlier version is that you know can set the the rotate angle in the editor ;). Drag it on top of the HelpHolder now the screen will always face the user after moving to a place right in front of it. </p><h2>Fading in/out the help screen</h2><p>In the first video you can see the screen fades nicely in on the voice command, and out when it’s clicked. The actual fading is done by no less than three classes, two of whom are inside the HoloToolkitExtensions. First is this simple FadeInOutController, that is actually usable all by itself:</p><pre>using UnityEngine;
+
+namespace HoloToolkitExtensions.Animation
+{
+    public class FadeInOutController : MonoBehaviour
+    {
+        public float FadeTime = 0.5f;
+
+        protected bool IsVisible { get; private set; }<br>
+        private bool _isBusy;
+
+        public virtual void Start()
+        {
+            Fade(false, 0);
+        }
+
+        private void Fade(bool fadeIn, float time)
+        {
+            if (!_isBusy)
+            {
+                _isBusy = true;
+                LeanTween.alpha(gameObject, fadeIn ? 1 : 0, time).setOnComplete(() 
+                    =&gt; _isBusy = false);
+            }
+        }
+
+        public virtual void Show()
+        {
+            IsVisible = true;
+            Fade(true, FadeTime);
+        }
+
+        public virtual void Hide()
+        {
+            IsVisible = false;
+            Fade(false, FadeTime);
+        }
+    }
+}
+
+</pre><p>So this is a pretty simple behaviour that fades the current gameobject in or out, in a configurable timespan, and it makes sure it will not get interrupted while doing the fade. Also – notice it initially fades the gamobject out in zero time, so initially any gameobject with this behavior will be invisible</p><p>Next up is BaseTextScreenController, that is a child class of FadeInOutController:</p><pre>using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace HoloToolkitExtensions.Animation
+{
+    public class BaseTextScreenController : FadeInOutController
+    {
+        private List&lt;MonoBehaviour&gt; _allOtherBehaviours;
+
+        // Use this for initialization
+        public override void Start()
+        {
+            base.Start();
+            _allOtherBehaviours = GetAllOtherBehaviours();
+            SetComponentStatus(false);
+        }
+
+        public override void Show()
+        {
+            if (IsVisible)
+            {
+                return;
+            }
+            SetComponentStatus(true);
+            var a = GetComponent&lt;AudioSource&gt;();
+            if (a != null)
+            {
+                a.Play();
+            }
+            base.Show();
+        }
+
+        public override void Hide()
+        {
+            if (!IsVisible)
+            {
+                return;
+            }
+            base.Hide();
+            StartCoroutine(WaitAndDeactivate());
+        }
+
+        IEnumerator WaitAndDeactivate()
+        {
+            yield return new WaitForSeconds(0.5f);
+            SetComponentStatus(false);
+        }
+    }
+}
+</pre><p>So this override, on start, gathers all other behaviors, then de-activates components (this will be explained below). When Show is called, it first activates the the components, then tries to play a sound, then calls the base Show to unfade the control. If Hide is called, it first calls the base fade, then after a short wait starts to de-activate all components again. </p><p>So what is the deal with this? The other two missing routines are like this:</p><pre>private List&lt;MonoBehaviour&gt; GetAllOtherBehaviours()
+{
+    var result = new List&lt;Component&gt;();
+    GetComponents(result);
+    var behaviors = result.OfType&lt;MonoBehaviour&gt;().Where(p =&gt; p != this).ToList();
+    GetComponentsInChildren(result);
+    behaviors.AddRange(result.OfType&lt;MonoBehaviour&gt;());
+    return behaviors;
+}
+
+private void SetComponentStatus(bool active)
+{
+    foreach (var c in _allOtherBehaviours)
+    {
+        c.enabled = active;
+    }
+    for (var i = 0; i &lt; transform.childCount; i++)
+    {
+        transform.GetChild(i).transform.gameObject.SetActive(active);
+    }
+}
+</pre><p>As you can see, the first method simply finds all behaviors in the gameobject – the screen - <em>and its immediate children, </em>except for this behavior. If you supply “false” for “active”, it will first disable all behaviours (except the current one), and then it will set all child gameobjects to inactive. The point of this is that we have a lot of things happening in this screen. It’s following your gaze, checking for collisions, it’s spinning a button, and it’s waiting for clicks – all in vain as the screen is invisible. So this setup makes the whole screen dormant, disables all behaviors except the current one – and also can bring it back ‘to life’ again by supplying ‘true’. The important part is to do the right order (first the behaviours, then the gameobjects). It’s also important to gather the behaviours at the start, because once gameobjects are deactivated, you can’t get to their behaviors anymore. </p><p>The final class does nearly nothing – but this is the only app-specific class</p><pre>using HoloToolkitExtensions.Animation;
+using HoloToolkitExtensions.Messaging;
+
+public class HelpTextController : BaseTextScreenController
+{
+    public override void Start()
+    {
+        base.Start();
+        Messenger.Instance.AddListener&lt;ShowHelpMessage&gt;(ShowHelp);
+    }
+
+    private void ShowHelp(ShowHelpMessage arg1)
+    {
+        Show();
+    }
+}</pre><p>Basically the only thing this does is make sure the Show method is called when a ShowHelpMessage is received. If you drag this HelpTextController on top of the HelpHolder and press the Unity play button, you see an empty screen in stead of the help screen. But if you press 0 or yell “show help” the screen will pop up.</p><h2>Closing the screen by a button tap</h2><p>So now the screen is initially invisible, it appears on a speech command – now how do we get rid of it again? With this very simple script the circle is closed:</p><pre>using HoloToolkit.Unity.InputModule;
+using UnityEngine;
+
+namespace HoloToolkitExtensions.Animation
+{
+    public class CloseButton : MonoBehaviour, IInputClickHandler
+    {
+        private void Start()
+        { }
+
+        void Awake()
+        {
+            gameObject.SetActive(true);
+        }
+
+        public void OnInputClicked(InputClickedEventData eventData)
+        {
+            var h = gameObject.GetComponentInParent&lt;BaseTextScreenController&gt;();
+            if (h != null)
+            {
+                h.Hide();
+                var a = gameObject.GetComponent&lt;AudioSource&gt;();
+                if (a != null)
+                {
+                    a.Play();
+                }
+            }
+        }
+    }
+}</pre>
+<p>This a standard HoloToolkit IInputClickHandler – when the user clicks, it tries to find a BaseTextScreenController in the parent and calls the Hide method, effectively fading out the screen. And it tries to play a sound, too.</p><h2>Some finishing audio touches</h2><p>Two behaviours – the CloseButton and the BaseTextScreenController – try to play sound when they are activated. As I have stated multiple times before, having immediate audio feedback when a HoloLens <a href="https://lh3.googleusercontent.com/-H3bGFBDw_Kw/WVZBd68bsDI/AAAAAAAAO-Q/My6UzaRYDpw12_gx2_51-p6Q2cXs4GCYwCHMYCw/s1600-h/image%255B6%255D"><img width="300" height="358" title="image" align="right" style="border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-EW0TckU-dVY/WVZBeZpRbmI/AAAAAAAAO-U/a8Vorn0NEvQH7IVMXTWfRRB8sfhh47UGgCHMYCw/image_thumb%255B3%255D?imgmax=800" border="0"></a>‘understands’ a user initiated action is vital, especially when that action’s execution may take some time. At no point you want the user to have a ‘huh it’s not doing anything’ feeling.</p><p>In <a href="https://github.com/LocalJoost/FloatingScreenDemo/" target="_blank">the demo project</a> I have included two audio files I use quite a lot – “Click” and “Ready”. “Click” should be added to the Sphere in HelpHolder. That is easily done by dragging it onto the Sphere from App/Scripts/Audio onto the Sphere. That will automatically create an AudioSource. </p><p>Important are the following settings:</p><ul><li>Check the “Spatialize” checkbox</li><li>Uncheck the “Play on awake checkbox</li><li>Move the “Spatial Blend” slider all the way to the right</li><li>In the 3D sound settings section, set “Volume Roloff” to “Custom Rolloff” </li></ul><p>Finally, drag “Ready” on top of the HelpHolder itself, where it will be picked up by the HelpTextController (which is a child class of BaseTextScreenController ) and apply the same settings. Although you might consider not using spatial sound here, because it’s not a sound that is particularly attached to a location – it’s a general confirmation sound</p><h2>Conclusion</h2><p>To be honest, a 2d-ish help screen feels a bit like a stopgap. You can also try to have a kind of video of audio message showing/telling the user about the options that are available. Ultimately you can think of an intelligent virtual assistant that teach you the intricacies of an immersive app. With the advent of ‘intelligent’ bots and stuff like LUIS it might actually become possible to have an app help you through it’s own functionality by having a simple questions-and-answers like conversation with it. I had quite an interesting discussion about this subject at Unity Unite Europe last Wednesday. But then again, since Roman times we have pointed people in right directions or conveyed commercial messages by using traffic signs and street signs – essentially 2D signs in a 3D world as well. Sometimes we used painted murals, or even statue like things. KISS sometimes just works. </p><p>The completed demo project <a href="https://github.com/LocalJoost/FloatingScreenDemo/" target="_blank">can be downloaded here.</a></p>

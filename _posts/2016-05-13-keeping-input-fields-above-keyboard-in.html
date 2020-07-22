@@ -1,0 +1,151 @@
+---
+layout: post
+title: Keeping input fields above the keyboard in UWP apps
+date: '2016-05-13T19:24:00.001+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- XAML
+- behavior
+modified_time: '2016-05-16T20:53:21.003+02:00'
+thumbnail: https://i.ytimg.com/vi/wmnbTb9CE1s/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1498668329882477703
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/05/keeping-input-fields-above-keyboard-in.html
+---
+
+<p>Before you all think I am stark raving mad – it appears that it is actually possible to create XAML constructions that confuse the UWP renderer to such an extent that although it moves the user interface upwards - as it should - it does not always move it up <em>far enough</em>. This can be observed in the video below - as well as the fact that it is fixable. </p><iframe height="487" src="https://www.youtube.com/embed/wmnbTb9CE1s" frameborder="0" width="650" allowfullscreen></iframe> <p>A user observed this on my app Map Mania (it has been fixed since). I have only been able to repro this on Windows 10 mobile. Apparently it has something to do with going rampant on adaptive triggers, and another key part is the use of an bottom app bar. </p> <p>The XAML is a simplified version of what I used for the <a href="http://dotnetbyexample.blogspot.com/2016/02/an-adaptivetrigger-that-works-with.html" target="_blank">post about a CompositeTrigger-enabled AdaptiveTrigger</a> – basically, I use a simple viewmodel and VisualStateGroup with some Triggers to change what I see on the screen. The XAML is not too complicated:</p><pre style="font-size: 12px">&lt;Grid &gt;
+  &lt;Grid.RowDefinitions&gt;
+    &lt;RowDefinition Height="Auto"&gt;&lt;/RowDefinition&gt;
+    &lt;RowDefinition Height="*"&gt;&lt;/RowDefinition&gt;
+  &lt;/Grid.RowDefinitions&gt;
+  &lt;controls:PageHeader Text="Fix" FontSize="30" VisualStateNarrowMinWidth="0" 
+            VisualStateNormalMinWidth="700"&gt;&lt;/controls:PageHeader &gt;
+  &lt;Grid Grid.Row="1" Margin="12" x:Name="TopGrid"&gt;
+    &lt;Grid.ColumnDefinitions&gt;
+      &lt;ColumnDefinition Width="*"&gt;&lt;/ColumnDefinition&gt;
+    &lt;/Grid.ColumnDefinitions&gt;
+    &lt;Grid&gt;
+      &lt;Grid.RowDefinitions&gt;
+        &lt;RowDefinition Height="60"&gt;&lt;/RowDefinition&gt;
+        &lt;RowDefinition Height="*"&gt;&lt;/RowDefinition&gt;
+        &lt;RowDefinition Height="Auto"&gt;&lt;/RowDefinition&gt;
+      &lt;/Grid.RowDefinitions&gt;
+
+      &lt;Grid Margin="0,6,0,6" x:Name="NarrowMenu" &gt;
+        &lt;Grid.RowDefinitions&gt;
+          &lt;RowDefinition Height="Auto"&gt;&lt;/RowDefinition&gt;
+          &lt;RowDefinition Height="Auto"&gt;&lt;/RowDefinition&gt;
+        &lt;/Grid.RowDefinitions&gt;
+        &lt;Grid.ColumnDefinitions&gt;
+          &lt;ColumnDefinition Width="Auto"&gt;&lt;/ColumnDefinition&gt;
+          &lt;ColumnDefinition Width="Auto"&gt;&lt;/ColumnDefinition&gt;
+        &lt;/Grid.ColumnDefinitions&gt;
+        &lt;TextBlock Text="Green" Grid.Row="0"  FontSize="20"
+                   Margin="0,0,6,0" Tapped="{x:Bind ViewModel.ToggleDisplay}" &gt;
+        &lt;/TextBlock&gt;
+
+        &lt;TextBlock Text="Red" Grid.Row="0" Grid.Column="1"  FontSize="20"
+                   Margin="6,0,0,0" Tapped="{x:Bind ViewModel.ToggleDisplay}"&gt;
+        &lt;/TextBlock&gt;
+        &lt;Grid Height="2" Background="White" Grid.Row="1" Grid.Column="0" Margin="0,0,6,0" 
+        x:Name="GreenUnderline"/&gt;
+        &lt;Grid Height="2" Background="White" Grid.Row="1" Grid.Column="1" Margin="6,0,0,0" 
+        x:Name="RedUnderline"/&gt;
+      &lt;/Grid&gt;
+
+      &lt;Grid Background="Green" Grid.Row="1" x:Name="GreenArea"&gt;&lt;/Grid&gt;
+      &lt;Grid Background="Red" Grid.Row="1" x:Name="WideRedArea"&gt;&lt;/Grid&gt;
+
+<strong><font color="#ff0000">      &lt;StackPanel Grid.Row="2" Orientation="Vertical" HorizontalAlignment="Stretch" 
+         VerticalAlignment="Bottom" &gt;
+        &lt;TextBlock  Text="Some label" x:Uid="MapName"  Margin="0,0,0,6"/&gt;
+        &lt;TextBox TextWrapping="NoWrap"/&gt;
+      &lt;/StackPanel&gt;</font></strong>
+    &lt;/Grid&gt;
+  &lt;/Grid&gt;
+&lt;/Grid&gt;
+
+</pre>
+<p>This stuff is based on Template10, but the actual usage is very limited. So first we have some heading, then the menu, then the two areas (green and red) that are used to fill the middle of the screen – it stands in for actual content – and then all the way below, in red and bold, the stackpanel that has some problems, as displayed in the video. When you click on the menu text(“Red” and “Green”) a command in the view model is called that flips a property “TabDisplay”. This triggers the VisualStateManager, which is in fact </p>
+<p>The VisualStateManager is actually pretty simple:</p><pre style="font-size: 10px">&lt;VisualStateManager.VisualStateGroups&gt;
+  &lt;VisualStateGroup x:Name="WindowStates" &gt;
+    &lt;VisualState x:Name="NarrowState_Red"&gt;
+      &lt;VisualState.StateTriggers&gt;
+        &lt;StateTrigger IsActive="{x:Bind ViewModel.TabDisplay, Mode=OneWay}"/&gt;
+      &lt;/VisualState.StateTriggers&gt;
+      &lt;VisualState.Setters&gt;
+        &lt;Setter Target="WideRedArea.Visibility" Value="Visible"&gt;&lt;/Setter&gt;
+
+        &lt;Setter Target="GreenUnderline.Visibility" Value="Collapsed"&gt;&lt;/Setter&gt;
+      &lt;/VisualState.Setters&gt;
+    &lt;/VisualState&gt;
+
+    &lt;VisualState x:Name="NarrowState_Green"&gt;
+      &lt;VisualState.StateTriggers&gt;
+        &lt;StateTrigger 
+          IsActive=<br>           "{x:Bind ViewModel.TabDisplay, Mode=OneWay,Converter={StaticResource BoolInvertConverter}}"/&gt;
+      &lt;/VisualState.StateTriggers&gt;
+      &lt;VisualState.Setters&gt;
+        &lt;Setter Target="WideRedArea.Visibility" Value="Collapsed"&gt;&lt;/Setter&gt;
+        &lt;Setter Target="RedUnderline.Visibility" Value="Collapsed"&gt;&lt;/Setter&gt;
+      &lt;/VisualState.Setters&gt;
+    &lt;/VisualState&gt;
+
+  &lt;/VisualStateGroup&gt;
+&lt;/VisualStateManager.VisualStateGroups
+</pre>
+<p>So far, so good but when you use a construction like this, and you put anything <em>below</em> it, your might run into issues as I described. Unless you add a little something to the stackpanel:</p><pre style="font-size: 12px">&lt;StackPanel Grid.Row="2" Orientation="Vertical" HorizontalAlignment="Stretch"
+   VerticalAlignment="Bottom" &gt;
+<strong><font color="#ff0000">  &lt;interactivity:Interaction.Behaviors&gt;
+    &lt;behaviors:KeepAboveInputPaneBehavior/&gt;
+  &lt;/interactivity:Interaction.Behaviors&gt;</font></strong>
+  &lt;TextBlock  Text="Some label" x:Uid="MapName"  Margin="0,0,0,6"/&gt;
+  &lt;TextBox TextWrapping="NoWrap"/&gt;
+&lt;/StackPanel</pre>
+<p>And people who know me won’t be surprised is it actually a behavior again :)</p><pre style="font-size: 12px">using Windows.UI.ViewManagement;
+using Windows.UI.Xaml;
+using Microsoft.Xaml.Interactivity;
+
+namespace WpWinNl.Behaviors
+{
+  public class KeepAboveInputPaneBehavior : Behavior&lt;FrameworkElement&gt;
+  {
+    private Thickness _originalMargin;
+
+    protected override void OnAttached()
+    {
+      base.OnAttached();
+      AssociatedObject.Loaded += AssociatedObjectLoaded;
+      _originalMargin = AssociatedObject.Margin;
+    }
+
+    private void AssociatedObjectLoaded(object sender, RoutedEventArgs e)
+    {
+      AssociatedObject.Loaded -= AssociatedObjectLoaded;
+      InputPane.GetForCurrentView().Hiding += InputPaneHiding;
+      InputPane.GetForCurrentView().Showing += InputPaneShowing;
+    }
+
+    protected override void OnDetaching()
+    {
+      InputPane.GetForCurrentView().Hiding -= InputPaneHiding;
+      InputPane.GetForCurrentView().Showing -= InputPaneShowing;
+    }
+
+    private void InputPaneShowing(InputPane sender, InputPaneVisibilityEventArgs args)
+    {
+      AssociatedObject.Margin = 
+        new Thickness(_originalMargin.Left, _originalMargin.Top, 
+        _originalMargin.Right, _originalMargin.Bottom + args.OccludedRect.Height);
+    }
+
+    private void InputPaneHiding(InputPane sender, InputPaneVisibilityEventArgs args)
+    {
+      AssociatedObject.Margin = _originalMargin;
+    }
+  }
+}
+</pre>
+<p>When the attached object is loaded, it’s original margins are recorded. When the input pane is showing, the height of the ‘OcculedRect’ is added to it, moving the attached object op to exactly <em>above</em> the input bar.</p>
+<p>This is possibly a bug, or the SDK team just never imagined people doing odd things with the Visual State Manager – “A fool may ask more questions in an hour than a wise man can answer in seven years”, right ;). Whatever – I like I tell people: you can moan about things like this or cry foul at Microsoft, but I find it much more fun to try and fix them. QED</p>
+<p>A sample solution, with the behavior, <a href="https://github.com/LocalJoost/MoveUpDemo" target="_blank">can be found here</a>.</p>

@@ -1,0 +1,246 @@
+---
+layout: post
+title: Windows 10 maps part 2 - manipulation and drawing
+date: '2015-08-19T10:13:00.000+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- Mapping
+- Windows 10
+modified_time: '2015-08-22T10:49:49.056+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2128427597454722493
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/08/windows-10-maps-part-2-manipulation-and.html
+---
+
+<p><font size="4">Intro</font><br>In <a href="http://dotnetbyexample.blogspot.com/2015/08/windows-10-maps-part-1-setting-up.html" target="_blank">my previous post in this series</a> I have talked about how to get a map control in a Universal <a href="http://www.windows.com" target="_blank">Windows</a> App and how to set it up with a proper key, now it's time to get the thing to actually do something. In this episode I am going to show how to perform basic map manipulations (i.e. control what location it's looking at, and how) and how to draw shapes on the map. I am going to refer to a <a href="https://github.com/LocalJoost/Manipulation_Drawing" target="_blank">sample app</a> that has already been published on GitHub and has all the moving parts for the whole series.</p> <p><font size="4">Manipulation</font><br>When I talk about manipulation of a Windows 10 Universal Windows App map (there's a mouthful), I mean three basic things that can be manipulated - that is, when we consider the map as a traditional 2D map, i.e.&nbsp; a flat surface where you look upon from right above.</p> <ul> <li>View area  <li>Heading (aka rotation)  <li>Pitch</li></ul> <p>As we will see later on in this series, in Windows 10 this is actually a bit too limiting a statement, but I have to start somewhere. We will also see the view area is actually determined by not one but two factors - the center location and the zoom level.</p> <p><font size="3">View area / zoom level</font><br>The <a href="https://github.com/LocalJoost/Manipulation_Drawing" target="_blank">sample app</a> has a couple of 'button' controls that control location and zoom level. If you tap the "Initial location", it will zoom from the default view (the whole world) to a location around my house. It will not just jump to the location, but zoom out a little, then zoom in all the way to this location - animating all the way. The same goes for the "Zoom" in and "Zoom out button", the map will zoom in, animating from one zoom level to another. </p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-2---setting-up_E2AA/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-2---setting-up_E2AA/image_thumb_3.png" width="644" height="437"></a><br>The methods doing this can be found in MainPage.xaml.cs:</p><pre>private async void InitialLocation(object sender, RoutedEventArgs e)
+{
+  await MyMap.TrySetViewAsync(
+    new Geopoint(new BasicGeoposition { Latitude = 52.181427, 
+                                        Longitude = 5.399780 }),
+ 16, RotationSlider.Value, PitchSlider.Value, MapAnimationKind.Bow);
+
+  //MyMap.Center = 
+  //  new Geopoint(new BasicGeoposition { Latitude = 52.181427, 
+                                          Longitude = 5.399780});
+  //MyMap.ZoomLevel = 16;
+}
+
+private void ZoomOut(object sender, RoutedEventArgs e)
+{
+  MyMap.TryZoomOutAsync();
+ // MyMap.ZoomLevel -= MyMap.ZoomLevel &gt; MyMap.MinZoomLevel ? 1 : 0;
+}
+
+private void ZoomIn(object sender, RoutedEventArgs e)
+{
+   MyMap.TryZoomInAsync();
+  //MyMap.ZoomLevel += MyMap.ZoomLevel &lt; MyMap.MaxZoomLevel ? 1 : 0;
+}</pre>
+<p>As you see, there is a lot of commented out code. This is because I want to show there is more than one way to achieve the same result. Personally I find the MyMap.TrySetViewAsync method the most recommendable, as this animates to a location and a zoom level and also (as can be seen from the code) can set a rotation and a pitch (explained below). You can also just set zoom level and center location in one go, but that will make the map 'jump;' to a location, which is a way less desirable user experience IMHO. Remember the old mantra - 'fast and fluid' ;)</p>
+<p>The same goes for zoom in and zoom out. The TryZoomOutAsync and TryZoomInAsync methods give a fluid animation going from one zoom level to another, and have the added bonus of not crashing when you try to zoom below 0 or over the maximum zoom level (or the need of creating a complex expression to prevent that).</p>
+<p>This is what you need when you use a simple 2D map. As we will see later, when we go to 3D maps other factors come into play.</p>
+<p><font size="3">Aside - coordinates</font><br>For some reason that is not clear to me, the map API has two types that depict a location. The first one is a struct BasicGeopositionthat only holds latitude, longitude and altitude, For creating shapes, this is usually enough. Yet, for manipulating the map we need Geopoint. You create a Geopoint from a BasicGeoposition. A Geopoint has some extra capabilities, like SpatialReferenceId (that to my knowledge still has no function yet, and and AltitudeReferenceSystem that I never needed to use as of yet. Geopoint is a class. Maybe this is some optimization thing.The key takeaway is that there are two coordinate types, and sometimes you need the one, and sometimes the other. Intellisense is your friend here.</p>
+<p><font size="3">Heading</font><br>Every cartographer or GIS person - and everyone who used to travel before the ubiquitous affordable GPS systems became available (we had <em>paper</em> maps back then, kids, can you believe it) knows one golden rule: "North Is Up". Unfortunately 99.5% of the population does not care about proper GIS rules, nor does it want to use a compass, and it particularly does not want to deal with mentally rotating a map while navigating a complex and busy highway intersection - they follow the mapping school of "I Just Want To Get There". So GPS systems tend to show 'up' as the direction you are travelling in. And the map control supports that too. Of course you can simply apply a rotation transformation to the control, but that will show all labels at an angle too. This is clearly not what we want, and that's what Microsoft knows too.</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-2---setting-up_E2AA/image_7.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-2---setting-up_E2AA/image_thumb_7.png" width="644" height="437"></a><br>Here you see the same map as above, but rotated 90° counter-clockwise. Notice how all labels are still readable.</p>
+<p>There are quite some ways to accomplish that. I did it by data binding the maps Heading property to the slider's value:</p><pre>&lt;Slider x:Name="RotationSlider" VerticalAlignment="Top"
+    Minimum ="-180" Maximum="180" 
+    Value="{Binding ElementName=MyMap, Path=Heading, Mode=TwoWay}" /&gt;</pre>
+<p>This has the advantage slider and map heading stay synchronized when the user rotates the map with a two-finger gesture. Unfortunately, although the map accepts -180° to 180° it really wants to use 0° to 360° so if you rotate the map like that you will see the slider jump to the right. There is some more code necessary to keep that in sync. There are no less than three ways to set the heading, as you can see in this unused method in the code:</p><pre>// Not used now - replaced by databinding
+private void RotationSliderOnValueChanged(object sender, 
+             RangeBaseValueChangedEventArgs e)
+{
+  MyMap.TryRotateToAsync(e.NewValue);
+
+  //Same result, sans the cool animation.
+  MyMap.Heading = e.NewValue;
+
+  //Rotates BY a certain value.
+  MyMap.TryRotateAsync(e.NewValue);
+}</pre>
+<p>TryRotateToAsync rotates the map to a set angle, and do this animated. If you set "Heading" directly, it will have the same effect, but it will just jump to the nieuw display. TryRotateAsync finally does not rotate <em>to</em> an angle, but <em>by</em> an angle, so if you repeatedly call this method&nbsp; with "10" it will rotate your map ten degrees counter clockwise for every call.</p>
+<p><font size="3">Pitch</font><br>This is like a fake 3D view, like the effect you get on GPS systems - or when you rotate the top of a paper map backwards from you:<br><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-2---setting-up_E2AA/image_8.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-2---setting-up_E2AA/image_thumb_8.png" width="644" height="437"></a><br>This is the same map a the previous two, but now with a pitch of 60. A pitch may be anywhere from 0 to 75. The is a catch - pitch values is only effective at zoom level&nbsp; 7 and down. Above that, you can set pitch to any value you like but you get the same result as when you set it to 0. Which makes sense - otherwise your viewpoint is so 'high' above the map that pitching it would mean you/d mainly see the empty space 'above' and 'beyond' the actual flat map. Setting the map pitch from the slider is also done by data binding. Note that I need to bind to the <em>DesiredPitch</em> property:</p><pre>&lt;Slider x:Name="PitchSlider" Grid.Column="1" Grid.Row="1" 
+        Orientation="Vertical" Margin="0,0,0,12" Minimum="0" Maximum="75" 
+        Value="{Binding ElementName=MyMap, Path=DesiredPitch, Mode=TwoWay}" /&gt;</pre>
+<p>as the map might just refuse you to give the pitch you want because to are zoomed out too much. You can also do this from code:</p><pre>private void PitchSliderOnValueChanged(object sender, 
+  RangeBaseValueChangedEventArgs e)
+{
+  //Only effective on ZoomLevel 7 and higher!
+  MyMap.DesiredPitch = e.NewValue;
+
+  // Does not work - read only
+  // MyMap.Pitch = e.NewValue;
+}</pre>
+<p>and there is in fact the Pitch property on the map, but that is read only. DesiredPitch is the pitch you request, Pitch holds the pitch you actually <em>get. </em></p>
+<p><font size="3">Manipulation by canvas controls</font><br>A new way of enabling the user control the map zoom, pitch is making use of the new canvas control properties. These are not used in the code sample, but you can make controls visible like this:</p><pre>&lt;maps:MapControl x:Name="MyMap" 
+     ZoomInteractionMode   ="GestureAndControl" 
+     RotateInteractionMode ="GestureAndControl" 
+     TiltInteractionMode  = "GestureAndControl" /&gt;</pre>
+<p>This will result on these four controls on the right side of the map control</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-2---setting-up_E2AA/image_12.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-2---setting-up_E2AA/image_thumb_12.png" width="644" height="437"></a></p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-2---setting-up_E2AA/image_13.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; float: right; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-2---setting-up_E2AA/image_thumb_13.png" width="249" align="right" height="464"></a>On a tablet or PC, where there is usually enough room for external toolbars and sliders these are a very nice touch already, but if you want to use the map on a smaller device like a phone or mini tablet they are actually a godsend, for a you can see on the illustration on the right the sliders actually use up a lot of the valuable screen real estate on a phone. In a real application I would probably write an <a href="http://www.microsoft.com/en-gb/developers/articles/week03aug15/designing-with-adaptive-triggers-for-windows-10/" target="_blank">adaptive trigger</a> to do away with the sliders on a phone and/or small screen device.</p>
+<p>You can set the value of these three properties actually to five different values:</p>
+<ul>
+<li>Auto</li>
+<li>Disabled</li>
+<li>GestureOnly</li>
+<li>ControlOnly</li>
+<li>GestureAndControl </li></ul>
+<p>And setting "Disabled" to all properties has the added bonus of being able to lock down the map, which can be useful on a phone. Who has not accidentally swiped the map way, operating the phone one-handed, looking for a parking spot or something. There is, by the way, a fourth map property to lock down even the panning: <strong>PanInteractionMode</strong>, but that one has no control option, and only supports the values "Auto" and "Disabled".</p>
+<p>Notice the power of Universal Windows Apps by the way: the only thing I had to change for my app was to point Visual Studio to the phone emulator in stead of Windows itself. Deploying it to my phone would require only pointing it to a device and selecting ARM in stead of x86/x64 compile. ZERO code change. </p>
+<p><font size="4">Drawing (and deleting)</font><br>If you are coming from <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> 8.1, not much has changed in Windows 10, apart from the fact things work a lot better. If you are coming from <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> store apps - your cheese has moved quite a bit, but that is all for the better.We still draw polygons, lines and points but things have changed a bit.</p>
+<p><font size="3">Filling the map</font><br>If you start the <a href="https://github.com/LocalJoost/Manipulation_Drawing" target="_blank">sample app</a>, click "initial location, then "draw lines", "draw shapes" and then "draw points" a couple of times, you will end up with this mess :) </p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-2---setting-up_E2AA/image_9.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-2---setting-up_E2AA/image_thumb_9.png" width="644" height="437"></a></p>
+<p><font size="3">Drawing a line</font><br>Drawing a couple lines is as simple as this:</p><pre>private void DrawLines(object sender, RoutedEventArgs e)
+{
+  if (!DeleteShapesFromLevel(2))
+  {
+    var strokeColor = Colors.Green;
+    strokeColor.A = 200;
+
+    //Drawing lines, notice the use of Geopath. Consists out of BasicGeopositions
+    foreach (var dataObject in PointList.GetLines())
+    {
+      var shape = new MapPolyline
+      {
+        StrokeThickness = 9,
+        StrokeColor = strokeColor,
+        StrokeDashed = false,
+        ZIndex = 2,
+        Path = new Geopath(dataObject.Points)
+      };
+      MyMap.MapElements.Add(shape);
+    }
+  }
+}</pre>
+<p>Lines are created as a MapPolyLine object that have the following properties:</p>
+<ul>
+<li>A stroke thickness 
+<li>A color (not this is a partially translucent green color) 
+<li>A dash (the line is dashed or not, there are no other pattern available) 
+<li>A z-index (this determines which objects appear on top of each other - a shape with a higher z-index will appear to be 'on top' of a shape with a lower z-index 
+<li>Most importantly - a Geopath that contains a number of points.</li></ul>
+<p>Shapes are then simply added to the MapELements collection of the Map.</p>
+<p>The PointList.GetLines() I used to create data just gets a list of objects that each contain a list of points:</p><pre style="font-size: 12px">public static IEnumerable&lt;PointList&gt; GetLines()
+{
+  var result = new List&lt;PointList&gt;
+  {
+    new PointList
+    {
+      Name = "Line1",
+      Points = new List&lt;BasicGeoposition&gt;
+      {
+       new BasicGeoposition{Latitude = 52.1823604591191, Longitude = 5.3976580593735},
+       new BasicGeoposition{Latitude = 52.182687940076 , Longitude = 5.39744247682393},
+       new BasicGeoposition{Latitude = 52.1835449058563, Longitude = 5.40016567334533},
+       new BasicGeoposition{Latitude = 52.1837400365621, Longitude = 5.40009761229157}
+      }
+    },
+    new PointList
+    {
+      Name = "Line2",
+      Points = new List&lt;BasicGeoposition&gt;
+      {
+        new BasicGeoposition{Latitude = 52.181295119226  , Longitude = 5.39748212322593},
+        new BasicGeoposition{Latitude = 52.1793784294277, Longitude = 5.39909915998578}
+      }        
+    }
+  };
+
+  return result;
+}</pre>
+<p><font size="3">Drawing shapes</font><br>This is nearly the same as drawing shapes, only this draws a closed shaped. You are not required to close the shape (the last point of the Geopath does not need to be equal to the first one, as in some geographical systems - the shape is implicitly closed. The code is nearly the same.</p><pre>private void DrawShapes(object sender, RoutedEventArgs e)
+{
+  if (!DeleteShapesFromLevel(1))
+  {
+    var strokeColor = Colors.DarkBlue;
+    strokeColor.A = 100;
+    var fillColor = Colors.Blue;
+    fillColor.A = 100;
+
+    foreach (var dataObject in PointList.GetAreas())
+    {
+      var shape = new MapPolygon
+      {
+        StrokeThickness = 3,
+        StrokeColor = strokeColor,
+        FillColor = fillColor,
+        StrokeDashed = true,
+        ZIndex = 1,
+        Path = new Geopath(dataObject.Points)
+      };
+
+      MyMap.MapElements.Add(shape);
+    }
+  }
+}</pre>
+<p>The only difference is that we not only have a stroke color (which here is the outline of the shape), but we now also have <em>fill color</em> that determines how the inside of the shape is colored. Oh, and I do use a dash for the stroke here, if only to show what it looks like</p>
+<p><font size="3">Drawing icons</font><br>Windows Phone 8.1 introduced the MapIcon, a point object type that allows you to show icon type objects - with label! - that were drawn by the map itself. Compared to the 'old' way of displaying XAML elements on top of the map this made things vastly more simple and above all offered an awesome performance, compared to the 'old way'' .Unfortunately it also introduced the concept of 'best effort drawing' - that is, icons close to each other were not displayed in some seemingly randomly way to preserve performance. In practice, everyone used the 'old' way of doing things, i.e. drawing XAML elements on top of the map, which gave a horrible performance, but at least the data was displayed.</p>
+<p>Rejoice, now, because this has been fixed. MapIcons are now a fully viable concept, and very much usable. Drawing MapIcons goes like this:</p><pre>private async void DrawPoints(object sender, RoutedEventArgs e)
+{
+  // How to draw a new MapIcon with a label, anchorpoint and custom icon.
+  // Icon comes from project assets
+  var anchorPoint = new Point(0.5, 0.5);
+  var image = RandomAccessStreamReference.CreateFromUri(
+              new Uri("ms-appx:///Assets/wplogo.png"));
+
+  try
+  {
+    // Helper extension method    var area = MyMap.GetViewArea();
+    var area = MyMap.GetViewArea();
+
+    // PointList is just a helper class that gives 'some data'
+    var points = PointList.GetRandomPoints(
+      new Geopoint(area.NorthwestCorner), new Geopoint(area.SoutheastCorner),
+      50);
+    foreach (var dataObject in points)
+    {
+      var shape = new MapIcon
+      {
+        Title = dataObject.Name,
+        Location = new Geopoint(dataObject.Points.First()),
+        NormalizedAnchorPoint = anchorPoint,
+        Image = image,
+        CollisionBehaviorDesired = 
+          onCollisionShow? MapElementCollisionBehavior.RemainVisible : 
+                           MapElementCollisionBehavior.Hide,
+
+        ZIndex = 3,
+      };
+      MyMap.MapElements.Add(shape);
+    }
+  }
+  catch (Exception)
+  {
+    var dialog = new MessageDialog("GetViewArea error");
+    await dialog.ShowAsync();
+  }
+}</pre>
+<p>This may look a bit intimidating, but only the middle part is where the actual drawing takes place in the center of the code - the creation of the MapIcon object. That is distinctly different from the other two shapes:</p>
+<ul>
+<li>A MapIcon has a label, that is set in the Title property. This is optional. 
+<li>It also has an anchor point, this describes where the image appears on the map relative to the location. 0,0 is left top, 1,1 is right bottom. So if you set it to (0.5, 0.5) the center of the image will fall exactly op top of the coordinate in Location. And of course you can use everything in between should you desire so.<br><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-2---setting-up_E2AA/image_10.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-2---setting-up_E2AA/image_thumb_10.png" width="172" height="200"></a><br>Tip: make your icons <em>square</em>. If they cannot be, then make the image square and make the superfluous part translucent. I have found non-square icons playing havoc with the anchor point. 
+<li>It can be displayed using a custom image. This is also optional, if you don't set this you will get a default blue-ish text balloon like image. 
+<li>The CollisionBehaviorDesired&nbsp; property determines whether the MapIcon drawing should use the 'best effort' drawing method of old (Hide), or the new one (RemainVisible).The difference is controlled by this switch on the UI all the way at the bottom <br><a href="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-2---setting-up_E2AA/image_11.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Windows-10-maps-part-2---setting-up_E2AA/image_thumb_11.png" width="244" height="28"></a><br>It is default set to hide (just like the default value on the icon), but tor all practical purposes I think it should always be set to RemainVisible. Note - the effect of changing this setting may not&nbsp; be visible immediately, but it will be once you start to zoom in or out. </li></ul>
+<p>The method draws 50 icons per click on the button within the current view of the map, which is calculated using the extension method GetViewArea. This is <em>not</em> a standard map method - its actually quite an old extension method I wrote some time ago, and in the new world of Windows 10, it can fail in certain circumstances, hence the try-catch</p>
+<p><font size="3">Deleting</font><br>The first two drawing methods toggle shapes, and also feature a call to a DeleteShapesFromLevel. Deleting shapes is a easy as removing them from the MapElements collection :)</p><pre>private bool DeleteShapesFromLevel(int zIndex)
+{
+  // Delete shapes by z-index 
+  var shapesOnLevel = MyMap.MapElements.Where(p =&gt; p.ZIndex == zIndex);
+  if (shapesOnLevel.Any())
+  {
+    foreach (var shape in shapesOnLevel.ToList())
+    {
+      MyMap.MapElements.Remove(shape);
+    }
+    return true;
+  }
+  return false;
+}</pre>
+<p>The only 'fancy' thing here is that I select shapes by z-index, which I keep calling 'level - having worked in GIS for 23 years tends to stick.</p>
+<p><font size="4">Summary and concluding remarks</font></p>
+<ul>
+<li>Drawing lines, polygons and icons in Universal Windows Apps look remarkably like drawing the same things in Windows Phone 8.1 
+<li>There are still two types to deal with when handling coordinates - BasicGeoposition and Geopoint, and you will just have to see by Intellisense when you need the one, and when you need the other. 
+<li>There is no such thing as levels or layers as in the Windows 8.x Bing Maps control - there is only Z-index. As shape with a higher Z-index appears on top of a shape with a lower Z-index. In this maps control Z-indexes are properly honored now - at least for MapIcons there where some issues in Windows Phone 8.1 
+<li>MapIcons are now a fully viable way of drawing icons that give a very good performance, now the developer has a way of controlling the way the are displayed).</li></ul>
+<p>Once again I refer to the <a href="https://github.com/LocalJoost/Manipulation_Drawing" target="_blank">sample app</a> to see all the concepts described above in action.</p>  

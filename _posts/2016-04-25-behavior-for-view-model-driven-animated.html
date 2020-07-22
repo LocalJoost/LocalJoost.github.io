@@ -1,0 +1,190 @@
+---
+layout: post
+title: Behavior for view model driven animated popups in Xamarin Forms
+date: '2016-04-25T19:50:00.000+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- Xamarin Forms
+- XAML
+- behavior
+modified_time: '2016-04-25T19:51:02.946+02:00'
+thumbnail: https://i.ytimg.com/vi/ZZ_cQC50Ajk/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3350309897432567440
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/04/behavior-for-view-model-driven-animated.html
+---
+
+<h2>Preface</h2> <p><img style="float: right; display: inline" border="1" alt="popup" src="http://www.wortell.nl/wp-content/uploads/2016/04/popup.png" width="204" align="right" height="138">In <a href="http://dotnetbyexample.blogspot.com/2016/04/behaviors-for-animated-scroll-down-and.html" target="_blank">my previous post</a> I showed the basics for animation behaviors in Xamarin Forms. Here’s another one I made, that in conjunction with some nifty element binding makes for a pretty fluid popup appearing from the middle. Of course, you can use the native alert box but I’d rather want to see is something as displayed to the right, especially with a nice animation. The advantage of such a custom made popup is that is looks much more consistent across platforms, which is a huge win especially for LOB apps. </p> <p>You can see the behavior in action below:</p><iframe height="365" src="https://www.youtube.com/embed/ZZ_cQC50Ajk" frameborder="0" width="650" allowfullscreen></iframe> <h2>... and all there is to it...</h2> <p>The actual code is pretty small now all the heavy lifting has been done by the base classes from the previous post:</p><pre>using Wortell.XamarinForms.Behaviors.Base;
+using Xamarin.Forms;
+
+namespace Wortell.XamarinForms.Behaviors
+{
+  public class AnimateScaleBehavior : AnimateFoldBehaviorBase
+  {
+    protected override void Init(bool newValue)
+    {
+      if (newValue)
+      {
+        FoldOutPosition = 1;
+        FoldInPosition = 0;
+        AssociatedObject.Scale = FoldInPosition;
+      }
+    }
+
+    protected override void ExecuteAnimation(double start, double end, 
+                                             uint runningTime)
+    {
+      var animation = new Animation(
+        d =&gt; AssociatedObject.Scale = d, start, end, Easing.SinOut);
+
+      animation.Commit(AssociatedObject, "Unfold", length: runningTime,
+        finished: (d, b) =&gt;
+        {
+          if (AssociatedObject.Scale.Equals(FoldInPosition))
+          {
+            AssociatedObject.IsVisible = false;
+          }
+        });
+    }
+  }
+}
+</pre>
+<p>In stead of animating TranslationX and TranslationY, like in the <a href="http://dotnetbyexample.blogspot.com/2016/04/behaviors-for-animated-scroll-down-and.html" target="_blank">previous post</a>, now the Scale property is animated from 0 to 1 and back. Attentive readers may have seen something else though - as soon as the animation starts, a grey haze appears over the underlying screen, that only disappears when the animation is done. This is entirely done in XAML - using element binding.</p>
+<p>The whole popup sits in MenuControl.xaml – this is a user control </p><pre style="font-size: 11px">&lt;?xml version="1.0" encoding="utf-8" ?&gt;
+&lt;Grid xmlns="http://xamarin.com/schemas/2014/forms"
+      //Rest of namespace stuff omitted
+      <strong><span style="color: #ff0000">IsVisible="{Binding IsVisible, Source={x:Reference AnimatedGrid}}"&gt;
+</span></strong>  &lt;ContentView <strong><span style="color: #ff0000">BackgroundColor="{StaticResource SeeThrough}"</span></strong>
+               HorizontalOptions="Fill" VerticalOptions="Fill" &gt;
+
+    &lt;ContentView Padding="20,0,20,0" <strong><font color="#ff0000">x:Name="AnimatedGrid"</font></strong> IsVisible="False"&gt;
+<strong><span style="color: #ff0000">      &lt;ContentView.Behaviors&gt;
+        &lt;behaviors:AnimateScaleBehavior IsVisible="{Binding IsMenuVisible}" 
+           ViewIsInitialized="{Binding ViewIsInitialized}"/&gt;
+      &lt;/ContentView.Behaviors&gt;</span></strong>
+      &lt;ContentView Style="{StaticResource MenuStyle}" HorizontalOptions="Fill"
+                    VerticalOptions="CenterAndExpand" Padding="0,0,0,10"&gt;
+        &lt;Grid&gt;
+          &lt;Grid.RowDefinitions&gt;
+            &lt;RowDefinition Height="40"&gt;&lt;/RowDefinition&gt;
+            &lt;RowDefinition Height="Auto"&gt;&lt;/RowDefinition&gt;
+          &lt;/Grid.RowDefinitions&gt;
+
+          &lt;ContentView  Grid.Row="0" Style="{StaticResource PopupHeaderStyle}"&gt;
+            &lt;Label Style="{StaticResource PopupHeaderTextStyle}" Text="Popup header" 
+                VerticalOptions="Center"/&gt;
+          &lt;/ContentView&gt;
+
+          &lt;StackLayout Orientation="Vertical" Grid.Row="1"&gt;
+
+            &lt;StackLayout Style="{StaticResource ContentStyle}"  Orientation="Vertical"&gt;
+              &lt;Label Style="{StaticResource MenuTextStyle}" Text="Here be text" /&gt;  
+              &lt;Label Style="{StaticResource MenuTextStyle}" Text="Here be more text"
+                  VerticalOptions="Center"/&gt;
+            &lt;/StackLayout&gt;
+
+            &lt;ContentView Style="{StaticResource Separator}"&gt;&lt;/ContentView&gt;
+
+            &lt;StackLayout Style="{StaticResource ContentStyle}"  Orientation="Vertical"&gt;
+              &lt;Label Style="{StaticResource MenuTextStyle}" Text="Here be text" /&gt;
+              &lt;Label Style="{StaticResource MenuTextStyle}" Text="Here be more text" /&gt;
+              &lt;Label Style="{StaticResource MenuTextStyle}" 
+                  Text="Here be more whatever UI elements you want" /&gt;
+            &lt;/StackLayout&gt;
+
+            &lt;Grid HeightRequest="10"&gt;&lt;/Grid&gt;
+
+            &lt;Grid Style="{StaticResource ContentStyle}"&gt;
+              &lt;Grid.ColumnDefinitions&gt;
+                &lt;ColumnDefinition Width="*"&gt;&lt;/ColumnDefinition&gt;
+                &lt;ColumnDefinition Width="10"&gt;&lt;/ColumnDefinition&gt;
+                &lt;ColumnDefinition Width="*"&gt;&lt;/ColumnDefinition&gt;
+              &lt;/Grid.ColumnDefinitions&gt;
+                 &lt;Button Text="Ok" Command="{Binding CloseMenuCommand}"&gt;&lt;/Button&gt;
+              &lt;Button Text="Cancel" Grid.Column="2" 
+                  Command="{Binding CloseMenuCommand}"&gt;&lt;/Button&gt;
+            &lt;/Grid&gt;
+          &lt;/StackLayout&gt;
+        &lt;/Grid&gt;
+      &lt;/ContentView&gt;
+    &lt;/ContentView&gt;
+
+<strong><span style="color: #ff0000">    &lt;ContentView.GestureRecognizers&gt;
+      &lt;TapGestureRecognizer Command="{Binding CloseMenuCommand}"&gt;&lt;/TapGestureRecognizer&gt;
+    &lt;/ContentView.GestureRecognizers&gt;</span></strong>
+  &lt;/ContentView&gt;
+
+&lt;/Grid&gt;
+</pre>
+<p>I have marked the interesting parts in red and bold. On top you see that the visibility of the control itself is bound to the visibility of the grid called “AnimatedGrid”. This grid is inside a ContentView which has a background color defined by the resource “SeeTrough. This you can find in app.xaml defined as being color #B2000000, aka "70% black" in designer lingo (i.e. black that is 30% transparent). AnimatedGrid is the top level element of the actual popup – it’s visibility is controlled by the AnimateScaleBehavior. As soon as the animation starts by IsVisible flipping value, the AnimatedGrid is first made visible, and it’s parent – and the SeeThrough ContentView – popup into view, only to disappear when the animation is completely finished. This is exactly what I wanted to achieve – the 70% haze turns the focus of the user to the little task at hand now, and also blocks tapping access to whatever UI elements are still visible below it.</p>
+<p>Note, there no values supplied for FoldInTime and FoldOutTime so the default values of 150 and 250ms are used. But you can easily change that by adding them to the behavior in XAML.</p>
+<p>As a final thing, I have added a TapGestureRecognizer that calls the popup closing command to the 70% gray area as well. This dismisses the popup when you tap outside it, which is exactly what one expects in a mobile app. It’s effectively the same thing as hitting Cancel (and in this case, Ok, as that does nothing but closing the popup as well). </p>
+<h2>Viewmodel</h2>
+<p>Hardly worth mentioning, but to make the picture complete:</p>
+<pre>using Xamarin.Forms;
+
+namespace XamarinFormsDemos.ViewModels
+{
+  public class PopupViewModel : MenuViewModelBase
+  {
+    public Command CloseMenuCommand { get; private set; }
+
+    public PopupViewModel() : base()
+    {
+      CloseMenuCommand = new Command(() =&gt; IsMenuVisible = false);
+    }
+  }
+}</pre>
+Command makes boolean false. So menu disappears again. Doh ;) 
+<h2>Usage</h2><pre style="font-size: 11px" 11px;? font-size:>&lt;?xml version="1.0" encoding="utf-8" ?&gt;
+&lt;demoViewFramework:BaseContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+    // stuff omitted
+  &lt;Grid&gt;
+    &lt;!-- Page content --&gt;
+    &lt;Grid.RowDefinitions&gt;
+      &lt;RowDefinition Height="25*"&gt;&lt;/RowDefinition&gt;
+      &lt;RowDefinition Height="75*"&gt;&lt;/RowDefinition&gt;
+    &lt;/Grid.RowDefinitions&gt;
+    &lt;Grid Row="0" Style="{StaticResource HeaderOutsideStyle}"&gt;
+      &lt;ContentView Style="{StaticResource ContentStyle}"&gt;
+        &lt;Label Text="Popup menu" Style="{StaticResource HeaderStyle}"  
+        VerticalOptions="CenterAndExpand"&gt;&lt;/Label&gt;
+      &lt;/ContentView&gt;
+    &lt;/Grid&gt;
+
+    &lt;ContentView Grid.Row="1" Style="{StaticResource ContentStyle}" 
+        HorizontalOptions="Fill"&gt;
+      &lt;Label Text="Here be page content" 
+        Style="{StaticResource ContentTextStyle}"&gt;&lt;/Label&gt;
+
+      &lt;ContentView  VerticalOptions="Start" Style="{StaticResource ContentStyle}" &gt;
+          &lt;Button Text="Open popup menu" Command="{Binding ToggleMenuCommand}" 
+                  HorizontalOptions="Fill" VerticalOptions="Start"&gt;&lt;/Button&gt;
+      &lt;/ContentView&gt;
+    &lt;/ContentView&gt;
+
+<span style="color: #ff0000"><strong>    &lt;!-- Menu --&gt;
+    &lt;controls:PopupControl Grid.Row="0" Grid.RowSpan="2"&gt;&lt;/controls:PopupControl&gt;
+
+</strong></span>  &lt;/Grid&gt;
+&lt;/demoViewFramework:BaseContentPage;/Grid&gt;
+</pre>
+<p>Once again, the control is added last and convers the whole screen, as to appear over the existing UI. </p>
+<h2>Some final words</h2>
+<p>When you are developing cross-platform apps, UI testing is crucial. For instance, while I was making this app, I noticed that when you change this<pre style="font-size: 11px">&lt;Grid 
+      //Namespaces omitted
+      <font color="#ff0000">IsVisible="{Binding IsVisible, Source={x:Reference AnimatedGrid}}"</font>&gt;
+  &lt;ContentView BackgroundColor="{StaticResource SeeThrough}"
+               HorizontalOptions="Fill" VerticalOptions="Fill"&gt;
+</pre>
+<p>in this:</p><pre style="font-size: 11px">       
+&lt;Grid 
+      //Namespaces omitted
+      &gt;
+  &lt;ContentView <font color="#ff0000">IsVisible="{Binding IsVisible, Source={x:Reference AnimatedGrid}}</font><strong>"</strong>
+               BackgroundColor="{StaticResource SeeThrough}"
+               HorizontalOptions="Fill" VerticalOptions="Fill"&gt;
+</pre>
+<p>you get a visually a identical result on all three platforms covered in the test project. On Android and Windows 10 it even <em>works</em> the same. But if you try to run on iOS, you will notice the “Open popup menu” is not clickable. This is because the outer grid covers the whole screen and is always visible - and although it’s empty, it apparently blocks all user input. As usual, Apple does things different ;)</p>
+<p><a href="https://github.com/LocalJoost/XamarinFormsDemos/tree/blog2" target="_blank">The demo project – with updated code – can be found here</a> </p>
+<p>This article appeared earlier – in Dutch – on the <a href="http://www.wortell.nl/blog/" target="_blank">Wortell company blog</a></p>

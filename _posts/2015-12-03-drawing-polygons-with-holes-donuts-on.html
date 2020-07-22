@@ -1,0 +1,119 @@
+---
+layout: post
+title: Drawing polygons with holes (donuts) on Windows 10 UWP apps
+date: '2015-12-03T18:47:00.000+01:00'
+author: Joost van Schaik
+tags:
+- UWP
+- Mapping
+- Windows 10
+modified_time: '2015-12-04T11:42:24.249+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3014675572498716074
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/11/drawing-polygons-with-holes-donuts-on.html
+---
+
+<a href="http://www.schaikweb.net/dotnetbyexample/Drawing-polygons-with-holes-donuts-on-Wi_1193A/image.png"><img align="right" alt="image" border="0" src="http://www.schaikweb.net/dotnetbyexample/Drawing-polygons-with-holes-donuts-on-Wi_1193A/image_thumb.png" height="244" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: right; margin: 0px 7px 0px 0px; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="image" width="157" /></a>November 30th was the day a long standing wish of me came true - <a href="http://www.windows.com/" target="_blank">Windows</a> 10 Universal Windows Platform gets on par with some professional geographical information systems. As of SDK version 10586, you can draw <em>polygons with holes</em> in them on the map (we GIS people call those <em>'donuts'</em> - remember this term if you want to sound <strike>like a smartass</strike> educated in the GIS area) as well as multipolygons (single map objects consisting out of multiple disjoint shapes. What I mean by this, can be seen on the right. On this map are actually only two shapes. The 'smiley' on the bottom is one shape, and rest is actually <em>also</em> one shape. <br />
+To achieve this, the maps team have extended the MapPolygon. This type, that is used to draw polygons, already had a property Path of type GeoPath. Now it has a property <strong>Path<em><span style="color: red;">s</span></em></strong> - plural. This property is of type <em>IList</em>&lt;GeoPath&gt;. The smiley exists of four of these GeoPaths. The first one is the outer shape, the second, third and forth one fall on top of a shape that is earlier in the list, <em>and thus creates a hole</em>. You can get some pretty interesting side effects as you look a the top shape - if you draw a second or later path outside of the first shape, you just get a second shape. But for the map, this is one object and if you click on it you will get the same text. Even more interesting is drawing a second shape partly on top of an earlier shape - the overlapping part becomes a hole, the rest just a filled shape. <br />
+Other possibilities are drawing a shape, on top of that a smaller shape (creating a hole), inside the hole an even smaller shape (that will be a normal shape again), on top of that an yet even smaller shape - that will create a hole... etc... and so you can create rings. The odd shapes are shapes (when you start counting with 1!), the even shapes holes. <br />
+I have extended the solution that I used in my 7-part map series to make clear how this happens. I have added a class MultiPathList that is basically a very long and boring list of coordinates. It looks like this: <br />
+<pre style="font-size: 10px;">new BasicGeoposition{Latitude = 52.1782977506518, Longitude = 5.40948953479528},
+
+
+using System.Collections.Generic;
+using Windows.Devices.Geolocation;
+
+namespace Manipulation_Drawing
+{
+    public class MultiPathList : IMapObject
+    {
+      public MultiPathList()
+      {
+          Paths = new List&lt;Geopath&gt;();
+      }
+      
+      public string Name { get; set; }
+
+      public List&lt;Geopath&gt; Paths { get; set; }
+
+
+      public static List&lt;MultiPathList&gt; GetMultiPolygons()
+      {
+        var paths = new List&lt;MultiPathList&gt;
+        {
+          new MultiPathList
+          {
+            Name = "MultiArea 1",
+            Paths = new List&lt;Geopath&gt;
+            {
+               new Geopath( new[]
+               {
+                 new BasicGeoposition{Latitude = 52.1840454731137, Longitude = 5.40299842134118},
+                 new BasicGeoposition{Latitude = 52.182151498273, Longitude = 5.40619041770697},
+                 new BasicGeoposition{Latitude = 52.1841113548726, Longitude = 5.40994542650878},
+                 new BasicGeoposition{Latitude = 52.1861041523516, Longitude = 5.40627088397741}
+               }),
+               new Geopath( new[]
+               {
+                 new BasicGeoposition{Latitude = 52.184210177511, Longitude = 5.40817516855896},
+                 new BasicGeoposition{Latitude = 52.185066556558, Longitude = 5.40637808851898},
+                 new BasicGeoposition{Latitude = 52.1842925716192, Longitude = 5.4054393991828},
+                 new BasicGeoposition{Latitude = 52.1834195964038, Longitude = 5.40739741176367}
+               }),
+             }
+             //etc
+          },
+          new MultiPathList
+          {
+            Name = "Smiley (MultiArea 2)",
+            Paths = new List&lt;Geopath&gt;
+            {
+               new Geopath( new[]
+               {
+                 new BasicGeoposition{Latitude = 52.1787753514946, Longitude = 5.40471511892974},
+                 new BasicGeoposition{Latitude = 52.1801093313843, Longitude = 5.40570753626525},
+                 new BasicGeoposition{Latitude = 52.1801258437335, Longitude = 5.40860432200134},
+                 new BasicGeoposition{Latitude = 52.1789400558919, Longitude = 5.4108305554837},
+                 new BasicGeoposition{Latitude = 52.1772930957377, Longitude = 5.40975767187774},
+                 new BasicGeoposition{Latitude = 52.1764037758112, Longitude = 5.40750461630523},
+                 new BasicGeoposition{Latitude = 52.1769636869431, Longitude = 5.40490287356079},
+               }),
+              //etc
+             }
+          }
+        };
+        return paths;
+    }
+  }
+}</pre>
+it just creates two lists of GeoPaths (I have omitted most of them - there are 9 of these paths in grand total). And then in MainPage.xaml.cs you will find this simple method that actually draws the shapes:<br />
+<pre>private void DrawMultiShapes(object sender, RoutedEventArgs e)
+{
+  if (!DeleteShapesFromLevel(4))
+  {
+    var strokeColor = Colors.Crimson;
+    var fillColor = Colors.OrangeRed;
+    fillColor.A = 150;
+
+    foreach (var dataObject in MultiPathList.GetMultiPolygons())
+    {
+      var shape = new MapPolygon
+      {
+        StrokeThickness = 1,
+        StrokeColor = strokeColor,
+        FillColor = fillColor,
+        StrokeDashed = false,
+        ZIndex = 4
+      };
+<strong><em><span style="color: red;">      foreach (var path in dataObject.Paths)
+      {
+        shape.Paths.Add(path);
+      }</span></em></strong>
+      shape.AddData(dataObject);
+
+      MyMap.MapElements.Add(shape);
+    }
+  }
+}</pre>
+<a href="http://www.schaikweb.net/dotnetbyexample/Drawing-polygons-with-holes-donuts-on-Wi_1193A/image9.png"><img align="left" alt="image[9]" border="0" src="http://www.schaikweb.net/dotnetbyexample/Drawing-polygons-with-holes-donuts-on-Wi_1193A/image9_thumb.png" height="244" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: left; margin: 0px 6px 0px 0px; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="image[9]" width="240" /></a>In stead of setting the MapPolygon's shape, we add a number of GeoPaths to the <em>Paths </em>property, and that is all. You can view the shapes for yourself by <a href="https://github.com/LocalJoost/Manipulation_Drawing/tree/multipolygon" target="_blank">downloading the sample solution from GIT (take branch "multipolygon" )</a><br />
+That is all there is to it. This is a very important for when you are are drawing things like zoning permits, buildings with an inner garden, parking areas in cities (where the fee increases when you come closer to the center), so they are basically rings in rings in rings - etc. - anything were less-than-trivial mapping is concerned. And it's very easy to use now.<br />
+And of course, all this goodness can be used on Windows 10 mobile as well. Enjoy mapping! 

@@ -1,0 +1,17 @@
+---
+layout: post
+title: 3D maps with the Windows 10 Maps SDK
+date: '2015-04-01T21:03:00.001+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- Mapping
+- Windows 10
+- 3D
+modified_time: '2015-05-18T08:09:15.146+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-773735532467549604
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/04/3d-maps-with-windows-10-maps-sdk.html
+---
+
+<p>Notice - this is <i>not </i>an April fool's joke, although you may think it is.</p>
+<p>It is not my custom to write about something without a real ready-to-run sample, but this is so cool I really needed to show you this. You may have played around with the Windows Phone 8.1 SDK, and seen the cool map control there. You also may have noticed a BasicGeoposition that you use to put a MapIcon on the map, not only has a Latitude and a Longitude, but also an <em>Altitude</em> property. Setting that doesn’t do much. Now for Windows 10, it looks like they basically have ported over the maps control from the phone to full Windows. And not only that, my friends. Because in Windows 10, Altitude does something. Hells bells, it does.</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/3D-maps-with-the-Windows-10-Maps-SDK_1255F/Screenshot-12.png"><img title="Screenshot (12)" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="Screenshot (12)" src="http://www.schaikweb.net/dotnetbyexample/3D-maps-with-the-Windows-10-Maps-SDK_1255F/Screenshot-12_thumb.png" width="644" height="364"></a></p> <p>To let you fully appreciate how this looks in real life, I made a little screencast, courtesy of <a title="TechSmith Camtasia, Screen Recorder and Video Editor" href="http://www.techsmith.com/camtasia.html">TechSmith Camtasia</a> (thanks guys). </p> <div id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:b2aa3661-9fd2-4b71-b08c-6cff27564f17" class="wlWriterEditableSmartContent" style="float: none; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px"><div><object width="637" height="358"><param name="movie" value="http://www.youtube.com/v/Tb4J9EE_As8?hl=en&amp;hd=1"></param><embed src="http://www.youtube.com/v/Tb4J9EE_As8?hl=en&amp;hd=1" type="application/x-shockwave-flash" width="637" height="358"></embed></object></div><div style="width:637px;clear:both;font-size:.8em">3D Maps in Windows 10 quick demo</div></div>  <p>I can tell you – a maps guy like me got a serious nerdgasm out of this. I will ASAP blog a sample so you can try this at home but basically – if you just draw a MapIcon and fill the Altitude property, you will be able to ‘fly around’ your points.</p>  

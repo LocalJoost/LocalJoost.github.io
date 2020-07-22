@@ -1,0 +1,151 @@
+---
+layout: post
+title: A Windows Phone 7 multi touch pan/zoom behaviour for Multi Scale Images
+date: '2010-08-08T15:47:00.006+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- UX
+- WP7NL
+- Windows Phone 7
+- Silverlight
+- Behaviour
+- WP7
+modified_time: '2010-12-03T22:39:34.325+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1690097157525196323
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/08/windows-phone-7-multi-touch-panzoom.html
+---
+
+<p  [R="[R"></p>  <p>Some may have read my foray into using <a href="http://dotnetbyexample.blogspot.com/2010/07/using-mvvm-light-to-drive-windows-phone.html" target="_blank">Windows Phone 7 to view maps</a>, utilizing a Multi Scale Image (msi), MVVM Light and some extension properties. This application works quite well, but being mainly a study in applied architecture, the user experience leaves much to be desired. Studying <a href="http://twitter.com/lbugnion" target="_blank">Laurent Bugnion</a>’s <a href="http://www.galasoft.ch/Touch/" target="_blank">Multi Touch Behaviour</a> got me on the right track. Although Laurent’s behaviour is very good, it basically works by translating, resizing (and optionally rotating) the control(s) inside the FrameworkElement is is attached to. For various reasons this is not an ideal solution for a map viewer. </p>  <p></p>  <p>So I set out to make my own behaviour, the first one I ever made by the way, and it turned out to remarkably easy – less than 90 lines of code, including whitespace and comments:</p>  <pre style="font-size: 8.5pt">using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interactivity;
+
+namespace LocalJoost.Behaviours
+{
+  /// &lt;summary&gt;
+  /// A behaviour for zooming and panning around on a MultiScaleImage
+  /// using manipulation events
+  /// &lt;/summary&gt;
+  public class PanZoomBehaviour : Behavior&lt;MultiScaleImage&gt;
+  {
+    /// &lt;summary&gt;
+    /// Initialize the behavior
+    /// &lt;/summary&gt;
+    protected override void OnAttached()
+    {
+      base.OnAttached();
+      AssociatedObject.ManipulationStarted += AssociatedObject_ManipulationStarted;
+      AssociatedObject.ManipulationDelta += AssociatedObject_ManipulationDelta;
+    }
+    /// &lt;summary&gt;
+    /// Shortcut for the Multiscale image
+    /// &lt;/summary&gt;
+    public MultiScaleImage Msi { get { return AssociatedObject; } }
+
+    /// &lt;summary&gt;
+    /// Screen point where the manipulation started
+    /// &lt;/summary&gt;
+    private Point ManipulationOrigin { get; set; }
+
+    /// &lt;summary&gt;
+    /// Multiscale view point origin on the moment the manipulation started
+    /// &lt;/summary&gt;
+    private Point MsiOrigin { get; set; }
+
+    void AssociatedObject_ManipulationStarted(object sender,<br />                                              ManipulationStartedEventArgs e)
+    {
+      // Save the current manipulation origin and MSI view point origin
+      MsiOrigin = new Point(Msi.ViewportOrigin.X, Msi.ViewportOrigin.Y);
+      ManipulationOrigin = e.ManipulationOrigin;
+    }
+
+    void AssociatedObject_ManipulationDelta(object sender, ManipulationDeltaEventArgs e)
+    {      
+      if (e.DeltaManipulation.Scale.X == 0 && e.DeltaManipulation.Scale.Y == 0)
+      {
+        // No scaling took place (i.e. no multi touch)
+        // 'Simply' calculate a new view point origin
+        Msi.ViewportOrigin =
+          new Point
+            {
+              X = MsiOrigin.X - (e.CumulativeManipulation.Translation.X / 
+                Msi.ActualWidth * Msi.ViewportWidth),
+              Y = MsiOrigin.Y - (e.CumulativeManipulation.Translation.Y / 
+                Msi.ActualHeight * Msi.ViewportWidth),
+            };
+      }
+      else
+      {
+        // Multi touch - choose to interpretet this either as zoom or pinch
+        var zoomscale = (e.DeltaManipulation.Scale.X + e.DeltaManipulation.Scale.Y) / 2;
+
+        // Calculate a new 'logical point' - the MSI has its own 'coordinate system'
+        var logicalPoint = Msi.ElementToLogicalPoint(
+          new Point
+            { X = ManipulationOrigin.X - e.CumulativeManipulation.Translation.X,
+              Y = ManipulationOrigin.Y - e.CumulativeManipulation.Translation.Y }
+          );
+         Msi.ZoomAboutLogicalPoint(zoomscale, logicalPoint.X, logicalPoint.Y);
+        if (Msi.ViewportWidth &gt; 1) Msi.ViewportWidth = 1;
+      }
+    }
+    
+    /// &lt;summary&gt;
+    /// Occurs when detaching the behavior
+    /// &lt;/summary&gt;
+    protected override void OnDetaching()
+    {
+      AssociatedObject.ManipulationStarted -= AssociatedObject_ManipulationStarted;
+      AssociatedObject.ManipulationDelta -= AssociatedObject_ManipulationDelta;
+      base.OnDetaching();
+    }
+  }
+}</pre>
+
+<p>Method <strong>AssociatedObject_ManipulationStarted</strong> just records where the user started the manipulation, as well as what the MSI ViewportOrigin was on that moment. Method <strong>AssociatedObject_ManipulationDelta</strong> then simply checks if the delta event sports a scaling in x or y direction – if it does, it calculates the properties for a new ‘logical point’ to be fed into the ZoomAboutLogicalPoint method of the MultiScaleImage. If there is no scaling, the user just panned, and a new ViewportOrigin is being calculated in the MSI’s own coordinate system which runs from 0,0 to 1,1. And that’s all there is to it.</p>
+
+<p>If you download <a href="http://www.schaikweb.net/dotnetbyexample/SilverMapViewer.zip" target="_blank">my sample mapviewer application</a> it’s actually quite simple to test drive this</p>
+
+<ul>
+  <li>Add a Windows Phone 7 class library LocalJoost.Behaviours to the projects</li>
+
+  <li>Reference this project from WP7viewer </li>
+
+  <li>Create the behaviour described above</li>
+
+  <li>Open MainPage.xaml in WP7Viewer</li>
+
+  <li>Find the MultiScaleImage called “msi” and remove all bindings except MapTileSource, so that only this remains: </li>
+</ul>
+
+<pre style="font-size: 8.5pt">&lt;MultiScaleImage x:Name=&quot;msi&quot; 
+   MapMvvm:BindingHelpers.MapTileSource=&quot;{Binding CurrentTileSource.TileSource}&quot;&gt;
+&lt;/MultiScaleImage&gt;</pre>
+
+<ul>
+  <li>Add the behaviour to the MultiScaleImage using Blend or follow the manual procedure below:</li>
+
+  <li>Declare the namespace and the assembly in the phone:PhoneApplicationPage tag like this </li>
+</ul>
+
+<pre style="font-size: 8.5pt">xmlns:LJBehaviours=&quot;clr-namespace:LocalJoost.Behaviours;assembly=LocalJoost.Behaviours&quot;</pre>
+
+<ul>
+  <li>Add the behaviour to the MSI like this </li>
+</ul>
+
+<pre style="font-size: 8.5pt">&lt;MultiScaleImage x:Name=&quot;msi&quot; 
+   MapMvvm:BindingHelpers.MapTileSource=&quot;{Binding CurrentTileSource.TileSource}&quot;&gt;
+<strong><em>  &lt;i:Interaction.Behaviors&gt;
+      &lt;LJBehaviours:PanZoomBehaviour/&gt;
+  &lt;/i:Interaction.Behaviors&gt;
+</em></strong>&lt;/MultiScaleImage&gt;</pre>
+
+<p>And there you go. You can now zoom in and out using two or more fingers. That is, if you have a touch screen. If you don’t have a touch screen and you were not deemed important enough to be assigned a preview Windows Phone 7 device then you are in good company, for neither have I, and neither was I ;-). But fortunately there is <a href="http://multitouchvista.codeplex.com/releases/view/28979" target="_blank">Multi Touch Vista</a> on CodePlex. It needs two mice (or more, but I don’t see how you can operate those), and it’s a bit cumbersome to set up, but at least I was able to test things properly. So, don’t let the lack of hardware deter you getting on the Windows Phone 7 bandwagon!</p>
+
+<p>What I learned from this: behaviours will give an interesting twist to design decisions. When is it proper to solve things into behaviours, and when in a model by binding? For me, it’s clear that in <em>this</em> case the behaviour wins from the model – it’s far easier to make, understand and – above all – apply! For now, just drag and drop the behaviour on top of a MultiScaleImage and bang – zoom and pan. No complex binding expressions.&#160; </p>
+
+<p>Incidentally, although this behaviour was created with maps in mind, in can be applied to any MultiScaleImage of course, showing ‘ordinary’ image data.</p>
+
+<p>For those who are not very fond of typing: the sample map application with the behaviour&#160; already added and configured can be downloaded <a href="http://www.schaikweb.net/dotnetbyexample/SilverMapViewer2.zip" target="_blank">here</a>. For those lucky b******s in possession of a real live device: you will find the XAP <a href="http://www.schaikweb.net/dotnetbyexample/WP7Viewer2.zip" target="_blank">here</a>. I would very much appreciate feedback on how the thing works in real life.</p>

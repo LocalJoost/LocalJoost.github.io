@@ -1,0 +1,181 @@
+---
+layout: post
+title: A Windows Phone 7 behavior to show an image background for a search string
+date: '2011-12-31T17:59:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Reactive
+- wpdev
+- dotnetmag
+- WP7NL
+- Rx
+- behavior
+- Bing Search API
+- WP7
+modified_time: '2012-09-30T19:28:59.883+02:00'
+thumbnail: http://lh4.ggpht.com/-u7Taj7tJk4M/Tv8_WeCTgSI/AAAAAAAAHDo/3i43biKarFY/s72-c/BingSearchApi_thumb%25255B1%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7267797457410060429
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/12/windows-phone-7-behavior-to-show-image.html
+---
+
+<p><b>Note: an update to this article has been written <a href="http://dotnetbyexample.blogspot.nl/2012/09/repairing-windows-phone-7-behavior-to.html">here</a></b><p>
+<p>On New Year’s Eve I can’t help but writing this last bit of 2011: yesterday on a <a href="http://twitter.com/#!/search/%23wp7nl" target="_blank">#wp7nl</a> developer’s meet up, which was basically a free-for-all fun hacking event organized by <a href="http://blogs.microsoft.nl/blogs/mhoekstra/default.aspx?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Matthijs Hoekstra</a>, I wrote a little thingy for <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone 7</a> that accepts a string, tries to find an image for it using Bing Image search and displays it as a background. Of course it’s a behavior – I write behaviors a dozen, because the concept of reusable dynamic behavior is something that fits very well with the way I think. Call me the behaviornator if you like ;-)</p> <p>It’s very simple, it’s quite fun, demonstrates a little Rx usage, makes quite unusual use of the Bing Image Search api - and it will play a supporting act in my newest Windows Phone 7 app. The basic structure of the behavior is set up utilizing the #wp7nl library <a href="http://dotnetbyexample.blogspot.com/2011/11/safe-event-detachment-base-class-for.html" target="_blank">SafeBehavior</a> that I described earlier: </p><pre style="font-size: 12px">using System;
+using System.Linq;
+using System.Net;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Xml;
+using System.Xml.Linq;
+using Microsoft.Phone.Reactive;
+ 
+namespace Wp7nl.Behaviors
+{
+  /// &lt;summary&gt;
+  /// A behavior that puts an image on the background of the Attched object
+  /// using Bing Image Search
+  /// &lt;/summary&gt;
+  public class DynamicBackgroundBehavior : SafeBehavior&lt;Panel&gt;
+  {
+    private ImageBrush backgroundBrush;
+    
+    public DynamicBackgroundBehavior()
+    {
+      Opacity = 1.0;
+    }
+
+    #region SearchString
+    public const string SearchStringPropertyName = "SearchString";
+
+    /// &lt;summary&gt;
+    /// The search string to be used on Bing Maps
+    /// &lt;/summary&gt;
+    public string SearchString
+    {
+      get { return (string)GetValue(SearchStringProperty); }
+      set { SetValue(SearchStringProperty, value); }
+    }
+
+    public static readonly DependencyProperty SearchStringProperty = 
+        DependencyProperty.Register(
+        SearchStringPropertyName,
+        typeof(string),
+        typeof(DynamicBackgroundBehavior),
+        new PropertyMetadata(String.Empty, SearchStringChanged));
+
+    public static void SearchStringChanged(DependencyObject d, 
+                                           DependencyPropertyChangedEventArgs e)
+    {
+      var behavior = d as DynamicBackgroundBehavior;
+      if (behavior != null)
+      {
+        behavior.StartGetFirstImage((string)e.NewValue);
+      }
+    }
+    #endregion
+
+    /// &lt;summary&gt;
+    /// Bing search key
+    /// &lt;/summary&gt;
+    public string BingSearchKey { get; set; }
+
+    /// &lt;summary&gt;
+    /// Stretch used for the image
+    /// &lt;/summary&gt;
+    public Stretch Stretch { get; set; }
+
+    /// &lt;summary&gt;
+    /// Opacity used for the image
+    /// &lt;/summary&gt;
+    public double Opacity { get; set; }
+  }
+}</pre>
+<p>In short, this behavior has four properties:</p>
+<ul>
+<li>Opacity 
+<li>Stretch 
+<li>BingSearchKey 
+<li>SearchString</li></ul>
+<p><a href="http://lh3.ggpht.com/-AQ4UVdGYxDc/Tv8_V_tECBI/AAAAAAAAHDk/3hL55-6AUnU/s1600-h/BingSearchApi%25255B3%25255D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; float: right; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="BingSearchApi" border="0" alt="BingSearchApi" align="right" src="http://lh4.ggpht.com/-u7Taj7tJk4M/Tv8_WeCTgSI/AAAAAAAAHDo/3i43biKarFY/BingSearchApi_thumb%25255B1%25255D.png?imgmax=800" width="254" height="256"></a>Opacity and Stretch are just simple properties for the images that is going to be displayed. SearchString is the string that’s going to be used to find an image for. This is a dependency property – so it can be used in data binding. Note the SearchStringChanged method – this is called when the SearchString property changes. That in turn is firing the method StartGetFirstImage, that will start the actual search.</p>
+<p>BingSearchKey is a 40-character long string identifying your application. You have to create a key for your application on <a href="http://www.bing.com/toolbox/bingdeveloper/" target="_blank">the Bing Developer portal</a>. Click the left button (“Sign in – Bing Search API”) and fill in the form depicted to the right(click for larger image).</p>
+<p>Note: the behavior references Microsoft.Phone.Reactive – so the project holding this should Microsoft.Phone.Reactive.dll and System.Observable.dll</p>
+<p>Moving on to the setup of the behavior, which is very simple now since we are building upon the SafeBehavior:</p><pre style="font-size: 12px">/// &lt;summary&gt;
+/// Setup the behavior
+/// &lt;/summary&gt;
+protected override void OnSetup()
+{
+  backgroundBrush = new ImageBrush
+  {
+    Stretch = Stretch,
+    Opacity = Opacity
+  };
+
+  // Set the image brush to the background of the Panel 
+  AssociatedObject.Background = backgroundBrush;
+}</pre>
+<p>Simply put: create an Image brush using the property settings, and put it as background on the GUI element to which the behavior is attached.</p>
+<p>The method that’s called from SearchStringChanged (which is fired as the SearchString dependency property changes) is implemented as showed below:</p><pre style="font-size: 12px">/// &lt;summary&gt;
+/// Start the image request using Bing Serach
+/// &lt;/summary&gt;
+/// &lt;param name="searchString"&gt;&lt;/param&gt;
+protected void StartGetFirstImage(string searchString)
+{
+  var queryUri = 
+    string.Format(
+      "http://api.bing.net/xml.aspx?Appid={0}&amp;query={1}&amp;sources=image",
+      BingSearchKey, searchString);
+  var request = WebRequest.Create(queryUri) as HttpWebRequest;
+  var response = 
+    Observable.FromAsyncPattern&lt;WebResponse&gt;(
+      request.BeginGetResponse, request.EndGetResponse)();
+  response.Subscribe(WebClientOpenReadCompleted, WebClientOpenReadError);
+}</pre>
+<p>An Uri is formed using the BingSearchKey and the actual search string – and the clause “sources=image”, telling Bing to return images. That Uri is fed to a standard WebRequest. And then the Rx framework comes into play to easily process the async read process. The Observable.FromAsyncPattern and Subscribe usage has the distinct advantage of not having to attach all kind of event handlers, trap errors with try-catch blocks, and not forgetting to detach the event handlers when the reading is done. The Rx framework handles this all, so I don’t have to worry about that.</p>
+<p>The final piece of the behavior – the actual processing of the image:</p><pre style="font-size: 12px">/// &lt;summary&gt;
+/// Called when image search returns
+/// &lt;/summary&gt;
+/// &lt;param name="result"&gt;&lt;/param&gt;
+private void WebClientOpenReadCompleted(WebResponse result)
+{
+  using (var stream = result.GetResponseStream())
+  {
+    using (var reader = XmlReader.Create(stream,
+       new XmlReaderSettings { DtdProcessing = DtdProcessing.Ignore }))
+    {
+      var doc = XDocument.Load(reader);
+
+      // Get the first image from the result
+      XNamespace ns = "http://schemas.microsoft.com/LiveSearch/2008/04/XML/multimedia";
+      if (doc.Root != null)
+      {
+        var firstImage = doc.Root.Descendants(ns + "MediaUrl").FirstOrDefault();
+        if (firstImage != null)
+        {
+          Deployment.Current.Dispatcher.BeginInvoke(() =&gt;
+            {
+              var bi = new BitmapImage
+                {
+                  UriSource = new Uri(firstImage.Value),
+                  CreateOptions = BitmapCreateOptions.BackgroundCreation
+                };
+              backgroundBrush.ImageSource = bi;
+            });
+        }
+      }
+    }
+  }
+}
+
+/// &lt;summary&gt;
+/// Called upon a search error (not used)
+/// &lt;/summary&gt;
+/// &lt;param name="ex"&gt;&lt;/param&gt;
+private void WebClientOpenReadError(Exception ex)
+{
+}</pre>
+<p>Since the xml.aspx page is referenced, Bing returns the result as a xml document. If you are interested in the details of the Bing Search result, feel free to explore the xml document – this code basically just finds the first “MediaUrl” tag, makes a BitMapImage from it, and puts the result into the backgroundBrush. And we’re done.</p>
+<p><a href="http://lh4.ggpht.com/-aWjRXVtW-M4/Tv8_XnamfOI/AAAAAAAAHD0/LH_iVck6juw/s1600-h/carrotdemo%25255B2%25255D.png"><img style="background-image: none; border-bottom: 0px; border-left: 0px; margin: 0px 8px 0px 0px; padding-left: 0px; padding-right: 0px; display: inline; float: left; border-top: 0px; border-right: 0px; padding-top: 0px" title="carrotdemo" border="0" alt="carrotdemo" align="left" src="http://lh5.ggpht.com/-eDGPUq0fuI8/Tv8_YFK5nAI/AAAAAAAAHD4/BiRqCbwSpEo/carrotdemo_thumb.png?imgmax=800" width="133" height="244"></a>Put this behavior on a descendant of Panel (a Grid, for instance), fill  the BingSearchKey property with a valid key, databind the “SearchString” property to a string in a ViewModel and as soon as the value of SearchString changes, the behavior will show the first available image returned by Bing Image search as a background on that grid. </p>
+<p>I’ve put together <a href="http://www.schaikweb.net/dotnetbyexampe/DynaBackgroundDemo.zip" target="_blank">a small demo application containing and demonstrating the behavior</a>. It deviates in two ways from my usual mode of operation. First, does not run out of the box – you will have to get your own Bing Search API key first. Second: it does <em>not</em> use MVVM – I’ve data bound the behavior’s SearchString property directly to a TextBox’s Text property, which makes the behavior start to search for background immediately as you start typing, as showed to the left. So if you type “carrot” in the textbox you get, well – an image showing carrots ;-)</p>
+<p>&nbsp;</p>
+<p>Well, that’s all for 2011. A very special year from me with some ups and downs, with getting a Windows Phone Development MVP award definitely being the top event in the "ups" category. Now onwards to 2012, which I think will prove to be a very exciting year indeed. I hope you all will continue to enjoy this blog as I did - and you apparently did in 2011 as well.</p>

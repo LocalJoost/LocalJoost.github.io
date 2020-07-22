@@ -1,0 +1,277 @@
+---
+layout: post
+title: Data binding shapes to the WinRT Bing Maps control – coming from Windows Phone
+date: '2012-09-26T15:15:00.001+02:00'
+author: Joost van Schaik
+tags:
+- DataBinding
+- dotnetmag
+- MVVM
+- Windows Phone 7
+- Windows 8
+- WinRt
+- XAML
+- MVVM Light
+modified_time: '2012-10-03T21:45:13.510+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3813829792336782870
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/09/data-binding-shapes-to-winrt-bing-maps.html
+---
+
+<p><em>Disclaimer: this is not a 101 article. It requires understanding of the basic idea about MVVM, data binding, the MVVMLight messenger, and the use of behavior in Windows 8 XAML.</em></p> <p><strong>Updated for RTM Bing Maps Control October 3 2012</strong></p> <p><a href="http://www.schaikweb.net/blog/2425720ac8ed_12E5B/MVVMLightwp7.png"><img title="MVVMLightwp7" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="MVVMLightwp7" align="right" src="http://www.schaikweb.net/blog/2425720ac8ed_12E5B/MVVMLightwp7_thumb.png" width="148" height="244"></a></p> <p><font size="4">Introduction<br></font>Let me get this straight: I don’t want you to wean off <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> development – far from it. It’s value proposition is great, and it will become much greater still. This article is yet another way to show you how to carry over code and architecture principles between Microsoft’s great tile based operating systems. It’s all about re-using skills and code. C# and XAML code that is.</p> <p>Those who have attended my talks about this subject during this year, have seen the application to the right popping up. Basically it generates shapes (be it points, lines or polygons) by data binding from ‘business objects’ - using MVVMLight view models. If you tap any of those shapes, a “SelectCommand” on the bound view model will be fired, and the view model will put itself on the MVVMLight Messenger. Some other view model will listen for those messages, and pop up the info window. The app shows gas stations (points), roadblocks (lines) and buildings (shapes). Don’t go look for the gas stations, they are not there and the fuel prices a way bit behind the (expensive) times, the roadblock are all but one fictional as well. Only the buildings are real – location wise that is. Sources of the original Windows Phone (7) application can be found <a href="http://www.schaikweb.net/dotnetbyexample/mvvmmaps.zip" target="_blank">here</a>:</p> <p><font size="4">Windows Phone map binding recap</font><br>A quick recap: if you want to data bind to a Bing Maps control in Windows Phone, you will go about like this – first, you would define a data template for a layer:</p><pre>&lt;DataTemplate x:Key="RoadBlockViewModelTemplate"&gt;
+  &lt;Microsoft_Phone_Controls_Maps:MapPolyline Locations="{Binding Geometry}"
+                         Stroke="#FF71FF00"
+                         StrokeThickness="5"&gt;
+    &lt;i:Interaction.Triggers&gt;
+      &lt;i:EventTrigger EventName="Tap"&gt;
+        &lt;GalaSoft_MvvmLight_Command:EventToCommand 
+             Command="{Binding SelectCommand}" /&gt;
+      &lt;/i:EventTrigger&gt;
+    &lt;/i:Interaction.Triggers&gt;
+  &lt;/Microsoft_Phone_Controls_Maps:MapPolyline&gt;
+&lt;/DataTemplate&gt;</pre>This would be able to make a line geometry from a viewmodel containing a “Geometry” attribute containing a LocationCollection object, and an ICommand “SelectCommand” that is executed when the user taps the line. Second, you would make a Bing Maps control, and define a layer like this. <pre>&lt;Microsoft_Phone_Controls_Maps:Map x:Name="map"
+    CredentialsProvider="Your-credentials-here"&gt;
+  &lt;Microsoft_Phone_Controls_Maps:MapLayer 
+     x:Name="MapLayer_RoadBlocks"&gt;
+    &lt;Microsoft_Phone_Controls_Maps:MapItemsControl 
+      ItemsSource="{Binding RoadBlocks}" 
+      ItemTemplate="{StaticResource RoadBlockViewModelTemplate}"/&gt;
+  &lt;/Microsoft_Phone_Controls_Maps:MapLayer&gt;
+&lt;/Microsoft_Phone_Controls_Maps:Map&gt;;</pre>
+<p>The roadblock view model would look like this: </p><pre>using System.Windows.Input;
+using GalaSoft.MvvmLight;
+using GalaSoft.MvvmLight.Command;
+using GalaSoft.MvvmLight.Messaging;
+using Microsoft.Phone.Controls.Maps;
+using MvvmMaps.Logic.Models.GeoObjects;
+using MvvmMaps.Logic.Models.Geometries;
+using Wp7nl.Utilities;
+
+namespace MvvmMaps.Logic.ViewModels
+{
+  public class RoadBlockViewModel : ViewModelBase
+  {
+    public RoadBlock Model { get; set; }
+
+    // Some code omitted<br>
+    [DoNotSerialize]
+    public LocationCollection Geometry
+    {
+      get
+      {
+        var modelGeom = Model.Location as LineGeometry;
+        return modelGeom.GetLocationCollection();
+      }
+
+      set
+      {
+        var modelGeom = Model.Location as LineGeometry;
+        modelGeom.SetLocationCollection(value);
+      }
+    }
+
+    [DoNotSerialize]
+    public ICommand SelectCommand
+    {
+      get
+      {
+        return new RelayCommand(
+            () =&gt; Messenger.Default.Send(this),
+            () =&gt; true);
+      }
+    }
+  }
+}</pre>
+<p>Basically it comes down to a Geometry view model property that converts a business object geometry to and from something the Bing Maps control understands – a LocationCollection. This is a named collection that contains objects of type GeoCoordinate – your basic Lat/Lon container. As said above, when you tap select the MVVMLight Messenger just sets off the selected viewmodel, and ‘something’&nbsp; should capture that message and handle it.</p>
+<p><font size="4">Going to Windows 8 – challenges</font><br>Now let’s re-use our skills on <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a>. Simply put – in its current state, the data binding support for the <a href="http://visualstudiogallery.msdn.microsoft.com/bb764f67-6b2c-4e14-b2d3-17477ae1eaca?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Bing Maps SDK for Windows Store apps</a> is pretty easy to describe with one word – non-existent. Some developers immediately go into the ‘blame-and-flame-the-Microsoft-dev-team’ mode when they encounter things like this. I think ‘CodePlex library’. I always see things like this as an intellectual challenge, a chance to contribute to the community, and fortunately there are more people thinking that way. My very smart fellow Dutch developer community member Dave Smits has created <a href="http://bindablemaprt.codeplex.com/" target="_blank">BindableRTMaps</a>, which is very useful for binding <em>point</em> objects – but its shape support is a bit limited. Being a GIS professional and an <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> junkie, I want the control to be able to generate geographical elements directly from view models, just like I was able to do in Windows Phone. I solved the data binding issue for shapes using a Behavior based upon my <a href="http://winrtbehaviors.codeplex.com/" target="_blank">WinRtBehaviors</a> library. Not quite surprising for those who know me.</p>
+<p>The result can be seen below:</p>
+<p><a href="http://www.schaikweb.net/blog/2425720ac8ed_12E5B/Screenshot-9.png"><img title="Screenshot (9)" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="Screenshot (9)" src="http://www.schaikweb.net/blog/2425720ac8ed_12E5B/Screenshot-9_thumb.png" width="671" height="424"></a></p>
+<p>In the center, next to the river, the <a href="http://www.vicrea.nl" target="_blank">Vicrea</a> offices, where I work. Say cheese fellows! ;-) As you can see, the shapes are beautifully re-projected when Birds’ Eye View is selected. This is the stuff that makes a GIS buff tick.</p>
+<p>Researching the control I quickly found the following:</p>
+<ul>
+<li>There’s no data binding support at all (as stated) 
+<li>The shapes the control draws cannot be templated. They are apparently just projections of something native (as is the map itself). 
+<li>There are only two kinds of shapes: MapPolygon and MapPolyline, both descending from MapShape, which in turn descends from DependencyObject – which is very fortunate, as I hope will become clear over the course of this article.</li></ul>
+<p>So I had the challenge to create something that can be put into XAML to still give the designer an amount of control how things appear, without having to resort to code. </p>
+<p><font size="4">Introducing MapShapeDrawBehavior</font>&nbsp;<br>The behavior I created is called MapShapeDrawBehavior&nbsp; (I’ve never been one for original catchy names) and can be used like this:</p><pre>&lt;Maps:Map Credentials="Your-credentials-here"&gt;
+  &lt;WinRtBehaviors:Interaction.Behaviors&gt;
+  
+    &lt;MapBinding:MapShapeDrawBehavior 
+       LayerName="Roadblocks" 
+       ItemsSource="{Binding RoadBlocks, Mode=TwoWay}" 
+       TapCommand="SelectCommand" PathPropertyName="Geometry" &gt;
+         &lt;MapBinding:MapShapeDrawBehavior.ShapeDrawer&gt;
+           &lt;MapBinding:MapPolylineDrawer Color="Green" Width="10"/&gt;
+         &lt;/MapBinding:MapShapeDrawBehavior.ShapeDrawer&gt;
+    &lt;/MapBinding:MapShapeDrawBehavior&gt;
+  
+  &lt;/WinRtBehaviors:Interaction.Behaviors&gt;
+&lt;/Maps:Map&gt;</pre>
+<p>For every<em> </em>category of objects there’s a <em>layer</em> – which translates to one behavior per list of objects, in this case the road blocks (the green line on the app sceenshot above). Then you need to define three things per layer:</p>
+<ul>
+<li>What command in the item view model (in this case, a RoadBlockViewModel) must be fired when a MapShape’s only event – Tap – is called. 
+<li>Which property in the item view model contains the <em>Path</em> – this is the terminology for a MapShape’s collection of points. This is, once again, of type LocationCollection. Only that’s no longer a collection of GeoCoordinate but of <em>Location</em>. 
+<li>Finally, you need to define a <em>drawer</em>. A drawer is a concept I sucked from my own thumb – it determines how a collection of points is supposed to be transformed to something on the map. It’s my way to make something that’s not templatable more or less configurable.</li></ul>
+<p>I created three drawers out of the box: MapPolylineDrawer, MapPolygonDrawer, and MapStarDrawer. The last one draws a configurable star shaped polygon around a point – since map shapes cannot be points by themselves. A drawer needs only to implement one method:</p><pre>public override MapShape CreateShape(object viewModel, LocationCollection path)</pre>
+<p>The basic drawers don’t do anything with the view model: they just take the settings from XAML. But if you want for instance your shapes having different colors based upon some view model property – say you want to color urban areas based upon their crime rate (what we GIS buffs call a <em>thematic map) </em>– you can write a little custom drawer.</p>
+<p>If you just want to <em>use</em> the behavior you are done with reading. You can download the <a href="http://www.schaikweb.net/dotnetbyexample/mvvmmapsrt.zip" target="_blank">demo solution</a> with code (which, incidentally, shows off a lot of more things than just binding to a map) and start playing around with it. Be aware of the following issues/caveats:</p>
+<ul>
+<li>You will need to install the <a href="http://visualstudiogallery.msdn.microsoft.com/bb764f67-6b2c-4e14-b2d3-17477ae1eaca?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Bing Maps SDK for Windows Store apps</a> first 
+<li>When I moved the solution from my Big Black Box to my slate I had to delete and redo all references to Bing.Maps and “Bing Maps for C#, C++, or Visual Basic” (this was using the Beta, I don’t know if that still applies to the RTM version)
+<li>The control apparently contains native code, so you cannot build it for Any CPU. 
+<li>The designer only works when you build for x86 (this still the case in RTM)</li></ul>
+<p>For the technically interested I will continue with some gory details.</p>
+<p><font size="4">The inner guts</font><br>The behavior itself is actually pretty big, so I won’t repeat all code verbatim; I will concentrate on the interesting parts.</p>
+<p>First of all, I already mentioned the fact MapShape descends from DependencyObject. That spells ‘Ahoy, Attached Dependency Property ahead!’&nbsp; to me. So I created two of those, one holding the name of the layer (I use those to find out which shapes belong to a single layer) and one in which I <em>store the view model from which the shape was created:</em></p><pre>using Windows.UI.Xaml;
+
+namespace Win8nl.MapBinding
+{
+  public static class MapElementProperties
+  {
+    public static readonly DependencyProperty ViewModelProperty =
+         DependencyProperty.RegisterAttached("ViewModel",
+         typeof(object),
+         typeof(MapElementProperties),
+         new PropertyMetadata(default(object)));
+
+    // Called when Property is retrieved
+    public static object GetViewModel(DependencyObject obj)
+    {
+      return obj.GetValue(ViewModelProperty) as object;
+    }
+
+    // Called when Property is set
+    public static void SetViewModel(
+       DependencyObject obj,
+       object value)
+    {
+      obj.SetValue(ViewModelProperty, value);
+    }
+
+    public static readonly DependencyProperty LayerNameProperty =
+         DependencyProperty.RegisterAttached("LayerName",
+         typeof(string),
+         typeof(MapElementProperties),
+         new PropertyMetadata(default(string)));
+
+    // Called when Property is retrieved
+    public static string GetLayerName(DependencyObject obj)
+    {
+      return obj.GetValue(LayerNameProperty) as string;
+    }
+
+    // Called when Property is set
+    public static void SetLayerName(
+       DependencyObject obj,
+       string value)
+    {
+      obj.SetValue(LayerNameProperty, value);
+    }
+  }
+}</pre>
+<p>The core of the MapShapeDrawBehavior self consists out of just five little methods, and the VERY core method is CreateShape. The behavior iterates over the object list databound to ItemsSource, and calls CreateShape for every view model:</p><pre>/// &lt;summary&gt;
+/// Creates a new shape
+/// &lt;/summary&gt;
+/// &lt;param name="viewModel"&gt;&lt;/param&gt;
+/// &lt;returns&gt;&lt;/returns&gt;
+private MapShape CreateShape(object viewModel)
+{
+  var path = GetPathValue(viewModel);
+  if (path != null &amp;&amp; path.Any())
+  {
+    var newShape = CreateDrawable(viewModel, path);
+    newShape.Tapped += ShapeTapped;
+
+    MapElementProperties.SetViewModel(newShape, viewModel);
+    MapElementProperties.SetLayerName(newShape, LayerName);
+
+    // Listen to property changed event of geometry property to check 
+    // if the shape needs tobe redrawed
+    var evt = viewModel.GetType().GetRuntimeEvent("PropertyChanged");
+    if (evt != null)
+    {
+      Observable
+        .FromEventPattern&lt;PropertyChangedEventArgs&gt;(viewModel, "PropertyChanged")
+        .Subscribe(se =&gt;
+                     {
+                       if (se.EventArgs.PropertyName == PathPropertyName)
+                       {
+                         ReplaceShape(se.Sender);
+                       }
+                     });
+    }
+    return newShape;
+  }
+  return null;
+}</pre>
+<ul>
+<li>First, it reads the view model property that holds the geometry (or at least, it tries that) 
+<li>It creates the actual shape 
+<li>It attaches an event listener to the “Tapped” event 
+<li>It puts the view model and the layer name in attached dependency properties for said shape 
+<li>Finally it attaches a property changed listener so that when the property that’s holding the view model’s geometry changes, the ReplaceShape method is called (which replaces the shape on the map – duh)</li></ul>
+<p>GetPathValue is a simple method that retrieves the view model’s geometry using reflection. Nothing special there:</p><pre>private LocationCollection GetPathValue(object viewModel)
+{
+  if (viewModel != null)
+  {
+    var dcType = viewModel.GetType();
+
+    var methodInfo = dcType.GetRuntimeMethod("get_" + PathPropertyName, 
+                     new Type[0]);
+    if (methodInfo != null)
+    {
+      return methodInfo.Invoke(viewModel, null) as LocationCollection;
+    }
+  }
+  return null;
+}</pre>
+<p>CreateDrawable – well that’s VERY simple. Get the drawer and let it decide how the shape will look</p><pre>protected virtual MapShape CreateDrawable(object viewModel, LocationCollection path )
+{
+  var newShape = ShapeDrawer.CreateShape(viewModel, path);
+  return newShape;
+}</pre>
+<p>And finally ShapeTapped and FireViewModelCommand:</p><pre>private void ShapeTapped(object sender, TappedRoutedEventArgs e)
+{
+  var shape = sender as MapShape;
+  if( shape != null )
+  {
+    var viewModel = MapElementProperties.GetViewModel(shape);
+    if( viewModel != null )
+    {
+      FireViewmodelCommand(viewModel, TapCommand);
+    }
+  }
+}
+
+private void FireViewmodelCommand(object viewModel, string commandName)
+{
+  if (viewModel != null &amp;&amp; !string.IsNullOrWhiteSpace(commandName))
+  {
+    var dcType = viewModel.GetType();
+    var commandGetter = dcType.GetRuntimeMethod("get_" + commandName, new Type[0]);
+    if (commandGetter != null)
+    {
+      var command = commandGetter.Invoke(viewModel, null) as ICommand;
+      if (command != null)
+      {
+        command.Execute(viewModel);
+      }
+    }
+  }
+}</pre>
+<p>ShapeTapped checks if it the object sending the event is actually a shape, then tries to retrieve a view model from the attached dependency property, and calls FireViewModelCommand on it. Which basically is directly ripped from my earlier <a href="http://dotnetbyexample.blogspot.nl/2012/07/a-winrt-behavior-to-mimic-eventtocommand.html" target="_blank">EventToCommandBehavior</a>. And then the circle is round again – user taps, view model command is called (just as Laurent Bugnion’s EventToCommand trigger did for Windows Phone) and the view model takes it further just like before. </p>
+<p>There’s more to this behavior, but mostly it’s just reacting to events that occur when the ObservableCollection ItemsSource changes. </p>
+<p><font size="4">Some concluding remarks<br></font>Of course this behavior was geared to make the code I already had as much reusable as possible, but I think the way WinRT XAML apps and Windows Phone apps can be put together are remarkably similar – provided you make good use of MVVM and keep your code as clean as possible. So what did I have to do to move over my business and view model code to get this working? Well not very much, actually.</p>
+<ul>
+<li>A tiny thing in my model library because I was so clever to use a BackgroundWorker somewhere in my models – which is not supported in WinRt 
+<li>The Gas station view model was changed to do the conversion form business object geometry to Bing Maps’ Location in stead of the converter I originally - because my solution does not support converters. 
+<li>I had to change some name spaces and data types. Mainly GeoCoordinate was now called Location. 
+<li>Oh yeah – in stead of "clr-namespace" I had to use "using" for declaring namespaces in XAML. I used ReSharper toalt-enter trough the errors and add the namespaces almost automatically.</li></ul>
+<p>And that was about <em>it</em>. Of course, the code in it was quite trivial, but still. On the XAML side things were a bit more complicated:</p>
+<ul>
+<li>Converters and Attached Dependency Properties were carried over with minimal changes. 
+<li>I had to trash my geometry templates and had to write the behavior to emulate the templates – in a way, which admittedly was no small feat. But that’s a hole that only needs to be plugged once, and can now act as a base for possible better solutions. 
+<li>I had to do some fiddling around with the DataTemplateSelector – that works a wee bit different, and will be subject of a future blog post. 
+<li>‘Tombstoning’ works a bit differently, but quite analogous. <a href="http://dotnetbyexample.blogspot.nl/2012/07/using-provisional-port-of.html" target="_blank">Been there, done that, wrote the blogpost</a>. 
+<li>The App Bar on Windows 8 has a <em>lot</em> more possibilities. And – thank Saint Sinofsky and his minions – it supports data binding out of the box. Moving from Windows Phone app bars to Windows 8 app bars is quite easy. Provided you used the BindableApplicationbar and MVVM of course ;-)&nbsp; <li>I kinda 1:1 copied the data window (the popup with alphanumeric data that appears when you tap a shape) – that worked remarkably well, but you might want to do something about the styling for a real-world application. The data window is a wee bit small now and does fit in styling wise ;-)</li></ul>
+<p>This is still a work in progress, but I think for basic shape data binding this is already very usable. The Bing Maps control is <em>very</em> fast, courtesy of native code, no doubt. I hope this will help people.</p>
+<p>Once again, for those who don’t feel scrolling all the way up: <a href="http://www.schaikweb.net/dotnetbyexample/mvvmmapsrt.zip" target="_blank">the source code</a>. Also updated for RTM. Enjoy!</p>  

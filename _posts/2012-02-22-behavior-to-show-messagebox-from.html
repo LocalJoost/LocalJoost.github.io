@@ -1,0 +1,79 @@
+---
+layout: post
+title: Behavior to show a MessageBox from a ViewModel
+date: '2012-02-22T14:38:00.001+01:00'
+author: Joost van Schaik
+tags:
+- DataBinding
+- dotnetmag
+- MVVM
+- WP7NL
+- Windows Phone 7
+- behavior
+- WP7
+modified_time: '2012-03-04T10:16:28.689+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5806857015474792435
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/02/behavior-to-show-messagebox-from.html
+---
+
+<p>Since I am a very lazy programmer and I not always want to register or define services and whatnot for showing a simple message I created this extremely simple behavior for showing a MessageBox from a ViewModel. I wrote the code for <a href="http://www.microsoft.com/windowsphone/" target="_blank"><a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone 7</a>,</a> but I suppose it could be used in Silverlight as well.</p> <p>The behavior itself is as simple as this:</p><pre>using System.Windows;
+using System.Windows.Interactivity;
+
+namespace Wp7nl.Behaviors
+{
+  public class MessageBoxDisplayBehavior : Behavior&lt;FrameworkElement&gt;
+  {
+    public const string MessagePropertyName = "Message";
+
+    public string Message
+    {
+      get { return (string)GetValue(MessageProperty); }
+      set { SetValue(MessageProperty, value); }
+    }
+
+    public static readonly DependencyProperty MessageProperty =
+      DependencyProperty.Register(
+        MessagePropertyName,
+        typeof(string),
+        typeof(MessageBoxDisplayBehavior),
+        new PropertyMetadata(string.Empty, MessageChanged));
+
+    public static void MessageChanged(DependencyObject d, 
+      DependencyPropertyChangedEventArgs e)
+    {
+      var msg = e.NewValue as string;
+      if (!string.IsNullOrEmpty(msg))
+      {
+        MessageBox.Show(msg);
+      }
+    }
+  }
+}</pre>
+<p>Easiest way to use it is to just drag it onto about any control in your Page using Blend, as long as it has the right data context, and select a string property to bind it to. In XAML, it usage looks something like this:</p><pre>&lt;Grid DataContext="{Binding ChooserViewModel}"&gt;
+ &lt;i:Interaction.Behaviors&gt;
+  &lt;Wp7nl_Behaviors:MessageBoxDisplayBehavior 
+    Message="{Binding MessageBoxMessage, Mode=TwoWay}"/&gt;
+ &lt;/i:Interaction.Behaviors&gt;
+</pre>
+<p>Just one the one thing you might want to consider is how you define “MessageBoxMessage” in your ViewModel. I defined it as follows:</p><pre>private string messageBoxMessage;
+public string MessageBoxMessage
+{
+  get { return messageBoxMessage; }
+  set
+  {
+    messageBoxMessage = value;
+    RaisePropertyChanged(() =&gt; MessageBoxMessage);
+  }
+}</pre>as opposed to what you would normally do, which is<pre>private string messageBoxMessage;
+public string MessageBoxMessage
+{
+  get { return messageBoxMessage; }
+  set
+  {
+<font color="#ff0000">    if (messageBoxMessage != value)
+    {</font>
+      messageBoxMessage = value;
+      RaisePropertyChanged(() =&gt; MessageBoxMessage);
+<font color="#ff0000">    }</font>
+  }
+}</pre>I intentionally left out the value check (in red), so RaisePropertyChanged always fires. This gives the <strike>real stupid</strike> mentally challenged users that make the same error multiple times multiple message boxes as well ;-)

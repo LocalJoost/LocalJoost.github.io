@@ -1,0 +1,146 @@
+---
+layout: post
+title: Extended Windows Phone 7 page for handling rotation, focused element updates
+  and back key press
+date: '2011-02-19T15:54:00.001+01:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- MVVM
+- WP7NL
+- Windows Phone 7
+- Tombstoning
+- WP7
+modified_time: '2011-04-20T11:34:57.094+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8807439261807621035
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/02/extended-windows-phone-7-page-for.html
+---
+
+<p>In this article I present ‘my’ base class for <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> Application Pages – essentially nothing more than a collection of utilities to handle common scenarios. Most of the code I did not write myself, but I think it’s a nice aggregation that handles the following three common problems:</p>  <ol>   <li>When someone is typing in a TextBox and receives a phone call, the model bound to that TextBox does not receive an NotifyPropertyChanged and thus is not updated – and if you <a href="http://dotnetbyexample.blogspot.com/2011/01/tombstoning-mvvmlight-viewmodels-with.html" target="_blank">tombstone the ViewModel</a><em>, </em>like I do, the last keystrokes are lost when the application is activated again. </li>    <li>When a page changes from portrait to landscape, you want that transition to be animated </li>    <li>When the users presses the back key, the ViewModel needs to be able to interact with that </li> </ol>  <p>I have put this class in “LocalJoost.Controls”. First, class definition and the part that handles rotation:</p>  <pre>using System;
+using System.ComponentModel;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Navigation;
+using LocalJoost.BaseModels;
+using Microsoft.Phone.Controls;
+
+namespace LocalJoost.Controls
+{
+  public class ExtendedPhonePage : PhoneApplicationPage
+  {
+    public ExtendedPhonePage()
+    {
+      Loaded += ExtendedPhonePageLoaded;
+    }
+
+    void ExtendedPhonePageLoaded(object sender, RoutedEventArgs e)
+    {
+      _lastOrientation = Orientation;
+    }
+    
+    PageOrientation _lastOrientation;
+    protected override void OnOrientationChanged(OrientationChangedEventArgs e)
+    {
+      var newOrientation = e.Orientation;
+      var transitionElement = new RotateTransition();
+
+      switch (newOrientation)
+      {
+        case PageOrientation.Landscape:
+        case PageOrientation.LandscapeRight:
+          // Come here from PortraitUp (i.e. clockwise) or LandscapeLeft?
+          if (_lastOrientation == PageOrientation.PortraitUp)
+            transitionElement.Mode = RotateTransitionMode.In90Counterclockwise;
+          else
+            transitionElement.Mode = RotateTransitionMode.In180Clockwise;
+          break;
+        case PageOrientation.LandscapeLeft:
+          // Come here from LandscapeRight or PortraitUp?
+          if (_lastOrientation == PageOrientation.LandscapeRight)
+            transitionElement.Mode = RotateTransitionMode.In180Counterclockwise;
+          else
+            transitionElement.Mode = RotateTransitionMode.In90Clockwise;
+          break;
+        case PageOrientation.Portrait:
+        case PageOrientation.PortraitUp:
+          // Come here from LandscapeLeft or LandscapeRight?
+          if (_lastOrientation == PageOrientation.LandscapeLeft)
+            transitionElement.Mode = RotateTransitionMode.In90Counterclockwise;
+          else
+            transitionElement.Mode = RotateTransitionMode.In90Clockwise;
+          break;
+        default:
+          break;
+      }
+
+      // Execute the transition
+       var phoneApplicationPage = 
+           (((PhoneApplicationFrame)Application.Current.RootVisual)).Content
+              as PhoneApplicationPage;
+      transition.Completed += (sender, args) =&gt; transition.Stop();
+      transition.Begin();
+
+      _lastOrientation = newOrientation;
+      base.OnOrientationChanged(e);
+    }
+  }
+}</pre>
+This is basically a slightly (very slightly) modified version of <a href="http://mobileworld.appamundi.com/blogs/andywigley/archive/2010/11/23/windows-phone-7-page-orientation-change-animations.aspx" target="_blank">what is presented by Andy Wigley</a>, only stuck in a base class. 
+
+<p>The second part, <a href="http://www.codeproject.com/Articles/118863/Windows-Phone-7-Application-Lifecycle-Ocean-for-th.aspx?display=Mobile" target="_blank">which I nicked from The Code Project</a> simply overrides OnNavigatedFrom – an event that is called when an App tombstones, unlike TextBox.LostFocus – and then forces the bound element to be updated. As a bonus, it tries to reset the focused element as well.</p>
+
+<pre>private const string FocusedElement = &quot;FOCUSED_ELEMENT&quot;;
+
+protected override void OnNavigatingFrom(NavigatingCancelEventArgs e)
+{
+  if (State.ContainsKey(FocusedElement))
+  {
+    State.Remove(FocusedElement);
+  }
+
+  var focusedElement = FocusManager.GetFocusedElement() as Control;
+  if (focusedElement == null) return;
+  if (!String.IsNullOrEmpty(focusedElement.Name))
+  {
+    State.Add(FocusedElement, focusedElement.Name);
+  }
+
+  BindingExpression be = null;
+
+  //TODO - Developers, add additional controls here like a 
+  //date picker, combobox, etc.
+  if (focusedElement is TextBox)
+  {
+    be = focusedElement.GetBindingExpression(TextBox.TextProperty);
+  }
+  if (be != null)
+  {
+    be.UpdateSource();
+  }
+  base.OnNavigatingFrom(e);
+}</pre>
+
+<p>And the third part, which I actually created myself, handles the OnBackKeyPress scenario. Sometimes you want to cancel navigation out of the page, for instance because you have created a popup. If the user then presses the back key you want to close the popup and cancel the navigation (this is actually part of the Certification Requirements), and preferably do so my letting the view model handle that. Unfortunately the only place to intercept the OnBackKeyPress event is by overriding in a method in the <em>Page</em>. So I simply decided to handle this by overriding the OnBackKeyPress like this:</p>
+
+<pre>protected override void OnBackKeyPress( CancelEventArgs e)
+{
+  var dc = DataContext as IBackKeyPressHandler;
+  if (dc != null) dc.OnBackKeyPress(e);
+}</pre>
+All ViewModels that should be able to handle dc.OnBackKeyPress should then implement the very complicated interface IBackKeyPressHandler: 
+
+<pre>using System.ComponentModel;
+
+namespace LocalJoost.BaseModels
+{
+  public interface IBackKeyPressHandler
+  {
+    void OnBackKeyPress(CancelEventArgs e);
+  }
+}</pre>
+and you are done - the model now gets notified of the OnBackKeyPress and can handle this – or not. Of course you can do this with Messaging and whatnot – this is easy, clean and simple to understand. With on prerequisite of course: the ViewModel should be bound directly to the Page. 
+
+<p>In stead of “phone:PhoneApplicationPage” on the top and bottom of my application pages I now simply put “LocalJoost:ExtendedPhonePage” and I am done and get the three functions described above for free. Well, that is, you need of course to define the namespace LocalJoost as something like 
+  <br />“xmlns:LocalJoost=&quot;clr-namespace:LocalJoost.Controls;assembly=LocalJoost&quot; – or leave it to ReSharper or some tool like that to do that for you.&#160; </p>  

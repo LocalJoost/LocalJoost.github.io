@@ -1,0 +1,82 @@
+---
+layout: post
+title: Aligning XAML elements outside the screen using scaling (for a Facebook-like
+  GUI)
+date: '2013-09-18T13:57:00.001+02:00'
+author: Joost van Schaik
+tags:
+- wpnl
+- wpdev
+- dotnetmag
+- Windows Phone
+- XAML
+modified_time: '2013-09-18T15:14:55.463+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5920602106639114920
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/09/aligning-xaml-elements-outside-screen.html
+---
+
+<p>This is a trick I use to make partial screens outside of the actual <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> viewport, for instance like the <a href="http://www.windowsphone.com/en-us/store/app/facebook/82a23635-5bd9-df11-a844-00237de2db9e" target="_blank">Facebook app for Windows Phone</a> does – that has these ‘side panels’ that slide into view when you tap the “settings” button. Some people like it, some people hate it for being to iOS-y or to Android-y – I just show you how I do it. </p> <p>This a two part blog post. This first one will show you how the XAML trick is being used an why it works – the second one will cover a behavior for animating the screen.</p> <p>I start with a standard Windows Phone app and add the following XAML inside the ContentPanel</p><pre>&lt;Grid x:Name="ContentPanel" Grid.Row="1" Margin="12,0,12,0"&gt;
+  &lt;Grid.ColumnDefinitions&gt;
+    &lt;ColumnDefinition Width="0.5*"/&gt;
+    &lt;ColumnDefinition Width="0.5*"/&gt;
+  &lt;/Grid.ColumnDefinitions&gt;
+  &lt;Grid Column="1" x:Name="MessagePanel1"&gt;
+    &lt;TextBlock Text="This is panel1" FontSize="29.333"&gt;&lt;/TextBlock&gt;
+  &lt;/Grid&gt;
+  &lt;Grid Column="1" x:Name="MessagePanel2" RenderTransformOrigin="0.5,0.5"&gt;
+    &lt;TextBlock Text="This is panel2" FontSize="29.333" FontFamily="Andalus"/&gt;
+  &lt;/Grid&gt;
+&lt;/Grid&gt;</pre>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; float: right; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_thumb.png" width="145" align="right" height="275"></a>So basically I define a grid that divides my screen vertically in two parts, but both panels are in the same (second column). Now save everything, and open the app in Blend. You will see the following extreme ugly screen as displayed to the right.</p>
+<p>As you can see the two panels are on top of each other. I changed the font of the second panel to illustrate that. Now move over to the Objects and Timeline panel and expand till it looks like this:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_3.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_thumb_3.png" width="244" height="172"></a></p>
+
+
+
+
+
+
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_4.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; float: right; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_thumb_4.png" width="244" align="right" height="183"></a>No follow the following procedure:</p>
+<ul>
+<li>Right-click on TextBox, </li>
+<li>Click Group Into</li>
+<li>Select “Grid”</li></ul>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_5.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; float: right; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_thumb_5.png" width="244" align="right" height="139"></a>So now we have a grid around the textbox. Select that grid, then go as follows</p>
+<ul>
+<li>With the grid selected, go to the right hand side of the screen and find the “Transform” panel. Expand it if necessary. Selected the “Flip” tab, flip the screen horizontally by clicking the “Flip X-axis” button</li></ul>
+<p>&nbsp;</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_6.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; float: right; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_thumb_6.png" width="244" align="right" height="139"></a></p>
+<ul>
+<li>Now go one level up, and select the MessagePanel 2. </li>
+<li>Click the “Flip X-axis” button again.</li>
+<li>And now for the coupe de grace: select Grid again</li>
+<li>Select the Center Point tab</li>
+<li>Set X to 1</li></ul>
+<p>&nbsp;</p>
+
+
+
+
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_7.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; float: right; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_thumb_7.png" width="135" align="right" height="244"></a>Congratulations. You have probably now found the most complex way to align to two panels together one screen. Why not simply put the Panel2 in a grid column 0? Well… Go back to the transform panel and change the “1” behind X to “-1: </p>
+
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_8.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; float: left; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_thumb_8.png" width="193" align="left" height="244"></a></p>
+<p>Now you have a screen just outside the screen. Well, almost. Because of the offset of the content panel is 12, you can just about see the leftmost part of panel 2. This is easily fixed (see below)</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_9.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; float: right; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_thumb_9.png" width="244" align="right" height="139"></a></p>
+<ul>
+<li>Select MessagePanel 2 again.</li>
+<li>Go to the Translate Panel again</li>
+<li>Open the “Translate” tab”</li>
+<li>Fill in “12” for Translate X</li></ul>
+
+<p>And done.</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_10.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; float: right; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Outline-XAML-elements-in-or-outside-the-_C6BC/image_thumb_10.png" width="189" align="right" height="244"></a>Now if you simply select ContentPanel, click on the Translate X field again and roll down your mouse wheel you will see the the number go below zero <em>and whole screen move to the left</em>, until the whole op panel 2 comes into view (this happens at about –235). Now the only thing we need to do is create an animation that will perform the scrolling. You can do that either in Blend with the Visual State Manager, or with a behavior. I, naturally, choose the latter part. I use both this trick in <a href="http://www.windowsphone.com/s?appid=ed077cc6-21ce-4e99-8e19-c5b119646016" target="_blank">2 Phone Pong</a>&nbsp; - not for a settings screen, but to scroll in an advertisement for a more or less secret in-app purchase when the game comes in a certain state (hint – especially when you loose a lot).&nbsp; </p>
+<p>By using this double mirroring (actually scaling to “-1”, as a look in the XAML will tell you) and center point trick, things will always outline automatically. </p>
+<p>So this was part 1. <a href="http://www.schaikweb.net/dotnetbyexample/XamlScale.zip" target="_blank">The demo solution</a>, showing the situation above (and not to the right) shows the situation before the screen is translated to the left. Next time I will show you a behavior that can actually be used to simply automate the animation.</p>
+<p>Finally, this trick will work on any XAML platform, not just on Windows Phone. Once again, Blend is your friend. Remember that.</p>  

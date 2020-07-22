@@ -1,0 +1,153 @@
+---
+layout: post
+title: A generic toggle component for HoloLens apps
+date: '2017-02-21T19:36:00.000+01:00'
+author: Joost van Schaik
+tags:
+- UWP
+- HoloLens
+- Unity3D
+modified_time: '2017-02-22T07:45:14.858+01:00'
+thumbnail: https://i.ytimg.com/vi/1R6uUHetYp8/default.jpg
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2061431843314432013
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2017/02/a-generic-toggle-component-for-hololens.html
+---
+
+<h2>Intro</h2> <p>The following scenario is one I have seen a lot of times – the user taps on a UI element, and then it and/or a couple of elements need to fade out, disappear, whatever. I suppose every developer has felt this itch that occurs when you basically make something the same the second time around, and you feel there will be a third and a fourth time coming up. Time for spinning up a new reusable component. Meet Toggler and it’s friend, Togglable.</p> <h2>The Toggler</h2> <p>This is a simple script that you can attach to any object that will function as a toggle – a ‘button’ if you like. It’s so simple and concise I just write the whole thing in one go: <pre style="font-size: 12px">using System;
+using System.Collections.Generic;
+using HoloToolkit.Unity.InputModule;
+using UnityEngine;
+
+namespace HoloToolkitExtensions
+{
+    public class Toggler : MonoBehaviour, IInputClickHandler
+    {
+        private AudioSource _selectSound;
+
+        public List&lt;Togglable&gt; Toggles = new List&lt;Togglable&gt;();
+
+        public virtual void Start()
+        {
+            _selectSound = GetComponent&lt;AudioSource&gt;();
+        }
+
+        public virtual void OnInputClicked(InputClickedEventData eventData)
+        {
+            foreach (var toggle in Toggles)
+            {
+                toggle.Toggle();
+            }
+            if (_selectSound != null)
+            {
+                _selectSound.Play();
+            }
+        }
+    }
+}
+</pre>
+<p>This thing has a list of Togglable. When it’s clicked, it calls the method “Toggle” on all Togglable objects in the list, and optionally plays a feedback sound to confirm the toggle has been clicked.</p>
+<h2>The Togglable </h2>
+<p>This is almost embarrassingly simple.</p><pre style="font-size: 12px">using UnityEngine;
+
+namespace HoloToolkitExtensions
+{
+    public abstract class Togglable : MonoBehaviour
+    {
+        public abstract void Toggle();
+    }
+}</pre>
+<p>and in itself completely uninteresting. What is interesting though is that you can use this base class to implement behaviours that actually do something useful (which is the point of bas classes, usually. D’oh). I will give a few examples.</p>
+<h2>A toggleable that ‘just disappears’ </h2>
+<p>Also not very complicated, although there’s a bit more to it than you would think<br></p><pre style="font-size: 12px">namespace HoloToolkitExtensions
+{
+    public class ActiveTogglable : Togglable
+    {
+        public bool IsActive = true;
+        public virtual void Start()
+        {
+            gameObject.SetActive(IsActive);
+        }
+
+        public override void Toggle()
+        {
+            IsActive = !IsActive;
+            gameObject.SetActive(IsActive);
+        }
+
+        public virtual void Update()
+        {
+            // This code to make sure the logic still works in someone
+            // set the IsActive field directly
+            if (IsActive != gameObject.activeSelf)
+            {
+                gameObject.SetActive(IsActive);
+            }
+        }
+    }
+}
+</pre>
+<p>To if Toggle is called, SetActive is called with either true or false and it will make the gameobject that it’s attached to flash in and out of existence. </p>
+<h2>A toggleable that fades in or out</h2>
+<p>This is a bit more work, but with the use of LeanTween animating opacity is pretty easy:</p><pre style="font-size: 12px">using UnityEngine;
+
+namespace HoloToolkitExtensions
+{
+    public class FadeTogglable : Togglable
+    {
+        public bool IsActive = true;
+        public float RunningTime = 1.5f;
+        private bool _isBusy = false;
+        private Material _gameObjectMaterial;
+
+        public virtual void Start()
+        {
+            Animate(0.0f);
+            _gameObjectMaterial = gameObject.GetComponent&lt;Renderer&gt;().material;
+        }
+
+        public override void Toggle()
+        {
+            IsActive = !IsActive;
+            Animate(RunningTime);
+        }
+
+        public virtual void Update()
+        {
+
+            // This code to make sure the logic still works in someone
+            // set the IsActive field directly
+            if (_isBusy)
+            {
+                return;
+            }
+            if (IsActive != (_gameObjectMaterial.color.a == 1.0f))
+            {
+                Animate(RunningTime);
+            }
+        }
+
+        private void Animate(float timeSpan)
+        {
+            _isBusy = true;
+            LeanTween.alpha(gameObject, 
+                IsActive ? 1f : 0f, timeSpan).setOnComplete(() =&gt; _isBusy = false);
+        }
+    }
+}
+</pre>
+<p>Initially it animates to the initial state in 0 seconds (i.e. instantly), and when the Toggle is called it animates in the normal running time from totally opaque to transparent – or the other way around.</p>
+<p>There is a little caveat here – the object that needs to fade out then needs to use a material that actually supports transparency. So, for instance:</p><a href="http://www.schaikweb.net/dotnetbyexample/A-generic-toggle-component-for-HoloLens-_FF34/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-generic-toggle-component-for-HoloLens-_FF34/image_thumb.png" width="418" height="154"></a> 
+<p>So what is the point of all this?</p>
+<p>I have created a little sample application to demonstrate the point. There is one ‘button’ – a rotating blue sphere with red ellipses on it, and four elements that need to be toggled when the button is clicked – two cubes that simply need to wink out, and two capsules that need to fade in and out:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/A-generic-toggle-component-for-HoloLens-_FF34/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-generic-toggle-component-for-HoloLens-_FF34/image_thumb_3.png" width="507" height="293"></a></p>
+<p>You drag the ActiveTogglable on both cubes, and FadeTogglable on both capsules. In fact, I did it a little bit different: I made prefab of both cube and capsule and dragged two instances on the scene. Force of habit. But in the end it does not matter. What does matter is that, once you have dragged a Toggle script on top of the sphere, you can now simply connect the Toggle and the Toggleables in the Unity editor, like this:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/A-generic-toggle-component-for-HoloLens-_FF34/image_4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-generic-toggle-component-for-HoloLens-_FF34/image_thumb_4.png" width="647" height="304"></a></p>
+<p>Which makes it pretty darn powerful and reusable I’d say – and extendable, since nothing keeps you from implementing your own Toggleables.</p>
+<p>The result in action looks like this: 
+<p><iframe height="365" src="https://www.youtube.com/embed/1R6uUHetYp8" frameborder="0" width="650" allowfullscreen=""></iframe></p>
+<h2>Why not an interface in stead of a superclass?</h2>
+<p>Yeah, that’s what I thought too. But you just try – components that can me dragged on top of each other need to be just that – components. So everything you drag needs to be a component at minimum, but you want the concrete class to be behaviours. So – you <em>have </em>to use a base class that’s a behaviour too. Welcome to the wondrous world of Unity, where nothing is what it seems – or what you think it is supposed to be ;)</p>
+<h2>Concluding remarks and some thoughts about 3D interfaces</h2>Remember how Apple designed skeuomorphic user interfaces, that for instance required you to take a book out of a bookshelf? For young people, who never may have held much physical books, that’s about as absurd as the floppy disk icon for save – that is still widely used. But it worked in the real world, so we took that to the digital 2D world, even when it did no longer make sense. Microsoft took the lead with what was then called ‘Metro’ for the ‘digital native’ float design. Now buttons no longer mimic 3D (radio buttons) and heaven knows what. 
+<p>We are now in the 2007 of 3D UI design. No-one has any idea how to implement true 3D ‘user interfaces’, and there is no standard at all. So we tend to fall back on what worked – 2D design elements or 3D design elements that resemble 3D objects – like 3D ‘light switch buttons’ attached to some ‘wall’. Guilty as changed – my <a href="ms-windows-store://pdp/?ProductId=9NBLGGH52SZP" target="_blank">HoloLens app for Schiphol</a> has a 2D ‘help screen’&nbsp; complete with button.</p>
+<p>With my little rotation globe I am trying to find a way to ‘3D digital native design’, although I am not a designer at all. But I am convinced the future is somewhere in that direction. We need a ‘digital design language’ for Mixed Reality. Maybe it’s rotating globes. Maybe it’s something else. But I am sure as hell about what it’s <em>not – </em>and that is floating 2D or 3D buttons or ‘devices’ resembling physical machinery. </p>
+<p>Code, as per my trademark, can be found <a href="https://github.com/LocalJoost/ToggleDemo" target="_blank">here</a>. </p>

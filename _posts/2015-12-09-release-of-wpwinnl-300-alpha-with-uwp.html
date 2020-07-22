@@ -1,0 +1,40 @@
+---
+layout: post
+title: Release of WpWinNl 3.0.2 alpha with UWP support - and map data binding
+date: '2015-12-09T16:26:00.001+01:00'
+author: Joost van Schaik
+tags:
+- UWP
+- DataBinding
+- Mapping
+- behavior
+modified_time: '2015-12-11T20:39:17.124+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6753270189464387478
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/12/release-of-wpwinnl-300-alpha-with-uwp.html
+---
+
+I just released my open source library <a href="https://github.com/LocalJoost/WpWinNl/" target="_blank">WpWinNl</a> to 3.0.2-alpha (that is, pre-release) to NuGet. WpWinNl now supports <a href="http://www.windows.com/" target="_blank"><a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> 8, Windows Phone 8.1, <a href="http://www.windows.com/" target="_blank"><a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a>.1 and the new Universal Windows Platform. All the basic libraries are updated to the latest version.</a></a><br />
+The library builds three NuGet packages, which can be found on NuGet as of now:<br />
+<ol>
+<li><a href="http://www.nuget.org/packages/WpWinNlBasic/3.0.2-alpha" target="_blank">WpWinNlBasic</a>, which contains everything except the stuff that hangs on <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a>
+<li><a href="http://www.nuget.org/packages/WpWinNl/3.0.2-alpha" target="_blank">WpWinNl</a>, builds on top of WpWinNlBasic <em>and</em> MVVMLight (and has dependencies on both)
+<li><a href="http://www.nuget.org/packages/WpWinNlMaps/3.0.2-alpha" target="_blank">WpWinNlMaps</a>, that builds on top of WpWinNlBasic. This is code that allows you to bind data to maps utilizing a special behavior</li>
+</li>
+</li>
+</ol>
+For Windows Phone 8, Windows Phone 8.1 and Windows 8.1 basically nothing changes. With respect to UWP, the following changes have been made: <br />
+<ol>
+<li>The behaviors are built on top of the <a href="http://www.nuget.org/packages/Microsoft.Xaml.Behaviors.Uwp.Managed/" target="_blank">new UWP Behaviors NuGet Package</a>
+<li>WpWinNlMaps has a slightly expanded API to support the new features by the new maps control, as well align more with the x:Bind scenario </li>
+</li>
+</ol>
+There is <a href="https://github.com/LocalJoost/WpWinNl/tree/uwp/uap10.0/WpWinNl.MapBindingDemo" target="_blank">a sample application for WpWinNlMaps</a> in GitHub that I will explain more in detail in a follow-up post. Make sure that if you have a look at the code, <a href="https://github.com/LocalJoost/WpWinNl/tree/uwp/uap10.0/" target="_blank">take the UWP branch</a>.<br />
+A few words of warning:<br />
+<ul>
+<li>Apart from WpWinNlMaps, this has not yet been extensively tested, hence the pre-release designation.
+<li>No attempt has been made to share code between UWP and the earlier incarnations of these packages. Effectively I have ceased working on wp8/wp81/win81 code, as of now only the UWP code will move forward and at one point in time these packages will stop supporting them at all.
+<li>Parts of this library, especially the behaviors, may be removed entirely and end up in the Microsoft Behaviors NuGet package.</li>
+</li>
+</li>
+</ul>
+However, for the time being, I think especially the map binding is pretty important, so is was time to release it. Any feedback is welcome.

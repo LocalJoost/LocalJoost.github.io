@@ -1,0 +1,138 @@
+---
+layout: post
+title: Zero lines of code solution for in-app checking for updates on Windows Phone
+date: '2013-09-15T15:06:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- wpnl
+- wpdev
+- dotnetmag
+- behavior
+modified_time: '2013-09-15T15:10:32.950+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2220932366264180836
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/09/zero-lines-of-code-solution-for-in-app.html
+---
+
+<p><em>“Good artists copy; great artists steal” –<font size="1">Steve Jobs</font></em></p> <p>Every <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> developer who has non-tech friends, relatives or a wife with a Windows Phone knows the problem: a lot of users don’t check their Store regularly and simply don’t update their apps – or at least not often enough. The highly intelligent <a href="https://twitter.com/pedrolamas" target="_blank">Pedro Lamas</a> – Senior Nokia engineer, author of the <a href="http://cimbalino.org/" target="_blank">Cimbalino</a> Windows Phone toolkit, and my personal savior when I ran into some very exotic problems with Nokia Music – recently described <a href="http://www.pedrolamas.com/2013/07/24/checking-for-updates-from-inside-a-windows-phone-app/" target="_blank">a way to automatically check for updates <em>inside the app</em></a><em>.</em>With his permission, I decided to pack the core logic into a behavior, much like I did with the ratings logic in my previous post – so you can essentially drag this on your main app page and be done with it.Pedro has used something like my <a href="http://dotnetbyexample.blogspot.com/2011/11/safe-event-detachment-base-class-for.html" target="_blank">SafeBehavior</a> in Cimbalino, and now I use some of his code in the <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a>. This is how community works. In that light the quote on top of this article is rather badly chosen ;-)</p> <p>If you drop the UpgradeCheckBehavior, as I have christened this thing, onto the main page of your application, Blend will present you with only two options: a message box caption and a message box text:</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/991ff7df596b_BB47/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: none; padding-top: 0px; padding-left: 0px; margin-left: auto; display: block; padding-right: 0px; border-top-width: 0px; margin-right: auto" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/991ff7df596b_BB47/image_thumb.png" width="318" height="153"></a></p> <ul> <li><strong>Caption</strong> is the text that will appear on the message box when the behavior detects a new version. Default value is “New version!”  <li><strong>Message<em> </em></strong>is the text that will appear inside the message box when the behavior detects a new version. Default value is “There's a new version of this app available, do you want to update?”</li></ul> <p>If you are fine with that, you are finished. The app will check for updates automatically on app startup.</p> <p>The behavior itself is a rather simple SafeBehavior and goes like this:</p><pre style="font-size: 10px">using System;
+using System.Globalization;
+using System.Net;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Xml;
+using Microsoft.Phone.Tasks;
+using Wp7nl.Utilities;
+
+namespace Wp7nl.Behaviors
+{
+  /// &lt;summary&gt;
+  /// A behavior checking from in the app if there's an update available. 
+  /// &lt;/summary&gt;
+  public class UpgradeCheckBehavior : SafeBehavior&lt;Page&gt;
+  {
+    private ManifestAppInfo appInfo;
+
+    protected override void OnSetup()
+    {
+      appInfo = new ManifestAppInfo();
+      CheckUpgrade();
+    }
+
+    private void CheckUpgrade()
+    {
+#if !DEBUG
+      GetLatestVersion().ContinueWith(ProcessResult);
+#endif
+    }
+  }
+}</pre>
+<p>Since in debug mode the app will run on you phone or emulator using a generated temporary app id, it won’t be possible to check for new versions anyway so I’ve added an #if statement around the actual check.</p>
+<p>Using my <a href="http://dotnetbyexample.blogspot.nl/2011/03/easy-access-to-wmappmanifestxml-app.html" target="_blank">ManifestAppInfo</a> helper class I retrieve all the app’s metadata which is used by the GetLatestVersion – in essence a slightly modified version of Pedro’s work:</p><pre style="font-size: 10px">/// &lt;summary&gt;
+/// This method is almost 100% stolen from 
+/// http://www.pedrolamas.com/2013/07/24/checking-for-updates-from-inside-a-windows-phone-app/
+/// &lt;/summary&gt;
+private Task&lt;Version&gt; GetLatestVersion()
+{
+  var cultureInfoName = CultureInfo.CurrentUICulture.Name;
+  var url = string.Format(
+      "http://marketplaceedgeservice.windowsphone.com/v8/catalog/apps/{0}?os={1}&amp;cc={2}&amp;oc=&amp;lang={3}​",
+      appInfo.ProductId,
+      Environment.OSVersion.Version,
+      cultureInfoName.Substring(cultureInfoName.Length - 2).ToUpperInvariant(),
+      cultureInfoName);
+
+  var request = WebRequest.Create(url);
+
+  return Task.Factory.FromAsync(request.BeginGetResponse, result =&gt;
+  {
+    try
+    {
+      var response = (HttpWebResponse)request.EndGetResponse(result);
+      if (response.StatusCode != HttpStatusCode.OK)
+      {
+        throw new WebException("Http Error: " + response.StatusCode);
+      }
+
+      using (var outputStream = response.GetResponseStream())
+      {
+        using (var reader = XmlReader.Create(outputStream))
+        {
+          reader.MoveToContent();
+          var aNamespace = reader.LookupNamespace("a");
+          reader.ReadToFollowing("entry", aNamespace);
+          reader.ReadToDescendant("version");
+          return new Version(reader.ReadElementContentAsString());
+        }
+      }
+    }
+    catch (Exception)
+    {
+      return null;
+    }
+  },
+  null);
+}</pre>
+<p>I think my only addition to this is the try-catch around the method as I tended to have some odd errors sometimes when running it inside Visual Studio. This method craftily downloads the app metadata from the store and extracts a version from it.</p>
+<p>And then the only things left of course are comparing the retrieved version to the current version, and if the current version is greater, displaying a message box asking the user to upgrade:</p><pre style="font-size: 10px">private void ProcessResult(Task&lt;Version&gt; t)
+{
+  if(t.IsCompleted &amp;&amp; t.Result != null )
+  {
+    var currentVersion = new Version(appInfo.Version);
+    if (currentVersion &lt; t.Result )
+    {
+      DoShowUpgrade();
+    }
+  }
+}
+
+private void DoShowUpgrade()
+{
+  Deployment.Current.Dispatcher.BeginInvoke(() =&gt;
+  {
+    var result = MessageBox.Show(Message, Caption, MessageBoxButton.OKCancel);
+    if (result == MessageBoxResult.OK)
+    {
+      var marketplaceReviewTask = new MarketplaceDetailTask();
+      try
+      {
+        marketplaceReviewTask.Show();
+      }
+      catch (InvalidOperationException ex)
+      {
+      }
+    }
+  });
+}</pre><a href="http://www.schaikweb.net/dotnetbyexample/991ff7df596b_BB47/newversion.png"><img title="newversion" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; float: right; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="newversion" src="http://www.schaikweb.net/dotnetbyexample/991ff7df596b_BB47/newversion_thumb.png" width="169" align="right" height="288"></a>And that's all there's to it. The two dependency properties holding caption and message have been omitted for the sake of brevity. The sad thing of Pedro’s brilliant idea is that it’s quite hard to check if it actually <em>works. </em>Well let me assure you it does, and if you run the demo solution in <em>release</em> mode configuration, it will show you by actually asking for an upgrade:
+<p>How is that possible? The app created by Visual Studio runs a temporary ID that should not even be in the Store! That’s correct, unless you <em>make</em> it have a real id. So I opened the WPAppManifest.xml file that’s over in the Properties folder and messed a little with the settings:<a href="http://www.schaikweb.net/dotnetbyexample/991ff7df596b_BB47/image_3.png"><img title="image" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/991ff7df596b_BB47/image_thumb_3.png" width="348" height="203"></a></p>
+<p>I changed the app Id to that of my latest game <a href="http://www.windowsphone.com/s?appid=ed077cc6-21ce-4e99-8e19-c5b119646016" target="_blank">2 Phone Pong</a> in the store, and changed the version number to 0.9.0.0 (while the version number in the Store of course is at least 1.0.0.0). Now the app thinks ask the store for the version number of 2 Phone Pong, gets (at the time of this writing) 1.0.0.0 back, ascertains that’s lower than it’s current version and pops up the message. I you hit the OK button it will actually take you to 2 Phone Pong in the Store . This proves Pedro’s code actually works, and you have now a zero code solution to take your users to the best possible version of your app – and no longer an excuses not to do it;-)</p>
+
+
+
+
+
+
+
+
+<p>Warning – don’t try to deploy a debug version of your app with this id trick on a phone that has the actual app downloaded from the Store on it. That won’t work – you won’t have writing permissions. I haven’t tried the opposite – downloading an app from the store over an app deployed from Visual Studio – but I can imagine that way only lie mud pies.</p>
+<p>I will include this soon in the upcoming version of my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a></p>  

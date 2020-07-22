@@ -1,0 +1,76 @@
+---
+layout: post
+title: Downloading audio files from Azure blob storage and playing them in Mixed Reality
+  apps
+date: '2018-02-04T17:52:00.000+01:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Windows Mixed Reality
+- Unity3D
+- Azure
+modified_time: '2018-02-05T12:03:39.420+01:00'
+thumbnail: https://lh3.googleusercontent.com/-ONYixA3AqaY/Wnc6PUl4gFI/AAAAAAAAPk4/OMVtUy3YznUJGz9ZCJZXzPolvPAXT_FywCHMYCw/s72-c/image_thumb%255B5%255D?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3931048006794757959
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2018/02/downloading-audio-files-from-azure-blob.html
+---
+
+<h2>Intro</h2><p>All but the most trivial apps have some kind of back end. In the past, I have written about accessing all kinds of services from <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> and <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality</a> apps, But apart from mere <em>data</em>, you can download all kind of <em>media</em> from external sources and use those in you Mixed Reality apps. This is highly useful if you want to change used media, use different files for like instructions depending on some factor. Or heck, some random background music. In fact, what I will be describing is not even Mixed Reality specific – the principle can be used in any Unity app, although the code that sits around to demonstrate the workings <em>definitely</em> only works for Mixed Reality.</p><p>Oh, and by the way – for us Microsoft geeks “back end” equals to “<a href="http://azure.microsoft.com/" target="_blank">Microsoft Azure</a>” – if it’s not for the competitive pricing, then for the way Microsoft makes it easy for developers to get going (heaven knows this was <em>quite</em> different in the early days). But to be clear: this will work with any backend that hosts files. </p><p>This post will be 2-part: the first part concentrates on the actual technique of downloading and playing audio files, the second part will explain the ‘floating audio player’ I built to make this easily demonstrable. The floating part in ‘floating player’ should be taken in the most literal way possible:</p><p><a href="https://lh3.googleusercontent.com/-zyx1cxdRr60/Wnc6O68HXsI/AAAAAAAAPk0/d4aRAbBomYEMCpSVLEfAmuoPN_xXG1T5gCHMYCw/s1600-h/image%255B9%255D"><img width="640" height="471" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-ONYixA3AqaY/Wnc6PUl4gFI/AAAAAAAAPk4/OMVtUy3YznUJGz9ZCJZXzPolvPAXT_FywCHMYCw/image_thumb%255B5%255D?imgmax=800" border="0"></a></p><p><a href="https://lh3.googleusercontent.com/-Z1SL0R0byss/Wnc6P_Py-rI/AAAAAAAAPk8/fgFGXzY09AgzfQfhlXBujlmlIDKLtBT_gCHMYCw/s1600-h/image%255B28%255D"><img width="255" height="197" title="image" align="right" style="margin: 0px 0px 0px 5px; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-EeUmmiCtz_A/Wnc6QBjOc_I/AAAAAAAAPlA/w25gduiExREhCNNDz7F2jnMup6Dm_vOaACHMYCw/image_thumb%255B22%255D?imgmax=800" border="0"></a>You can find it in the <a href="https://github.com/LocalJoost/FloatingAudioPlayer.git" target="_blank">demo project</a>. You can just jump to there if you want to skip all my mumbling.</p><h2>Global overview</h2><p>If you open the project in Unity, you will not see one but <em>three</em> floating players, next to each other. They will all attempt to play on of my ringtones – an excerpt from the <a href="http://www.bbc.co.uk/programmes/b006q2x0" target="_blank">Doctor Who</a> theme song (one is a nerd or one is not). But it will attempt to use one of three different audio formats – the well-known MP3, <a href="https://en.wikipedia.org/wiki/Vorbis" target="_blank">Ogg Vorbis</a>, and WAVE audio format (aka ye good ole’ WAV).</p><p><a href="https://lh3.googleusercontent.com/-ZoKJcTXYd3A/Wnc6Q2hIO0I/AAAAAAAAPlE/tCPMgrthGpInMI4HHIzp6gMOHdZWUGMOwCHMYCw/s1600-h/image%255B37%255D"><img width="640" height="182" title="image" style="margin: 0px; border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-UZK4G6lSTkY/Wnc6RU2LKAI/AAAAAAAAPlI/UizQp-pWkmgdL426XUG87Xol_GQ28foJQCHMYCw/image_thumb%255B26%255D?imgmax=800" border="0"></a></p><p>To hear them, either build the app or just hit the play button. If you choose the second option, you will need to attach an XBox One controller to you PC, to steer the cursor and click on the buttons. You will notice the Ogg and the WAV file playing nicely. The mp3 one won’t. In fact, the player just disappears before you even can get to it. We will get to that later.</p><h2>Using UnityWebRequest</h2><p>In previous posts I have shown you either how to use the Unity WWW class, or how to resort to pure UWP code and use HttpClient/HttpRequestMessage. It seems like the WWW class is being deprecated, although I have no official information on that. However,the new (third) kid on the block seems to be UnityWebRequest.</p><p>This is a bit on an oddball. It uses a <em>handler. </em>Generally, a UnityWebRequest looks like this:</p><pre style="font-size: 12px;">var request = UnityWebRequest.Get(url);
+request.downloadHandler = handler;
+yield return request.SendWebRequest();</pre><p>The second line is optional – if the you don’t set the handler, it’s the default DownloadHandler class, which sports a “text” property you can query. This is very useful for accessing data services like an <a href="https://azure.microsoft.com/en-us/services/app-service/api/" target="_blank">API app on Azure App Service</a>. If you want to download audio files, you will need a DownloadHandlerAudioClip handler.</p><h2>Putting it in code</h2><p>To make this all work easily, I have created the following base class for download loading media:</p><pre style="font-size: 12px;">using System.Collections;
+using UnityEngine;
+using UnityEngine.Networking;
+
+public abstract class BaseMediaLoader : MonoBehaviour
+{
+    public string MediaUrl;
+
+    private string _currentMediaUrl;
+
+    protected virtual void Update()
+    {
+        if (_currentMediaUrl != MediaUrl)
+        {
+            _currentMediaUrl = MediaUrl;
+            StartCoroutine(StartLoadMedia());
+        }
+    }
+
+    protected abstract IEnumerator StartLoadMedia();
+
+    protected IEnumerator ExecuteRequest(string url, DownloadHandler handler)
+    {
+        var request = UnityWebRequest.Get(url);
+        request.downloadHandler = handler;
+        yield return request.SendWebRequest();
+    }
+}
+</pre><p>MediaUrl is an url that points to a place where the actual audio file can be downloaded – in this case, as SAS link to a file in my own Azure blob storage. Every time Update is called, it checks if the MediaUrl has been changed, and if so, it starts the StartLoadMedia in the background. ExecuteRequest is a helper method that can be used from a StartLoadMedia. Like this:</p><pre style="font-size: 12px;">using System.Collections;
+using UnityEngine;
+using UnityEngine.Networking;
+
+public class SoundPlaybackController : BaseMediaLoader
+{
+    public AudioSource Audio;
+
+    public AudioType TypeAudio = AudioType.OGGVORBIS;
+
+    protected override IEnumerator StartLoadMedia()
+    {
+        yield return LoadMediaFromUrl(MediaUrl);
+    }
+
+    private IEnumerator LoadMediaFromUrl(string url)
+    {
+        var handler = new DownloadHandlerAudioClip(url, TypeAudio);
+        yield return ExecuteRequest(url, handler);
+        if (handler.audioClip.length &gt; 0)
+        {
+            Audio.clip = handler.audioClip;
+        }
+    }
+}
+</pre><p>This is a very reduced version of the SoundPlaybackController that is in the <a href="https://github.com/LocalJoost/FloatingAudioPlayer.git" target="_blank">demo project</a>, concentrating only on the actual downloading and playing of the data. </p><p>The override of StartLoadMedia simply calls StartLoadMedia, which proceeds to create a DownloadHandlerAudioClip handler. Now the odd thing is, this handler wants and url <em>as well as the request</em>. Why this is so, I have no idea. Also notice the fact you need to supply the handler with the<em> type of audio</em> you are going to download – there’s a AudioType enumeration for that.</p><p>If the audio has been downloaded successfully, you only have to set the “clip” property of an AudioSource to the handler’s “audioClip” property, and call the Audiosource’s “Play” method. And you are good to go.</p><h2>Audio types are important</h2><p>Since the TypeAudio property is public, the Unity editor makes a nice dropdown for us to select the type of audio:</p><p><a href="https://lh3.googleusercontent.com/-NnCbw-bnpVw/Wnc6R875HKI/AAAAAAAAPlM/-gSU-_MTzWMz8S3zmNMgflnVFuXiX1hFgCHMYCw/s1600-h/image%255B43%255D"><img width="300" height="266" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-NWwV91zvrdU/Wnc6SQlPKKI/AAAAAAAAPlQ/IIbkmE6DjRU-jLqAPqx6Ja101o__SHqFACHMYCw/image_thumb%255B30%255D?imgmax=800" border="0"></a></p><p>I’ll be the first one to admit I haven’t heard of most of these file types, let alone know them. Actually, before I started, I only knew MP3 and WAV. I learned to know Ogg Vorbis. And for a good reason too. I already mentioned the fact the left (mp3) player disappears when you start the code. The SoundPlaybackController that I actually created (not the simple version above) hides the UI of the whole player while actually downloading the audio file. You might have noticed an error in the Unity status bar when you run the code. That actually says:</p><p><strong>Streaming of 'mp3?st=2018-02-02t15%3a51%3a00z&amp;se=2020-02-03t17%3a51%3a00z&amp;sp=rl&amp;sv=2017-04-17&amp;sr=b&amp;sig=kymvql5q1yyr%2bqilcxhfc3popwo56vd0ejibennldzw%3d' on this platform is not supported<br>
+UnityEngine.Networking.DownloadHandlerAudioClip:get_audioClip()<br>
+&lt;LoadMediaFromUrl&gt;c__Iterator0:MoveNext() (at Assets/App/Scripts/SoundPlaybackController.cs:34)<br>
+UnityEngine.SetupCoroutine:InvokeMoveNext(IEnumerator, IntPtr)</strong></p><p><a href="https://lh3.googleusercontent.com/-FlsId1rLOC8/Wnc6SjfYTXI/AAAAAAAAPlU/GjPJ6IwtxnMz08xYotTvPO5t50iN7SHwACHMYCw/s1600-h/image%255B47%255D"><img width="232" height="105" title="image" align="right" style="margin: 0px 0px 0px 5px; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-_-CD3YoFbOU/Wnc6TNCMM8I/AAAAAAAAPlY/cjMz6MZ76V0lmDK-UcTWO28mSNnttj5JACHMYCw/image_thumb%255B32%255D?imgmax=800" border="0"></a>The code in that player crashes, and never gets to showing the UI again. Well, that’s a bummer. Unity simply does not seem to support MP3 on ‘this platform’, which is apparently UWP. You can convert it to WAV, but unless you like to burn a lot of battery downloading stuff, you must be pretty much out of your mind doing so – Ogg Voribs is a <em>much</em> better option, as this simple list of files shows.</p><p>And Audacity, that good old workhorse of audio-artists and podcasters all around the globe makes conversion easy, so why not use it, right.</p><p><a href="https://lh3.googleusercontent.com/-arIlPJJuCjA/Wnc6TfPHfHI/AAAAAAAAPlc/-ST3SQvp42w87GPspAHCHHulMNE0aaGRQCHMYCw/s1600-h/image%255B52%255D"><img width="582" height="448" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-HnBUCtZ_wyM/Wnc6T5CBWzI/AAAAAAAAPlg/JTGGN3pu-SE0_VL1qPas-_ttRDT-aDeSACHMYCw/image_thumb%255B35%255D?imgmax=800" border="0"></a></p><h2>Conclusion</h2><p>The very short version of this blog post: use UnityWebRequest and DownloadHandlerAudioClip to download an audio clip from Azure blob storage, and if you value your users’ bandwidth, their devices’ battery life, and your own sanity – use Ogg Vorbis audio files.</p><p>I have not tried all the other audio files types, simply because I did not have to do so – Ogg Vorbis works fine. WAV too, but is absurdly big compared to MP3 and Ogg Vorbis. In addition, I have no idea what those audio types are, how I should create/convert them, and <em>why</em> I should use them. To paraphrase Star Trek’s TOS medical officer Dr. Leonard “Bones” McCoy – I am a developer, not an audio engineer.&nbsp; </p><p>Next time, I will explain the workings of the floating audio player around this code.</p>

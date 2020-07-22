@@ -1,0 +1,24 @@
+---
+layout: post
+title: Fixing "Payload file rd.xml does not exist" when creating a Windows 10 UWP
+  NuGet Package
+date: '2015-12-06T14:31:00.001+01:00'
+author: Joost van Schaik
+tags:
+- UWP
+- NuGet
+- Windows 10
+modified_time: '2015-12-07T07:56:00.260+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5316216640679008618
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/12/fixing-file-rdxml-does-not-exist-when.html
+---
+
+Just as I thought I finally was done adding Universal <a href="http://www.windows.com/" target="_blank">Windows</a> Platform support for <a href="http://wpwinnl.codeplex.com/" target="_blank">WpWinNl</a>, I ran into a weird error. I had updated the nuspec file after some guidance from my fellow MVP <a href="https://twitter.com/davesmits" target="_blank">Dave Smits</a>, created the NuGet package itself, but when I wanted to <em>use</em> it, I ran into an error that looked like this:<br />
+<strong>Payload file 'C:\Users\joost_000\.nuget\packages\WpWinNlBasic\3.0.0-alpha\lib\uap10.0\WpWinNl.External\Properties\WpWinNl.External.rd.xml' does not exist.</strong><br />
+Another fellow MVP, <a href="https://twitter.com/scottisafool" target="_blank">Scott Lovegrove</a>, gave me the first pointer <a href="http://metronuggets.com/2015/07/30/my-uwp-nuget-package-is-missing-a-file/" target="_blank">in this article</a>. Apparently, even if you don't have any special directive in the rd.xml file, <em>it still needs to be there</em>. Scott explains how you need to put this file in a subfolder of where the actual assemblies of your package reside. This works, but it takes (as I have found out) quite some hassle making a script that gets the right directory structures. Typos and mistakes are easily made. Or it may be just that I am a bit thick. Anyway, another well-known community hero developer (who I think should really be made MVP at the first possible occasion), <a href="https://twitter.com/pedrolamas" target="_blank">Pedro Lamas</a>, actually gave me a way easier way to fix this:<br />
+<strong>just change the "Build Action"&nbsp; of the missing rd.xml a Build Action to "embedded resource" </strong><br />
+<a href="http://www.schaikweb.net/dotnetbyexample/Fix.xml-does-not-exist-when-making-an-UW_C46E/image.png"><img align="left" alt="image" border="0" src="http://www.schaikweb.net/dotnetbyexample/Fix.xml-does-not-exist-when-making-an-UW_C46E/image_thumb.png" height="246" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; float: left; margin: 0px 9px 0px 0px; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="image" width="404" /></a><br />
+Ironically, Pedro gave me this pointer when he made a <a href="https://github.com/Microsoft/XamlBehaviors/pull/54" target="_blank">pull request</a> to the <a href="https://github.com/Microsoft/XamlBehaviors/" target="_blank">newly open sourced Behaviors</a> library for Windows 10 UWP apps that I help to manage. Here rd.xml files were pulled into the package by file - kind of like I was doing it first, in stead of using the embedded resource way. Which goes to show that this knowledge isn't very common and apparently not even clear to developers within Microsoft - and this is why I decided to write this little post to make the solution to this problem easier to find.<br />
+In his pull request Pedro points <a href="http://blogs.msdn.com/b/dotnet/archive/2014/05/23/net-native-deep-dive-making-your-library-great.aspx" target="_blank">to this article</a> on the .NET blog from <em>May 2014</em> where there is actually something written about including the rd.xml file as a resource, but it 's like an aside, with no actual indication the file actually <em>has to be there in a NuGet package, whether you are actually using it or not.</em><br />
+As to the actual functions of the RD.xml file, that's in the .NET blog article. Be sure to read that when you are planning to use reflection. I hope Pedro will indeed find some time to write some more clarification on this, as he seems to be planning to do. <br />
+Update - Pedro <a href="https://twitter.com/pedrolamas/status/673497101674921984" target="_blank">tweeted</a> in a response to this article that you apparently can also delete the whole rd.xml file from your project, and then it will work as well. So that makes three possible ways to solve the error.

@@ -1,0 +1,87 @@
+---
+layout: post
+title: The right way of accessing Master page properties from a child page
+date: '2007-10-29T20:26:00.000+01:00'
+author: Joost van Schaik
+tags:
+- ASP.NET
+- C#
+- Architecture
+- Master Page
+modified_time: '2010-09-30T08:34:51.302+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3915424373232741831
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2007/10/right-way-of-accessing-master-page.html
+---
+
+Master pages are a superbe idea. But sometimes you need to access Master Page properties from the child page.  Suppose, for instance, you have a button on the Master Page with a text that you want to be able to set:
+
+<pre>&lt;%@ Master Language="C#" AutoEventWireup="true" CodeBehind="MyDemoMaster.master.cs" Inherits="MasterPageDemo.MyDemoMaster" %&gt;
+
+&lt;!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"&gt;
+
+&lt;html xmlns="http://www.w3.org/1999/xhtml"&gt;
+&lt;head runat="server"&gt;
+    &lt;title&gt;Untitled Page&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;form id="form1" runat="server"&gt;
+    &lt;div&gt;
+        &lt;asp:button id="btnWithText" runat="server" text="Button"&gt;
+         &lt;asp:contentplaceholder id="ContentPlaceHolder1" runat="server"&gt;
+        &lt;/asp:ContentPlaceHolder&gt;
+    &lt;/div&gt;
+    &lt;/form&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+In the Master Page, you can create a property like this:
+
+<pre>public string ButtonText
+{
+   get { return this.btnWithText.Text;  }
+   set { this.btnWithText.Text  = value; }
+}
+</pre>
+Unfortunately, if you try to find the property "Master.ButtonText" in the childpage, it won't be available since the "Master" property is of type System.Web.UI.Page, and that does not contain properties of your derived class "MyDemoMaster"
+
+This, of course, can be solved by changing the Page_Load of the child page like this:
+<pre>protected void Page_Load(object sender, EventArgs e)
+{
+  MyDemoMaster m = Master as MyDemoMaster;
+  m.ButtonText = "My button text";
+}
+</pre>
+Congratulations. Your button shows the right text. And you have succeeded into locking your child page to a single master. Your web page will not run when you try to use another master page. Go back to programming class 101 and you don't get any cookies today ;-)
+
+The right solution is: create an interface like this:
+<pre>namespace MasterPageDemo
+{
+    public interface IButtonText
+    {
+        string ButtonText { get;set;}
+    }
+}
+</pre>
+Open the code behind file of your Master Page and let it implement the interface:
+
+<pre>public partial class MyDemoMaster : System.Web.UI.MasterPage<span style="font-weight:bold;">, IButtonText</span>
+{
+    protected void Page_Load(object sender, EventArgs e)
+    {
+    }
+
+    public string ButtonText
+    {
+        get { return this.btnWithText.Text;  }
+        set { this.btnWithText.Text  = value; }
+    }
+}
+</pre>
+And then you make the Page_Load of the child page like this
+<pre>protected void Page_Load(object sender, EventArgs e)
+{
+  IButtonText m = Master as IButtonText ;
+  if( m != null ) m.ButtonText = "My button text";
+}
+</pre>
+Now the Master Page and Child Page are no longer coupled by name. Any Master Page implementing the IButtonText interface may be used as a Master Page for your child. Checking if it can be casted by testing m != null is a nice encore.

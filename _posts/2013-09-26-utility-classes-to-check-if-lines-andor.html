@@ -1,0 +1,172 @@
+---
+layout: post
+title: Utility classes to check if lines and/or rectangles intersect
+date: '2013-09-26T20:40:00.001+02:00'
+author: Joost van Schaik
+tags:
+- wpnl
+- wpdev
+- dotnetmag
+- C#
+- Windows Phone
+modified_time: '2013-10-04T18:15:04.971+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7682641041914678213
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/09/utility-classes-to-check-if-lines-andor.html
+---
+
+<p>I have a for a developer unusual confession to make: I don’t like math. As a tool, great, but as a thing, no. One thing that really infuriates me is than when you want something simple (like intersecting lines and rectangles) all you get is formulas. Even on <a href="http://stackoverflow.com/questions/1585525/how-to-find-the-intersection-point-between-a-line-and-a-rectangle?rq=1" target="_blank">StackOverflow</a>. I want code. So whenever I translate something from formulas or another computer language, I take care to ‘give back’ the resulting code to prevent other people needing to do the same.</p> <p>So when I needed a few lines of code to check if lines intersected with each other or with a rectangle – as I need to know when the ball moves over the screen of my <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> app <a href="http://www.windowsphone.com/s?appid=ed077cc6-21ce-4e99-8e19-c5b119646016" target="_blank">2 Phone Pong</a>, I was presented with the usual bunch of mathematical formulas… <a href="http://tog.acm.org/resources/GraphicsGems/gemsii/xlines.c" target="_blank">and finally some C code</a>. Which I translated back to C#, so now every sod (like me) can check if a lines intersect with lines, or with a rectangle.</p> <p>I am not even going to pretend to understand how this actually works, but it does. I have created a class LineF that you can create from two points, and that starts like this:</p><pre>using System;
+using System.Windows;
+
+namespace Wp7nl.Utilities
+{
+  public class LineF
+  {
+    public double X1 { get; set; }
+    public double Y1 { get; set; }
+    public double X2 { get; set; }
+    public double Y2 { get; set; }
+
+    public LineF()
+    {
+    }
+
+    public LineF(double x1, double y1, double x2, double y2)
+    {
+      X1 = x1;
+      Y1 = y1;
+      X2 = x2;
+      Y2 = y2;
+    }
+
+    public LineF(Point from, Point to)
+      : this(from.X, from.Y, to.X, to.Y)
+    {
+    }
+
+    public Point From
+    {
+      get { return new Point(X1, Y1); }
+    }
+
+    public Point To
+    {
+      get { return new Point(X2, Y2); }
+    }
+  }
+}</pre>And added this method that gives you a Point if there are intersections, and null if there are not. The original method returned some structure that had a field that told you <em>why</em> there were no intersections, but I could not care less about that, so I simplified that a little. You can still see a little of that in the code - the reasons why there are no intersections are still in the comments <pre>/// &lt;summary&gt;
+/// Calculates intersection - if any - of two lines
+/// &lt;/summary&gt;
+/// &lt;param name="otherLine"&gt;&lt;/param&gt;
+/// &lt;returns&gt;Intersection or null&lt;/returns&gt;
+/// &lt;remarks&gt;Taken from http://tog.acm.org/resources/GraphicsGems/gemsii/xlines.c &lt;/remarks&gt;
+public Point? Intersection(LineF otherLine)
+{
+  var a1 = Y2 - Y1;
+  var b1 = X1 - X2;
+  var c1 = X2 * Y1 - X1 * Y2;
+
+  /* Compute r3 and r4.
+   */
+
+  var r3 = a1 * otherLine.X1 + b1 * otherLine.Y1 + c1;
+  var r4 = a1 * otherLine.X2 + b1 * otherLine.Y2 + c1;
+
+  /* Check signs of r3 and r4.  If both point 3 and point 4 lie on
+   * same side of line 1, the line segments do not intersect.
+   */
+
+  if (r3 != 0 &amp;&amp; r4 != 0 &amp;&amp; Math.Sign(r3) == Math.Sign(r4))
+  {
+    return null; // DONT_INTERSECT
+  }
+
+  /* Compute a2, b2, c2 */
+
+  var a2 = otherLine.Y2 - otherLine.Y1;
+  var b2 = otherLine.X1 - otherLine.X2;
+  var c2 = otherLine.X2 * otherLine.Y1 - otherLine.X1 * otherLine.Y2;
+
+  /* Compute r1 and r2 */
+
+  var r1 = a2 * X1 + b2 * Y1 + c2;
+  var r2 = a2 * X2 + b2 * Y2 + c2;
+
+  /* Check signs of r1 and r2.  If both point 1 and point 2 lie
+   * on same side of second line segment, the line segments do
+   * not intersect.
+   */
+  if (r1 != 0 &amp;&amp; r2 != 0 &amp;&amp; Math.Sign(r1) == Math.Sign(r2))
+  {
+    return (null); // DONT_INTERSECT
+  }
+
+  /* Line segments intersect: compute intersection point. 
+   */
+
+  var denom = a1 * b2 - a2 * b1;
+  if (denom == 0)
+  {
+    return null; //( COLLINEAR );
+  }
+  var offset = denom &lt; 0 ? -denom / 2 : denom / 2;
+
+  /* The denom/2 is to get rounding instead of truncating.  It
+   * is added or subtracted to the numerator, depending upon the
+   * sign of the numerator.
+   */
+
+  var num = b1 * c2 - b2 * c1;
+  var x = (num &lt; 0 ? num - offset : num + offset) / denom;
+
+  num = a2 * c1 - a1 * c2;
+  var y = (num &lt; 0 ? num - offset : num + offset) / denom;
+  return new Point(x, y);
+}</pre>
+<p>Now because I needed to be able to find intersections with rectangles as well, I made some extension methods that work on the RectangleF class that is in my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a>. </p><pre>namespace Wp7nl.Utilities
+{
+  public static class LineFExtensions
+  {
+    public static List&lt;Point&gt; Intersection(this LineF line, RectangleF rectangle)
+    {
+      var result = new List&lt;Point&gt;();
+      AddIfIntersect(line, rectangle.X, rectangle.Y, rectangle.X2, rectangle.Y, 
+                     result);
+      AddIfIntersect(line, rectangle.X2, rectangle.Y, rectangle.X2, rectangle.Y2, 
+                     result);
+      AddIfIntersect(line, rectangle.X2, rectangle.Y2, rectangle.X, rectangle.Y2, 
+                     result);
+      AddIfIntersect(line, rectangle.X, rectangle.Y2, rectangle.X, rectangle.Y, 
+                     result);
+      return result;
+    }
+
+    private static void AddIfIntersect(LineF line, 
+                                       double x1, double y1, double x2, 
+                                       double y2, ICollection&lt;Point&gt; result)
+    {
+      var l2 = new LineF(x1, y1, x2, y2);
+      var intersection = line.Intersection(l2);
+      if (intersection != null)
+      {
+        result.Add(intersection.Value);
+      }
+    }
+
+    /// &lt;summary&gt;
+    /// If dx =1 , dy = ??
+    /// &lt;/summary&gt;
+    /// &lt;param name="line"&gt;&lt;/param&gt;
+    /// &lt;returns&gt;&lt;/returns&gt;
+    public static double GetDy(this LineF line)
+    {
+       var dx = Math.Abs(line.X1 - line.X2);
+      var dy = line.Y1 - line.Y2;
+      return (dy / dx);
+    }
+  }
+}</pre>
+<p>This I actually wrote myself, and what is simply does is break the rectangle into four lines and tries to find intersections with each of those lines. The result is a list of Point which is either empty or contains points. </p>
+<p>And to prove it actually <em>works</em>, I wrote <a href="http://www.schaikweb.net/dotnetbyexample//IntersectionDemo.zip" target="_blank">this little sample Windows Phone</a> application that generates 15 random lines and tries to find the intersection points between all the 15 lines and one fixed rectangle. This gives a this kind of minimalistic art-like results:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/b1fc604e600a_E968/intersections1_3.png"><img title="intersections1" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="intersections1" src="http://www.schaikweb.net/dotnetbyexample/b1fc604e600a_E968/intersections1_thumb_3.png" width="193" height="330"></a><a href="http://www.schaikweb.net/dotnetbyexample/b1fc604e600a_E968/intersections2_3.png"><img title="intersections2" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="intersections2" src="http://www.schaikweb.net/dotnetbyexample/b1fc604e600a_E968/intersections2_thumb_3.png" width="189" height="331"></a><a href="http://www.schaikweb.net/dotnetbyexample/b1fc604e600a_E968/intersections3_3.png"><img title="intersections3" style="border-top: 0px; border-right: 0px; background-image: none; border-bottom: 0px; padding-top: 0px; padding-left: 0px; border-left: 0px; display: inline; padding-right: 0px" border="0" alt="intersections3" src="http://www.schaikweb.net/dotnetbyexample/b1fc604e600a_E968/intersections3_thumb_3.png" width="190" height="332"></a></p>
+<p>Visual proof is maybe not the best, but most certainly the most fun. So this is what I use to determine where the ball in 2 Phone Pong needs to bounce – namely when its trajectory intersects with either the screen side or the paddle.</p>
+<p>I hope this is useful to anyone. Write a game with it and ping me back ;-)</p>  

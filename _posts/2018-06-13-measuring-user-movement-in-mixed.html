@@ -1,0 +1,123 @@
+---
+layout: post
+title: Measuring user movement in Mixed Reality apps
+date: '2018-06-13T15:55:00.001+02:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Windows Mixed Reality
+- Unity3D
+modified_time: '2018-06-13T15:55:13.691+02:00'
+thumbnail: https://lh3.googleusercontent.com/-Td4a47pns3o/WyEiP4-HiGI/AAAAAAAAP7Q/eTfzL-noTYcIxCgTvEr3SJfj6hLOZLxmgCHMYCw/s72-c/image_thumb%255B9%255D?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2391112267054278627
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2018/06/measuring-user-movement-in-mixed.html
+---
+
+<h2>Intro</h2><p>For a business <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> app I am currently developing - as well as for my app <a href="https://www.microsoft.com/store/productId/9P6SVQQCP2SQ" target="_blank">Walk the World</a> - I needed a way to see if a user is moving or rotating in excess of a certain speed, to make certain control elements that are floating in view disappear when he/she is on the move - and come back when the movement stops. How this is used in detail I will describe later, but first I want to describe an easy helper behaviour to sample and measure speed, movement and rotation.</p><h2>The actual tracker</h2><pre style="font-size: 12px;">using HoloToolkit.Unity;
+using UnityEngine;
+
+namespace HoloToolkitExtensions.Utilities
+{
+    public class CameraMovementTracker : Singleton&lt;CameraMovementTracker&gt;
+    {
+        [SerializeField]
+        private readonly float _sampleTime = 1.0f;
+        
+        private Vector3 _lastSampleLocation;
+        private Quaternion _lastSampleRotation;
+        private float _lastSampleTime;
+
+        public float Speed { get; private set; }
+        public float RotationDelta { get; private set; }
+        public float Distance { get; private set; }
+
+        void Start()
+        {
+            _lastSampleTime = Time.time;
+            _lastSampleLocation = CameraCache.Main.transform.position;
+            _lastSampleRotation = CameraCache.Main.transform.rotation;
+        }
+   }
+}
+</pre><p>The behaviour is implemented as a Singleton. Although that is not strictly necessary, it makes sense to do so as there can also be only one Mixed Reality Camera and there is only one user. There is only one public property - that is the sample time. The idea of a sample time is simple - if you want to measure speed, or rotation, or movement - you have to do so <em>over time</em>. Default it samples location and rotation every second, and then it's up to you to decide to do something with it. At the start, it simply sets the sample time at now, the first sample location to the camera's current location and the rotation to it's current rotation.</p><p>In the update method (called every 60th of a second) we simply check whether the sample time period has expired, and then we get a <em>new</em> sample of location and rotation</p><pre style="font-size: 12px;">void Update()
+{
+    if (Time.time - _lastSampleTime &gt; _sampleTime)
+    {
+        Speed = CalculateSpeed();
+        RotationDelta = CalculateRotation();
+        Distance = CalculateDistanceCovered();
+        _lastSampleTime = Time.time;
+        _lastSampleLocation = CameraCache.Main.transform.position;
+        _lastSampleRotation = CameraCache.Main.transform.rotation;
+    }
+}</pre><p>The calculations itself are rather simple:</p><pre style="font-size: 12px;">private float CalculateDistanceCovered()
+{
+    return Vector3.Distance(_lastSampleLocation, CameraCache.Main.transform.position);
+}
+
+private float CalculateSpeed()
+{
+    // return speed in km/h
+    return CalculateDistanceCovered() / (Time.time - _lastSampleTime) * 3.6f;
+}
+
+private float CalculateRotation()
+{
+    return Mathf.Abs(Quaternion.Angle(_lastSampleRotation, <br>                                      CameraCache.Main.transform.rotation));
+}</pre><p>The distance is simply the difference between the previous and the current Camera position. Time.time is always in seconds since the app started, so dividing the speed through the elapsed time results in the speed in meters per second. Multiplying it by 3.6 makes that km/h - I presumed that to be a unit most people have a feeling for. Feel free to adapt this to your needs and have it return miles, yards, feet, furlongs, stadia or your outdated/obscure distance unit of choice ;).</p><h2>So what is this good for?</h2><p>Well, simply put - to take action when some threshold for rotation or movement is crossed.Like I mentioned, it's particularly useful for determining if control elements that should be more or less in the user's field of view should be moved - but not too often or too brusque, or else it is not possible to properly view or interact with them. In <a href="https://github.com/LocalJoost/CameraMovementTracking" target="_blank">the demo project</a> I have created a little demo behaviour that shows speed, distance covered and rotation in a floating text, and it also uses that data to decide whether or not it's time to move the text back into view.</p><p><a href="https://lh3.googleusercontent.com/-wTQ2LpoBDhQ/WyEiPC1bJ8I/AAAAAAAAP7M/Uarq1YFCsFIF3NnqvWcbsANpBg-ePb8KgCHMYCw/s1600-h/image%255B21%255D"><img width="640" height="313" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-Td4a47pns3o/WyEiP4-HiGI/AAAAAAAAP7Q/eTfzL-noTYcIxCgTvEr3SJfj6hLOZLxmgCHMYCw/image_thumb%255B9%255D?imgmax=800" border="0"></a></p><p>This is a picture of the text just after it moving back in view. It will rapidly go back to showing all zeroes as it only measures these values <em>over the last second</em>. </p><p>The demo behaviour in a bit more detail:</p><pre style="font-size: 12px;">using HoloToolkitExtensions.Utilities;
+using UnityEngine;
+
+public class ShowCameraActions : MonoBehaviour
+{
+    private TextMesh _mesh;
+
+    [SerializeField]
+    private float _rotationThreshold = 10f;
+
+    [SerializeField]
+    private float _moveTreshold = 0.4f;
+
+    [SerializeField]
+    private float _moveTime = 0.2f;
+
+    private bool _isBusy;
+
+    void Start()
+    {
+        _mesh = GetComponentInChildren&lt;TextMesh&gt;();
+        MoveText();
+    }
+
+    void Update()
+    {
+        SetText();
+        if ((CameraMovementTracker.Instance.RotationDelta &gt; _rotationThreshold ||
+            CameraMovementTracker.Instance.Distance &gt; _moveTreshold ) &amp;&amp; !_isBusy)
+        {
+            MoveText();
+        }
+    }
+
+    private void MoveText()
+    {
+        _isBusy = true;
+        LeanTween.move(gameObject, 
+                        LookingDirectionHelpers.CalculatePositionDeadAhead(), _moveTime).
+                  setEaseInOutSine().setOnComplete(() =&gt; _isBusy = false);
+    }
+
+    private void SetText()
+    {
+        var text = 
+            string.Format(<br>             "Speed: {0:00.00} km/h - Rotation: {1:000.0}° - Moved {2:00.0}m",
+            CameraMovementTracker.Instance.Speed,
+            CameraMovementTracker.Instance.RotationDelta,
+            CameraMovementTracker.Instance.Distance);
+        if (_mesh.text != text)
+        {
+            _mesh.text = text;
+            Debug.Log(text);
+        }
+    }
+}
+</pre><p>Long story short: </p><ul><li>The <em>text</em> will be updated in every call to Update (which is 60 times per second) but since the CameraMovementTracker updates <em>itself</em> only once a second by default you should see the text change only once a second. I have also included a Debug.Log so you can see the numbers change when the text is still outside of your view. This of course only works in the Unity editor. </li><li>If the rotation threshold (10 degrees) or movement threshold (0.4 meters) is exceeded, the behaviour will attempt to move the text back into view (if it is not already doing so), using good old <a href="http://dentedpixel.com/LeanTweenDocumentation/classes/LeanTween.html" target="_blank">LeanTween</a>. The "setEaseInOutSine" will make the movement start and stop fluently.</li></ul><h2>Conclusion</h2><p>It's not hard to measure these things and the code is not complicated, but as is my custom - if I need to make something the 3rd time, it's time to make it into a generalized reusable class. And there you have it. Have fun with <a href="https://github.com/LocalJoost/CameraMovementTracking" target="_blank">the demo project</a>.</p>

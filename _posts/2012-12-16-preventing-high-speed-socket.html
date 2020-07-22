@@ -1,0 +1,64 @@
+---
+layout: post
+title: Preventing high speed socket communication on Windows Phone 8 going south when
+  using async/await
+date: '2012-12-16T20:15:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Bluetooth
+- Windows Phone 8
+- NFC
+- wpdev
+- dotnetmag
+- sockets
+modified_time: '2012-12-18T09:42:07.459+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-9112032571609545586
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/12/preventing-high-speed-socket.html
+---
+
+<p>Currently I am working on a <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 8 action game in which you can fight a kind of duel. This involves pairing the phones via NFC and then obtaining a socket trough which the phones can exchange game information. Liking to steal from examples myself (why do you think I name my blog this way, eh?) I stole code from the <a href="http://code.msdn.microsoft.com/wpapps/Bluetooth-app-to-app-sample-890f8303?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Bluetooth app to app sample at MSDN</a>. Now this is a great sample but it has one kind of problem for me. </p> <p>I’ll skip the pairing, the obtaining of the socket and the definition of the data reader – that’s all documented in the MSDN sample. The method to send a message to the opponent was, in condensed form:</p><pre>public async void SendMessage(string message)
+{
+  if (dataWriter == null)
+  {
+    dataWriter = new DataWriter(socket.OutputStream);
+  }
+
+  dataWriter.WriteInt32(message.Length);
+  await dataWriter.StoreAsync();
+
+  dataWriter.WriteString(message);
+  await dataWriter.StoreAsync();
+}</pre>
+<p>while at the same time both opponenents where listening using a simple method like</p><pre>public async Task<string> GetMessage()
+{
+  if (dataReader == null) dataReader = new DataReader(socket.InputStream);
+  await dataReader.LoadAsync(4);
+  var messageLen = (uint)dataReader.ReadInt32();
+  Debug.WriteLine(messageLen);
+
+  await dataReader.LoadAsync(messageLen);
+  var message = dataReader.ReadString(messageLen);
+  Debug.WriteLine(message);
+  return message;
+}</pre>
+<p>From the debug statements in this code you can see things weren’t exactly working as planned. Now the way this is <em>supposed</em> to work is as follows: as the opponent sends a message using SendMessage, the other phone is receiving a message via the socket in GetMessage. The first four bytes contain an unsigned integer containing the length of the rest of the message – which is supposed to be a string. 
+<p>I noticed that while things went off to a good start, sooner or later one of the two phones would stop receiving messages or both games crashed simultaneously. I got all kind of null value errors, index out of range and whatnot. When I started debugging, I found out that while the app on phone 1 said it sent a 3-character string, the receiving app on phone 2 sometimes got a huge number for the message length, that obviously wasn’t sent, it read past the end of the stream – crash. 
+<p>The MSDN sample works fine, as long as it is used for the purpose it was written, i.e. sending out (chat) messages at a kind of sedate pace – not for sending a lot of events per second to keep a game in sync. The essence of a stream is that <em>it’s a stream indeed – things have to be written and read in the right order</em>. For what happened of course was a race condition between two or more events in a short timeframe. The first event wrote the message length, the second event as well, then possibly a third, before the first one came to writing the actual <em>message, </em>and whatever arrived on the other phone was a garbled jumble of bytes that did exactly reflect what happened on the sending phone, but wasn’t the orderly message length – message payload stream the other phone expected. 
+<p>The way I solved it – in a ‘there-I-fixed-it’ kind of way – was to use a lock on the write code so at least stuff went in the stream in the order the other phone was expecting it:</p><pre>public async void SendMessage(string message)
+{
+  lock (this)
+  {
+    if (dataWriter == null)
+    {
+      dataWriter = new DataWriter(socket.OutputStream);
+    }
+
+    dataWriter.WriteInt32(message.Length);
+    dataWriter.StoreAsync();
+
+    dataWriter.WriteString(message);
+    dataWriter.StoreAsync();
+  }
+}</pre>
+<p>Note you have to remove the “await” before the StoreAsync methods as those are not allowed within a lock. This method makes sure one message – and the whole message – is written on the stream and nothing comes in between. </p>
+<p><strong>Update</strong> – the first version of this posting contained a small error – which has been graciously pointed out to me by a few readers (see comments section). Also, I’ve been pointed to an <a href="http://www.hanselman.com/blog/ComparingTwoTechniquesInNETAsynchronousCoordinationPrimitives.aspx" target="_blank">article by Scott Hanselman</a> about a similar subject. I’ve tried using the <a href="http://blogs.msdn.com/b/pfxteam/archive/2012/02/12/10266988.aspx" target="_blank">AsyncLock by Stephen Toub</a> he describes but found out that although it works very good and my game does become a bit more fluid, the lag in getting messages across is a lot higher. Net effect: while the game runs more smoothly on both phones, the game state actually gets out of sync very fast, making the game unplayable. Apparently the AsyncLock approach doesn’t work for high speed continuous message exchange, so for now I’ll stick to the approach I described above.</p>  

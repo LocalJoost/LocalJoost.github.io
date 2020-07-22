@@ -1,0 +1,85 @@
+---
+layout: post
+title: Migrating to MRKT2 - multi-device behaviour switching and scaling
+date: '2020-04-13T12:31:00.001+02:00'
+author: Joost van Schaik
+tags:
+- HoloLens
+- Windows Mixed Reality
+- MRTK2
+- Unity3D
+- HoloLens2
+modified_time: '2020-04-15T08:49:25.014+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5965477494637897031
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2020/04/migrating-to-mrkt2-multi-device.html
+---
+
+<h2>Intro</h2><p>The MRTK2 allows for development for both <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> 1, HoloLens 2 and Windows <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality</a> immersive headsets with nearly identical code. And a growing number of other platforms, but the focus is now understandably on HoloLens 2. Yet, if you want to make apps with a broad range, you might as well use the capabilities the toolkit offers to run one app on all platforms.</p><h2>Rule-of-thumb device observations</h2><ul><li>On HoloLens 2, you typically want interactive stuff to be close by and relatively small, so you can leverage the touch functionality</li><li>On HoloLens 1 interactive stuff needs to be further away since the only control option you basically have is the air tap. But because it's further away, it needs to be bigger</li><li>On Windows Mixed Reality immersive headsets you want it also further away but even bigger still, as I have observed things seems to appear smaller on an immersive headset compared to HoloLens, and lower resolution headsets makes things harder to see things like small print compared to HoloLenses.</li></ul><p>Basically this boils down to scaling and distance. Scaling usually is pretty simple to fix, but distance behavior is a bit more difficult, especially since the MRTK2 contains so much awesome behaviours for keeping for instance a menu in view, but it does not support different behavior for different devices. </p><p><img width="150" height="180" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20200413/menu.png" border="0"></p><p>I have come up with a rather unusual solution for this, and it works pretty well.</p><h2>Meet the twins</h2><p>I made two behaviours that work in tandem. The first one is pretty simple enough and is called EnvironmentScaler.</p><p><img width="640" height="224" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20200413/environmentscaler.png" border="0"></p><p>This simply scales the current game object to the value entered for the specific device type. Notice also there is a drop down that will enable you to select view how platform specific sizes will appear inside the <em>Unity Editor. </em></p><p>The second one is a bit more odd. You see, for determining the right distance, I would like to use the standard Solver and RadialView combo. Of course I could have written a behaviour that changes the RadialView values based upon the detected platform. But then it would only have worked for RadialView. So I took a more radical and generic approach</p><p><img style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20200413/environmentswitcher.png" border="0"></p><p>As you can see, there is one Solver but no less that three RadialViews on the menu. They all have slightly different values for things like distance and Max view degrees. An if you start Play mode:</p><p><img style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20200413/runtime.png" border="0"></p><p>It simply destroys and removes the behaviors for the other platforms. Crude, but very effective. And no coding required. The only thing is - there is no way to distinguish those three RadialViews, so it's best to add them to your game object in the same order as they are listed in the EnvironmentSwitcher: for HoloLens 1, HoloLens 2 and WMR headsets.</p><h2>The nuts and bolts</h2><p>Both the switcher and the scaler have the same generic base class:</p><pre style="font-size: 12px;">public abstract class EnvironmentHelperBase&lt;T&gt; : MonoBehaviour
+{
+    [SerializeField]
+    private EditorEnvironmentType _editorEnvironmentType = EditorEnvironmentType.Hololens2;
+
+    protected T GetPlatformValue(T hl1Value, T hl2Value, T wmrHeadsetValue)
+    {
+#if !UNITY_EDITOR
+        if (CoreServices.CameraSystem.IsOpaque)
+        {
+            return wmrHeadsetValue;
+        }
+
+        var capabilityChecker = CoreServices.InputSystem as IMixedRealityCapabilityCheck;
+
+        return capabilityChecker.CheckCapability(MixedRealityCapability.ArticulatedHand) ?<br>                hl2Value : hl1Value;
+#else
+        return GetTestPlatformValue(hl1Value, hl2Value, wmrHeadsetValue);
+#endif
+    }
+
+    private T GetTestPlatformValue(T hl1Value, T hl2Value, T wmrHeadsetValue)
+    {
+        switch (_editorEnvironmentType)
+        {
+            case EditorEnvironmentType.Hololens2: return hl2Value;
+            case EditorEnvironmentType.Hololens1: return hl1Value;
+            default: return wmrHeadsetValue;
+        }
+    }
+}</pre><p>The GetPlatformValue method accepts three values - one for every platform supported - and returns the right one for the current platform based upon this simple rules:</p><ul><li>If the headset is opaque, it's a WMR headset</li><li>If it's <em>not</em> opaque and it supports articulated hands, it's a HoloLens 2</li><li>Otherwise it's a HoloLens 1</li></ul><p>And there's also the GetTestPlatformValue that returns a platform based upon what's selected in the _editorEnvironmentType field, that can be used for testing in the editor. I have noticed that the editor returns false for opaque and true for the articulated hand support, so by default the code acts like it's in running in a HoloLens 2. Hence my 'manual switch' in editorEnvironmentType so you can see what happens for the various devices inside your editor. For runtime code, whatever you selected in editorEnvironmentType in either behaviour is of no consequence.</p><h2>EnvironmentScaler implementation</h2><p>This is the very simple, as all the heavy lifting has already been done in the base class:</p><pre style="font-size: 12px;">public class EnvironmentScaler : EnvironmentHelperBase&lt;float&gt;
+{
+    [SerializeField]
+    private float _hl1Scale = 1.0f;
+
+    [SerializeField]
+    private float _hl2Scale = 0.7f;
+
+    [SerializeField]
+    private float _immersiveWmrScale = 1.8f;
+
+    void Start()
+    {
+        gameObject.transform.localScale *= GetPlatformValue(_hl1Scale, _hl2Scale,<br>                                                            _immersiveWmrScale);
+    }
+}</pre><p>Simply scale the object to the value selected by GetPlatformValue. Easy as cake.</p><h2>EnvironmentSwitcher implementation</h2><pre style="font-size: 12px;">public class EnvironmentSwitcher : EnvironmentHelperBase<monobehaviour>
+{
+    [SerializeField]
+    private MonoBehaviour _hl1Behaviour;
+
+    [SerializeField]
+    private MonoBehaviour _hl2Behaviour;
+
+    [SerializeField]
+    private MonoBehaviour _immersiveWmrBehaviour;
+
+    void Start()
+    {
+        var selectedBehaviour = GetPlatformValue(_hl1Behaviour, _hl2Behaviour, 
+                                                        _immersiveWmrBehaviour);
+        foreach (var behaviour in new[] {_hl1Behaviour, _hl2Behaviour,<br>                                         _immersiveWmrBehaviour})
+        {
+            if (behaviour != selectedBehaviour)
+            {
+                Destroy(behaviour);
+            }
+        }
+    }
+}</monobehaviour></pre><p>Very much like the previous one, but now the values are not floats (for scale) but actual behaviors. It find the behaviour for the current device, the destroy all others.<p>The fun thing is - in this I used this specifically for three identical behaviours (that is, they are all RadialView behaviours) - one for every device. But it's just as easily possible to use three completely different behaviours, one for each device, and have the 'wrong' ones be rendered inoperative by this behaviour as well. This makes this approach very generically applicable.<h2>Conclusion</h2><p>Multi device strategy does not have to be complex. With these two behaviours you can make your app appear more or less the same on different devices, and still adhere to the device's unique capabilities.<p>Complete project, as always, <a href="https://github.com/LocalJoost/MultiPlatformBehaviorSwitch" target="_blank">here</a>. Enjoy

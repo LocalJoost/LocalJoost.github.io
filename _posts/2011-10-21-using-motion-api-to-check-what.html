@@ -1,0 +1,58 @@
+---
+layout: post
+title: Using the motion API to check what direction the camera is looking
+date: '2011-10-21T18:11:00.001+02:00'
+author: Joost van Schaik
+tags:
+- wpdev
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- WP7
+modified_time: '2012-03-04T10:28:10.005+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2009577325286533936
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/10/using-motion-api-to-check-what.html
+---
+
+<p>Recently I had my very first real try with the <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone 7</a> Motion API, using the Simple Motion Sample and the Augmented Reality Motion Sample which both can be found <a href="http://msdn.microsoft.com/en-us/library/ff431744(v=vs.92).aspx?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">here</a>. Especially the motion API gave results that I found initially very puzzling. My idea was to find out where direction in which the camera is pointing – regardless of how the user holds his phone. Life then becomes pretty interesting. As long a you hold your phone in the standard upright portrait direction, things are pretty simple – Yaw direction is more or less the negative of compass direction – as far as the direction in which the camera is looking is concerned. But if the user holds his phone upside down or in landscape mode, you have to account for the fact that although the <em>camera</em> is pointing in the same direction, the <em>top</em> of the phone is pointing in another direction!</p> <p>I found the following line of reasoning to be fairly correct:</p> <ul> <li>If Roll is around –90 degrees, the user is holding his phone in landscape mode with the phone top to the left. This is similar to PageOrientation.LandscapeLeft. Compass direction = 360 - yaw + 90 degrees.  <li>If Roll is around 90 degrees the user is holding his phone in landscape mode with the phone top the right. This is similar to PageOrientation.LandscapeRight. Compass direction = 360 – yaw - 90.<!--EndFragment-->  <li>If Pitch is about 90 degrees and Roll around 0, the user is holding the phone in portrait mode and upright. This is similar to PageOrientation.PortraitUp. Compass direction =&nbsp; -yaw.  <li>If Pitch is about -90 degrees and Roll about 0, then the user is holding the phone in portrait mode and upside down. This is similar to PageOrientation.PortraitDown. <br>Compass direction = 360 - yaw + 180. </li></ul> <p>In code I translated this as follows:</p><pre>public int GetCameraViewDirection(SensorReadingEventArgs<motionreading> e)
+{
+  var yaw = MathHelper.ToDegrees(e.SensorReading.Attitude.Yaw);
+  var roll = MathHelper.ToDegrees(e.SensorReading.Attitude.Roll);
+  var pitch = MathHelper.ToDegrees(e.SensorReading.Attitude.Pitch);
+
+  if (roll &lt; -20 &amp;&amp; roll &gt; -160)
+  {
+    return Normalize(360 - yaw + 90);
+  }
+  else if (roll &gt; 20 &amp;&amp; roll &lt; 160)
+  {
+    return Normalize(360 - yaw - 90);
+  }
+  else if (pitch &gt; 20 &amp;&amp; pitch &lt; 160)
+  {
+    return Normalize(-yaw );
+  }
+  else if (pitch &lt; -20 &amp;&amp; pitch &gt; -160)
+  {
+    return Normalize(360 - yaw + 180);
+  }
+  
+  // No sensible data
+  return -1; 
+}
+
+private int Normalize( int compassDirection )
+{      
+  if (compassDirection &gt; 360)
+  {
+    compassDirection -= 360;
+  }
+  if (compassDirection &lt; 0)
+  {
+    compassDirection += 360;
+  }
+  return compassDirection;
+}</pre>
+<p>The MathHelper, by the way, comes from Microsoft.Xna.Framework. If you don’t like my ‘easy way out’ way of returning –1, throw an exception if you like. The Normalize function always makes sure the result is always between 0 and 360 degrees.</p>
+<p>There are some interesting considerations. For example, if you can trap the “OnPageOrientationChanged” event and check it’s value, why then even check pitch and roll? Well, one important reason is that PageOrientation.PortraitDown for some reason is not supported. Try it – use any App supporting Landscape and Portrait. Hold your phone in portrait mode upside (i.e. with the phone top pointing to the floor… nothing happens). </p>
+<p>I also noticed that in the first two cases any value coming from Pitch can best be ignored, because it varies wildly on my phone. </p>

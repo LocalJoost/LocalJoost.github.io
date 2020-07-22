@@ -1,0 +1,80 @@
+---
+layout: post
+title: Google Maps for Windows Phone 7 using the Bing Maps Control
+date: '2010-10-19T21:58:00.005+02:00'
+author: Joost van Schaik
+tags:
+- Mapping
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- Silverlight
+- Bing Map Control
+- WP7
+modified_time: '2011-04-20T11:34:57.127+02:00'
+thumbnail: http://lh4.ggpht.com/_QXPoKuE9q6k/TL34RlCoq_I/AAAAAAAAF3E/hETIGlrGTxc/s72-c/GoogleMaps_thumb%5B1%5D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2204167515045586191
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/10/google-maps-for-windows-phone-7.html
+---
+
+<p><a href="http://lh6.ggpht.com/_QXPoKuE9q6k/TL34QFb8RYI/AAAAAAAAF3A/3w9wdgAszHI/s1600-h/GoogleMaps%5B3%5D.png"><img style="background-image: none; border-right-width: 0px; margin: 0px 14px 0px 0px; padding-left: 0px; padding-right: 0px; display: inline; float: left; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="GoogleMaps" border="0" alt="GoogleMaps" align="left" src="http://lh4.ggpht.com/_QXPoKuE9q6k/TL34RlCoq_I/AAAAAAAAF3E/hETIGlrGTxc/GoogleMaps_thumb%5B1%5D.png?imgmax=800" width="252" height="477" /></a>As I write this, we are less than 25 hours away from the moment the first <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> devices are released into the wild – in the Netherlands, that is. The marketplace is filling up nicely already. Some things are pretty obviously missing. And you wonder why, because they would be quite easy to make. </p>  <p>I hereby dare Google to publish a Google Maps application in the <a href="http://create.msdn.com/" target="_blank">Windows Phone 7 Marketplace</a>. Why? Because if <em>they</em> don’t do it, someone else probably will, and probably pretty fast, too. See the screenshot to the left. I assure you – this is no fake. What you see here is the Google Maps satellite layer <em>with the Street layer on top of it, with a 40% opacity, </em>showing a piece of the city center of Amersfoort, Netherlands. It took me about 90 lines of code and 18 lines of XAML. </p>  <p>Setting up a basic Bing Map control is easy as cake. You find the grid “Contentpanel”, and you plonk a Map in it, preferably using Blend:</p>  <p>&#160;</p>  <p>&#160;</p>  <p>&#160;</p>  <p>&#160;</p>  <p>&#160;</p>  <p>&#160;</p>  <p>&#160;</p>  <pre>&lt;Microsoft_Phone_Controls_Maps:Map 
+ x:Name=&quot;map&quot;  
+ CredentialsProvider=&quot;your_credentials&quot; Mode=&quot;Road&quot;&gt;
+&lt;/Microsoft_Phone_Controls_Maps:Map&gt;</pre>
+
+<p>You can change “Road” into “Aerial” and then you have Bing Satellite imagery. What’s less known is that you can actually attach your own tile layers to it. A tile is an image of 256x256 defined by it’s X and Y position in the grid forming the map of the world on a specific zoom level. All you have to to is write a little class that descends from Microsoft.Phone.Controls.Maps.TileSource in which you only have to override the following method:</p>
+
+<pre>Uri GetUri(int x, int y, int zoomLevel)<br /></pre>
+
+<p>in which you tell which x/y/zoomlevel combination translates to which URI. For Google Maps, this turns out to be pretty easy. All information needed for can be found in the <a href="http://deepearth.codeplex.com/" target="_blank">Deep Earth</a> source code – a wee bit adapted for for the Bing Map Control. First, I made an enum that defines all the layers that Google provides</p>
+
+<pre>namespace LocalJoost.TileSource<br />{<br />&#160; public enum GoogleTileSourceType<br />&#160; {<br />&#160;&#160;&#160; Street,<br />&#160;&#160;&#160; Hybrid,<br />&#160;&#160;&#160; Satellite,<br />&#160;&#160;&#160; Physical,<br />&#160;&#160;&#160; PhysicalHybrid,<br />&#160;&#160;&#160; StreetOverlay,<br />&#160;&#160;&#160; WaterOverlay<br />&#160; }<br />}<br /></pre>
+
+<p>Then, the actual tile calculating class:</p>
+
+<pre>using System;<br /> <br />namespace LocalJoost.TileSource<br />{<br />&#160; public class GoogleTileSource : Microsoft.Phone.Controls.Maps.TileSource<br />&#160; {<br />&#160;&#160;&#160; public GoogleTileSource()<br />&#160;&#160;&#160; {<br />&#160;&#160;&#160;&#160;&#160; UriFormat = @&quot;http://mt{0}.google.com/vt/lyrs={1}&amp;z={2}&amp;x={3}&amp;y={4}&quot;;<br />&#160;&#160;&#160;&#160;&#160; TileSourceType = GoogleTileSourceType.Street;<br />&#160;&#160;&#160; }<br />&#160;&#160;&#160; private int _servernr;<br />&#160;&#160;&#160; private char _mapMode;<br /> <br />&#160;&#160;&#160; private int Server<br />&#160;&#160;&#160; {<br />&#160;&#160;&#160;&#160;&#160; get<br />&#160;&#160;&#160;&#160;&#160; {<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160; return _servernr = (_servernr + 1) % 4;<br />&#160;&#160;&#160;&#160;&#160; }<br />&#160;&#160;&#160; }<br /> <br />&#160;&#160;&#160; private GoogleTileSourceType _tileSourceType;<br />&#160;&#160;&#160; public GoogleTileSourceType TileSourceType<br />&#160;&#160;&#160; {<br />&#160;&#160;&#160;&#160;&#160; get { return _tileSourceType; }<br />&#160;&#160;&#160;&#160;&#160; set<br />&#160;&#160;&#160;&#160;&#160; {<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160; _tileSourceType = value;<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160; _mapMode = TypeToMapMode(value);<br />&#160;&#160;&#160;&#160;&#160; }<br />&#160;&#160;&#160; }<br /> <br />&#160;&#160;&#160; public override Uri GetUri(int x, int y, int zoomLevel)<br />&#160;&#160;&#160; {<br />&#160;&#160;&#160;&#160;&#160; {<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; if (zoomLevel &gt; 0)<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160; {<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; var url = string.Format(UriFormat, Server, _mapMode, zoomLevel, x, y);<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; return new Uri(url);<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160; }<br />&#160;&#160;&#160;&#160;&#160; }<br />&#160;&#160;&#160;&#160;&#160; return null;<br />&#160;&#160;&#160; }<br /> <br />&#160;&#160;&#160; private static char TypeToMapMode(GoogleTileSourceType tileSourceType)<br />&#160;&#160;&#160; {<br />&#160;&#160;&#160;&#160;&#160; switch (tileSourceType)<br />&#160;&#160;&#160;&#160;&#160; {<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160; case GoogleTileSourceType.Hybrid:<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; return 'y';<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160; case GoogleTileSourceType.Satellite:<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; return 's';<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160; case GoogleTileSourceType.Street:<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; return 'm';<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160; case GoogleTileSourceType.Physical:<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; return 't';<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160; case GoogleTileSourceType.PhysicalHybrid:<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; return 'p';<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160; case GoogleTileSourceType.StreetOverlay:<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; return 'h';<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160; case GoogleTileSourceType.WaterOverlay:<br />&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; return 'r';<br />&#160;&#160;&#160;&#160;&#160; } return ' ';<br />&#160;&#160;&#160; }<br />&#160; }<br />}<br /></pre>
+
+<p>As you can see, this is not quite rocket science. To make the Bing Maps control use this, you need to expand your XAML a little. First, you have to add two namespaces to your MainPage.Xaml:</p>
+
+<pre style="font-size: 8pt">xmlns:MSPCMCore=&quot;clr-namespace:Microsoft.Phone.Controls.Maps.Core;assembly=Microsoft.Phone.Controls.Maps&quot; 
+xmlns:LJTileSources=&quot;clr-namespace:LocalJoost.TileSource;assembly=LocalJoost.TileSource&quot; </pre>
+
+<p>Then, you have to use a <em>third</em> mode for the Bing Map – Mercator. This basically only tells the map to operate in Mercator mode, but <em>not</em> to attach any default imagery. And here we go:</p>
+
+<pre>&lt;Microsoft_Phone_Controls_Maps:Map x:Name=&quot;map&quot; 
+   CredentialsProvider=&quot;your credentials&quot; &gt;
+  &lt;Microsoft_Phone_Controls_Maps:Map.Mode&gt;
+    &lt;MSPCMCore:MercatorMode&gt;&lt;/MSPCMCore:MercatorMode&gt;
+  &lt;/Microsoft_Phone_Controls_Maps:Map.Mode&gt;
+  &lt;Microsoft_Phone_Controls_Maps:Map.Children&gt;
+    &lt;Microsoft_Phone_Controls_Maps:MapTileLayer&gt;
+      &lt;Microsoft_Phone_Controls_Maps:MapTileLayer.TileSources&gt;
+        &lt;LJTileSources:GoogleTileSource TileSourceType=&quot;Satellite&quot;/&gt;  
+      &lt;/Microsoft_Phone_Controls_Maps:MapTileLayer.TileSources&gt;
+    &lt;/Microsoft_Phone_Controls_Maps:MapTileLayer&gt;
+  &lt;/Microsoft_Phone_Controls_Maps:Map.Children&gt;
+&lt;/Microsoft_Phone_Controls_Maps:Map&gt;</pre>
+Presto. Google Maps for Windows Phone 7. And oh, if you want to project another layer on top of it, for instance Google Streets, like I did, you just add more tilelayers: 
+
+<pre>&lt;Microsoft_Phone_Controls_Maps:Map x:Name=&quot;map&quot; 
+   CredentialsProvider=&quot;your credentials&quot; &gt;
+&lt;Microsoft_Phone_Controls_Maps:Map.Mode&gt;
+  &lt;MSPCMCore:MercatorMode&gt;&lt;/MSPCMCore:MercatorMode&gt;
+&lt;/Microsoft_Phone_Controls_Maps:Map.Mode&gt;
+&lt;Microsoft_Phone_Controls_Maps:Map.Children&gt;
+  &lt;Microsoft_Phone_Controls_Maps:MapTileLayer&gt;
+    &lt;Microsoft_Phone_Controls_Maps:MapTileLayer.TileSources&gt;
+      &lt;LJTileSources:GoogleTileSource TileSourceType=&quot;Satellite&quot;/&gt;
+    &lt;/Microsoft_Phone_Controls_Maps:MapTileLayer.TileSources&gt;
+  &lt;/Microsoft_Phone_Controls_Maps:MapTileLayer&gt;
+  <font color="#ff0000">&lt;Microsoft_Phone_Controls_Maps:MapTileLayer&gt;
+    &lt;Microsoft_Phone_Controls_Maps:MapTileLayer.TileSources&gt;
+      &lt;LJTileSources:GoogleTileSource TileSourceType=&quot;Street&quot;/&gt;
+    &lt;/Microsoft_Phone_Controls_Maps:MapTileLayer.TileSources&gt;
+  &lt;/Microsoft_Phone_Controls_Maps:MapTileLayer&gt;</font>
+&lt;/Microsoft_Phone_Controls_Maps:Map.Children&gt;
+&lt;/Microsoft_Phone_Controls_Maps:Map&gt;</pre>
+
+<p>The Bing Maps control makes you able to zoom and pan trough all this. Okay, Google Maps does a little more than this, but this shows pretty well how <em>darn easy</em> it is to make a good looking, pretty fully functional mapping application showing totally different imagery. </p>
+
+<p>Conclusion: using the Bing Maps Control for showing raster maps is so bloody easy that I almost start to wonder if it’s still justified to feel proud ‘being a GIS guy’. Almost ;-)</p>  

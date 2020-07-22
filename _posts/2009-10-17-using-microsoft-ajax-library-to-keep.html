@@ -1,0 +1,47 @@
+---
+layout: post
+title: Using the Microsoft Ajax library to keep the javascript "this" context intact
+date: '2009-10-17T11:54:00.007+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- ASP.NET AJAX
+- JSON
+- Javascript
+modified_time: '2010-04-06T11:17:29.862+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-908749587719227796
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/10/using-microsoft-ajax-library-to-keep.html
+---
+
+This is not strictly .NET but more of a Javascript trick, but nevertheless, one that you might need. It is a simple trick, and actually requires much more text to decribe the problem than the actual solution ;-)
+
+Javascript supports the notion of object oriented programming, to an extent. There's plenty to find about that on the web and I don't care to repeat that. One of the more annoying things of Javascript is that it does support callbacks, but is quite careless about object context. This happens for instance when you use callbacks to process data coming back from calling WCF services. Suppose, for instance, I take <a href="http://dotnetbyexample.blogspot.com/2008/02/calling-wcf-service-from-javascript.html">my project in which I explain how to get data from WCF services in Javascript</a> and rewrite the Javascript code as an object:<pre>function CallBackProcessor()
+{
+  this.CallSingle = function()
+  {
+      dotnetbyexample.JSONDemoService.IJSONService.GetSingleObject(
+      document.getElementById("tbId").value,
+      document.getElementById("tbName").value,
+      this.CallBackSingle);
+  }
+  this.CallBackSingle = function(WebServiceResult)
+  {
+      resultDiv = document.getElementById("result1");
+      resultDiv.innerHTML = this.CreateMessage(WebServiceResult);
+  }
+  this.CreateMessage = function(WebServiceResult)
+  {
+    return( "You entered: id = " +
+      WebServiceResult.Id + " name = " +
+      WebServiceResult.Name);
+  }            
+}
+var processor = new CallBackProcessor();</pre>and then change the code of the button calling the service to call the processor object<pre>&lt;asp:Button ID="btnSelect" runat="server" Text="SingleSelect" 
+   UseSubmitBehavior="False"
+   OnClientClick="processor.CallSingle(); return false;" /&gt;</pre>I will get the notorious "Object doesn't support this property or method" error. Why? Because I try to call the method "CreateMessage" from the "CallBackSingle": the context of "this" is no longer that of "processor", but <em>of whatever is calling the callback</em>. You can find this out by placing a breakpoint before the call to CreateMessage and then view the properties of "this". The logic behind this behaviour defies my imagination, but the solution is actually pretty simple: use Function.createDelegate to set up the callback in stead of calling it directly<pre>this.CallSingle = function()
+{
+    dotnetbyexample.JSONDemoService.IJSONService.GetSingleObject(
+    document.getElementById("tbId").value,
+    document.getElementById("tbName").value,
+    <span style="color:red">Function.createDelegate(this, this.CallBackSingle)</span>);
+}</pre>And that's all there is to it. The "this" context stays intact, thanks to the Microsoft Ajax library, that you already included automatically by placing a ScriptManager on your page.

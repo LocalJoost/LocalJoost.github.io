@@ -1,0 +1,107 @@
+---
+layout: post
+title: Running your Mixed Reality app on an ‘ordinary’ PC–using an Xbox One Controller
+date: '2018-05-02T16:40:00.001+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- HoloLens
+- Windows Mixed Reality
+- Unity3D
+modified_time: '2018-05-02T16:45:05.439+02:00'
+thumbnail: https://lh3.googleusercontent.com/-2BxbEqtMg4A/WunN3LzoTuI/AAAAAAAAPxY/w9pK5cJNCrA1ascbcNqMSV9p8vaDrWPKQCHMYCw/s72-c/image_thumb%255B5%255D?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5929743375071377103
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2018/05/running-your-mixed-reality-app-on.html
+---
+
+<h2>Intro</h2><p>Let’s face it – although Windows <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality</a> has a steady uptick (at least I think I can draw that conclusion from the increasing download numbers of my two <a href="https://www.microsoft.com/en-us/store/collections/MR-All-ImmersiveContent" target="_blank">Mixed Reality apps</a> in the <a href="https://www.microsoft.com/en-us/store/apps/windows" target="_blank">Windows Store</a>) – not everyone has a Mixed Reality headset, or even has a PC capable of supporting that. Time will take care of that soon enough. In the mean time, as a Mixed Reality developer, you might want to show all <a href="https://www.linkedin.com/pulse/thank-you-21-years-onto-next-chapter-terry-myerson/" target="_blank">700 million Windows 10 users</a> a glimpse of your app, in stead of ‘only’ the <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> and Mixed Reality headset owners out there. Even in a reduced state, it gives you eyeballs, and maybe entice them to get themselves a headset after all. It’s not like they are expensive these days. </p><h2>This sounds familiar? </h2><p>Well it should. This is far from original. <a href="http://dotnetbyexample.blogspot.com/2016/10/running-hololens-app-on-raspberry.html" target="_blank">I have been down this road before</a>, describing how to run a HoloLens app on a <em>Raspberry PI2</em>. That’s the U in UWP for you. Only now we are going to run on a full PC – in my case, a Surface Pro 4. That’s a sufficiently high end device for a nice experience, but it predates the Windows Mixed Reality era by almost two years and does not support it. But you can’t walk around without a headset, so we will need another means to change our view point. </p><h2>Parts list</h2><ul><li>One reasonably nice performing PC <em>not</em> capable of supporting Mixed Reality – or at least with the Mixed Reality portal <em>not</em> installed</li><li><a href="https://unity3d.com/unity/qa/patch-releases/2017.2.1p2" target="_blank">Unity 2017.2.1p2</a></li><li>The <a href="https://github.com/Microsoft/MixedRealityToolkit-Unity" target="_blank">Mixed Reality Toolkit</a>&nbsp;</li><li>One XBox One controller</li></ul><p>The first point is important – for if you have the portal installed, your PC will launch it like a good boy trying to do the logical thing - and you won’t see the effect I am trying to show you.</p><h2>Setting up the project</h2><p>I created a new project in Unity, copied in the latest Mixed Reality Toolkit, then clicked the three menu options under Mixed Reality Toolkit/Configure.</p><p>Then I added my standard empty game objects “Managers” (with nothing in it)&nbsp; and “HologramCollection” with a cube and a sphere, to have something to see:</p><p><a href="https://lh3.googleusercontent.com/--UiC8sgqjKU/WunN2II7aRI/AAAAAAAAPxU/WfS2JU2MGIwATuBj1vo2D1tEnOR34IoIQCHMYCw/s1600-h/image%255B9%255D"><img width="640" height="224" title="image" style="border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-2BxbEqtMg4A/WunN3LzoTuI/AAAAAAAAPxY/w9pK5cJNCrA1ascbcNqMSV9p8vaDrWPKQCHMYCw/image_thumb%255B5%255D?imgmax=800" border="0"></a></p><p>There is more to that two objects that meets the eye but we will get to that later.</p><h2>Control the view point using an XBox Controller</h2><p>There’s a simple class for that, in my ever growing HolotoolkitExtensions, that starts like this</p><pre style="font-size: 12px;">using HoloToolkit.Unity.InputModule;
+using UnityEngine;
+
+namespace HoloToolkitExtensions.Utilities
+{
+    public class XBoxControllerAppControl : MonoBehaviour, IXboxControllerHandler
+    {
+        public float Rotatespeed = 0.6f;
+        public float MoveSpeed = 0.05f;
+        public float TriggerAccerationFactor = 2f;
+
+        private Quaternion _initialRotation;
+        private Vector3 _initialPosition;
+
+        private readonly DoubleClickPreventer _doubleClickPreventer = 
+                                                new DoubleClickPreventer();
+        void Start()
+        {
+            _initialRotation = gameObject.transform.rotation;
+            _initialPosition = gameObject.transform.position;
+        }
+    }
+}
+</pre><p>I tend to offer settings to the Unity editor as much as possible - to make it easy to reuse this class and adapt its behavior without code changes. Here I offer some speed settings. You can set the maximal rotation speed and the maximal speed the camera moves, and the ‘speed up factor’ that is applied to all values when the right trigger is pressed. Be advised these are all <em>analog</em> values between 0 and 1, so you can control the speed anyway by varying the amount of pressure you apply to the sticks, the D-pad. But sometimes you just wanna go fast, hence the trigger. Also notice how initial rotation and position are retained.</p><p>The main routine is of course OnXboxInputUpdate, as the IXboxControllerHandler mandates its presence. </p><pre style="font-size: 12px;">public void OnXboxInputUpdate(XboxControllerEventData eventData)
+{
+    if (!UnityEngine.XR.XRDevice.isPresent)
+    {
+        var speed = 1.0f + TriggerAccerationFactor * eventData.XboxRightTriggerAxis;
+
+        gameObject.transform.position += eventData.XboxLeftStickHorizontalAxis * 
+                                         gameObject.transform.right * MoveSpeed * speed;
+        gameObject.transform.position += eventData.XboxLeftStickVerticalAxis * 
+                                         gameObject.transform.forward * MoveSpeed * speed;
+
+        gameObject.transform.RotateAround(gameObject.transform.position, 
+            gameObject.transform.up, 
+            eventData.XboxRightStickHorizontalAxis * Rotatespeed * speed);
+        gameObject.transform.RotateAround(gameObject.transform.position, 
+            gameObject.transform.right, 
+            -eventData.XboxRightStickVerticalAxis * Rotatespeed * speed);
+
+        gameObject.transform.RotateAround(gameObject.transform.position, 
+            gameObject.transform.forward, 
+            eventData.XboxDpadHorizontalAxis * Rotatespeed * speed);
+
+        var delta = Mathf.Sign(eventData.XboxDpadVerticalAxis) * 
+                    gameObject.transform.up * MoveSpeed * speed;
+        if (Mathf.Abs(eventData.XboxDpadVerticalAxis) &gt; 0.0001f)
+        {
+            gameObject.transform.position += delta;
+        }
+
+        if (eventData.XboxB_Pressed)
+        {
+            if (!_doubleClickPreventer.CanClick()) return;
+            gameObject.transform.position = _initialPosition;
+            gameObject.transform.rotation = _initialRotation;
+        }
+
+        HandleCustomAction(eventData);
+    }
+}</pre><p>Let’s unpack that a little.</p><p>Important is the if (!UnityEngine.XR.XRDevice.isPresent). We <em>only</em> want this behaviour to do it’s work when <a href="http://dotnetbyexample.blogspot.com/2018/04/how-to-detect-your-windows-mixed.html" target="_blank">there is no headset present</a> whatsoever – no Mixed Reality head set, no HoloLens.</p><ul><li>First we calculate a possible ‘speed up factor’ to be applied when the trigger is used. If it is not, it’s simply 1 and has no effect to the actual movement or rotation.</li><li>The left stick is used for movement in the ‘horizontal’ plane – forward, backward, left, right. Be aware the axes are <em>relative</em>. So if you are rotated 45 degrees left and you move left, you will move 45 degrees left. It’s actually logical – your frame of reference is always yourself, not some random rotation that happened to be in place when you got somewhere.</li><li>The right stick is used for rotation around your top and horizontal axis (left to right). Moving it to right will make you spin to the right (I negate the actual value coming from the stick as you can only rotate a game object around it’s <em>left</em> axis), pushing it forward will make you look at the floor.</li><li>That leaves moving up and down, and rotating left and right. The D-pad fills the voids: pushing it left or right will make you rotate sideways (like you are falling to the left or right), pushing it up or down will make your viewpoint move up or down. </li></ul><p>This is exactly the way it works when you use an Xbox Controller to steer the Unity <em>editor </em>in play mode. The D-pad feels a bit counter-intuitive to me, but when you try to move in three dimensions using sticks that move both in only two dimensions, you will need something extra, and the D-pad is the only thing left. It feels odd to me, but it works.</p><p>Then finally the B button – when you press that, you get back to your initial position. This is very useful for if you have messed around a bit  too much and completely lost track of where you are. And that is mostly all of it. </p><h2>A tiny bit of SOLID</h2><pre style="font-size: 12px;">protected virtual void HandleCustomAction(XboxControllerEventData eventData)
+{
+}</pre>
+<p>Hardly worth mentioning, but should you want to add your own logic handling controller buttons or triggers, you can make a child class of this XBoxControllerAppControl&nbsp; and override this method. It’s a hook that makes it open for extension, but keeps it own logic intact. That’s better than making OnXboxInputUpdate virtual, because that enables you to interfere with the existing logic by not calling the base OnXboxInputUpdate. It’s the O of <a href="https://en.wikipedia.org/wiki/SOLID_(object-oriented_design)" target="_blank">SOLID</a>. <a href="https://lh3.googleusercontent.com/-l4mj-kaZdOA/WunN3uVhFGI/AAAAAAAAPxc/xitHj4vKbIYDJRZQbOZ8K-msHTcmOwFVgCHMYCw/s1600-h/image%255B14%255D"><img width="400" height="203" title="image" align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-TUMXluik7xU/WunN4as_lCI/AAAAAAAAPxg/Ju45ohaP9LkruT9na_ubjnXB-7Ygf-7JACHMYCw/image_thumb%255B8%255D?imgmax=800" border="0"></a></p><h2>How to use it</h2><p>Simply drag it to the the MixedRealityCameraParent, change the settings to your liking and your are done. I think I took some reasonable default settings.</p><h2>But wait, there’s more!</h2><p>I have found the Xbox Controller buttons tend to stutter – that is, they sometimes fire repeatedly and rapid fire events can give a bit of a mess. </p><p>So I created this little helper DoubleClickPreventer that is not exactly rocket science, but very useful</p><pre style="font-size: 12px;">using UnityEngine;
+
+namespace HoloToolkitExtensions.Utilities
+{
+    public class DoubleClickPreventer
+    {
+        private readonly float _clickTimeOut;
+
+        private float _lastClick;
+
+        public DoubleClickPreventer(float clickTimeOut = 0.1f)
+        {
+            _clickTimeOut = clickTimeOut;
+        }
+
+        public bool CanClick()
+        {
+            if (!(Time.time - _lastClick &gt; _clickTimeOut))
+            {
+                return false;
+            }
+            _lastClick = Time.time;
+            return true;
+        }
+    }
+}
+</pre><p>It’s rather simple: whenever the method CanClick is called, a time is set. If the method is called twice within 0.1 seconds it returns false, otherwise it returns true. It’s actually used twice within this sample: it’s also on on the little helper class “<a href="https://github.com/LocalJoost/XBoxControllerDemo/blob/master/Assets/App/Scripts/SelectorDemo.cs" target="_blank">SelectorDemo</a>” that makes the sphere and the cube go “plonk” and flash blue when you click them using the Xbox “A” button. I won’t go into that – you can find it in the <a href="https://github.com/LocalJoost/XBoxControllerDemo" target="_blank">demo project</a>, and it’s inner workings are left as exercise to the reader.</p><h2>And it looks like…</h2><p><iframe width="650" height="365" src="https://www.youtube.com/embed/cIZcSRaMnNY" frameborder="0" allowfullscreen="" allow="autoplay; encrypted-media"></iframe></p><p>There are a few things you might notice. First of all, I apparently am able to select something, but I never coded for it. That’s courtesy of the Mixed Reality Toolkit – your Xbox Controller’s “A” button is acting the same as saying “Select” in a Mixed Reality app while you are gazing at something, air tapping while using a HoloLens, or pointing your Mixed Reality controller to an object and pressing the trigger. </p><p>Also, you might notice this at the end of the video:</p><p><a href="https://lh3.googleusercontent.com/-tfngJVrmmqE/WunN5cgmouI/AAAAAAAAPxk/xvitsxQrnx0YHfVrGVAtoFF-DV57LrcTwCHMYCw/s1600-h/image%255B22%255D"><a href="https://lh3.googleusercontent.com/-tfngJVrmmqE/WunN5cgmouI/AAAAAAAAPxk/xvitsxQrnx0YHfVrGVAtoFF-DV57LrcTwCHMYCw/s1600-h/image%255B22%255D"><img width="400" height="123" title="image" style="border-image: none; display: inline; background-image: none;" alt="image" src="https://lh3.googleusercontent.com/-hAVAUT7b3hU/WunN5_GjsoI/AAAAAAAAPxo/FKqHfCinimAZh6KFZBvWSMu9t02V0ICqQCHMYCw/image_thumb%255B12%255D?imgmax=800" border="0"></a></p><p>A clear sign Windows is not really content with this. It figures – because if nothing prevents you from downloading an app that simply does not work on your machine it might disgruntle users. But still – the app launches and seems to work.</p><h2>Some other things to notice and take into consideration</h2><ul><li>Use the right Unity version: <a href="https://unity3d.com/unity/qa/patch-releases/2017.2.1p2" target="_blank">2017.2.1p2</a>. That’s the one that goes with this release of the Mixed Reality Toolkit. Using newer versions of Unity or the toolkit (like the development branch) I got results varying from the app not wanting to compile, crashing or simply not starting. I also got just this “Can’t open app” dialog and nothing else</li><li>You can also see (very small) “Development build” in the lower right corner. There’s a check box in Unity that everyone tells you to use, and then that text will go away. The trouble is, that does not work. What will make it go away, is building the app with the Master configuration. That and only that. For Mixed Reality apps, this check box apparently only is there for show. At least as far as this text is concerned, and as far as I can see ;).</li></ul><p><a href="https://lh3.googleusercontent.com/-mSY_mB89_70/WunN6qgwmmI/AAAAAAAAPxs/JKYIbcPdqEsF5UerDU7qDIiNNSfVjygZwCHMYCw/s1600-h/build%255B6%255D"><img width="285" height="277" title="build" style="margin: 0px 0px 0px 30px; border: 0px currentcolor; border-image: none; display: inline; background-image: none;" alt="build" src="https://lh3.googleusercontent.com/-OdlMa-eYBM8/WunN7cEFIuI/AAAAAAAAPxw/n1HmFW_Ygr8s9YoV7lJah6RhQjc6i4kFACHMYCw/build_thumb%255B4%255D?imgmax=800" border="0"></a><a href="https://lh3.googleusercontent.com/-3NH7C4dAX6o/WunN70kbNKI/AAAAAAAAPx0/TuuplYNOE9ssQInWlfh_Q4RzoQ-H28CfACHMYCw/s1600-h/master%255B6%255D"><img width="285" height="116" title="master" align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" alt="master" src="https://lh3.googleusercontent.com/-r5K3GYm0Sys/WunN8m0A9hI/AAAAAAAAPx4/-4AVSC6ajcQdYEXLrbpRyP8mEdKnclpUACHMYCw/master_thumb%255B4%255D?imgmax=800" border="0"></a></p><ul><li>And finally, when making these apps run on an ordinary PC, you might want to rethink the UI a bit at places. Floating menu’s, which are very cool in real Mixed Reality environments, can be really hard to use on a flat screen, for instance. Also, placing things on top of the ‘floor’ might be a bit of a challenge without a floor – even a virtual one. </li></ul><h2>Concluding words</h2><p>I am not sure if this will continue working going forward with the MRTK and Unity, how useful this will be in the real word, or if that the Mixed Reality team even appreciates this approach. I am simply showing you what’s possible and a possible way to tackle this. Your mileage may vary, very much in fact. Have fun!</p><p>Once again – <a href="https://github.com/LocalJoost/XBoxControllerDemo" target="_blank">demo project here</a></p>

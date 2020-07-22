@@ -1,0 +1,90 @@
+---
+layout: post
+title: A HoloLens airplane tracker 5-smooth movement with iTween and adding a trail
+date: '2016-10-17T20:54:00.000+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- HoloLens
+- Unity3D
+modified_time: '2016-10-20T08:01:27.100+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6393857213162113572
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/10/a-hololens-airplane-tracker-5-smooth.html
+---
+
+<h2>Intro</h2> <p>In the video <a href="http://dotnetbyexample.blogspot.com/2016/10/a-hololens-airplane-tracker-1.html" target="_blank">in the first post</a> of this series&nbsp; you can see the airplane models leaving a kind of trails in the air, while they move and rotate in a smooth fashion - in stead of merely hopping from place to place. The first is accomplished by adding a <a href="https://docs.unity3d.com/Manual/class-TrailRenderer.html" target="_blank">TrailRender</a> to the AircraftHolder prefab – the second by using an awesome Unity plugin called <a href="http://itween.pixelplacement.com/gettingstarted.php" target="_blank">iTween</a>. </p> <h2>Adding the trail</h2> <p><a href="http://www.schaikweb.net/dotnetbyexample/Smooth-movingrotating-with-iTween-and-ad_11D63/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; margin: 0px 6px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Smooth-movingrotating-with-iTween-and-ad_11D63/image_thumb.png" width="304" align="right" height="333"></a>Before you can add the trail, it must have a <em>material</em> from which it’s made. This the color of the line. I will freely admit materials are still a bit vague to me, and after quite some fiddling I came to the following settings:</p> <ul> <li>Shader: HoloToolkit/Fast  <li>Albedo: hex color 120067FF  <li>Metallic: 1  <li>Emission: hex color 021F61</li></ul> <p>This leads to a kind of metallic light blue to dark blue trail line (depending on where the ‘directional light’) is shining, which is quite satisfactory. Feel free to mess around with the parameters. I did ;).</p> <p>Then go to App/Scripts and open the AircraftHolder prefab. Click on “Add Component”, then select “Trail Render”. Use the following workflow/ setting:</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Smooth-movingrotating-with-iTween-and-ad_11D63/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; margin: 0px 4px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Smooth-movingrotating-with-iTween-and-ad_11D63/image_thumb_3.png" width="304" align="right" height="219"></a></p> <ul> <li>Expand “Materials”. Drag the Trail Line Material that we just created on top of the “Element 0” field  <li>Set start width to 0.003  <li>Set end width to 1e-05.</li></ul> <p>This means the trail will be visible for 120 seconds, so the tail of the trail line will be at the place where the airplane was two minutes ago. Older segments are automatically deleted. Also, near the airplane the trail will be 0.003 meter wide, petering out to 0.00001 meter (1e-05) at the very end. And sure enough:</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Smooth-movingrotating-with-iTween-and-ad_11D63/image_4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Smooth-movingrotating-with-iTween-and-ad_11D63/image_thumb_4.png" width="674" height="381"></a></p> <p>Unity takes care of the drawing, erasing, and making-smaller-toward-the-end part. The only thing we have to do is move the airplane. Which is what we were doing already anyway. It once again almost feels like cheating.</p> <h2><a href="http://www.schaikweb.net/dotnetbyexample/A-HoloLens-airplane-tracker-5-smooth-mov_EA12/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-HoloLens-airplane-tracker-5-smooth-mov_EA12/image_thumb.png" width="244" align="right" height="242"></a>Introducing and obtaining iTween</h2> <p>In a <a href="http://dotnetbyexample.blogspot.com/2016/07/hololens-cubebouncer-application-part-4.html" target="_blank">blog post about an earlier project, the CubeBouncer</a>, I talked about using <a href="http://docs.unity3d.com/Manual/Coroutines.html" target="_blank">coroutines</a> to achieve smooth animations. In the mean time I have stumbled upon <a href="http://itween.pixelplacement.com/gettingstarted.php" target="_blank">iTween</a>, an awesome Unity plugin created by one <a href="http://www.itween.pixelplacement.com/credits.php" target="_blank">Bob Berkebile</a>, that makes creating animations of all kinds a <em>lot</em> easier. Although some concepts are a bit odd – particularly the the use of the Hash object to pass in an arbitrary number of parameters into methods – once you wrap your head around it, it’s very easy to use. Oh. And it’s free too.</p> <p>The easiest way to obtain it, is via the Unity Asset Store (Window/Asset Store or CTRL-9). Then enter iTween as search term. Click the iTween Logo, click import, and then the following dialog, as displayed to the right (below this paragraph), pops up. I usually deselect everything but the actual plugin, but if you would like to see samples and the Readme, feel free to leave everything checked.<a href="http://www.schaikweb.net/dotnetbyexample/A-HoloLens-airplane-tracker-5-smooth-mov_EA12/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-HoloLens-airplane-tracker-5-smooth-mov_EA12/image_thumb_3.png" width="245" align="right" height="274"></a></p> <p>When the process is finished, your project tab should contain the iTween plugin like below</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/A-HoloLens-airplane-tracker-5-smooth-mov_EA12/image_4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-HoloLens-airplane-tracker-5-smooth-mov_EA12/image_thumb_4.png" width="169" height="179"></a></p> <p>Once you have the iTween plugin installed, build the project, and move over to Visual Studio.</p> <h2>Using iTween for moving and rotating</h2> <p>So we head back to the AircraftController’s SetLocationOrientation method. We are going to change that a little:</p><pre>private void SetLocationOrientation()
+{
+  SetNewFlightText();
+
+  if (!_firstMove)
+  {
+    transform.localPosition = GetFlightLocation();
+    if (_flightData.Heading != null)
+    {
+      transform.localEulerAngles = GetNewRotation();
+    }
+    transform.localScale = new Vector3(0.0015f, 0.0015f, 0.0015f);
+    _firstMove = true;
+  }
+  else
+  {
+    iTween.MoveTo(gameObject, iTween.Hash("position", GetFlightLocation(), 
+      "time", 7f, "islocal", true));
+    if (_flightData.Heading != null)
+    {
+      iTween.RotateTo(gameObject, iTween.Hash("rotation", GetNewRotation(), 
+        "time", 7f, "islocal", true));
+    }
+  }
+}</pre>
+<p>So if the first set of data (or the initial move to a location) as has not been applied yet – that is, this is a newly created airplane – just do the same as we did before – plonk the airplane at it’s location with the proper rotation and attitude, and give it a size that makes sense. But if this aircraft already exists – move it smoothly to it’s new location in 7 seconds, using local position. And rotate it too, if needed, in the same time. And that is <em>all</em> <em>you need for a smooth transition.</em> Here you see the Hash in action. iTween has a few overloads for both Move and Rotate where you don’t need it, but in effect, when you want to do something only a little advanced – like using local space – say hello to Mr. Hash. </p>
+<p>You can of course rant against these ‘stringly typed’ variables and talk about type safety and stuff like that – but this is how it works, and it’s perfectly usable, albeit a bit odd for those who are fans of tight architecture and clean code. But then again, HoloLens is a pretty out-of-the-ordinary device anyway. When in Rome, act like Romans. ;)</p>
+<h2>Making the text fade in and out</h2>
+<p>Now the only thing we are missing is that nice effect where the text fades out just before the airplane moves – and appears again – with the newly updated flight data. This prevents the text from flashing and also gives a nice indication whether or not we are receiving updates for an aircraft (you may have noticed by now that aircraft that have landed tend to hang around for a while just above the airport before disappearing).</p>
+<p>First, we need to add another field:</p><pre>private GameObject _label;</pre>
+<p>And of course, initialize that in Start:</p><pre>void Start()
+{
+  _text = transform.GetComponentInChildren&lt;TextMesh&gt;();
+  <strong>_label = transform.FindChild("Label").gameObject;
+</strong>  _initComplete = true;
+}</pre>
+<p>I already warned you Start would grow, didn’t I? ;) Then we add a new method:</p><pre>private void StartSetLocationOrientation()
+{
+  if (_firstMove)
+  {
+    iTween.FadeTo(_label,
+        iTween.Hash("alpha", 0.0f, "time", 0.5f, 
+        "oncomplete", "SetLocationOrientation",
+        "oncompletetarget", gameObject));
+  }
+  else
+  {
+    SetLocationOrientation();
+  }
+}</pre>
+<p>So when the first move is indeed done, it will fade the label’s alpha channel to 0 in half a second. When that is done, call the original SetLocationOrientation. So this is a <em>callback</em>. What is a <em>very</em> important iTween convention to understand – default the callback will be called <em>on the object you are operating on</em> – and that is the <em>label.</em> Not the airplane. Therefore I added an “oncompletetarget” entry with the current gameObject as value – so iTween knows it should call SetLocationOrientation and use my gameObject as a target, not the label. </p>
+<p>Oh, in the else - if the airplane was just created and does not have an initial location - just move it to it’s initial location without using iTween.</p>
+<p>Then we move to SetNewFlightData and change the call to SetLocationOrientation to <strong>Start</strong>SetLocationOrientation: </p><pre>public void SetNewFlightData(Flight newFlightData)
+{
+  if (_initComplete)
+  {
+    var move = _flightData == null ||
+                !_flightData.Location.LocationEquals(newFlightData.Location);
+    _flightData = newFlightData;
+
+    ExtractSpeedAndHeading();
+    if (move)
+    {
+      <strong>Start</strong>SetLocationOrientation();
+    }
+    else
+    {
+      SetNewFlightText();
+    }
+  }
+}</pre>
+<p>And finally, to SetLocationOrientation we add all the way to the end this line:</p><pre>iTween.FadeTo(_label, iTween.Hash("alpha", 1f, "time", 0.5f, "delay", 0.2f));</pre>
+<p>This fades the label’s alpha channel (back) to 1, in 0.5 second, after a delay of 0.2 seconds. I found these values after experimenting. Feel free to play with times and stuff.</p>
+<h2>Conclusion</h2>
+<p>I have shown you how to add a trail line to an airplane, and how to use iTween for smooth transition effects. Once the basics of your HoloLens app stand, it’s quite easy to make just a little more effort and get it smooth and cool. Using a powerful tool like iTween makes it almost child’s play IMHO, once you get your head around how to using it.</p>
+<p>Code, as always, <a href="https://github.com/LocalJoost/HoloATC_Demo/tree/Blog5" target="_blank">can be found here</a>. </p>

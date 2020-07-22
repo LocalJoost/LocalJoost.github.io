@@ -1,0 +1,76 @@
+---
+layout: post
+title: Expanding the length of JSON data returned from ASP.NET web services
+date: '2007-11-02T10:20:00.001+01:00'
+author: Joost van Schaik
+tags:
+- C#
+- ASP.NET AJAX
+- JSON
+- Web Services
+- Javascript
+modified_time: '2008-12-16T20:53:43.892+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4933293353495970399
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2007/11/expanding-lenght-of-json-data-returned.html
+---
+
+A very small example this time, but one that can be very time consuming to find out. <a href="http://dotnetbyexample.blogspot.com/2007/10/calling-asmx-web-services-directly-from.html">The basic example I described earlier works</a> fine, but just try to send back a larger string.
+
+Suppose, you change the Hello World Method into this:
+
+<pre>[WebMethod]
+public string HelloWorld( string ToSomeone)
+{
+    StringBuilder b = new StringBuilder();
+    while (b.Length < 50000)
+    {
+       b.AppendFormat("Hello World {0}. ", ToSomeone);
+    }
+
+    return b.ToString();
+}</pre>
+You get al LOT of "Hello Worlds".
+
+Now change 50000 into 200000... you get no error message, but in fact, <span style="font-weight:bold;">you get no response at all</span>.
+
+To solve this, you need to delve into your web.config.
+
+Make sure the JSON configuration declaration at the top looks like this. I highlighted the important part:
+
+<pre>&lt;configSections&gt;
+  &lt;sectionGroup name="system.web.extensions" type="System.Web.Configuration.SystemWebExtensionsSectionGroup, System.Web.Extensions, Version=1.0.61025.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35"&gt;
+    &lt;sectionGroup name="scripting" type="System.Web.Configuration.ScriptingSectionGroup, System.Web.Extensions, Version=1.0.61025.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35"&gt;
+        &lt;section name="scriptResourceHandler" type="System.Web.Configuration.ScriptingScriptResourceHandlerSection, System.Web.Extensions, Version=1.0.61025.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" requirePermission="false" allowDefinition="MachineToApplication"/&gt;
+      &lt;sectionGroup name="webServices" type="System.Web.Configuration.ScriptingWebServicesSectionGroup, System.Web.Extensions, Version=1.0.61025.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35"&gt;
+        <span style="font-weight:bold;">&lt;section name="jsonSerialization" type="System.Web.Configuration.ScriptingJsonSerializationSection, System.Web.Extensions, Version=1.0.61025.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" requirePermission="false" allowDefinition="Everywhere" /&gt;</span>
+        &lt;section name="profileService" type="System.Web.Configuration.ScriptingProfileServiceSection, System.Web.Extensions, Version=1.0.61025.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" requirePermission="false" allowDefinition="MachineToApplication" /&gt;
+        &lt;section name="authenticationService" type="System.Web.Configuration.ScriptingAuthenticationServiceSection, System.Web.Extensions, Version=1.0.61025.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" requirePermission="false" allowDefinition="MachineToApplication" /&gt;
+      &lt;/sectionGroup&gt;
+    &lt;/sectionGroup&gt;
+  &lt;/sectionGroup&gt;
+&lt;/configSections&gt;</pre>
+This may look a bit intimidating, but just copy it. 
+In the system.web part you can define the following tag:
+
+<pre>&lt;system.web.extensions&gt;
+  &lt;scripting&gt;
+    &lt;webServices&gt;
+      &lt;jsonSerialization maxJsonLength="999999999"/&gt;
+    &lt;/webServices&gt;
+  &lt;/scripting&gt;
+&lt;/system.web.extensions&gt;</pre>
+And there you go. The number 999999999 is the absolute max value - so if you send stuff to your client longer than that, you have to think of something else. But for the mapping applications I made on Google Maps this works fine.
+
+Bear in mind that sending VERY large portions of data can degrade your user experience considerably, although the asynchronous nature of the ASP.NET JSON service might diminish that problem.
+
+By the way, in the latest templates for ASP.NET Ajax enabled web sites the whole configuration declaration is already included, as well as the declaration for the json serialization - but it is commented out. It looks something like this.
+
+<pre>&lt;!-- Uncomment this line to customize maxJsonLength and add a custom converter --&gt;
+&lt;!--
+&lt;jsonSerialization maxJsonLength="500"&gt;
+<span style="font-style:italic;">  &lt;converters&gt;
+    &lt;add name="ConvertMe" type="Acme.SubAcme.ConvertMeTypeConverter"/&gt;
+  &lt;/converters&gt;</span>
+&lt;/jsonSerialization&gt;
+--&gt;</pre>
+You have to delete the part that I printed in <span style="font-style:italic;">italics</span>, because that is just an example that does not point to an actual class

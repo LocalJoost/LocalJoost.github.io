@@ -1,0 +1,60 @@
+---
+layout: post
+title: The Standard About Page for Windows Phone 7 revisited
+date: '2011-10-03T20:54:00.001+02:00'
+author: Joost van Schaik
+tags:
+- dotnetmag
+- WP7NL
+- Windows Phone 7
+- MVVM Light
+- WP7
+modified_time: '2011-12-03T16:22:54.900+01:00'
+thumbnail: http://lh4.ggpht.com/-fQOt2NHQxaQ/TooEw-Q6a3I/AAAAAAAAG0w/NXYodCv42Zw/s72-c/About_thumb%25255B4%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7320860598228386832
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/10/standard-about-page-for-windows-phone-7.html
+---
+
+<p>Back to business!</p> <p>Although section 5.6 requiring an application to have easily discoverable application name, version information, and technical support contact information is still in the <a href="http://www.microsoft.com/windowsphone/" target="_blank">Windows Phone 7</a>&nbsp;<a href="http://msdn.microsoft.com/en-us/library/hh184840(v=VS.92).aspx" target="_blank">Application Certification Requirements</a>, it is no longer strictly enforced as far as I know. Yet, it’s still a very good idea to include this. It allows your App’s buyers to quickly review and rate your App and moreover, contact you easily, and usually providing you with all kinds of free ideas to make your App even better. What is better than to get direct input from the very people who bought your App!</p> <p>I wrote about a Standard About Page <a href="http://dotnetbyexample.blogspot.com/2011/01/standard-about-page-for-windows-phone-7.html" target="_blank">some time ago</a>. The latest version is now included in the 2.0.1 version of my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a>, which is also <a href="http://www.nuget.org/List/Packages/wp7nl" target="_blank">available as a Nuget package</a>. Apart from some minor improvements to the AboutViewModelBase (and the update to MVVMLight 4.0), by popular request I created a user control, or actually, multiple user controls.</p> <p>If your reference the wp7nl library, you will get three “About” controls:</p> <ul> <li>AboutContents  <li>AboutData  <li>AboutInfoSymbol</li></ul> <p>AboutData is the complete thing: create an empty page, delete everything within LayoutRoot Grid, drag this control in it, bind your AboutViewModelBase descendant, and you are ready. Apart from the namespace declarations, all that’s left of the contents of the About Page of my Map Mania App now looks like this:</p><pre>&lt;phone:PhoneApplicationPage.Resources&gt;
+  &lt;Model:AboutViewModel x:Key="AboutViewModel"/&gt;
+&lt;/phone:PhoneApplicationPage.Resources&gt;
+
+&lt;Controls:PhoneApplicationPage.Style&gt;
+  &lt;StaticResource ResourceKey="PhoneAppStyle"/&gt;
+&lt;/Controls:ExtendedPhonePage.Style&gt;
+&lt;Grid x:Name="LayoutRoot" Style="{StaticResource LayoutRootStyle}" 
+   DataContext="{StaticResource AboutViewModel}"&gt;
+  &lt;Controls:AboutData/&gt;
+&lt;/Grid&gt;</pre>
+<p>Again, by popular request this is built up out of of two sub controls, AboutContents (everthing below the actual “About”) and AboutSymbol (the info-symbol). A picture says more than a thousand words, therefore:</p>
+<p>&nbsp;<a href="http://lh3.ggpht.com/-HhDSjBuogIs/TooEwXrPnJI/AAAAAAAAG0s/r5HV5clhLdw/s1600-h/About%25255B8%25255D.png"><img style="background-image: none; border-right-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="About" border="0" alt="About" src="http://lh4.ggpht.com/-fQOt2NHQxaQ/TooEw-Q6a3I/AAAAAAAAG0w/NXYodCv42Zw/About_thumb%25255B4%25255D.png?imgmax=800" width="614" height="373"></a></p>
+<p>This, for instance, allowed me to construct the About ‘page’ of Catch’em Birds as part of a Panorama view, using just the AboutSymbol and the Contents like this:</p><pre style="font-size: 11px">&lt;controls:PanoramaItem x:Name="PanAbout" 
+  Header="{Binding LocalizedResources.About, Source={StaticResource LocalizedStrings}}" 
+  Margin="0,-1,0,0"&gt;
+  &lt;controls:PanoramaItem.HeaderTemplate&gt;
+    &lt;DataTemplate&gt;
+      &lt;Grid&gt;
+        &lt;Grid.RowDefinitions&gt;
+          &lt;RowDefinition Height="0.994*"/&gt;
+          &lt;RowDefinition Height="0.006*"/&gt;
+        &lt;/Grid.RowDefinitions&gt;
+        &lt;Grid.ColumnDefinitions&gt;
+          &lt;ColumnDefinition Width="40"/&gt;
+          &lt;ColumnDefinition Width="Auto"/&gt;
+        &lt;/Grid.ColumnDefinitions&gt;
+        &lt;LocalJoost:AboutInfoSymbol HorizontalAlignment="Left" 
+           VerticalAlignment="Bottom" Margin="0,0,0,6"/&gt;
+        &lt;TextBlock Grid.Column="1" 
+           Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}" 
+           FontSize="64" Margin="0" Grid.RowSpan="2" /&gt;
+      &lt;/Grid&gt;
+    &lt;/DataTemplate&gt;
+  &lt;/controls:PanoramaItem.HeaderTemplate&gt;
+  &lt;LocalJoost:AboutContents Name="aboutContents1" 
+    DataContext="{Binding Instance.AboutViewModel, Source={StaticResource MainViewModel}}" /&gt;
+&lt;/controls:PanoramaItem&gt;</pre>
+<p><a href="http://lh5.ggpht.com/-wl6tuWdLcK0/TooExSOpBMI/AAAAAAAAG00/CiajgVDHXIY/s1600-h/about2%25255B2%25255D.png"><img style="background-image: none; border-right-width: 0px; margin: 0px 8px 0px 0px; padding-left: 0px; padding-right: 0px; display: inline; float: left; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="about2" border="0" alt="about2" align="left" src="http://lh3.ggpht.com/-hI6ca6uxkAQ/TooEx0TdsoI/AAAAAAAAG04/ONxujnWVR1A/about2_thumb.png?imgmax=800" width="148" height="244"></a></p>
+<p>Which yields the result as displayed on the left. </p>
+<p>So now you can create an About Page with even less effort. You still have to make a child class of AboutViewModelBase and a resource file as described in <a href="http://dotnetbyexample.blogspot.com/2011/01/standard-about-page-for-windows-phone-7.html" target="_blank">the first About Page post</a> but that’s about all. </p>
+<p>A sample implementation of the whole stuff can be found <a href="www.schaikweb.net/dotnetbyexample/demoabout.zip" target="_blank">here</a>.</p>
+<p>Have fun!</p>  

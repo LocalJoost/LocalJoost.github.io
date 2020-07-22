@@ -1,0 +1,79 @@
+---
+layout: post
+title: Build for both-Converters for Windows Phone 8 and Windows 8.1 Store apps
+date: '2013-11-07T21:24:00.001+01:00'
+author: Joost van Schaik
+tags:
+- Windows Phone 8
+- wpnl
+- wpdev
+- dotnetmag
+- Windows 8
+- Converter
+- Win8nl
+modified_time: '2013-11-08T14:42:11.990+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-540339780010017289
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/11/build-for-both-converters-for-windows.html
+---
+
+<p>Our Dutch DPE <a href="http://www.twitter.com/rajen_k" target="_blank">Rajen Kishna</a> has been quite <a href="http://blog.rajenki.com/2013/10/windows-starting-template-october-2013/" target="_blank">heavily banging the ‘build for both’ drum</a> for some time now, and after having spent quite some time on exclusive <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> development I decided to see if I could rewrite the code for my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a> so that it would easily work for Windows Phone 8 and Windows 8.1 store apps – of course in order to be able to port my apps for Windows 8.1 as well.</p> <p>At the moment of this writing I am still very much in the process of converting and rewriting code, but here is already the first part one of my yet-to-be-decided-number-of-parts of a build-for-both series – about how to write a <a href="http://msdn.microsoft.com/en-us/library/system.windows.data.ivalueconverter(v=vs.110).aspx" target="_blank">ValueConverter</a> that runs on both platforms. Since this handles about UI stuff, I could not go PCL, so I chose the shared code route.</p> <p>ValueConverters need to implement IValueConverter, a simple two-method interface. In Windows Phone (and Silverlight and WPF) this interface is</p><pre>Convert(object value, Type targetType, object parameter, CultureInfo culture);
+ConvertBack(object value, Type targetType, object parameter, <br>            CultureInfo culture);</pre>So far so good, but for some reason I not have fathomed yet Microsoft have decided to change the IValueconverter signature to <pre>Convert(object value, Type targetType, object parameter, <font color="#ff0000"><u>string</u></font> culture);
+ConvertBack(object value, Type targetType, object parameter, <font color="#ff0000"><u>string</u></font> culture);</pre>
+<p>This is something you can moan about, or something you can solve. I choose the latter part. First of all, I implemented an abstract&nbsp; base class BaseValueConverter</p><pre>using System;
+using System.Globalization;
+#if WINDOWS_PHONE
+using System.Windows.Data;
+#else
+using Windows.UI.Xaml.Data;
+#endif
+
+namespace WpWinNl.Converters
+{
+  public abstract class BaseValueConverter : IValueConverter
+  {
+    public abstract object Convert(object value, Type targetType, <br>                                   object parameter, CultureInfo culture);
+    public abstract object ConvertBack(object value, Type targetType, <br>                                        object parameter, CultureInfo culture);
+
+    public object Convert(object value, Type targetType, object parameter,<br>                          string language)
+    {
+      return Convert(value, targetType, parameter, new CultureInfo(language));
+    }<br>
+    public object ConvertBack(object value, Type targetType, object parameter,<br>                              string language)
+    {
+      return ConvertBack(value, targetType, parameter, <br>                         new CultureInfo(language));
+    }
+  }
+}</pre>
+<p>Important to know is that the IValueConverter interface is defined in namespace System.Windows.Data in Windows Phone, and in Windows.UI.Xaml.Data in Windows Store apps. Fortunately, every Windows Phone project automatically defines the WINDOWS_PHONE conditional compilation symbol, so we can put these #if-#else-#endif preprocessor directives in code.</p>
+<p>Then I took this little converter, that translates bound text to uppercase (written by my felllow MVP <a href="http://www.twitter.com/sorskoot" target="_blank">Timmy Kokke</a> and added to wp7nl by him some months ago), and rewrote it using BaseValueConverter:</p><pre>using System;
+using System.Globalization;
+using System.Windows;
+#if !WINDOWS_PHONE
+using Windows.UI.Xaml;
+#endif
+
+namespace WpWinNl.Converters
+{
+  /// &lt;summary&gt;
+  /// Converts a string to all uppercase letters
+  /// &lt;/summary&gt;
+  public class ToUpperValueConverter : BaseValueConverter
+  {
+    public override object Convert(object value, Type targetType, 
+                           object parameter, CultureInfo culture)
+    {
+      if (value == null) return string.Empty;
+
+      return value.ToString().ToUpperInvariant();
+    }
+
+    public override object ConvertBack(object value, Type targetType, 
+                                       object parameter, CultureInfo culture)
+    {
+      return DependencyProperty.UnsetValue;
+    }
+  }
+}</pre>
+<p>And that is all. So how does this work? In Windows Store apps, the methods with the string language parameters are called, but these make a CultureInfo from the string, and then call the methods using a CultureInfo. In Windows Phone, the CultureInfo using methods are directly called, and the string language parameters are simply not used. I could have put these between preprocessor directives as well, but I am not very fond of too much directives in the code itself.</p>
+<p>I have included <a href="http://www.schaikweb.net/dotnetbyexample/BfBValueConverter.zip" target="_blank">a sample Windows Phone and Windows Store app</a>, that both show a button with the text HELLO in capitals, using this converter. The shared source code comes from a separate directory and is added as link to both solutions. When my library is finished you will of course simply make a reference to the right library, but in the mean time you know how you can write cross platform converters yourself.</p>  
+<p><b>Update</b>: irony has it that Rajen itself, in the article I link to, refers to his October starter template which incorporates a BaseConverter class. His approach is a little bit different from mine, but the general idea - using shared code for a base class - is the same. As I apparently downloaded the wrong zip file from his SkyDrive, I did not see it before I wrote this. I don't know if this is prior art, but I like to be thorough in this. Great minds apparently think alike, and I sure was inspired by his (older) template to use shared code.</p>

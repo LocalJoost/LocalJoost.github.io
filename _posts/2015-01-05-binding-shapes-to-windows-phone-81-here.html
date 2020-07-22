@@ -1,0 +1,125 @@
+---
+layout: post
+title: Binding shapes to the Windows Phone 8.1 Here Maps control
+date: '2015-01-05T20:14:00.000+01:00'
+author: Joost van Schaik
+tags:
+- Mapping
+- wpnl
+- MVVM
+- behavior
+- MVVM Light
+modified_time: '2015-01-05T20:19:19.305+01:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1984950811249459917
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/01/binding-shapes-to-windows-phone-81-here.html
+---
+
+<h2>Intro</h2> <p>Every time I meet someone from the Windows Phone Map team (or get into contact with them in some other way) I talk about the importance of being able to data bind shapes to the maps. Things are definitely improving: XAML elements can displayed using data binding out of the box (we used to need the Windows Phone toolkit for that), but Map Shapes alas not. As the saying goes – ‘if the mountain will not come to Muhammad, then Muhammad must go to the mountain' I took up an old idea <a href="http://dotnetbyexample.blogspot.nl/2012/09/data-binding-shapes-to-winrt-bing-maps.html">that I used for Bing Maps on Windows 8</a> and later <a href="http://dotnetbyexample.blogspot.nl/2012/10/data-binding-shapes-to-new-windows.html">converted to Windows Phone 8.0</a> – and basically adapted it for use in Windows Phone 8.1. Including some bug fixes.</p> <h2>Map display elements recap</h2> <p>You can display either XAML elements on top of the map or use map shapes. XAML elements can be anything, a can be displayed by either adding them in code to the map’s Children property, or by using a MapItemControl, databind it’s ItemSource property to a list object and them define a template for the display using properties from the object bound to the template. Typically, that looks like this:</p><pre>&lt;Maps:MapItemsControl ItemsSource="{Binding Activities}"&gt;
+    &lt;Maps:MapItemsControl.ItemTemplate&gt;
+        &lt;DataTemplate &gt;
+            &lt;Image Source="{Binding Image}" Height="25"
+                Maps:MapControl.NormalizedAnchorPoint="{Binding Anchor}" 
+                Maps:MapControl.Location="{Binding Position}"&gt;
+            &lt;/Image&gt;
+        &lt;/DataTemplate&gt;
+    &lt;/Maps:MapItemsControl.ItemTemplate&gt;
+&lt;/Maps:MapItemsControl&gt;</pre>
+<p>Important to know is that these elements are not drawn by the map, but on top of the map, by the UI thread. Typically, they are <em>slow</em>.</p>
+<p>Map <em>shapes</em>, on the other hand, are drawn by the map <em>itself</em>, by native code, and therefore <em>fast</em>. You can add them to the map by adding a MapShape child class to the maps’ MapElements properties. You can choose from MapPolyLine, MapPolygon and – new in Windows Phone 8.1 – MapIcon. Data binding is, unfortunately, not something that is supported. </p>
+<h2>Enter WpWinNlMaps</h2>
+<p>This time, you won’t have to type or have to look at a lot of code, as I have already published all that’s necessary on NuGet – in the <a href="https://www.nuget.org/packages?q=wpwinnlmaps">WpWinNlMaps package</a>. You simply add this to your application, and you are ready to go. Mind you, this pulls in <em>a lot</em> of other stuff – the WpWinNl package itself, <a href="http://mvvmlight.codeplex.com/">MVVMLight</a>, and some more stuff. This will enable you to bind view models to the map, have them displayed to and make them ‘tappable’. This is all done with the aid of – you guessed it – a behavior. MapShapeDrawBehavior to be precise.</p>
+<h2>Concepts</h2>
+<p>Typically, maps are divided into <em>layers</em>. You can think of this as logical units representing one class of real-world objects (or ‘features’ as they tend to be called in the geospatial word). For instance, “houses”, “gas stations”, “roads”. In Windows Phone, this is clearly not the case: all MapShapes are thrown into one basket – the MapElements property. In WpWinNlMaps, a layer roughly translates to one behavior attached to the map. </p>
+<p>A MapShapeDrawBehavior contains a few properties</p>
+<ul>
+<li>ItemsSource – this is where you bind your business objects/view models to 
+<li>PathPropertyName – the name of the property in a bound object that contains the Geopath describing the object’s location 
+<li>LayerName – the name of the layer. Make sure this is unique within the map 
+<li>ShapeDrawer – the name of the class that actually determines how the Geopath in PathPropertyName is actually displayed 
+<li>EventToCommandMappers – contains a collection of events <em>of the map</em> that need to be trapped, mapped to a command <em>on the bound object </em>that needs to be called when the map receives this event. Presently, the only events that make sense are “Tapped” and “MapTapped”.</li></ul>
+<h2>A sample up front</h2>
+<p>Before going further into detail, let’s do a little sample first, because theory is fine, but code works better, in my experience. So I have a little class containing a viewmodel that has a Geopath, and Name, and a command that can be fired:</p><pre>public class PointList : ViewModelBase
+{
+  public PointList()
+  {
+    Points = null;
+  }
+  public string Name { get; set; }
+
+  public Geopath Points { get; set; }
+  
+  public ICommand SelectCommand
+  {
+    get
+    {
+      return new RelayCommand&lt;MapSelectionParameters&gt;(
+        p =&gt; DispatcherHelper.CheckBeginInvokeOnUI(() =&gt; 
+        Messenger.Default.Send(new MessageDialogMessage(
+          Name, "Selected object", "Ok", "Cancel"))));
+    }
+  }
+}</pre>
+<p>Suppose a couple of these things are sitting in my main view model’s property “Lines”, then I can simply display a number of blue violet lines by using the following XAML</p><pre>&lt;maps:MapControl x:Name="MyMap" &gt;
+  &lt;mapbinding:MapShapeDrawBehavior LayerName="Lines" ItemsSource="{Binding Lines}" 
+       PathPropertyName="Points"&gt;
+  
+      &lt;mapbinding:MapShapeDrawBehavior.EventToCommandMappers&gt;
+        &lt;mapbinding:EventToCommandMapper EventName="MapTapped" 
+             CommandName="SelectCommand"/&gt;
+      &lt;/mapbinding:MapShapeDrawBehavior.EventToCommandMappers&gt;
+      
+      &lt;mapbinding:MapShapeDrawBehavior.ShapeDrawer&gt;
+        &lt;mapbinding:MapPolylineDrawer Color="BlueViolet"/&gt;
+      &lt;/mapbinding:MapShapeDrawBehavior.ShapeDrawer&gt;
+      
+  &lt;/mapbinding:MapShapeDrawBehavior&gt;
+&lt;/maps:MapControl</pre>
+<p>So:<a href="http://www.schaikweb.net/dotnetbyexample/Binding-shapes-to-th.1-Here-Maps-control_11A71/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Binding-shapes-to-th.1-Here-Maps-control_11A71/image_thumb_3.png" width="194" align="right" height="344"></a></p>
+<ul>
+<li>Objects are created from the collection “Lines” 
+<li>The name of the layer is “Lines” (this does not need to correspond with the name used in the previous bullet) 
+<li>The property containing the Geopath for a single object in the list “Lines” is called “Points” 
+<li>When the event “MapTapped” is detected on one of these lines, the command “SelectCommand” is to be fired. Mind you, this command <em>should be on the bound object</em>. Notice this fires a <a href="http://dotnetbyexample.blogspot.nl/2014/12/a-behavior-to-show-messagedialog-from.html">MessageDialogMessage that can be displayed by a MessageDialogBehavior</a>. Basically, if all the parts are in place, it will show a message dialog displaying the name of the object the user tapped on. 
+<li>This object is to be drawn as a blue violet line.</li></ul>
+<p>The result being something as displayed to the right.</p>
+<h2>Map shape drawers</h2>
+<p>These are classes that turn the Geopath into an actual shape. You get three out of the box that can be configured using a few simple properties.</p>
+<ul>
+<li>MapIconDrawer 
+<li>MapPolyLineDrawer 
+<li>MapPolygonDrawer</li></ul>
+<p>To draw an icon, line or polygon (duh).&nbsp; The key thing is – the drawers are very simple. For instance, this is the drawer that makes a line:</p><pre>public class MapPolylineDrawer : MapLinearShapeDrawer
+{
+  public MapPolylineDrawer()
+  {
+    Color = Colors.Black;
+    Width = 5;
+  }
+
+  public override MapElement CreateShape(object viewModel, Geopath path)
+  {
+    return new MapPolyline { Path = path, StrokeThickness = Width, 
+                             StrokeColor = Color, StrokeDashed = StrokeDashed, 
+                             ZIndex = ZIndex };
+  }
+}</pre>
+<p>There is only one method CreateShape that you need to override to make your own drawer. You get the viewmodel and the Geopath (as extracted by the MapShapeDrawBehavior and you can simply mess around with it.</p>
+<p>The drawer class model is like this:</p>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Binding-shapes-to-th.1-Here-Maps-control_11A71/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Binding-shapes-to-th.1-Here-Maps-control_11A71/image_thumb.png" width="644" height="454"></a></p>
+<h2>Trapping events and activating commands with EventToCommandMapper </h2>
+<p>By adding an EventToCommandMapper to EventToCommandMappers you can make a command get called when an event occurs. You can do that easily in XAML as displayed in the sample. Basically only events that have a MapInputEventArgs or TappedRoutedEventArgs can be trapped. In most real-world cases you will only need to trap MapTapped. See the example above how to do that. Keep in mind, again, that although the <em>event</em> is trapped on the <em>map</em>, the command is executed on the elements <em>found on the location of the event</em>.</p>
+<p>There is a special case though where you might want to trap the “Tapped” event too – that is when you mix and match XAML elements and MapShapes. See <a href="http://dotnetbyexample.blogspot.com/2014/08/querying-windows-phone-81-map-when.html">this article for background information</a> on that particular subject.</p>
+<h2>Some limitations and caveats</h2>
+<ul>
+<li>Even for MapIcons the PathPropertyName needs to point to a Geopath. This is to create a common signature for the CreateShape method in the drawers. Geopaths of one point are valid, so that is no problem. If you provide Geopaths containing more than one point, it will just use the first point. 
+<li>Although the properties are read from bound objects, those properties are not bound themselves. Therefore, an object that has already been drawn on the map will <em>not be updated on the map</em> if you change the contents of the Geopath. You will need to make sure the objects are in an ObservableCollection and then replace <em>the whole object</em> in the collection to achieve that result. 
+<li>If you use a method like mine to deal with selecting objects (firing messages), your app’s code will need to deal with multiple selected objects – since there can be more than one object on one location. My <a href="https://github.com/LocalJoost/WpWinNl.MapBindingDemo">sample solution</a> does clearly <em>not </em>do that. All objects will fire a message, but only one will show the message dialog. A better way to deal with it would be 
+<ul>
+<li>Make a message that contains the MapSelectionParameters that are supplied to the command that is fired on select (see sample code) 
+<li>Have the MainViewModel collect those messages, and decide based upon the SelectTime timestamp what messages are the result of one select action and should be displayed together.</li></ul>
+<li>In professional map systems the order of the layers determines the order in which elements are drawn. So the layers that are drawn first, appear at the bottom, and everything that’s drawn later on top of it. In Windows Phone, the Z-index of each element determines that. So be sure to set those in the right order if you want to appear stuff on top of each other. 
+<li>Be aware that MapIcons are a bit of an oddball. First, they are drawn using a ‘best effort’. In layman’s terms, this means that some of them won’t a appear if they are too close together. If there are a lot close together, a lot won’t appear. This will change while you zoom and pan, and you have no way to control it. Furthermore, MapIcons don’t always show on top of other shapes even if you specify the Z-index to be higher.</li></ul>
+<h2>Conclusion</h2>
+<p><a href="http://www.schaikweb.net/dotnetbyexample/Binding-shapes-to-th.1-Here-Maps-control_11A71/image_4.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: left; padding-top: 0px; padding-left: 0px; margin: 0px 12px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Binding-shapes-to-th.1-Here-Maps-control_11A71/image_thumb_4.png" width="194" align="left" height="344"></a>The <a href="https://github.com/LocalJoost/WpWinNl.MapBindingDemo">sample solution</a> shows the drawing of icons, lines and polygons using the binding provided by WpWinNlMaps. You can tap on a map element and the name of the tapped element will display in a message dialog. This should give you a running start in using this library.</p>
+<p>Although there are quite some limitations with respect to the binding, mainly caused by the nature of how the map works (you cannot <em>bind</em> to a command that is to be called when you tap the element – you can just provide the <em>name of the command</em>, just like the path property) I think this library makes using the map a lot easier – at least in MVVM apps. I am using this library extensively in my latest app <a href="http://www.windowsphone.com/en-us/store/app/travalyzer/4314b3ed-8d77-4297-9f9e-ed576d8990b0">Travalyzer</a>.</p>
+<p>Happy mapping!</p>  

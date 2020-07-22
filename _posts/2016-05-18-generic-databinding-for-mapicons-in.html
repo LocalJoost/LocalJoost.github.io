@@ -1,0 +1,265 @@
+---
+layout: post
+title: Generic databinding for MapIcons in Universal Windows Apps
+date: '2016-05-18T15:53:00.000+02:00'
+author: Joost van Schaik
+tags:
+- UWP
+- DataBinding
+- Mapping
+- XAML
+modified_time: '2016-05-18T18:06:19.441+02:00'
+thumbnail: https://lh3.googleusercontent.com/-ju8N8UnL1TE/Vzxz2V2umII/AAAAAAAAN2c/rOfldp1XPoo/s72-c/image_thumb%25255B1%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1315106357561157453
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/05/generic-databinding-for-mapicons-in.html
+---
+
+<h2>Preface</h2> <p>Ever since I introduced <a href="http://dotnetbyexample.blogspot.com/2015/12/release-of-wpwinnl-300-alpha-with-uwp.html" target="_blank">databinding for the UWP map control</a> (and it’s previous incarnations for Windows Phone 8.x and Windows 8.x) I have been asked to write ‘real’ data binding for map shapes. I have patiently tried to explain that the very nature of the map control makes this impossible as the map shapes are not templated controls drawn by the XAML renderer, but drawn by the map control <em>itself</em> – and that is what makes it so fast. So I encouraged people to write their own MapShapeDrawer child classes that converted a view model into a map shape. How hard can it be, I thought. Judging by the number of requests I got, apparently it is hard, indeed, or too inflexible. So I decided to take a shot at creating a more or less generic class for converting view models to MapIcons – the most commonly used scenario. Thus GenericMapIconDrawer was created.</p> <p>If the previous paragraphs made no sense at all to you, because this is the first time you ever have encountered my map binding library, I encourage you to <a href="http://dotnetbyexample.blogspot.com/2015/12/uwp-map-data-binding-with-wpwinnlmaps.html" target="_blank">read this article first.</a></p> <h2>Demo</h2> <p><a href="https://lh3.googleusercontent.com/-vvs_UlV3kFc/Vzxz16X4biI/AAAAAAAAN2Y/zC1RT7FAsQE/s1600-h/image%25255B3%25255D.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="https://lh3.googleusercontent.com/-ju8N8UnL1TE/Vzxz2V2umII/AAAAAAAAN2c/rOfldp1XPoo/image_thumb%25255B1%25255D.png?imgmax=800" width="644" height="439"></a></p> <p>I have once again updated the <a href="https://github.com/LocalJoost/WpWinNl/tree/uwp/uap10.0/WpWinNl.MapBindingDemo" target="_blank">demo application</a> that goes with the <a href="https://github.com/LocalJoost/WpWinNl/tree/uwp" target="_blank">WpWinNl project</a>. If you first hit Show Area, then hit “Flags” a number of time, you will see the map slowly getting covered with round flags of Belgium, Germany, Italy, Netherlands, Sweden and the UK. Don’t ask me why I choose this particular group of countries – I just did. If you then hit the “Pirate!” button, one of the nation’s flags will turn into Jolly Rogers, the descriptive label will change in “Arrrr!” and the icon will seem to jump upward a little. If you press the “Pirate!” button again, the current Jolly Roger flags will disappear, and another nation is selected to turn into pirates. Unless it selects a nation that has already turned pirate, then nothing will happen. If you press the “Pirate!” button long enough, all nations will turn into pirates and then disappear. Crime does not pay, in the end. At least in this demo. See video below.</p><iframe height="488" src="https://www.youtube.com/embed/wZ5bVn9siaw" frameborder="0" width="650" allowfullscreen></iframe> <p>The purpose of this – admittedly – rather peculiar demo, which I created when I was entirely sober indeed, is to show that by merely changing properties things change on the map. So even when it is not strictly data binding, it sure acts like data binding is happening. By the way, on my <a href="https://www.microsoft.com/surface" target="_blank">Surface Pro</a> 4 you hardly see the flickering – it seems like my trusted old 2011 i7 970 machine that I used for recording this video is finally showing it’s age.</p> <h2>How the demo works (aka how you should use the new library feature)</h2> <p>There is actually way more code to the demo than the actual changes to the WpWinNl.Maps package comprise. First of all, the base class for my geometry providing view models has been changed so that it's name property is an actual view model property raising a NotifyPropertyChanged, using the standard MVVMLight syntax</p><pre>public class GeometryProvider : ViewModelBase
+{
+  private string _name;
+  public string Name
+  {
+    get { return _name; }
+    set { Set(() =&gt; Name, ref _name, value); }
+  }
+}
+</pre>
+<p>Then there is the FlagList class, a child class of GeometryProvider, that provides a list of randomly located flags from a randomly selected nation within a rectangle defined by two Geopoints</p><pre>using System;
+using System.Collections.Generic;
+using Windows.Devices.Geolocation;
+using Windows.Foundation;
+
+namespace WpWinNl.MapBindingDemo.Models
+{
+  public class FlagList : GeometryProvider
+  {
+    public static readonly string[] Countries =
+      { "Belgium", "Germany", "Italy", "Netherlands", "Sweden", "UK" };
+
+
+    private Uri _iconUri;
+    public Uri Icon
+    {
+      get { return _iconUri; }
+      set { Set(() =&gt; Icon, ref _iconUri, value); }
+    }
+
+    private BasicGeoposition _point;
+    public BasicGeoposition Point
+    {
+      get { return _point; }
+      set { Set(() =&gt; Point, ref _point, value); }
+    }
+
+    private Point _anchorPoint = new Point(0.5, 0.5);
+    public Point AnchorPoint
+    {
+      get { return _anchorPoint; }
+      set { Set(() =&gt; AnchorPoint, ref _anchorPoint, value); }
+    }
+
+    private bool _isVisible = true;
+    public bool IsVisible
+    {
+      get { return _isVisible; }
+      set { Set(() =&gt; IsVisible, ref _isVisible, value); }
+    }
+
+    public static IEnumerable&lt;FlagList&gt; GetRandomFlags(
+                          Geopoint point1, Geopoint point2, int nrOfPoints)
+    {
+      var flags = new List&lt;FlagList&gt;();
+      var points = PointList.GetRandomPoints(point1, point2, nrOfPoints);
+      var r = new Random(DateTime.Now.Millisecond * 2);
+      foreach (var point in points)
+      {
+        var flagIdx = (int)Math.Round(r.NextDouble() * 5);
+        flags.Add(new FlagList
+        {
+          Name = Countries[flagIdx],
+          Icon = new Uri($"ms-appx:///Assets/{Countries[flagIdx]}.png"),
+          Point = point.Point
+        });
+      }
+      return flags;
+    }
+  }
+}
+</pre>
+<p>Notice here, as well, that all properties are raising INotifyPropertyChanged, that IsVisible is true by default and that we have a default <a href="https://msdn.microsoft.com/en-us/library/windows/apps/windows.ui.xaml.controls.maps.mapicon.normalizedanchorpointproperty.aspx" target="_blank">icon anchor point</a> of 0.5, 0.5 – that is, the center of the icon falls on the location specified by "Point".&nbsp; </p>
+<p>On the MapBindingViewModel there is a new public property ObservableCollection&lt;FlagList&gt; Flags that only gets loaded up with initial data in the LoadFlags method</p><pre>public void LoadFlags()
+{
+  Flags.AddRange(FlagList.GetRandomFlags(new Geopoint(_area.NorthwestCorner),
+    new Geopoint(_area.SoutheastCorner), 50));
+}</pre>Which is called when you press the "Flags" button. It add 50 icons every time you press it. Then there is the method that changes a random flag into pirate flags <pre>public void ChangeToPirate()
+{
+  foreach (var flag in Flags.Where(p =&gt; p.Name == "Arrr!").ToList())
+  {
+    flag.IsVisible = false;
+  }
+
+  var r = new Random(DateTime.Now.Millisecond * 2);
+  var flagIdx = (int)Math.Round(r.NextDouble() * 5);
+  var flagName = FlagList.Countries[flagIdx];)
+  foreach (var flag in Flags.Where(p =&gt; p.Name == flagName).ToList())
+  {
+    flag.Name = "Arrr!";
+    flag.Icon = new Uri("ms-appx:///Assets/JollyRoger.png");
+    flag.AnchorPoint = new Point(0.5, 1);
+  }
+}</pre>
+<p>Any existing pirate flags are made invisible first, then new ones are created by setting the Name, the Icon and the AnchorPoint property. Thus the label changes, the icon, and the icon on the map seems to jump up about half it’s size as it’s anchor point is now center/bottom in stead of center/center (boy does that terminology bring back memories of my very first job)</p>
+<p>In XAML, things are more or less still the same, with some additions:</p><pre style="font-size: 11px">&lt;maps:MapControl x:Name="MyMap" Grid.Row="0" 
+   ZoomLevel="{x:Bind ViewModel.ZoomLevel, Mode=OneWay}" 
+   Center="{x:Bind ViewModel.Center, Mode=OneWay}"&gt;
+  &lt;interactivity:Interaction.Behaviors&gt;
+  
+    &lt;mapbinding:MapShapeDrawBehavior LayerName="Flags" 
+      ItemsSource="{x:Bind ViewModel.Flags, Converter={StaticResource MapObjectsListConverter}}" 
+                    PathPropertyName="Point"&gt;
+      &lt;mapbinding:MapShapeDrawBehavior.EventToHandlerMappers&gt;
+        &lt;mapbinding:EventToHandlerMapper EventName="MapElementClick" 
+                                         CommandName="SelectCommand" /&gt;
+      &lt;/mapbinding:MapShapeDrawBehavior.EventToHandlerMappers&gt;
+      
+      &lt;mapbinding:MapShapeDrawBehavior.ShapeDrawer&gt;
+<strong><font color="#ff0000">        &lt;mapbinding:GenericMapIconDrawer 
+           ImageUriPropertyName="Icon" 
+           AnchorPropertyName="AnchorPoint" 
+           TitlePropertyName="Name" 
+           IsVisiblePropertyName="IsVisible" 
+           CollisionBehaviorDesired="RemainVisible"/&gt;</font></strong>
+      &lt;/mapbinding:MapShapeDrawBehavior.ShapeDrawer&gt;
+      
+    &lt;/mapbinding:MapShapeDrawBehavior&gt;
+  &lt;/interactivity:Interaction.Behaviors&gt;
+
+&lt;/maps:MapControl</pre>
+<p>As drawer we have the new GenericMapIconDrawer that has a boatload of new properties, basically instructing the GenericMapIconDrawer from which view model properties to get the values that should be applied to the MapIcon it is creating. So, technically, this is <em>still</em> not data binding – the properties are pulled from the view model using reflection. Which means that you <em>really</em> should test this using .NET Native tooling to see if those properties are not pulled out by the compiler – <a href="https://dotnetbyexample.blogspot.com/2016/03/net-native-silverlightserializer.html" target="_blank">or else suffer the pain I suffered when I tried to publish my app.</a></p>
+<h2>How the code works</h2>
+<p>The GenericMapIconDrawer is surprisingly simple. It's basic setup is like this: a few properties and a CreateShape method that actually creates the Icon from the viewmodel: </p><pre>using Windows.Devices.Geolocation;
+using Windows.Foundation;
+using System;
+using System.Reflection;
+using Windows.Storage.Streams;
+using Windows.UI.Xaml.Controls.Maps;
+
+namespace WpWinNl.Maps
+{
+  public class GenericMapIconDrawer : MapShapeDrawer
+  {
+    protected object ViewModel;
+
+    protected MapIcon Icon;
+
+    public string TitlePropertyName { get; set; }
+
+    public string AnchorPropertyName { get; set; }
+
+    public string ImageUriPropertyName { get; set; }
+
+    public string IsVisiblePropertyName { get; set; }
+
+    public MapElementCollisionBehavior CollisionBehaviorDesired { get; set; }
+
+    public override MapElement CreateShape(object viewModel, BasicGeoposition pos)
+    {
+      ViewModel = viewModel;
+
+      Icon = new MapIcon
+      {
+        Location = new Geopoint(pos),
+        CollisionBehaviorDesired = CollisionBehaviorDesired,
+        ZIndex = ZIndex
+      };
+
+      SetPropertyValuesFromViewModel();
+
+      return Icon;
+    }
+  }
+}</pre>
+<p>The SetPropertyValuesFromViewModel is pull the additional four properties from the view model (the position is already being taken care of by the MapShapeDrawBehavior itself)</p><pre>private void SetPropertyValuesFromViewModel()
+{
+  string title = null;
+  if (TryGetPropertyValue(ViewModel, TitlePropertyName, ref title))
+  {
+    Icon.Title = title;
+  }
+
+  Point anchorPoint;
+  if (TryGetPropertyValue(ViewModel, AnchorPropertyName, ref anchorPoint))
+  {
+    Icon.NormalizedAnchorPoint = anchorPoint;
+  }
+
+  Uri imageUri = null;
+  if (TryGetPropertyValue(ViewModel, ImageUriPropertyName, ref imageUri))
+  {
+    Icon.Image = RandomAccessStreamReference.CreateFromUri(imageUri);
+  }
+
+  bool isVisble = true;
+  if (TryGetPropertyValue(ViewModel, IsVisiblePropertyName, ref isVisble))
+  {
+    Icon.Visible = isVisble;
+  }
+}</pre>
+<p>And because I am a lazy b*****d I wrote a little helper method do to the repetitive heavy lifting for that</p><pre>private static bool TryGetPropertyValue&lt;T&gt;(object obj, string propertyName, 
+                                           ref T outValue)
+{
+  if (!string.IsNullOrWhiteSpace(propertyName))
+  {
+    var prop = obj.GetType().GetRuntimeProperty(propertyName);
+    var result = prop?.GetValue(obj);
+    if (result is T)
+    {
+      outValue = (T) prop.GetValue(obj);
+      return true;
+    }
+  }
+  return false;
+}</pre>
+<p>Note, however, that only the position, label text, icon uri, anchor point and visibility are pulled from the view model. Z-index and collisionbehavior are <em>not</em>. Deep down in the MapShapeDrawBehavior, in the CreateShape method, there is another change that I want to draw your attention to:</p><pre>var evt = viewModel.GetType().GetRuntimeEvent("PropertyChanged");
+if (evt != null)
+{
+  var observable = Observable.FromEventPattern&lt;PropertyChangedEventArgs&gt;(
+     viewModel, "PropertyChanged")
+    .Subscribe(se =&gt;
+    {
+      if (<strong><font color="#ff0000">!LegacyMode</font></strong> || se.EventArgs.PropertyName == PathPropertyName)
+      {
+        ReplaceShape(se.Sender);
+      }
+    });
+
+  TrackObservable(viewModel, observable);
+}</pre>
+<p>Previously, the shape would only be replaced if the geometry changed. Now, unless the new property LegacyMode is set to true, this will happen at <em>every</em> PropertyChanged event. If you look carefully at the video, you will actually see the Jolly Rogers flickering, which is correct – since three properties are changed (Name, Icon and AnchorPoint) each flag is redrawn three times. This is quite inefficient, but unfortunately the way it works. You cannot <em>change </em>an Icon, only replace it. So for every property change it actually gets replaced indeed, and to that extent I also had to make a little change to ReplaceShape itself. </p><pre>private void ReplaceShape(object viewModel)
+{
+  var shape = AssociatedObject.MapElements.FirstOrDefault(p =&gt; p.ReadData() == viewModel);
+  if (shape != null)
+  {
+    var shapeLocation = AssociatedObject.MapElements.IndexOf(shape);
+    if (shapeLocation != -1)
+    {
+      var newShape = CreateShape(viewModel);
+      if (newShape != null)
+      {
+<strong><font color="#ff0000">        // Previous code
+        // AssociatedObject.MapElements[shapeLocation] = CreateShape(viewModel); 
+        AssociatedObject.MapElements.RemoveAt(shapeLocation);
+        AssociatedObject.MapElements.Insert(shapeLocation, newShape);</font></strong>
+      }
+    }
+  }
+  else
+  {
+    AddNewShape(viewModel);
+  }
+}
+</pre>
+<p>So this experiment did not only bring new (or at least easier to use) functionality – it also instilled a bug fix. Of course, you can work around the repeated drawing/flickering by making a view model that does not fire PropertyChanged on every property change, but handle this manually when you are done. But that kind of performance tweaking is outside of the scope of this article. </p>
+<h2>Concluding remarks</h2>
+<p>Data binding shapes in the classical way still is not possible, so I had to resort to something that <em>acts</em> like it. I hope this makes using this package for mapping a bit easier. Be advised that for massive changes to large datasets this may not be the most efficient way to get things done, but for your average project it makes things way easier.</p>
+<p>It’s now downloadable from <a href="https://www.nuget.org/packages/WpWinNlMaps/3.0.6-alpha" target="_blank">NuGet as version 3.0.6</a>, and you can find the sources of the demo app <a href="https://github.com/LocalJoost/WpWinNl/tree/uwp/uap10.0/WpWinNl.MapBindingDemo" target="_blank">here</a>.</p>
