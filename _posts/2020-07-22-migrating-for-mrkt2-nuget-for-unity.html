@@ -1,0 +1,38 @@
+---
+layout: post
+title: Migrating to MRKT2 - NuGet for Unity crashes when using MRTK2
+date: '2020-07-22T15:48:00.001+02:00'
+author: Joost van Schaik
+tags:
+- Windows Mixed Reality
+- Unity3D
+- HoloLens2
+modified_time: '2020-07-22T15:49:35.618+02:00'
+blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8584611115573230413
+blogger_orig_url: https://dotnetbyexample.blogspot.com/2020/07/migrating-for-mrkt2-nuget-for-unity.html
+---
+
+<h2>Intro</h2><p>Recently I was setting up a new <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> 2 project. I usually take the following route:</p><ul><li>Create a Unity project with the recommended version for the current MRTK (I use 2.4 now, so that is 2018.4.20f1)</li><li>Switch build platform to UWP</li><li>Import the <a href="https://www.schaikweb.net/blog/20200603/01_pointeroptionsx.png" target="_blank">MRTK2</a> as source</li><li>Add the MRKT2 to the scene</li><li>Apply optimization settings</li><li>Select the right sound Spatializer (MS HRTF Spatializer)</li></ul><p>And then, since recently, I add NuGet for Unity. </p><h2>Something is rotten in de state of NuGet</h2><p>Now this comes a nice UnityPackage that you can <a href="https://github.com/GlitchEnzo/NuGetForUnity/releases" target="_blank">download from here</a>. Currently it's at 2.0.1. It works fine in plain Unity projects. It works also fine in UWP build. But if you follow the workflow I show above, it breaks. If you open the NuGet package manager, in stead of the UI you expect, you will see only this:</p><p><img width="272" height="480" style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20200722/01_error.png" border="0"></p><p>And you will see these errors in the console:</p><ul><li>System.TypeInitializationException: The type initializer for 'NugetForUnity.NugetHelper' threw an exception. ---&gt; System.NullReferenceException: Object reference not set to an instance of an object<br>&nbsp;&nbsp; at NugetForUnity.NugetHelper.LoadNugetConfigFile () [0x0011c] in &lt;b7bde984cef1447da61a3fd28d4789b0&gt;:0 <br>&nbsp;&nbsp; at NugetForUnity.NugetHelper..cctor () [0x001e6] in &lt;b7bde984cef1447da61a3fd28d4789b0&gt;:0</li><li>NullReferenceException: Object reference not set to an instance of an object<br>
+NugetForUnity.NugetHelper.LoadNugetConfigFile () (at &lt;b7bde984cef1447da61a3fd28d4789b0&gt;:0)</li></ul><p>Great. Now what?</p><h2>The culprit</h2><p>When you import the the MRTK2, at some point a NuGet.config file is created. This sits in the Assets root and looks like this:</p><pre style="font-size: 11px;">&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;configuration&gt;
+  &lt;packageSources&gt;
+    &lt;add key="MSBuildForUnity" value="https://pkgs.dev.azure.com/UnityDeveloperTools/MSBuildForUnity/_packaging/UnityDeveloperTools/nuget/v3/index.json" /&gt;
+  &lt;/packageSources&gt;
+&lt;/configuration</pre><p>For some reason, NuGet for Unity does not get very happy about that. If you quit Unity, delete NuGet.config and the NuGet.config.meta, start again and open the NuGet package manager again, a new NuGet.config is created that looks like <em>this:</em></p><pre style="font-size: 11px;">&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;configuration&gt;
+    &lt;packageSources&gt;
+       &lt;add key="NuGet" value="http://www.nuget.org/api/v2/" /&gt;
+    &lt;/packageSources&gt;
+    &lt;disabledPackageSources /&gt;
+    &lt;activePackageSource&gt;
+       &lt;add key="All" value="(Aggregate source)" /&gt;
+    &lt;/activePackageSource&gt;
+    &lt;config&gt;
+       &lt;add key="repositoryPath" value="./Packages" /&gt;
+       &lt;add key="DefaultPushSource" value="http://www.nuget.org/api/v2/" /&gt;
+    &lt;/config&gt;
+&lt;/configuration</pre><p>and if you <em>now</em> click select the NuGet package manger again, it starts up normally.</p><p><img style="border: 0px currentcolor; border-image: none; background-image: none;" src="https://www.schaikweb.net/blog/20200722/02_ok.png" border="0"></p><p>If tried to add the MSBuildForUnity to the package sources like this, because maybe the MRTK2 needs it for something:</p><pre style="font-size: 11px;">&lt;packageSources&gt;
+   &lt;add key="NuGet" value="http://www.nuget.org/api/v2/" /&gt;
+   &lt;add key="MSBuildForUnity" value="https://pkgs.dev.azure.com/UnityDeveloperTools/MSBuildForUnity/_packaging/UnityDeveloperTools/nuget/v3/index.json" /&gt;
+&lt;/packageSources</pre><p>but all that does is generate another error:</p><p>"Unable to retrieve package list from https://pkgs.dev.azure.com/UnityDeveloperTools/MSBuildForUnity/_packaging/UnityDeveloperTools/nuget/v3/index.jsonSearch()?$filter=IsLatestVersion&amp;$orderby=DownloadCount desc&amp;$skip=0&amp;$top=15&amp;searchTerm=''&amp;targetFramework=''&amp;includePrerelease=false<br>
+System.Net.WebException: The remote server returned an error: (404) Not Found."</p><p>So I actually have no idea why this NuGet.config is created or how. But it definitely needs to go, apparently. </p><h2>The short version</h2><p>Before importing NuGet for Unity, check for an existing NuGet.config and NuGet.config.meta and delete those; your NuGet package manager will then work as planned.</p><p>No code today, because all I wrote today here boils down to the one sentence above :)</p>
