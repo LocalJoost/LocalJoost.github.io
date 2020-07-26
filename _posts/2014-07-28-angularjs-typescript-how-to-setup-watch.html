@@ -11,7 +11,7 @@ blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-83819143710560695
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/07/angularjs-typescript-how-to-setup-watch.html
 ---
 
-<h2>Introduction</h2> <p>After setting up <a href="http://dotnetbyexample.blogspot.com/2014/07/angularjs-typescript-setting-up-basic.html" target="_blank">my initial application as described in my previous post</a>, I went about to set up a <em>watch</em>. For those who don’t know what that is – it’s basically a function that gets triggered when a scope object or part of that changes. I have found 3 ways to set it up, and only one seems to be (completely) right.</p> <p>In JavaScript, you would set up a watch <a href="http://stackoverflow.com/questions/15112584/using-scope-watch-and-scope-apply" target="_blank">like this sample I nicked from Stack Overflow</a>:</p><pre>function MyController($scope) {
+<h2>Introduction</h2> <p>After setting up <a href="http://localjoost.github.io/2014/07/27/angularjs-typescript-setting-up-basic.html" target="_blank">my initial application as described in my previous post</a>, I went about to set up a <em>watch</em>. For those who don’t know what that is – it’s basically a function that gets triggered when a scope object or part of that changes. I have found 3 ways to set it up, and only one seems to be (completely) right.</p> <p>In JavaScript, you would set up a watch <a href="http://stackoverflow.com/questions/15112584/using-scope-watch-and-scope-apply" target="_blank">like this sample I nicked from Stack Overflow</a>:</p><pre>function MyController($scope) {
    $scope.myVar = 1;
 
    $scope.$watch('myVar', function() {

@@ -51,7 +51,7 @@ namespace Wp7nl.Behaviors
     }
   }
  }</pre>
-<p>The behavior is implemented as a <a href="http://dotnetbyexample.blogspot.com/2011/11/safe-event-detachment-base-class-for.html" target="_blank">SafeBehavior</a> with an attached dependency property “Collection” of type INotifyPropertyChanged to which you can bind the collection that needs to be monitored. The core of the whole behavior is simply the SetVisibility method, which casts the collection to ICollection and checks if it’s null or empty – in that case the Visibility of the object to which this behavior is attached is set to Collapsed – if not, it’s set to Visible.</p>
+<p>The behavior is implemented as a <a href="http://localjoost.github.io/2011/11/26/safe-event-detachment-base-class-for.html" target="_blank">SafeBehavior</a> with an attached dependency property “Collection” of type INotifyPropertyChanged to which you can bind the collection that needs to be monitored. The core of the whole behavior is simply the SetVisibility method, which casts the collection to ICollection and checks if it’s null or empty – in that case the Visibility of the object to which this behavior is attached is set to Collapsed – if not, it’s set to Visible.</p>
 <p>The attached dependency property is fairly standard, apart from the last part:</p><pre style="font-size: 12px">#region Collection
 
 public const string CollectionPropertyName = "Collection";

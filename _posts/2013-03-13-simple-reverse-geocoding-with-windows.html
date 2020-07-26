@@ -118,7 +118,7 @@ namespace Wp8nl.Behaviors
 
    }
 }</pre>
-<p>This behavior is implemented as a <a href="http://dotnetbyexample.blogspot.com/2011/11/safe-event-detachment-base-class-for.html">SafeBehavior</a> child class, to prevent memory leaks. It’s actually pretty simple – it traps the ‘Tap’ event, determines the location, converts it to a GeoCoordinate and puts it into the TappedCoordinate Dependency Property. Which, in turn, can be bound to the view model. The designer can simply drag this behavior on top of the map and set up the data binding. Don’t you love Blend? XAML take 2:</p><pre>&lt;Grid x:Name="ContentPanel" Grid.Row="1" 
+<p>This behavior is implemented as a <a href="http://localjoost.github.io/2011/11/26/safe-event-detachment-base-class-for.html">SafeBehavior</a> child class, to prevent memory leaks. It’s actually pretty simple – it traps the ‘Tap’ event, determines the location, converts it to a GeoCoordinate and puts it into the TappedCoordinate Dependency Property. Which, in turn, can be bound to the view model. The designer can simply drag this behavior on top of the map and set up the data binding. Don’t you love Blend? XAML take 2:</p><pre>&lt;Grid x:Name="ContentPanel" Grid.Row="1" 
    Margin="12,0,12,0"&gt;
   &lt;maps:Map&gt;
     &lt;i:Interaction.Behaviors&gt;

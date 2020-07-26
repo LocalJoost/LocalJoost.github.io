@@ -12,7 +12,7 @@ blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-68747157334037524
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/07/angularjs-typescript-using-resource-to.html
 ---
 
-<h2>Intro – multiple stacks to choose from</h2> <p>There are a number of ways to talk to a backend (i.e. communicate over JSON services) in Angular. I know at least of two built-in: the $http api, which basically gives you a bit raw, jQuery-like API, and the $resource API, which kind of builts on top of that, using a more formalized approach. Also, you can choose to forego the whole built-in stack and use something like <a href="http://www.breezejs.com/" target="_blank">Breezejs</a> which has it own pros and cons. I used both successfully. And I don’t doubt there are more. But in this article I will concentrate on $resource.</p> <p>Once again, I don’t claim ultimate wisdom nor do I claim this is the best way, but I describe a way that <em>works</em> and is complete.</p> <h2>Setting up the backend</h2> <p>I continue where I left off in <a href="http://dotnetbyexample.blogspot.com/2014/07/angularjs-typescript-how-to-setup-watch.html" target="_blank">my previous post</a>, and proceed to add a model class in the Models folder. Mind you, this the folder in the root, not that in the app folder with <a href="http://www.typescriptlang.org/" target="_blank">TypeScript</a> stuff in it. We are talking C#. Our application will be extended to maintain a list of phones.</p><pre>namespace AtsDemo.Models
+<h2>Intro – multiple stacks to choose from</h2> <p>There are a number of ways to talk to a backend (i.e. communicate over JSON services) in Angular. I know at least of two built-in: the $http api, which basically gives you a bit raw, jQuery-like API, and the $resource API, which kind of builts on top of that, using a more formalized approach. Also, you can choose to forego the whole built-in stack and use something like <a href="http://www.breezejs.com/" target="_blank">Breezejs</a> which has it own pros and cons. I used both successfully. And I don’t doubt there are more. But in this article I will concentrate on $resource.</p> <p>Once again, I don’t claim ultimate wisdom nor do I claim this is the best way, but I describe a way that <em>works</em> and is complete.</p> <h2>Setting up the backend</h2> <p>I continue where I left off in <a href="http://localjoost.github.io/2014/07/28/angularjs-typescript-how-to-setup-watch.html" target="_blank">my previous post</a>, and proceed to add a model class in the Models folder. Mind you, this the folder in the root, not that in the app folder with <a href="http://www.typescriptlang.org/" target="_blank">TypeScript</a> stuff in it. We are talking C#. Our application will be extended to maintain a list of phones.</p><pre>namespace AtsDemo.Models
 {
   public class Phone
   {
@@ -79,7 +79,7 @@ using System.Net.Http.Headers;</pre>
 <p><strong>[{"id":1,"name":"Lumia 1020","screenSize":4.5},{"id":2,"name":"Lumia 1520","screenSize":6.0},{"id":3,"name":"Lumia 625","screenSize":4.7},{T"id":3,"name":"Lumia 930","screenSize":5.0}]</strong></p>
 <p>This is easiest in Chrome, as it has no qualms about displaying raw JSON in the browser. In Internet Explorer it works as well, but IE insist on saving the file to disk, refusing it to display for security reasons. The backend now works.</p>
 <h2>Creating model and interface</h2>
-<p>If you have installed the <a href="http://visualstudiogallery.msdn.microsoft.com/56633663-6799-41d7-9df7-0f2a504ca361">Web Essentials 2013 for Update 2</a> as I recommended in the <a href="http://dotnetbyexample.blogspot.com/2014/07/angularjs-typescript-setting-up-basic.html" target="_blank">first part of this series</a> you can now do something fun, although with such a little model not very useful yet:</p>
+<p>If you have installed the <a href="http://visualstudiogallery.msdn.microsoft.com/56633663-6799-41d7-9df7-0f2a504ca361">Web Essentials 2013 for Update 2</a> as I recommended in the <a href="http://localjoost.github.io/2014/07/27/angularjs-typescript-setting-up-basic.html" target="_blank">first part of this series</a> you can now do something fun, although with such a little model not very useful yet:</p>
 <ul>
 <li>Right-click Phone.cs 
 <li>Select Web Essentials (all the way to the top) 
@@ -158,7 +158,7 @@ this.app.factory("PhoneResource",
 </pre>
 <p>This is added just below the declaration of the Angular modules, and just before the only controller we currently have.</p>
 <h2>Testing the setup</h2>
-<p>Basically we are done now – the only thing is to add code to show that all this actually <em>works</em>. So here we go again, as explained in the <a href="http://dotnetbyexample.blogspot.com/2014/07/angularjs-typescript-setting-up-basic.html" target="_blank">first post</a>:</p>
+<p>Basically we are done now – the only thing is to add code to show that all this actually <em>works</em>. So here we go again, as explained in the <a href="http://localjoost.github.io/2014/07/27/angularjs-typescript-setting-up-basic.html" target="_blank">first post</a>:</p>
 <ul>
 <li>You add a new scope interface 
 <li>You add a new controller 

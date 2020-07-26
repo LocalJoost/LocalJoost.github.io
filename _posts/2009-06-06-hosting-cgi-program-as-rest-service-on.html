@@ -134,7 +134,7 @@ namespace CloudMap.Contracts
       }
     }
   }
-}</pre>Now this may look a bit intimidating, but in fact it is just a little extension of <a href="http://dotnetbyexample.blogspot.com/2008/11/writing-simple-http-proxy-using-wcf.html">my WCF proxy example</a> described earlier in this blog.
+}</pre>Now this may look a bit intimidating, but in fact it is just a little extension of <a href="http://localjoost.github.io/2008/11/29/writing-simple-http-proxy-using-wcf.html">my WCF proxy example</a> described earlier in this blog.
 The 'extensions' are pretty simple: first of all the method "GetWMS" searches for a configuration section "WMSServices" in the App.config and then tries to retrieve the base url of the WMS defined by the value of "map". It then concatenates the rest of querystring, which is accessible by the not quite self-evident statement
 "WebOperationContext.Current.IncomingRequest.UriTemplateMatch.QueryParameters", to the url found in the config section and calls it, passing the parameters of the query string to it.
 Anyway, don't worry too much about it. This is the more or less generic proxy. The point is getting it to run and then hosting it on the .NET service bus.
@@ -204,7 +204,7 @@ To get the service to work a REST service, you need to add the following configu
       &lt;/behavior&gt;
     &lt;/endpointBehaviors&gt;
   &lt;/behaviors&gt;
-&lt;/system.serviceModel&gt;</pre>The usage of [WebGet] and the webHttp tag are covered in <a href="http://dotnetbyexample.blogspot.com/2008/11/writing-simple-http-proxy-using-wcf.html">a previous post</a> so I'm skipping the details on that. Run the console application, and you will see something like this in your command window: 
+&lt;/system.serviceModel&gt;</pre>The usage of [WebGet] and the webHttp tag are covered in <a href="http://localjoost.github.io/2008/11/29/writing-simple-http-proxy-using-wcf.html">a previous post</a> so I'm skipping the details on that. Run the console application, and you will see something like this in your command window: 
 <strong>Number of base addresses : 1
         http://localhost:8002/CloudMapper
 

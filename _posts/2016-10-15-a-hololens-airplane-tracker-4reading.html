@@ -216,7 +216,7 @@ private void DeleteAircraft(IEnumerable&lt;string&gt; keys)
 <h2>Wiring up some stuff in Unity </h2>
 <p>First of all, we drag the DataService and AircraftLoader Script from the App/Scripts folder on top of the HologramCollection’s inspector page. Then we drag AircraftHolder prefab from App/Prefabs on top of the AircraftLoader’s “Aircraft” property. Net result should be this:</p>
 <p><a href="http://www.schaikweb.net/dotnetbyexample/A-HoloLens-airplane-tracker-4Reading-dat_A318/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-HoloLens-airplane-tracker-4Reading-dat_A318/image_thumb.png" width="354" height="240"></a></p>
-<p><em>Please make sure the Data Url property of the Data Service indeed points to the place where your data service <a href="http://dotnetbyexample.blogspot.com/2016/10/a-hololens-airplane-tracker-1.html" target="_blank">as created in the first post</a> is published.</em></p>
+<p><em>Please make sure the Data Url property of the Data Service indeed points to the place where your data service <a href="http://localjoost.github.io/2016/10/05/a-hololens-airplane-tracker-1.html" target="_blank">as created in the first post</a> is published.</em></p>
 <p>Then go to the App/Prefabs folder, open the AircraftHolder prefab itself, and drag the (still default) AircraftController on top of the AircraftHolder’s inspector page.</p>
 <p><a href="http://www.schaikweb.net/dotnetbyexample/A-HoloLens-airplane-tracker-4Reading-dat_A318/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-HoloLens-airplane-tracker-4Reading-dat_A318/image_thumb_3.png" width="354" height="178"></a></p>
 <p>Save the scene, then rebuild the app with File/Build settings etc. Go back to Visual Studio once the building is finished.</p>
@@ -290,7 +290,7 @@ private void DeleteAircraft(IEnumerable&lt;string&gt; keys)
       headingText).Trim();
   _text.text = text;
 }</pre>
-<p>Just some clever formatting to prevent empty postfixes like km/h and degrees in the label. By the way – stick to ye olde string.Format and don’t be tempted to use C# 6 string interpolation <a href="http://dotnetbyexample.blogspot.com/2016/07/gotchathe-associated-script-could-not.html" target="_blank">or you will be sorry</a> (unless you put it between “#if UNITY_UWP – #endif). Anyway, on to the next routine, that actually does all the aircraft manipulation:</p><pre>private void SetLocationOrientation()
+<p>Just some clever formatting to prevent empty postfixes like km/h and degrees in the label. By the way – stick to ye olde string.Format and don’t be tempted to use C# 6 string interpolation <a href="http://localjoost.github.io/2016/07/02/gotchathe-associated-script-could-not.html" target="_blank">or you will be sorry</a> (unless you put it between “#if UNITY_UWP – #endif). Anyway, on to the next routine, that actually does all the aircraft manipulation:</p><pre>private void SetLocationOrientation()
 {
   SetNewFlightText();
 
@@ -318,7 +318,7 @@ private Vector3 GetLocalCoordinates(Coordinate c)
     c.Alt != null ? (float)c.Alt / 2000.0f : 0f,
     (float)c.Y / 15000);
 }</pre>
-<p>I already discussed the how and why of scaling the down coordinates 15000 times in horizontal direction and 2000 times in vertical direction in a <a href="http://dotnetbyexample.blogspot.com/2016/09/converting-latlon-coordinates-to-local.html" target="_blank">recent blog post about converting lat/lon/alt coordinates into the Unity3D X/Y/Z system</a>, so I am not going through that again, because the next part is a lot more interesting. First I will show the last method, GetVerticalAngle</p><pre>private float GetVerticalAngle()
+<p>I already discussed the how and why of scaling the down coordinates 15000 times in horizontal direction and 2000 times in vertical direction in a <a href="http://localjoost.github.io/2016/09/28/converting-latlon-coordinates-to-local.html" target="_blank">recent blog post about converting lat/lon/alt coordinates into the Unity3D X/Y/Z system</a>, so I am not going through that again, because the next part is a lot more interesting. First I will show the last method, GetVerticalAngle</p><pre>private float GetVerticalAngle()
 {
   var tracksize = _flightData.Track.Count;
   if (tracksize &gt; 2)

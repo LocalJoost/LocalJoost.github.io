@@ -31,7 +31,7 @@ if (eventName == "touchpad position")
     _eventDisplayers.Add(controller.gameObject.name.ToLower(), controller);
 }</pre>
 
-I simply find the back by looking in that dictionary and activating the SingleShot Controller. This class is part of a prefab that <a href="https://dotnetbyexample.blogspot.com/2019/09/migrating-to-mrtk2-setting-up-and.html" target="_blank">I used and explained in an earlier post</a>.<pre style="font-size: 12px;">private void ShowEvent(string eventName)
+I simply find the back by looking in that dictionary and activating the SingleShot Controller. This class is part of a prefab that <a href="https://localjoost.github.io/2019/09/26/migrating-to-mrtk2-setting-up-and.html" target="_blank">I used and explained in an earlier post</a>.<pre style="font-size: 12px;">private void ShowEvent(string eventName)
 {
     var controller = GetControllerForEvent(eventName);
     if (controller != null)

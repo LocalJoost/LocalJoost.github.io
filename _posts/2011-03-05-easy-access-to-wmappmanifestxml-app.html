@@ -96,7 +96,7 @@ namespace LocalJoost.Utilities
   }
 }</pre>
 
-<p>I got some feedback from <a href="http://twitter.com/#!/mahoekst" target="_blank">Matthijs Hoekstra</a>&#160; on the <a href="http://dotnetbyexample.blogspot.com/2011/01/standard-about-page-for-windows-phone-7.html" target="_blank">Standard About Page</a> that it actually showed<em> the version number of the dll in which the AboutViewModel is stored</em>, and not that of the app. This is because Assembly.GetExecutingAssembly() is used. There is also Assembly.GetCallingAssembly() but that shows the version of System.Windows.dll. What we <em>need</em> is Assembly.GetEntryAssembly() but that’s not available in the current version of the Windows Phone 7 framework. But we can now adapt the first part of the AboutViewModel as follows:</p>
+<p>I got some feedback from <a href="http://twitter.com/#!/mahoekst" target="_blank">Matthijs Hoekstra</a>&#160; on the <a href="http://localjoost.github.io/2011/01/20/standard-about-page-for-windows-phone-7.html" target="_blank">Standard About Page</a> that it actually showed<em> the version number of the dll in which the AboutViewModel is stored</em>, and not that of the app. This is because Assembly.GetExecutingAssembly() is used. There is also Assembly.GetCallingAssembly() but that shows the version of System.Windows.dll. What we <em>need</em> is Assembly.GetEntryAssembly() but that’s not available in the current version of the Windows Phone 7 framework. But we can now adapt the first part of the AboutViewModel as follows:</p>
 
 <pre>public class AboutViewModelBase : ViewModelBase
 {
