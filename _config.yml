@@ -15,18 +15,18 @@
 # in the templates via {{ site.myvariable }}.
 title: DotNetByExample - The Next Generation
 email: joostvanschaik@outlook.com
-description: >- # this means to ignore newlines until "baseurl:"
+description: "Code samples and how-to's in the Microsoft stack, currently concentrating on Mixed Reality"
 
 twitter_username: localjoost
 github_username: LocalJoost
-minimal_mistakes_skin: default
+minimal_mistakes_skin: mint
 search: true
 
 # Build settings
 markdown: kramdown
 remote_theme: mmistakes/minimal-mistakes
 # Outputting
-#permalink: /:categories/:title/
+permalink: /:categories/:title/
 paginate: 5 # amount of posts to show
 paginate_path: /page:num/
 timezone: Europe/Amsterdam
@@ -58,9 +58,7 @@ plugins:
 author:
   name   : "Joost van Schaik"
   avatar : "/assets/images/bio-photo.jpg"
-  bio    : "Senior Mixed Reality Software Architect. Windows Development MVP.
-Mixed Reality, HoloLens, Unity, C#, Xamarin, .NET.
-Gardener, Lover of Nature, Amateur philosopher."
+  bio    : "Senior Mixed Reality Software Architect. Windows Development MVP. Mixed Reality, HoloLens, Unity, C#, Xamarin, .NET. Gardener, Lover of Nature, Amateur philosopher."
   links:
     - label: "Twitter"
       icon: "fab fa-fw fa-twitter-square"
@@ -103,6 +101,8 @@ defaults:
     values:
       layout: single
       author_profile: true
+
+repository: "LocalJoost/LocalJoost.github.io"
 
 category_archive:
   type: liquid
