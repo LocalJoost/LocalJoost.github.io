@@ -3,7 +3,6 @@ permalink: /about/
 title: "About"
 ---
 ## About this blog
-
 This blog attempts to be a collection of how-to examples in the Microsoft software stack - things that may take forever to find out, especially for the beginner. I see it as my way to return something to the Microsoft community in exchange for what I learned from it. I continue the journey here that I started on [DotNetByExample on Blogger](https://dotnetbyexample.blogspot.com). All content has been migrated to this new blog.
 
 **Motto: talk is cheap, show me the code!**
