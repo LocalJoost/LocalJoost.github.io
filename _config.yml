@@ -59,6 +59,7 @@ author:
   name   : "Joost van Schaik"
   avatar : "/assets/images/bio-photo.jpg"
   bio    : "Senior Mixed Reality Software Architect. Windows Development MVP. Mixed Reality, HoloLens, Unity, C#, Xamarin, .NET. Gardener, Lover of Nature, Amateur philosopher."
+  location: Amersfoort, the Netherlands
   links:
     - label: "Twitter"
       icon: "fab fa-fw fa-twitter-square"
@@ -103,6 +104,12 @@ defaults:
       author_profile: true
 
 repository: "LocalJoost/LocalJoost.github.io"
+
+analytics:
+  provider               : "google" # false (default), "google", "google-universal", "google-gtag", "custom"
+  google:
+    tracking_id          : "UA-1201995-13"
+    anonymize_ip         : false
 
 category_archive:
   type: liquid
