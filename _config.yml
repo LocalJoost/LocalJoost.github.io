@@ -16,6 +16,7 @@
 title: DotNetByExample - The Next Generation
 email: joostvanschaik@outlook.com
 description: "Code samples and how-to's in the Microsoft stack, currently concentrating on Mixed Reality"
+subtitle: "\"Talk is cheap, show me the code\""
 
 twitter_username: localjoost
 github_username: LocalJoost
@@ -60,7 +61,7 @@ plugins:
 author:
   name   : "Joost van Schaik"
   avatar : "/assets/images/bio-photo.jpg"
-  bio    : "Senior Mixed Reality Software Architect. Windows Development MVP. Mixed Reality, HoloLens, Unity, C#, Xamarin, .NET. Gardener, Lover of Nature, Amateur philosopher."
+  bio    : "Senior Mixed Reality Software Architect.  Windows Development MVP.  Mixed Reality, HoloLens, Unity, .NET, Azure"
   location: Amersfoort, the Netherlands
   links:
     - label: "Twitter"
