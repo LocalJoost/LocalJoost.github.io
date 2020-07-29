@@ -23,6 +23,27 @@ html {
   }
 }
 
+.custom_site-logo img {
+  max-height: 4rem;
+}
+.custom_site_title
+{
+  font-weight: bold !important;
+  font-size: 20px!important;
+
+  @include breakpoint($medium) {
+    font-size: 22px!important;
+  }
+
+  @include breakpoint($large) {
+    font-size: 24px!important;
+  }
+
+  @include breakpoint($x-large) {
+    font-size: 28px !important;
+  }
+}
+
 .page__content pre
 {
 background-color: #D5FFFF;
@@ -32,3 +53,4 @@ background-color: #D5FFFF;
     border-bottom: black thin dotted;
     white-space: pre-wrap;
 }
+
