@@ -26,6 +26,7 @@ html {
 .custom_site-logo img {
   max-height: 4rem;
 }
+
 .custom_site_title
 {
   font-weight: bold !important;
@@ -46,7 +47,7 @@ html {
 
 .page__content pre
 {
-background-color: #D5FFFF;
+	background-color: #D5FFFF;
     border-right: black thin dotted;
     border-top: black thin dotted;
     border-left: black thin dotted;
@@ -54,3 +55,22 @@ background-color: #D5FFFF;
     white-space: pre-wrap;
 }
 
+.customlink
+{
+	margin-top:6px
+}
+
+.custom_link_image_title
+{
+  margin-left: 2px;
+  margin-right: 3px;
+  height: 11px; 
+  width: 11px!important; 
+
+  @include breakpoint($x-large) {
+    height: 12px; 
+    width: 12px!important;
+  }
+
+
+}
