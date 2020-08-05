@@ -234,7 +234,7 @@ namespace LocalJoost.Layar
     #endregion
   }
 }</pre>
-<p>Here comes my little <a href="http://localjoost.github.io/2009/11/18/simple-unity-helper-for-making-class.html">UnityResolver</a> into play, which was described earlier in this blog. What this LayarService basically does is accept a layer name, burp the call into a log file, get the lat, lon, radius, and accuracy from the query string, dump the rest of the query string parameters into a dictionary, use Unity to determine which ILayerProvider implementation is to be loaded, call it’s Get method with the collected data, and return the result.</p>
+<p>Here comes my little <a href="http://localjoost.github.io/simple-unity-helper-for-making-class">UnityResolver</a> into play, which was described earlier in this blog. What this LayarService basically does is accept a layer name, burp the call into a log file, get the lat, lon, radius, and accuracy from the query string, dump the rest of the query string parameters into a dictionary, use Unity to determine which ILayerProvider implementation is to be loaded, call it’s Get method with the collected data, and return the result.</p>
 <p>Now there are only six steps to make this actually work. First, you define a web application project. You reference the LocalJoost.Layar project, System.ServiceModel.dll, System.Runtime.Serialization, every file in the Enterprise Library that starts with &quot;Microsoft.Practices.Unity&quot; (I have 5), and Microsoft.Practices.EnterpriseLibrary.Logging.dll.</p>
 <p>The second step is: add a text file to the web application, for instance &quot;LayarService.txt&quot;. You enter the following text in it:</p>
 <pre>&lt;%@ ServiceHost Language=&quot;C#&quot; 

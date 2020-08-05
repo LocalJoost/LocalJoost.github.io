@@ -16,7 +16,7 @@ blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-64414828688429112
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/08/serializing-objects-to-compressed-xml.html
 ---
 
-Elaborating upon the string extension methods I created for <a href="http://localjoost.github.io/2009/08/12/using-extension-methods-to-compress-and.html">compressing and decompressing strings to and from a byte array</a>, it turned out fairly easy to create another set of compress / decompress methods to serialize any type of <em>object</em> to and from a byte array containing compressed XML.
+Elaborating upon the string extension methods I created for <a href="http://localjoost.github.io/using-extension-methods-to-compress-and">compressing and decompressing strings to and from a byte array</a>, it turned out fairly easy to create another set of compress / decompress methods to serialize any type of <em>object</em> to and from a byte array containing compressed XML.
 
 I once again took the StringZipExtensions class and added the following methods to compress any old object to a byte array:<pre>/// &lt;summary&gt;
 /// XmlSerializes the object to a compressed byte array

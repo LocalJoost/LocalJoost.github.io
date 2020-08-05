@@ -37,7 +37,7 @@ For my current private R&D project I wanted to store 'task set' objects (in code
 
 I could have redesigned my task sets to smaller units, but that would hurt the efficiency of the process I had in mind. 
 
-Based upon the <a href="http://localjoost.github.io/2009/08/15/serializing-objects-to-compressed-xml.html">StringZipExtensions class I blogged about</a> that can serialize and deserialize any old object to and from compressed XML (which you can download <a href="http://schaikweb.net/dotnetbyexample/StringZipExtensions.zip">here</a>) I created the following extension methods, which enable you to store objects as a GZip compressed set of bytes on the Azure queue and retrieve them again:<pre>using LocalJoost.Utilities.Compression;
+Based upon the <a href="http://localjoost.github.io/serializing-objects-to-compressed-xml">StringZipExtensions class I blogged about</a> that can serialize and deserialize any old object to and from compressed XML (which you can download <a href="http://schaikweb.net/dotnetbyexample/StringZipExtensions.zip">here</a>) I created the following extension methods, which enable you to store objects as a GZip compressed set of bytes on the Azure queue and retrieve them again:<pre>using LocalJoost.Utilities.Compression;
 using Microsoft.Samples.ServiceHosting.StorageClient;
 
 namespace LocalJoost.Utilities.Azure

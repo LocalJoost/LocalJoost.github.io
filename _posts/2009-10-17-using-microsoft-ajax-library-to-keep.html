@@ -15,7 +15,7 @@ blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/10/using-microsoft-a
 
 This is not strictly .NET but more of a Javascript trick, but nevertheless, one that you might need. It is a simple trick, and actually requires much more text to decribe the problem than the actual solution ;-)
 
-Javascript supports the notion of object oriented programming, to an extent. There's plenty to find about that on the web and I don't care to repeat that. One of the more annoying things of Javascript is that it does support callbacks, but is quite careless about object context. This happens for instance when you use callbacks to process data coming back from calling WCF services. Suppose, for instance, I take <a href="http://localjoost.github.io/2008/02/23/calling-wcf-service-from-javascript.html">my project in which I explain how to get data from WCF services in Javascript</a> and rewrite the Javascript code as an object:<pre>function CallBackProcessor()
+Javascript supports the notion of object oriented programming, to an extent. There's plenty to find about that on the web and I don't care to repeat that. One of the more annoying things of Javascript is that it does support callbacks, but is quite careless about object context. This happens for instance when you use callbacks to process data coming back from calling WCF services. Suppose, for instance, I take <a href="http://localjoost.github.io/calling-wcf-service-from-javascript">my project in which I explain how to get data from WCF services in Javascript</a> and rewrite the Javascript code as an object:<pre>function CallBackProcessor()
 {
   this.CallSingle = function()
   {
