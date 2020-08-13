@@ -1,4 +1,4 @@
----
+﻿---
 permalink: /about/
 title: "About"
 ---
@@ -6,15 +6,16 @@ title: "About"
 This blog attempts to be a collection of how-to examples in the Microsoft software stack - things that may take forever to find out, especially for the beginner. I see it as my way to return something to the Microsoft community in exchange for what I learned from it. I continue the journey here that I started on [DotNetByExample on Blogger](https://dotnetbyexample.blogspot.com). All content has been migrated to this new blog.
 
 ## About me  
-Joost van Schaik, pronounced [like this](http://www.schaikweb.net/dotnetbyexample/jvs.wma)   
-Senior Developer / Software Architect, Windows Development MVP  
-Mixed Reality, HoloLens, Unity, C#, Xamarin, .NET.  
+Joost van Schaik, pronounced [like this](http://www.schaikweb.net/dotnetbyexample/jvs.wma).   
+Senior Mixed Reality Software Architect.
+Windows Development MV & Windows Insider MVP .
+Mixed Reality, HoloLens (2), Unity, C#, Xamarin, .NET.  
 Rogue R&D hacker.  
 Gardener, Lover of Nature, Amateur philosopher.  
 Twitter High Volume Achievement Unlocked.  
 Most likely place to find me: in front of a keyboard.  
 Most likely place for me to die: in front of a keyboard. 
-Name 
+
 
 A.k.a. *LocalJoost*.
 ## About getting support
