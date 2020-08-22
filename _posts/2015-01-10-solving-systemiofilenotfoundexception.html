@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: "“System.IO.FileNotFoundException” using controls from another assembly in Xamarin Forms on iOS."
 date: '2015-01-10T22:53:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -12,6 +12,7 @@ tags:
 modified_time: '2015-01-11T09:04:42.753+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7011598967455147428
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/01/solving-systemiofilenotfoundexception.html
+comment_issue_id: 198
 ---
 
 <p>Disclaimer: I am at the early stages of learning <a href="http://xamarin.com/" target="_blank">Xamarin</a> and may be just writing some stupid and obvious things. That’s just the way it is. This blog is as much a source of information as a it is a record of my learning process. I am a Windows Phone developer trying to make my code usable on other platforms.</p> <p>I was building a solution as follows</p> <ul> <li>I created a Xamarin solution XamarinPclControlBug for <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a>, Android and iOS using the “Blank App (Xamarin.Forms portable)” template.  <li>I created a separate extra PCL PclControl that would hold some controls I was creating.  <li>I then upgraded the whole solution to Forms 1.3.0 <a href="http://developer.xamarin.com/guides/cross-platform/macios/updating-xamarin-forms-apps/" target="_blank">using this step-by-step procedure</a>  <li>I added references to PclControl in all four other projects of XamarinPclControlBug  <li>I created a StartPage.xaml and made sure that was the start page in XamarinPclControlBug (portable) by setting MainPage to new StartPage() in de App constructor  <li>I placed my custom control (and only that custom control) on StartPage.xaml  <li>I deployed on Android and Windows Phone, and all was rosy.  <li>I deployed on iOS, and I got:<br><strong>System.IO.FileNotFoundException: Could not load file or assembly 'PclControl' or one of its dependencies. The system cannot find the file specified.</strong></li></ul> <p>You can check your references and deployment settings all you want, my friends, it turns out there’s probably a bug in Xamarin Forms’ iOS implementation. If you use controls <em>and only controls</em> from a PCL or dll that does not contain other code that is called from the app, apparently Xamarin on iOS ‘forgets’ to load/deploy the assembly (or something like that). But there is a work around.</p> <p>In my <a href="https://github.com/LocalJoost/XamarinPclControlBug" target="_blank">sample solution</a> I made a trivial control MyButton which is simply a child class of Button that does nothing special. The PCL PclControl contains this only this code:</p><pre>using Xamarin.Forms;

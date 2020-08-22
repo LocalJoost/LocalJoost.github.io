@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: A light-weight .NET framework for publishing Layar layers using WCF and Unity (C#)
 date: '2009-11-18T20:05:00.004+01:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ tags:
 modified_time: '2010-11-29T09:01:11.639+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2016016623520472701
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/11/light-weight-net-framework-for.html
+comment_issue_id: 36
 ---
 
 <p>Thus speaks Wikipedia: </p> <blockquote>   <p>Augmented reality (AR) is a term for a live direct or indirect view of a physical real-world environment whose elements are merged with (or augmented by) virtual computer-generated imagery - creating a mixed reality.</p> </blockquote> <p>Amen. Fact is that AR is currently as hot a nuclear reactor core making its way to China, and that everyone and his aunt are scrambling to get a piece of the action. So why not me ;-)</p> <p>On November 9th this year, my colleague <a href="http://www.vicrea.nl/nl-NL/sitecore/content/Campagnes/Beurs/Overheid%20en%20ict/Medewerkers/Jeroen%20Prins.aspx">Jeroen Prins</a>, who did some prototyping with <a href="http://layar.com/">Layar</a>, pushed a HTC Hero in my hands with the words “see if you can do something nice with it”. So in a few evenings I created a little framework for making Layar layers in an easier and consistent way. It is based upon some of Jeroen’s prototype, but since he insisted on not having credits for this I won’t give him any ;-). The framework uses the Enterprise Library, most notably Unity, and I assume you are familiar with it.</p> <p>Since WCF can be bent in almost every direction as far as generating content is concerned, I decided to use it for my solution. I started, as you always start, with the data contract. The object model is pretty simple: a Layer object has Point-Of-Interest (Poi) objects, a Poi has Action objects. If you study the Layar <a href="http://layar.pbworks.com/GetPointsOfInterest">GetPointsOfInterest</a> page for a few minutes you will see the implementation is WCF 101. Maybe 102 ;-). Contrary to my habits, I forego on the comments – those are all on the GetPointsOfInterest page. First, the Action object:</p> <pre>using System.Runtime.Serialization;

@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Migrating to MRTK2 - looking a bit closer at tapping, and trapping 'duplicate' events
 date: '2019-05-29T13:30:00.000+02:00'
 orgauthor: Joost van Schaik
@@ -12,6 +12,7 @@ tags:
 modified_time: '2019-05-29T13:30:37.301+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6656709867011580476
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2019/05/migrating-to-mrtk2-looking-bit-closer.html
+comment_issue_id: 331
 ---
 
 <h2>Intro</h2><p>In my <a href="https://localjoost.github.io/migrating-to-mrtk2-iinputclickhandler" target="_blank">previous post</a> I wrote about how game objects can be made clickable (or 'tappable') using the <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank"><a href="https://github.com/Microsoft/MixedRealityToolkit-Unity" target="_blank">Mixed Reality Toolkit</a> 2, and how things changed from MRTK1. And in fact, when you deploy the app to a HoloLens 1, my demo actually works as intended. But then I noticed something odd in the editor, and made a variant of the app that went with the previous blog post to see how things work- or might work- in <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> 2.</p><h2>Debugging ClickyThingy ye olde way</h2><p>Like I wrote before, it's possible to <a href="https://localjoost.github.io/debugging-c-code-with-unity-il2cpp" target="_blank">debug the C# code of a running IL2CPP C++ app running on a HoloLens</a>. To debug using breakpoints is a bit tricky when you are dealing with rapidly firing event - stopping through the debugger might actually have some influence on the order events play out. So I resorted to the good old "Console.WriteLine-style" of debugging, and added a floating text in the app that shows what's going on.</p><p>The ClickableThingy behaviour I made in the previous post then looks like this:</p><pre style="font-size: 12px;">using Microsoft.MixedReality.Toolkit.Input;

@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: One ForEach to rule them all
 date: '2010-01-19T20:32:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -14,6 +14,7 @@ tags:
 modified_time: '2010-09-30T08:34:01.984+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4875153376491027508
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/01/one-foreach-to-rule-them-all.html
+comment_issue_id: 38
 ---
 
 <p>I ran into this when I was investigating functional programming in C#. That’s been around for a while, but apart from <em>using</em> it for traversing or modifying collections or lists, I never actually <em>created</em> something that was making use of a function parameter. </p> <p>Anyway, one of my most used constructs is the ForEach&lt;T&gt; method of List&lt;T&gt;. I always thought it to be quite annoying that it is only available for List&lt;T&gt;. Not for IList&lt;T&gt;, ICollection&lt;T&gt;, or whatever. Using my trademark solution pattern – the extension method ;-)<br />I tried the following:</p> <pre>using System;

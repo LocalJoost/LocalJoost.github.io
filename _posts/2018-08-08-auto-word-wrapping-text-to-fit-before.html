@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Auto word wrapping a text to fit before a backdrop pane in Mixed Reality apps
 date: '2018-08-08T11:21:00.000+02:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ modified_time: '2018-08-08T11:22:02.859+02:00'
 thumbnail: https://lh3.googleusercontent.com/-RrI1p75YuGY/W2q2G3NQtiI/AAAAAAAAQCE/FACZPJp6OKcx4HVSGYtB-SngzG2NOHTpACHMYCw/s72-c/image_thumb%255B2%255D?imgmax=800
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-630233971717412474
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2018/08/auto-word-wrapping-text-to-fit-before.html
+comment_issue_id: 311
 ---
 
 <h2>Intro</h2><p>As <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality</a> in general and <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> apps in particular become more mainstream, so they become ever more complex, and this reflects in their interfaces. And if, in those user interfaces, we need to communicate something more complex to user, text is in most cases still the most efficient way of doing that.</p><p>Now a floating text by itself may not be very readable, so you might want to use some kind of backdrop. I usually take a kind of blueish background with white text, as that turns out the most readable. And yeah, I know, it feels a bit 2D Windows-ish – but until someone comes up with a better paradigm, it will have to do.</p><p>A TextMesh in Unity does not have a clue about word wrapping or fitting into a specific 'box' – you need to do that yourself. There is some of that in the <a href="https://github.com/Microsoft/MixedRealityToolkit-Unity" target="_blank">Mixed Reality Toolkit</a> dialog system – but that wraps based on the maximum of characters. If you change the font size, or the size of the backdrop – you will need to start testing again if you message fits. No need for that here.</p><h2>The actual text wrapping</h2><pre style="font-size: 12px;">public static class TextUtilities

@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Aligning XAML elements outside the screen using scaling (for a Facebook-like GUI)
 date: '2013-09-18T13:57:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -12,6 +12,7 @@ tags:
 modified_time: '2013-09-18T15:14:55.463+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5920602106639114920
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/09/aligning-xaml-elements-outside-screen.html
+comment_issue_id: 153
 ---
 
 <p>This is a trick I use to make partial screens outside of the actual <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> viewport, for instance like the <a href="http://www.windowsphone.com/en-us/store/app/facebook/82a23635-5bd9-df11-a844-00237de2db9e" target="_blank">Facebook app for Windows Phone</a> does – that has these ‘side panels’ that slide into view when you tap the “settings” button. Some people like it, some people hate it for being to iOS-y or to Android-y – I just show you how I do it. </p> <p>This a two part blog post. This first one will show you how the XAML trick is being used an why it works – the second one will cover a behavior for animating the screen.</p> <p>I start with a standard Windows Phone app and add the following XAML inside the ContentPanel</p><pre>&lt;Grid x:Name="ContentPanel" Grid.Row="1" Margin="12,0,12,0"&gt;

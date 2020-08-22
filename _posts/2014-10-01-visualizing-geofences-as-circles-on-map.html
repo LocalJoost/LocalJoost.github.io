@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Visualizing geofences as circles on the map in Universal Apps
 date: '2014-10-01T13:00:00.000+02:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2014-10-01T14:14:23.633+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3037603182380013270
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/09/visualizing-geofences-as-circles-on-map.html
+comment_issue_id: 190
 ---
 
 <h3>Intro</h3> <p>If you tried to work with geofences, you may have encountered this problem. You want to have an easy way to show where the darn things are on the map, so you can test the application. This is actually pretty simple, building upon stuff to draw circles on <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 8 I <a href="http://dotnetbyexample.blogspot.nl/2014/02/drawing-circle-shapes-on-windows-phone.html" target="_blank">wrote earlier</a>. </p> <p>What is important to know – there are now more or universally applicable objects to depict a location. The first one is <a href="http://msdn.microsoft.com/en-us/library/windows/apps/windows.devices.geolocation.basicgeoposition.aspx" target="_blank">BasicGeoposition</a> – this is a struct – that basically only holds latitude, longitude and elevation. The second one is <a href="http://msdn.microsoft.com/en-us/library/windows/apps/windows.devices.geolocation.geopoint.aspx" target="_blank">Geopoint</a>. You create a Geopoint from a BasicGeoposition. This kind of wrapper class that allows for setting of some additional location settings – like how coordinates and height should be interpreted. I don’t think any of this stuff is really used yet, but I have the feeling Geopoint is going to get more important over time, and anyway as a GIS person I tend to go with the fullest set of location designation. But you might as just well use just BasicGeoposition as a way to pass on coordinates in a universal app.</p> <h3>Do the math!</h3> <p>This is essentially the same method as I wrote before, but adapted for Geopoint. Some other changes come from my former colleague <a href="www.twitter.com/peshir" target="_blank">Jarno Peschier</a>, who in his typical way saw possibilities to optimize speed up the circle calculation code (and optimizations actually work – I tested). </p><pre>using System;

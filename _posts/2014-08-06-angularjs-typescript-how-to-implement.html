@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: 'AngularJS + TypeScript: how to implement validation'
 date: '2014-08-06T21:12:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -9,6 +9,7 @@ tags:
 modified_time: '2014-08-07T12:32:14.423+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8601457040674097994
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/08/angularjs-typescript-how-to-implement.html
+comment_issue_id: 187
 ---
 
 <h2>Preface</h2> <p>AngularJs supports all kinds of simple client-side validation. The simplest is data-ng-required which basically says a UI element must be filled in before the form is valid. I am picking up where I <a href="http://localjoost.github.io/angularjs-typescript-using-resource-to" target="_blank">left off in my previous post</a> – I am going to make the the phone input screen have validation.</p> <h2>Adapting the view</h2> <p>First of all we are going to tweak the view a little. This is just standard AnguarJS stuff, nothing <a href="http://www.typescriptlang.org/" target="_blank">TypeScript</a> specific here yet:</p><pre style="font-size: 11px">&lt;div&gt;

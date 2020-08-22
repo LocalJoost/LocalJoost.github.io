@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Injecting logic in the middle of an algorithm using “Func<T>” function parameters
 date: '2010-02-28T14:14:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -14,6 +14,7 @@ tags:
 modified_time: '2010-09-30T08:34:01.979+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8538018449022545184
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/02/injection-logic-in-middle-of-algorithm.html
+comment_issue_id: 40
 ---
 
 <p>Sometimes you run into a situation in which you have a very similar complex pieces of logic, that only differ somewhere deep inside. This happens especially when you are dealing with legacy code that requires all kinds of weird initializers. Consider the following example, which is similar to something I ran into deep down in a CSLA library: </p> <pre>private void DataPortal_Fetch(string a, string b, string c)

@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Mixed Reality Toolkit vNext–dependency injection with extension services
 date: '2018-12-08T13:15:00.000+01:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ modified_time: '2018-12-08T14:29:46.363+01:00'
 thumbnail: https://lh3.googleusercontent.com/-ia-FpXBcYxI/XAu1z4O3ioI/AAAAAAAAQik/0335F0-T4LogtlYzkIMB-v3O7qXlvB9ZgCHMYCw/s72-c/image_thumb%255B4%255D?imgmax=800
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8747334500105154236
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2018/12/mixed-reality-toolkit-vnextdependency.html
+comment_issue_id: 319
 ---
 
 <h2>Intro</h2><p>The <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank"><a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality Toolkit</a> vNext comes with an awesome mechanism for dependency injection. This also takes away a major pain point – all kinds of behaviors that are singletons that are called from everywhere, leading to all kind of interesting timing issues - and tightly coupled classes. This all ends wit extension services, which piggyback on the plugin structure of the MRKT-vNext. In this post I will describe how you make, configure and use such an extension service</p><h2>Creating an extension service</h2><p>A service that can be used by the extension service framework (and be found by the inspector dropdown that I will show later) needs to implement <strong>IMixedRealityExtensionService<em> </em></strong>at the very least. But of course we want to have the service make do something <em>useful</em> so I made a child interface:</p><pre style="font-size: 11px;">using Microsoft.MixedReality.Toolkit.Core.Interfaces;

@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Styles in Xamarin Forms don't work properly in UWP .NET Native - here is how to fix it
 date: '2017-07-15T13:15:00.000+02:00'
 orgauthor: Joost van Schaik
@@ -10,6 +10,7 @@ modified_time: '2017-07-17T09:55:05.227+02:00'
 thumbnail: https://lh3.googleusercontent.com/-3LgkRegYy8w/WWn5GBDCI2I/AAAAAAAAPHI/WKXI_MuKRig5COHc-ktatwtKB6Okq4RGQCHMYCw/s72-c/image_thumb%255B4%255D?imgmax=800
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-131842386141738117
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2017/07/styles-in-xamarin-forms-dont-work.html
+comment_issue_id: 285
 ---
 
 <h2>Intro</h2><p>Xamarin Forms is awesome. If you have learned XAML from WPF, Silverlight, Windows Phone, Universal Windows Apps or UWP, you can jump right in using the XAML you know (or at least something that looks remarkably familiar) and start to make apps that will run cross platform on iOS, Android and UWP. So potentially your app cannot only run on phones but also on XBox, HoloLens and PCs. </p><h2>OnPlatform FTW!</h2><p>One of the coolest thing is the OnPlatform construct. For instance, you can have something this:</p><pre style="font-size: 11px;">&lt;Style TargetType="Label" x:Key="OtherTextStyle" &gt;

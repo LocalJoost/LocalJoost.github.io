@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Passing event arguments to the WinRT EventToCommandBehavior
 date: '2012-11-20T18:00:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2012-11-20T21:58:41.172+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6538955592077262268
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/11/passing-eventargs-to-winrt.html
+comment_issue_id: 124
 ---
 
 <p>This week my fellow MVP <a href="http://www.twitter.com/@scottisafool" target="_blank">Scott Lovegrove</a> contacted me and asked if and how he could pass the result of an event to my WinRT <a href="http://dotnetbyexample.blogspot.nl/2012/07/a-winrt-behavior-to-mimic-eventtocommand.html" target="_blank">EventToCommandBehavior</a> and/or <a href="http://dotnetbyexample.blogspot.nl/2012/11/a-winrt-behavior-to-mimic.html" target="_blank">EventToBoundCommandBehavior</a>. I replied this was currently not supported, but that would not be hard to make. He acknowledged that, and asked if he could mail some code. Since I am not very possessive of ‘my’ libraries, and am a lazy as any programmer should be, I responded with giving him developer access to <a href="http://win8nl.codeplex.com/" target="_blank">Win8nl</a>. He actually took up the challenge, and submitted the code. </p> <p>Both EventToCommandBehavior and EventToBoundCommandBehavior now sport an extra property:</p><pre>public bool PassEventArgsToCommand { get; set; }</pre>

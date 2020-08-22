@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Google Maps for Windows Phone 7 using the Bing Maps Control
 date: '2010-10-19T21:58:00.005+02:00'
 orgauthor: Joost van Schaik
@@ -15,6 +15,7 @@ modified_time: '2011-04-20T11:34:57.127+02:00'
 thumbnail: http://lh4.ggpht.com/_QXPoKuE9q6k/TL34RlCoq_I/AAAAAAAAF3E/hETIGlrGTxc/s72-c/GoogleMaps_thumb%5B1%5D.png?imgmax=800
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2204167515045586191
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/10/google-maps-for-windows-phone-7.html
+comment_issue_id: 54
 ---
 
 <p><a href="http://lh6.ggpht.com/_QXPoKuE9q6k/TL34QFb8RYI/AAAAAAAAF3A/3w9wdgAszHI/s1600-h/GoogleMaps%5B3%5D.png"><img style="background-image: none; border-right-width: 0px; margin: 0px 14px 0px 0px; padding-left: 0px; padding-right: 0px; display: inline; float: left; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px" title="GoogleMaps" border="0" alt="GoogleMaps" align="left" src="http://lh4.ggpht.com/_QXPoKuE9q6k/TL34RlCoq_I/AAAAAAAAF3E/hETIGlrGTxc/GoogleMaps_thumb%5B1%5D.png?imgmax=800" width="252" height="477" /></a>As I write this, we are less than 25 hours away from the moment the first <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> devices are released into the wild – in the Netherlands, that is. The marketplace is filling up nicely already. Some things are pretty obviously missing. And you wonder why, because they would be quite easy to make. </p>  <p>I hereby dare Google to publish a Google Maps application in the <a href="http://create.msdn.com/" target="_blank">Windows Phone 7 Marketplace</a>. Why? Because if <em>they</em> don’t do it, someone else probably will, and probably pretty fast, too. See the screenshot to the left. I assure you – this is no fake. What you see here is the Google Maps satellite layer <em>with the Street layer on top of it, with a 40% opacity, </em>showing a piece of the city center of Amersfoort, Netherlands. It took me about 90 lines of code and 18 lines of XAML. </p>  <p>Setting up a basic Bing Map control is easy as cake. You find the grid “Contentpanel”, and you plonk a Map in it, preferably using Blend:</p>  <p>&#160;</p>  <p>&#160;</p>  <p>&#160;</p>  <p>&#160;</p>  <p>&#160;</p>  <p>&#160;</p>  <p>&#160;</p>  <pre>&lt;Microsoft_Phone_Controls_Maps:Map 

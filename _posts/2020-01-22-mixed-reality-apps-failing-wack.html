@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Mixed Reality apps failing the WACK - revisited
 date: '2020-01-22T07:57:00.000+01:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ tags:
 modified_time: '2020-01-22T07:57:22.141+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3291513647731727564
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2020/01/mixed-reality-apps-failing-wack.html
+comment_issue_id: 344
 ---
 
 <h2>Intro</h2><p>Last September I wrote <a href="http://localjoost.github.io/migrating-to-mrtk2submitting-hololens-2" target="_blank">about various hoops you had to jump through</a> to get a <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality</a> app to appear in the store and not have it to fail&nbsp; the Windows Application Certification Toolkit (WACK). It's time for a little update, since part of what I wrote is no longer necessary, and some things have changed subtly.</p><h2>The good news</h2><p>I wrote how you manually had to mess with Package.AppManifest.xml, particularly how you had to remove the DirectX 10 dependency to make it (still) downloadable for <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> 1 devices. Provided you have been diligently installing the service updates that are issued for this device, by now your HoloLens 1 should have been updated to no longer reject apps that have this requirement. So no need to take this step anymore.</p><h2>The bad news</h2><p>The trick I wrote how to make sure some unsupported DLLs were not included does not work anymore. We have to resort to more drastic measures.</p><h2>The problem</h2><p>To recap: if you generate a C++ solution from the recommended Unity version (2018.4.x, LTS branch) you get the following errors in the WACK</p><ul><li>HolographicAppRemoting.dll has failed the AppContainerCheck check.

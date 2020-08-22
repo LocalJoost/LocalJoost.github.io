@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Preventing high speed socket communication on Windows Phone 8 going south when using async/await
 date: '2012-12-16T20:15:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2012-12-18T09:42:07.459+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-9112032571609545586
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/12/preventing-high-speed-socket.html
+comment_issue_id: 125
 ---
 
 <p>Currently I am working on a <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 8 action game in which you can fight a kind of duel. This involves pairing the phones via NFC and then obtaining a socket trough which the phones can exchange game information. Liking to steal from examples myself (why do you think I name my blog this way, eh?) I stole code from the <a href="http://code.msdn.microsoft.com/wpapps/Bluetooth-app-to-app-sample-890f8303?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Bluetooth app to app sample at MSDN</a>. Now this is a great sample but it has one kind of problem for me. </p> <p>I’ll skip the pairing, the obtaining of the socket and the definition of the data reader – that’s all documented in the MSDN sample. The method to send a message to the opponent was, in condensed form:</p><pre>public async void SendMessage(string message)

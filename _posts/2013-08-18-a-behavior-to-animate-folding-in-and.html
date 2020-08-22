@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: A behavior to animate folding in and out of GUI elements on Windows Phone
 date: '2013-08-18T17:44:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2013-08-18T19:18:43.480+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-26151757561346976
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/08/a-behavior-to-animate-folding-in-and.html
+comment_issue_id: 148
 ---
 
 <p><a href="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-animate-folding-in-and-out_E2AE/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; margin: 0px 5px 0px 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" align="right" src="http://www.schaikweb.net/dotnetbyexample/A-behavior-to-animate-folding-in-and-out_E2AE/image_thumb.png" width="321" height="341"></a>Like I wrote in my earlier <a href="http://dotnetbyexample.blogspot.nl/2013/08/extension-methods-to-animate-scaling.html" target="_blank">post about extension methods for animating scales and opacity</a> – those were merely building building blocks for something bigger. Today, as part two of my opacity and scaling animation series, I present you a behavior that kind of automates all the stuff you had to do in code. </p> <p>Say hello to UnfoldBehavior, another offspring of the game I have just submitted. All you basically have to do is drag it on top of an element you want to control, bind it’s “Activated” property to a boolean in your view model, and off you go. Activate == true means panel is unfolded (open), Activated == false means panel is closed. Of course, to make stuff more fun, in the <a href="http://www.schaikweb.net/dotnetbyexample/UnfoldBehaviorDemo.zip" target="_blank">demo app that goes with this post</a> I have bound some more properties as well, so you can control how the panel folds and unfolds. How this works, you can see in this video below:</p> <p>&nbsp;</p> <p> <div id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:9ac06265-a948-4970-a720-716549937a82" class="wlWriterEditableSmartContent" style="float: none; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px"><div><object width="448" height="277"><param name="movie" value="http://www.youtube.com/v/tGdQs3gJj-k?hl=en&amp;hd=1"></param><embed src="http://www.youtube.com/v/tGdQs3gJj-k?hl=en&amp;hd=1" type="application/x-shockwave-flash" width="448" height="277"></embed></object></div><div style="width:448px;clear:both;font-size:.8em">The UnfoldBehavior in action</div></div></p> <p>The view model controlling the demo app is laughingly simple:</p><pre style="font-size: 11px">using System.Windows.Input;

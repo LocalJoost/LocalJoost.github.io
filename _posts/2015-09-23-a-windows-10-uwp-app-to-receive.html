@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: A Windows 10 UWP app to receive temperature data from a Raspberry PI2 and control a fan using the Azure Service Bus
 date: '2015-09-23T19:06:00.000+02:00'
 orgauthor: Joost van Schaik
@@ -12,6 +12,7 @@ tags:
 modified_time: '2015-09-23T21:01:47.904+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-42940446761909438
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/09/a-windows-10-uwp-app-to-receive.html
+comment_issue_id: 225
 ---
 
 <h4><font size="2">Part 5 of Reading temperatures &amp; controlling a fan with a RP2, Azure Service Bus and a Microsoft Band</font></h4> <p><a href="http://www.schaikweb.net/dotnetbyexample/A-Windows-10-UWP-to-receive-temperature-_A0B0/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/A-Windows-10-UWP-to-receive-temperature-_A0B0/image_thumb.png" width="157" align="right" height="244"></a><font size="4">Intro</font><br>You cannot deploy apps to a Microsoft Band directly, so there is always a kind of app running on the device to which it is paired on which the code is actually running. Typically this is a phone, but there since this is a Universal <a href="http://www.windows.com" target="_blank">Windows</a> App, there is no reason why it could not run on a PC, like this screenshot shows :). Yet, I have found out that although you can pair a Band to a PC, it will insist on connecting to the app before showing a UI, so you cannot actually <em>use</em> it with a PC. So for the time being, you should use a phone.</p> <p>This blog post will talk about the setup of the app itself, actually excluding most of the stuff related to the Band - and concentrate on how to setup a reasonably componentized app.</p> <p>This app also uses dependency injection, as discussed in my post <a href="http://localjoost.github.io/measuring-temperatures-using-uwp-on" target="_blank">about the app on the Raspberry PI2,</a> but this one makes full use of the MVVM pattern - to be more specific, <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a>, by my fellow MVP (although I can barely stand in his shade)&nbsp; <a href="http://www.twitter.com/lbugnion" target="_blank">Laurent Bugnion</a>. I make use of his ViewModelBase and Messenger, as well as SimpleIoC for some inversion of control, and DispatcherHelper to get help me solve potential issues with background processes having effects on the UI.</p> <p><font size="4">Basic app setup</font><br>The app starts (of course) in App.xaml.cs, of which I show a little excerpt:</p><pre>public App()

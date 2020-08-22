@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Re-enabling the Hanselman trick to easily switch between Hyper-V and VirtualBox after Windows 10 Fall update
 date: '2015-11-14T11:26:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -8,6 +8,7 @@ tags:
 modified_time: '2015-11-14T11:27:29.120+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3215938244997152028
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/11/re-enabling-hanselman-trick-to-easily.html
+comment_issue_id: 231
 ---
 
 <p>Since my first forays into <a href="http://xamarin.com/" target="_blank">Xamarin</a> I have been making great use of <a href="http://www.hanselman.com/blog/SwitchEasilyBetweenVirtualBoxAndHyperVWithABCDEditBootEntryInWindows81.aspx" target="_blank">this awesome trick by Scott Hanselman</a> to quickly change from a configuration with Hyper-V (for <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> and <a href="http://www.windows.com" target="_blank">Windows</a> 10 Mobile development) and Virtual Box (for using emulators based upon <a href="https://www.virtualbox.org/" target="_blank">VirtualBox</a>. I created this dual-boot option in Windows 8.1, and it survived the upgrade to Windows 10 RTM 10240 in July.</p> <p>After updating to the Windows 10 Fall update (aka 1511, aka 10586.3) I found out I had two boot option in my boot screen - "Windows 10" and "Windows 10", <em>both with </em>Hyper-V enabled.</p> <p>Bummer.</p> <p>Fortunately, this is easy to fix.</p> <ol> <li>Open an admin command prompt</li> <li>Enter <strong>bcdedit</strong>.<br>You will get a list of three entries, the first one "Windows Boot Manager" (ignore that) and two called "Windows Boot Loader"</li> <li>Check that both have an entry "hypervisorlaunchtype" set to "Auto"</li> <li>Both boot loaders description "Windows10" and will have an identifier. One will be a {current}, the other a GUID like identifier, like {3bca20f3-367f-11e5-9da7-f5ee60b7b905}. That is the one you can change.</li> <li>Enter <strong>bcdedit /set {your-guid-here} description "No Hyper-V"</strong></li> <li>Enter&nbsp; <strong>bcdedit /set {your-guid-here} hypervisorlaunchtype off </strong></li></ol> <p>If your reboot now, you will once again have two options, one with description Hyper-V, the other still called Windows 10</p> <p><strong><font color="#ff0000">Caveat emptor</font></strong>: playing around with the boot editor can seriously mess up your system. Be sure of what you are doing. Even I usually stay away from this as much as possible. Worked on my machine - I cannot accept any responsibility for it not working on yours :)</p>  

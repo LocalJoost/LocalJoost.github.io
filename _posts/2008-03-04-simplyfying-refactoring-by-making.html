@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Simplyfying refactoring by making things obsolete
 date: '2008-03-04T10:33:00.005+01:00'
 orgauthor: Joost van Schaik
@@ -12,6 +12,7 @@ tags:
 modified_time: '2010-09-30T08:34:51.297+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2173826246078522015
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2008/03/simplyfying-refactoring-by-making.html
+comment_issue_id: 10
 ---
 
 A very simple one I ran into today - when you are refactoring things, sometimes old methods are no longer required, but for the sake of backward compatiblity your want to retain them. To make sure your <em>own</em> code no longer calls the deprecated method, simply use the ObsoleteAttribute:<pre>[ObsoleteAttribute("Warning you want the compiler to give")]

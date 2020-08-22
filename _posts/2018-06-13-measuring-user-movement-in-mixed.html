@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Measuring user movement in Mixed Reality apps
 date: '2018-06-13T15:55:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ modified_time: '2018-06-13T15:55:13.691+02:00'
 thumbnail: https://lh3.googleusercontent.com/-Td4a47pns3o/WyEiP4-HiGI/AAAAAAAAP7Q/eTfzL-noTYcIxCgTvEr3SJfj6hLOZLxmgCHMYCw/s72-c/image_thumb%255B9%255D?imgmax=800
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2391112267054278627
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2018/06/measuring-user-movement-in-mixed.html
+comment_issue_id: 308
 ---
 
 <h2>Intro</h2><p>For a business <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> app I am currently developing - as well as for my app <a href="https://www.microsoft.com/store/productId/9P6SVQQCP2SQ" target="_blank">Walk the World</a> - I needed a way to see if a user is moving or rotating in excess of a certain speed, to make certain control elements that are floating in view disappear when he/she is on the move - and come back when the movement stops. How this is used in detail I will describe later, but first I want to describe an easy helper behaviour to sample and measure speed, movement and rotation.</p><h2>The actual tracker</h2><pre style="font-size: 12px;">using HoloToolkit.Unity;

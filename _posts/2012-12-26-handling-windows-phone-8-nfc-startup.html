@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Handling Windows Phone 8 NFC startup events using the MVVMLight Messenger
 date: '2012-12-26T16:49:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -15,6 +15,7 @@ modified_time: '2013-01-11T22:21:38.566+01:00'
 thumbnail: http://lh4.ggpht.com/-tJ-SVIn8D8s/UNscbRrDjPI/AAAAAAAAKCc/hZVmz-OS7Zg/s72-c/wp_ss_20121226_0002_thumb.png?imgmax=800
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4750936549221110658
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/12/handling-windows-phone-8-nfc-startup.html
+comment_issue_id: 127
 ---
 
 <p><a href="http://lh3.ggpht.com/-DVoWlgNW6co/UNscaHmnlMI/AAAAAAAAKCY/LMZK7CMcEz4/s1600-h/wp_ss_20121226_0002%25255B2%25255D.png"><img title="wp_ss_20121226_0002" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="wp_ss_20121226_0002" align="right" src="http://lh4.ggpht.com/-tJ-SVIn8D8s/UNscbRrDjPI/AAAAAAAAKCc/hZVmz-OS7Zg/wp_ss_20121226_0002_thumb.png?imgmax=800" width="148" height="244"></a>As regular readers of this blog know, I am currently playing around with <a href="http://nl.wikipedia.org/wiki/Near_field_communication" target="_blank">NFC</a> on <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 8. I peeked a little in the <a title="Bluetooth app to app sample at MSDN" href="http://code.msdn.microsoft.com/wpapps/Bluetooth-app-to-app-sample-890f8303?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Bluetooth app to app sample at MSDN</a> to understand how to find a ‘peer’. A peer is defined as the same app, installed on a different phone. So basically you go around installing the app on two phones, start it on phone 1, make sure it calls <a href="http://msdn.microsoft.com/en-us/library/windows/apps/windows.networking.proximity.peerfinder.start.aspx?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">PeerFinder.Start()</a>, tap the phones together and presto - the popup as displayed in the image on the right appears. If you check ‘open app’ – or whatever it shows in the language you have selected – the app is started on the second phone as well.</p> <p>You can distinguish between an app being started by itself, or with the “open app” button by overriding the OnNavigatedTo method from the app’s main startup page. If the app is all started up by itself, the NavigationEventArgs.Uri just contains the name of the main page, for instance “MainPage.xaml”. But if it is started by an NFC event, the Uri ends with the following rather funny long string:</p><pre>ms_nfp_launchargs=Windows.Networking.Proximity.PeerFinder:StreamSocket</pre>

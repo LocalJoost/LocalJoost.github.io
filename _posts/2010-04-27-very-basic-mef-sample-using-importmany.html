@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: A very basic MEF sample using ImportMany
 date: '2010-04-27T21:54:00.016+02:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2012-07-06T17:54:18.730+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5405077393307132223
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/04/very-basic-mef-sample-using-importmany.html
+comment_issue_id: 43
 ---
 
 <p>If you have been programming since the mid-80’s and have been a IT professional for over 17 years it does not happen often anymore that you get mesmerized by a beautiful piece of architecture, but recently it happened twice to me in a very short time, and one of the causes was the Managed Extensibility Framework or MEF. Almost everyone has built some or other extensible architecture at one point but never before I have seen something as simple, elegant and universally applicable as this.</p>  <p>This article describes the setup of a very basic MEF driven application, using VS2010 Pro and .NET 4. It’s kind of abstract: a hosting component that accepts two strings, and calls one or more MEF components to actually do the manipulation. Every component has its own library, which may seem a bit overkill, but I wanted to check out the extensibility to the max. So I started out with an empty solution and then used the following track</p> <span style="font-size: 130%">1. Create a class library &quot;Contracts&quot;</span>   <br />This will contain the interface IMyComponent by which the components communicate:   <pre>namespace Contracts

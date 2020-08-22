@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Binding shapes to the Windows Phone 8.1 Here Maps control
 date: '2015-01-05T20:14:00.000+01:00'
 orgauthor: Joost van Schaik
@@ -12,6 +12,7 @@ tags:
 modified_time: '2015-01-05T20:19:19.305+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1984950811249459917
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/01/binding-shapes-to-windows-phone-81-here.html
+comment_issue_id: 197
 ---
 
 <h2>Intro</h2> <p>Every time I meet someone from the Windows Phone Map team (or get into contact with them in some other way) I talk about the importance of being able to data bind shapes to the maps. Things are definitely improving: XAML elements can displayed using data binding out of the box (we used to need the Windows Phone toolkit for that), but Map Shapes alas not. As the saying goes – ‘if the mountain will not come to Muhammad, then Muhammad must go to the mountain' I took up an old idea <a href="http://dotnetbyexample.blogspot.nl/2012/09/data-binding-shapes-to-winrt-bing-maps.html">that I used for Bing Maps on Windows 8</a> and later <a href="http://dotnetbyexample.blogspot.nl/2012/10/data-binding-shapes-to-new-windows.html">converted to Windows Phone 8.0</a> – and basically adapted it for use in Windows Phone 8.1. Including some bug fixes.</p> <h2>Map display elements recap</h2> <p>You can display either XAML elements on top of the map or use map shapes. XAML elements can be anything, a can be displayed by either adding them in code to the map’s Children property, or by using a MapItemControl, databind it’s ItemSource property to a list object and them define a template for the display using properties from the object bound to the template. Typically, that looks like this:</p><pre>&lt;Maps:MapItemsControl ItemsSource="{Binding Activities}"&gt;

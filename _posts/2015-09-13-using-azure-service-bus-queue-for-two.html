@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Using an Azure Service bus queue for two-way (IoT) communication
 date: '2015-09-13T19:12:00.000+02:00'
 orgauthor: Joost van Schaik
@@ -12,6 +12,7 @@ tags:
 modified_time: '2015-09-15T17:56:35.041+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5632182396830798303
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/09/using-azure-service-bus-queue-for-two.html
+comment_issue_id: 221
 ---
 
 &nbsp; <h4><font size="2">Part 2 of Reading temperatures &amp; controlling a fan with a RP2, Azure Service Bus and a Microsoft Band</font></h4> <p><font size="4">Intro</font><br>In this post I will explain how the <a href="http://www.windows.com" target="_blank">Windows</a> 10 device to which the Band is paired and the Raspberry PI2 'talk' to each other. As the <a href="http://localjoost.github.io/reading-temperatures-controlling-fan" target="_blank">previous post</a> (and the title of this post) already shows, this is done using an Azure Service Bus queue. The code for this is in two of the five projects in the <a href="https://github.com/LocalJoost/TemperatureReaderDemo" target="_blank">demo solution</a> </p> <ul> <li>TemperatureReader.Shared contains the data objects shuttled over the Azure Service Bus queue, as well as all the global definitions  <li>TemperatureReader.ServiceBus contains the actual code for the Service Bus code.</li></ul> <p><font size="4">Getting started</font><br>Before you can get the code working, you will need to define an Azure Service Bus, because you cannot use mine - I like to keep it for demos myself and keep my Azure bill reasonable, thank you :). If you look into the TemperatureReader.Shared project in the <a href="https://github.com/LocalJoost/TemperatureReaderDemo" target="_blank">demo solution</a> you will find a class "Settings" that, amongst other things, has the following pretty long and rather cryptic definition:</p><pre>public static readonly string TemperatureBusConnectionString =

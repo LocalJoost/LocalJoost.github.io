@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: A generic toggle component for HoloLens apps
 date: '2017-02-21T19:36:00.000+01:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ modified_time: '2017-02-22T07:45:14.858+01:00'
 thumbnail: https://i.ytimg.com/vi/1R6uUHetYp8/default.jpg
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2061431843314432013
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2017/02/a-generic-toggle-component-for-hololens.html
+comment_issue_id: 277
 ---
 
 <h2>Intro</h2> <p>The following scenario is one I have seen a lot of times – the user taps on a UI element, and then it and/or a couple of elements need to fade out, disappear, whatever. I suppose every developer has felt this itch that occurs when you basically make something the same the second time around, and you feel there will be a third and a fourth time coming up. Time for spinning up a new reusable component. Meet Toggler and it’s friend, Togglable.</p> <h2>The Toggler</h2> <p>This is a simple script that you can attach to any object that will function as a toggle – a ‘button’ if you like. It’s so simple and concise I just write the whole thing in one go: <pre style="font-size: 12px">using System;

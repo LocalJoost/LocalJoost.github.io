@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Controlling a fan using a UWP on a Raspberry PI2 remotely
 date: '2015-09-20T20:56:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -12,6 +12,7 @@ tags:
 modified_time: '2015-09-23T11:30:33.978+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5692885617390581213
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/09/controlling-fan-using-uwp-on-raspberry.html
+comment_issue_id: 224
 ---
 
 <h4><font size="2">Part 4 of Reading temperatures &amp; controlling a fan with a RP2, Azure Service Bus and a Microsoft Band</font></h4> <p><font size="4">Intro</font><br><img style="float: right; display: inline" src="http://www.schaikweb.net/dotnetbyexample/Reading-temperatures--controlling-a-fan-_9EFF/relay.jpg" width="318" align="right" height="200">This article shows you how to control a device attached to a Raspberry PI2 remotely - that is, the Universal <a href="http://www.windows.com" target="_blank">Windows</a> App on the PI2 listens to commands coming off an Azure Service Bus queue.I have explained several details already in the previous posts in this series - I will go over some things more quickly than before.  <p>The fan is controlled using a Keyes SRD-05VDC-SL-C switch, as displayed here to the right. This is a relay that controls mains power. The Raspberry PI2 is a very low power device operating in the 5V range, so controlling mains power (100-250V depending where you live) requires there be something in between the Raspberry and the actual mains power - this little device here. Connecting the mains power directly to the poor PI2's GPIO pins would most likely result in a spectacular but rather short fireworks, so that's quite inadvisable to do.  <p><font size="4">Basic app setup</font><br>As I explained before, I have set up this app using dependency injection, basically creating a set of very loosely couples objects that interact only through interfaces and/or events - an getting objects of which they are dependent on supplied via their constructor, in stead of newing them up themselves.</p> <p>So, once again we have a look an the MainPage_Loaded in MainPage.xaml.cs of the TemperatureReader IoT app, and I have grayed out everything that is does not play a role in controlling the fan.</p><pre>var gpioService = new GpioService();

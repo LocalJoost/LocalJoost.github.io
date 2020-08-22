@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: An AdaptiveTrigger that works with StateTrigger inside WindowsStateTriggers’ CompositeStateTrigger
 date: '2016-02-06T15:28:00.000+01:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ modified_time: '2016-02-07T12:28:05.322+01:00'
 thumbnail: https://i.ytimg.com/vi/sok3s04fWKQ/default.jpg
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7796766495493500263
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/02/an-adaptivetrigger-that-works-with.html
+comment_issue_id: 239
 ---
 
 <h2>Intro</h2> <p>Still working on porting <a href="https://www.microsoft.com/en-US/store/Apps/Map-Mania-8/9NBLGGH08D4P" target="_blank">Map Mania</a> to the <a href="https://www.visualstudio.com/en-us/features/universal-windows-platform-vs.aspx" target="_blank">Universal Windows Platform</a>, I ran into a bit of a snag. It wanted to have a kind of decision-tree Visual State</p> <ul> <li>In wide screen, show the UI elements next to each other  <li>In narrow screen, show the UI element on top of each other and allow the user to determine which one to show with a kind of menu</li></ul> <p><iframe height="362" src="https://www.youtube.com/embed/sok3s04fWKQ" frameborder="0" width="645" allowfullscreen></iframe></p> <p>And being a stubborn b*st*rd, I felt I should be able to solve by using the Visual State Manager and <a href="https://msdn.microsoft.com/en-us/library/windows/apps/windows.ui.xaml.adaptivetrigger.aspx" target="_blank">Adaptive Triggers</a> only, with three Visual States. </p> <ul> <li>WideState  <li>NarrowState_Red  <li>NarrowState_Green</li></ul> <p>And of course, using MVVM. There is a <a href="https://msdn.microsoft.com/en-us/library/windows/apps/windows.ui.xaml.statetrigger.aspx" target="_blank">StateTrigger</a>, which you can bind to a boolean, that will activate upon that boolean being true – using something like a <a href="https://github.com/LocalJoost/WpWinNl/blob/uwp/uap10.0/WpWinNl/Converters/BoolInvertConverter.cs" target="_blank">BoolInvertConverter</a>, that will nicely do as flip-flop switch. There is also the well-known AdaptiveTrigger. So for both the narrow state, I can add a StateTrigger <em>and</em> an AdaptiveTrigger. I envisioned something like this: </p><pre>&lt;VisualState x:Name="NarrowState_Red"&gt;

@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: New binding possibilities in Mango
 date: '2011-08-12T17:18:00.000+02:00'
 orgauthor: Joost van Schaik
@@ -16,6 +16,7 @@ tags:
 modified_time: '2011-08-12T22:32:44.843+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7253678190577467646
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/08/new-binding-possibilities-in-mango.html
+comment_issue_id: 85
 ---
 
 <p>Apart from all the goodness the new API’s in “Mango” bring us, there is that other great gift that it brings us: Silverlight 4. After spending so much time on <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> you would almost forget that there’s life after the ‘Silverlight 3+’ version that was the baseline up till now. This means for <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> fans like me:</p>  <ul>   <li>You can now directly bind a command to a button’s “Command” property. In fact, you can bind a command to <em>anything</em> that derives from ButtonBase. This includes HyperlinkButton, RadioButton, and CheckBox (and possibly more). If you bind commands to these user interface elements, you can now say goodbye to your good old friends EventTrigger and EventToCommand </li>    <li>If you want to use data from your model in a <em>behavior</em>, you can now bind directly bind data <em>to dependency properties defined in the behavior itself</em>, in stead of doing the attached dependency property dance, or resorting to the MVVMLight Messenger. </li> </ul>  <p>The first one saves a bucket load of XAML. Before Mango, you had to create something like this to fire a command by a button being clicked:</p>  <pre style="font-size: 12px">&lt;Button Content=&quot;Start game&quot;&gt;

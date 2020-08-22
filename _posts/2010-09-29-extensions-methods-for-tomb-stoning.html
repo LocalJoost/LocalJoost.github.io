@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Extension methods for tomb stoning the Windows Phone 7 model
 date: '2010-09-29T21:39:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -17,6 +17,7 @@ tags:
 modified_time: '2010-12-03T22:45:20.604+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5882402897602177708
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/09/extensions-methods-for-tomb-stoning.html
+comment_issue_id: 50
 ---
 
 <p>As I was (and still am) playing with my <a href="http://localjoost.github.io/using-mvvm-light-to-drive-windows-phone" target="_blank">MVVM-driven Windows Phone 7 map viewer</a>, I started thinking about tomb stoning and/or serializing stuff into the <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> application state and/or isolated storage. I came up with four extension methods than can be used to store/serialize the complete model in both. Maybe not ideal in all cases, but it was a simple solution for me.</p>  <p><span style="font-size: 130%">Getting started</span></p>  <p>I created an assembly LocalJoost.Utilities, in which I first defined a generic interface for the model, which I called – with a flash of inspiration – IModel ;-). It’s implementation is not interesting for the extension methods.</p>  <p><span style="font-size: 130%">Save to phone application state</span></p>  <pre>using System;

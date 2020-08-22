@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Caveats when migrating existing CLSA.NET objects to Silverlight
 date: '2010-04-01T22:21:00.000+02:00'
 orgauthor: Joost van Schaik
@@ -10,6 +10,7 @@ tags:
 modified_time: '2010-04-06T11:17:29.847+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3401603541015256451
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/04/caveats-when-migrating-existing-clsanet.html
+comment_issue_id: 42
 ---
 
 <p>So you have been working for a while with <a href="http://www.lhotka.net/cslanet/" target="_blank">CSLA .NET</a> by <a href="http://twitter.com/RockyLhotka" target="_blank">Rockford Lhotka</a> and now you want – like me – jump on the Silverlight bandwagon. So you want to reuse the business objects in Silverlight. There are some nice samples in the cslalight samples but when I started to try to use my own business objects, things did not run so smoothly as the samples suggest.</p>  <p>The samples by Rockford show the general outline:</p>  <ul>   <li>You make a second assembly into which you add the exisiting business class source files as a link </li>    <li>You start adding specific Silverlight functionality surrounded by      <br />#if SILVERLIGHT (…) #endif preprocessor directives </li>    <li>You make sure that the server stuff like data access is not active in the Silverlight configuration (#if !SILVERLIGHT)</li>    <li>You add a Silverlight-specific factory method to load an object, that looks a bit like this: </li> </ul><pre>public static void Get(int id, 

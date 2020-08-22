@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: 'Reflection in WinRT: DeclaredProperties vs GetRuntimeProperties caveat'
 date: '2012-06-20T11:05:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -12,6 +12,7 @@ tags:
 modified_time: '2012-06-20T13:26:43.873+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4452619061859520429
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/06/reflection-in-winrt-declaredproperties.html
+comment_issue_id: 112
 ---
 
 <p>I <em>suppose</em> this is part of some FM I did not R, but I would like to point it out in case some other sod wastes just as much time on it as me.</p> <p>I embarked upon a journey to port <a href="http://whydoidoit.com/silverlight-serializer/" target="_blank">SilverlightSerializer</a> and some behaviors to <a href="http://msdn.microsoft.com/en-us/library/windows/apps/br211377.aspx?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">WinRT</a>. All stuff is heavily making use of reflection. Now reflection has been hugely overhauled in WinRT, so I knew I was in for an interesting ride. Recently I was convinced I managed to do it, but it turned out I did not.</p> <p>There are apparently two ways to use reflection in RT. What I <em>did </em>use for reading all properties of an object, was:</p><pre>var properties = MyObject.GetType().GetTypeInfo().DeclaredProperties;</pre>

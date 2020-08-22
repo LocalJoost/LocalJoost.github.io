@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: An MVVM-friendly ‘tap-to-connect’ NFC socket network helper for Windows Phone 8
 date: '2013-01-14T21:25:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -16,6 +16,7 @@ modified_time: '2013-01-16T19:47:43.935+01:00'
 thumbnail: http://lh4.ggpht.com/-NrlxRNIHvtg/UPasPqi3L7I/AAAAAAAAKDU/bnA-7NGwG6s/s72-c/wp_ss_20130116_0002%25255B1%25255D_thumb%25255B1%25255D.png?imgmax=800
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5070521052577576591
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/01/am-mvvm-friendly-tap-to-connect-nfc.html
+comment_issue_id: 129
 ---
 
 <p>For my <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> 8 game “<a title="Pull the Rope" href="http://windowsphone.com/s?appid=4aaf1cc1-4393-4d81-98b7-d438d7e83fac&amp;amp;ocid=aff-n-we-loc--ITPRO40939&amp;amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Pull the Rope</a>” I wrote a utility class to make pairing phones and obtaining a&nbsp; two-way communication channel a little bit easier. I already dabbled into this while developing the game, but now I feel it’s time to show a more comprehensive solution.</p> <p>I re-use the NavigationEventArgsExtensions and the NavigationMessage from my previous article “<a href="http://dotnetbyexample.blogspot.be/2012/12/handling-windows-phone-8-nfc-startup.html" target="_blank">Handling Windows Phone 8 NFC startup events using the MVVMLight</a>” without describing them further – I suggest you read this article as a preface to this one if you haven’t done so before. The utility class I describe in this article handles the pairing via tap-to-connect and provides – when that’s done – a method for sending a message and an event for receiving a message. I have peppered the code with debug statements, so can you nicely see in your output windows what’s exactly happening inside of the class when you are debugging on the phone.</p> <p>Messages are sent and received as strings, therefore the message argument class is not very complex either:</p><pre>using System;

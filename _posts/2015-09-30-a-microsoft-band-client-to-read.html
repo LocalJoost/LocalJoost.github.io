@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: A Microsoft Band client to read temperatures and control a fan on a Raspberry PI2
 date: '2015-09-30T12:13:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ modified_time: '2015-09-30T20:08:31.010+02:00'
 thumbnail: https://i.ytimg.com/vi/46bi9YbYckg/default.jpg
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1221416143750165647
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/09/a-microsoft-band-client-to-read.html
+comment_issue_id: 226
 ---
 
 <h4><font size="2">Part 6 of Reading temperatures &amp; controlling a fan with a RP2, Azure Service Bus and a Microsoft Band</font></h4> <p><font size="4">Intro<br></font>In the final post of this series I will show how the <a href="http://www.microsoft.com/Microsoft-Band/en-us" target="_blank">Microsoft Band</a> client in this project, that is used to actually read temperatures and control the fan, is created and operated. The client has a tile and a two-page UI, looks like this and can be seen in action in this video from the first blog post:</p><iframe height="362" src="https://www.youtube.com/embed/46bi9YbYckg" frameborder="0" width="645" allowfullscreen></iframe> <p>To recap - the function of the Band client is as follows</p> <ul> <li>WhenI tap the tile on the Band, the UI is opened and shows the latest data, that is:  <ul> <li>The temperature as last measure by the Raspberry PI2  <li>A button I can use to toggle the fan. The text on the button reflects the current status of the fan (i.e. it shows "Stop fan" when it's running, and "Start fan" when it is not  <li>Date and time of the last received data.</li></ul></li></ul> <p><font size="4">The classes involved</font><br>As you can see in the <a href="https://github.com/LocalJoost/TemperatureReaderDemo" target="_blank">demo solution</a>, there are three classes, and one interface, all living in the TemperatureReader.ClientApp's Models namespace - that have something to do with the Band:</p> <ul> <li>BandOperator  <li>BandUiController  <li>BandUiDefinitions  <li>IBandOperator</li></ul> <p>I showed a little bit of it in <a href="http://localjoost.github.io/a-windows-10-uwp-app-to-receive" target="_blank">the previous post</a> that described the Windows 10 UWP app itself, but to recap: the app is put together using dependency injection, so every class gets everything (well, almost everything) it needs passed via the constructor, and only knows what it gets via an interface (not a concrete class). In addition, most communication goes via events. </p> <p><font size="4">Start it up</font><br>If you look in the MainViewModel's CreateInstance method, you will see the BandOperator first spring into life:</p><pre>public static MainViewModel CreateNew()

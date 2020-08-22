@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Labeling Toy Aircraft in 3D space using an ONNX model and Windows ML on a HoloLens
 date: '2019-01-29T20:58:00.000+01:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ modified_time: '2019-01-31T20:22:04.801+01:00'
 thumbnail: https://i.ytimg.com/vi/DmPhKpKSne8/default.jpg
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2150943515188639045
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2019/01/labeling-toy-aircraft-in-3d-space-using.html
+comment_issue_id: 323
 ---
 
 <h2>Intro</h2><p><a href="http://localjoost.github.io/using-azure-custom-vision-object" target="_blank"><img align="right" style="border: 0px currentcolor; border-image: none; float: right; display: inline; background-image: none;" src="https://www.schaikweb.net/blog/20190127/ONNX.png" border="0">Back in November</a> I wrote about a POC I wrote to recognize and label objects in 3D space, and used a Custom Vision Object Recognition project for that. Back then, as I wrote in my previous post, you could only use this kind of projects by uploading the images you needed to the model in the cloud. In the mean time, Custom Vision Object Recognition models can be downloaded in various formats - and one of them in ONNX, which can be used in Windows ML. And thus, it can be used to run on a <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a> to do AI-powered object recognition. </p><p>Which is exactly what I am going to show you. In essence, the app still does the same as in November, but now it does not use the cloud anymore - the model is <em>trained and created</em> in the cloud, but can be executed on an edge device (in this case a HoloLens).</p><h2>The main actors</h2><p>These are basically still the same:</p><ul><li>CameraCapture

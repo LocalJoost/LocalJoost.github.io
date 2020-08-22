@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: The Standard About Page for Windows Phone 7 revisited
 date: '2011-10-03T20:54:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ modified_time: '2011-12-03T16:22:54.900+01:00'
 thumbnail: http://lh4.ggpht.com/-fQOt2NHQxaQ/TooEw-Q6a3I/AAAAAAAAG0w/NXYodCv42Zw/s72-c/About_thumb%25255B4%25255D.png?imgmax=800
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7320860598228386832
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/10/standard-about-page-for-windows-phone-7.html
+comment_issue_id: 88
 ---
 
 <p>Back to business!</p> <p>Although section 5.6 requiring an application to have easily discoverable application name, version information, and technical support contact information is still in the <a href="http://www.microsoft.com/windowsphone/" target="_blank">Windows Phone 7</a>&nbsp;<a href="http://msdn.microsoft.com/en-us/library/hh184840(v=VS.92).aspx" target="_blank">Application Certification Requirements</a>, it is no longer strictly enforced as far as I know. Yet, it’s still a very good idea to include this. It allows your App’s buyers to quickly review and rate your App and moreover, contact you easily, and usually providing you with all kinds of free ideas to make your App even better. What is better than to get direct input from the very people who bought your App!</p> <p>I wrote about a Standard About Page <a href="http://localjoost.github.io/standard-about-page-for-windows-phone-7" target="_blank">some time ago</a>. The latest version is now included in the 2.0.1 version of my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a>, which is also <a href="http://www.nuget.org/List/Packages/wp7nl" target="_blank">available as a Nuget package</a>. Apart from some minor improvements to the AboutViewModelBase (and the update to MVVMLight 4.0), by popular request I created a user control, or actually, multiple user controls.</p> <p>If your reference the wp7nl library, you will get three “About” controls:</p> <ul> <li>AboutContents  <li>AboutData  <li>AboutInfoSymbol</li></ul> <p>AboutData is the complete thing: create an empty page, delete everything within LayoutRoot Grid, drag this control in it, bind your AboutViewModelBase descendant, and you are ready. Apart from the namespace declarations, all that’s left of the contents of the About Page of my Map Mania App now looks like this:</p><pre>&lt;phone:PhoneApplicationPage.Resources&gt;

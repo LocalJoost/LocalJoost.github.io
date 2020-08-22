@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Storing objects as compressed messages in the Windows Azure Queue
 date: '2009-07-24T19:03:00.018+02:00'
 orgauthor: Joost van Schaik
@@ -15,6 +15,7 @@ tags:
 modified_time: '2010-04-06T11:17:29.879+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2628106726452178999
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/07/storing-objects-as-compressed-messages.html
+comment_issue_id: 28
 ---
 
 For my current private R&D project I wanted to store 'task set' objects (in code samples below as shown type "Request") on the Windows Azure Queue. To prevent serialization issues I opted for XML serialization, like this:<pre>private void Enqueue(Request tr)

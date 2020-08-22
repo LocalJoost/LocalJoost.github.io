@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Swapping two elements in a bound ObservableCollection IMPROVED VERSION
 date: '2010-11-02T22:07:00.003+01:00'
 orgauthor: Joost van Schaik
@@ -14,6 +14,7 @@ tags:
 modified_time: '2011-04-20T11:34:57.122+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-929355259067807990
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/11/swapping-two-elements-in-bound.html
+comment_issue_id: 56
 ---
 
 <p>Today I noticed something odd. I wanted to swap two elements in an ObservableCollection that was bound to a list box – so I could move objects up and down in the list box. I noticed that moving <em>up</em> always worked, and moving <em>down</em> led to a crash in my application with the message ‘The parameter is incorrect’ in the Application_UnhandledException method of App.Xaml. Fat lot of help that is, I can tell ya ;-)</p>  <p>Maybe this is a <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> only thing, but after a bit of experimenting I found out that you always have to change the value of the item that is <em>last</em> in the collection – i.e., the item with the highest index – <em>first. </em>This worked perfectly and I blogged about it. Later I found one exception, when I tried to swap the first and the second entry. Swapping second and first works, but the other way around gave once again ‘The parameter is incorrect’</p>  <p>This makes no sense at all, but I guess it has something to do with the fact that at one point in time the collection contains one object twice, and whatever is bound to it does not seem to like that very much. One of my household sayings is that were’s a will, there’s a workaround. So, second time around:</p>  <pre>using System.Collections.Generic;

@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: A HoloLens helper class to get a position dead ahead of the user–on a physical object or at a max distance
 date: '2017-06-27T13:45:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ modified_time: '2017-06-27T17:18:52.866+02:00'
 thumbnail: https://lh3.googleusercontent.com/-JgHMb0S27qY/WVJFV3yJVlI/AAAAAAAAO9Y/iUCpxGL38mk0uN2z8rn-yUAMIG3iTo2fgCHMYCw/s72-c/image_thumb%255B1%255D?imgmax=800
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4912135930703015673
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2017/06/a-hololens-helper-class-to-get-position.html
+comment_issue_id: 282
 ---
 
 <p>This is a little tidbit I use in a lot of apps, for instance in the <a href="http://localjoost.github.io/hololens-cubebouncer-application-part-1" target="_blank">CubeBouncer</a> and for floating info screens in my other apps. Basically I want to know a position dead ahead of the user, at a certain maximum distance, or closer by if the user is looking at a physical object that is closer by. Think of an invisible ray coming out of the HoloLens – I want to have a point where it strikes a physical object – and if there is no such thing within a certain maximum distance, I want a point along that ray at a maximum distance.</p><p>I made a little helper class for that, and it’s called LookingDirectionHelpers</p>

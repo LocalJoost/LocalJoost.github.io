@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Extended Windows Phone 7 page for handling rotation, focused element updates and back key press
 date: '2011-02-19T15:54:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2011-04-20T11:34:57.094+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8807439261807621035
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/02/extended-windows-phone-7-page-for.html
+comment_issue_id: 70
 ---
 
 <p>In this article I present ‘my’ base class for <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> Application Pages – essentially nothing more than a collection of utilities to handle common scenarios. Most of the code I did not write myself, but I think it’s a nice aggregation that handles the following three common problems:</p>  <ol>   <li>When someone is typing in a TextBox and receives a phone call, the model bound to that TextBox does not receive an NotifyPropertyChanged and thus is not updated – and if you <a href="http://localjoost.github.io/tombstoning-mvvmlight-viewmodels-with" target="_blank">tombstone the ViewModel</a><em>, </em>like I do, the last keystrokes are lost when the application is activated again. </li>    <li>When a page changes from portrait to landscape, you want that transition to be animated </li>    <li>When the users presses the back key, the ViewModel needs to be able to interact with that </li> </ol>  <p>I have put this class in “LocalJoost.Controls”. First, class definition and the part that handles rotation:</p>  <pre>using System;

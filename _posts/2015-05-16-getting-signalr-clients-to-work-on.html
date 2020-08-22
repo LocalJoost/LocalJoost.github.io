@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Getting Signal/R clients to work on Windows 10 UWP apps
 date: '2015-05-16T10:34:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ tags:
 modified_time: '2015-05-19T12:41:05.695+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3504268169757045627
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/05/getting-signalr-clients-to-work-on.html
+comment_issue_id: 207
 ---
 
 <p>Very recently <a href="https://dev.windows.com/en-US/iot" target="_blank">Windows 10 IoT Core</a> became available – just one of the very exiting technologies Microsoft are cranking out like crazy now. This will enable even the humblest of devices to run Universal Windows Platform apps&nbsp; Especially in the IoT space technologies like <a href="http://signalr.net/" target="_blank">Signal/R</a> are key – to enable devices to quickly exchange and distribute data. Unfortunately, if you add the Microsoft.AspNet.SignalR.Client NuGet package to an UWP and try to connect to a hub, using this code:</p><pre>var hubConnection = new HubConnection("http://www.microsoft.com");

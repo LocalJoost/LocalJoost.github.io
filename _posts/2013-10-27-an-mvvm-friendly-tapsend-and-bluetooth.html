@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: An MVVM friendly tap+send and Bluetooth connection helper for Windows Phone 8
 date: '2013-10-27T03:00:00.000+01:00'
 orgauthor: Joost van Schaik
@@ -14,6 +14,7 @@ tags:
 modified_time: '2013-11-09T08:47:33.091+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-68714093828816273
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/10/an-mvvm-friendly-tapsend-and-bluetooth.html
+comment_issue_id: 157
 ---
 
 <span style="font-size: 14pt">Why?</span><br>Early this year I blogged about <a href="http://dotnetbyexample.blogspot.nl/2013/01/am-mvvm-friendly-tap-to-connect-nfc.html" target="_blank">TtcSocketHelper</a>, an MVVM friendly helper object that allowed you connect two <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 8 devices to each other using a socket.I made two games with it– <a href="http://windowsphone.com/s?appid=4aaf1cc1-4393-4d81-98b7-d438d7e83fac&amp;ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Pull the Rope</a> and <a href="http://www.windowsphone.com/s?appid=ed077cc6-21ce-4e99-8e19-c5b119646016" target="_blank">2 Phone Pong</a>, head-to-head style games that are played over two phones, exchanging JSON data to keep things in sync. A lot of things happened the last 10 months: super cheap devices entered the market – most notably the <a href="http://www.nokia.com/global/products/phone/lumia520/" target="_blank">Nokia Lumia 520</a>. It is a full fledged Windows Phone 8, but it’s super cheap and as a consequence it does not support NFC (and thus no tap+send). That apparently is of no concern to buyers, as according to <a href="http://blog.adduplex.com/2013/10/adduplex-windows-phone-statistics.html" target="_blank">AdDuplex</a> stats, it took off like a bat out of hell. In just six months it grabbed what is now almost 33% of the Windows Phone 8 market. In other words, by limiting my app to NFC enabled phones I cut myself off from a significant – and growing – part of the market.<br><br><span style="font-size: 14pt">PhonePairConnectionHelper – supporting Bluetooth browsing</span><br>So I rewrote TtcSocketHelper into PhonePairConnectionHelper – basically the same class, but it now supports connecting phones using tap+send as well as by using the tried and tested way of Bluetooth pairing. Since October 21st <a href="http://www.windowsphone.com/s?appid=ed077cc6-21ce-4e99-8e19-c5b119646016" target="_blank">2 Phone Pong&nbsp; 1.3.0</a> is in the store, proudly powered by this component, now enabling my game to be played by 50% more people!<br>In this article I am going to concentrate on connecting via Bluetooth, as connecting via tap+send is already described in my article from January 2013.<br>The start of the object is simple enough again, and actually looks a lot like the previous incarnation:<br><pre>using System;

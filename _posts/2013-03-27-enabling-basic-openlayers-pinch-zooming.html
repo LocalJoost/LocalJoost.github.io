@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Enabling basic OpenLayers pinch zooming for Internet Explorer 10 touch events
 date: '2013-03-27T18:43:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2013-03-27T19:35:28.640+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7437229720049471878
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/03/enabling-basic-openlayers-pinch-zooming.html
+comment_issue_id: 135
 ---
 
 <p>A phenomenon described by the term <a href="http://www.bing.com/search?q=webkit+monoculture" target="_blank">‘webkit monoculture’</a> is causing quite some concern in the web development community. A lot of web developers are basically coding for webkit and webkit only, or more specifically Safari on IOS. HTML5 and standards are great, but certain parts of the web development stack are moving back to a ‘works on my environment’ status <a href="http://www.ie6countdown.com/" target="_blank">that we just were getting rid of</a>. This phenomenon rears it’s ugly head itself on all kind of places, including in the <a href="http://www.openlayers.org/" target="_blank">OpenLayers</a> toolkit that I am using for my work at <a href="http://www.vicrea.nl" target="_blank">Vicrea</a>.</p> <p>For those not familiar with OpenLayers: think Google Maps, but then with real GIS functionality, without commercial licensing, without ads in the map, and without all kind of legal strings attached. Pure open source client side web GIS. With the advent of touch devices its community added some basic touch functionality to it, like pinch zoom. That works very smooth, provided – you guessed it – you work on a web kit based browser. Microsoft, in all its wisdom, has chose to implement touch events in a completely different way. As to why this is, and what exactly is standard or not – that is not exactly my concern here. I am making a web GIS that is not supported my Windows 8 touch devices and <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 8. That, of course, is unacceptable to me ;-)</p> <p>So I created a little OpenLayers style control that adds pinch zoom to Internet Explorer 10. It’s pure JavaScript and a little primitive – it’s basically zooming in on the map center, and not on the point between your fingers, but it’s working pretty well IMHO.</p> <p>It also works pretty <em>simple</em>: upon the activate command, it hooks itself onto two events of the map’s layerContainerDiv – MSPointerDown and MSGestureChanged. The first one is fired at the first touch point going down, the second one when MSGesture recognizes an MSGestureChanged. Important is also setting the map’s fractionalZoom property to true.</p><pre>OpenLayersWindowsPinchZoom = OpenLayers.Class(OpenLayers.Control,

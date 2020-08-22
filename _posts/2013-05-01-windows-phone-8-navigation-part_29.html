@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Windows Phone 8 navigation part 2–routing, route details,tombstoning–and testing
 date: '2013-05-01T01:50:00.000+02:00'
 orgauthor: Joost van Schaik
@@ -15,6 +15,7 @@ tags:
 modified_time: '2013-05-02T08:11:50.266+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7642206347526282277
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/04/windows-phone-8-navigation-part_29.html
+comment_issue_id: 138
 ---
 
 <p><font size="4">What happened last time on this show</font></p> <p>In <a href="http://dotnetbyexample.blogspot.nl/2013/04/windows-phone-8-navigation-part.html" target="_blank">the previous post</a> I described to how to write the business logic to find a location by searching for an address by text, how to be able to tombstone the results, and how to make sure this all worked by using simple tests. Fine, but the purpose was <em>routing</em>, that is, actually making the app finding instructions to get from A to B. As a GIS buff, being used to complex algorithms and stuff, this is almost embarrassingly easy in <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> 8. You basically need an object of type RouteQuery, plonk in any number of waypoints (at least two, of course, being the start and the end) and a method of transport (drive or walk). And that’s basically it.</p> <p>But we still have to honor the other two requirements – in needs to be testable <em>and</em> serializable so we can support tombstoning</p> <p><font size="4">Find the route, <strike>Luke</strike> phone</font></p> <p>So <a href="http://www.schaikweb.net/dotnetbyexample/NavigationDemo1.zip" target="_blank">in the solution I created last time</a> I add another business class that does the actual finding of the route:</p><pre>using System.Collections.Generic;

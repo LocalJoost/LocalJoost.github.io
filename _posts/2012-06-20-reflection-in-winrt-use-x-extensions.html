@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: 'Reflection in WinRT: use Rx Extensions for dynamically adding event handlers'
 date: '2012-06-20T13:21:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -14,6 +14,7 @@ tags:
 modified_time: '2012-06-20T13:35:32.127+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1701252590584447303
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/06/reflection-in-winrt-use-x-extensions.html
+comment_issue_id: 113
 ---
 
 <p>Suppose you want to add an event handler, but you don’t know up front which event. Admittedly, this is a bit of an edge case, but I have used it in a behavior that starts a storyboard upon an event (I will publish that later). The designer can specify the event using a string value in XAML, so I cannot simply use object.MyEvent += (handler). We need reflection here.</p> <p>So suppose you have found the event in the object using the GetRuntimeXXX methods <a href="http://dotnetbyexample.blogspot.nl/2012/06/reflection-in-winrt-declaredproperties.html" target="_blank">like I described earlier today</a>, and want to dynamically add a handler to the event “MyEvent”:</p><pre>var evt = MyObject.GetType().GetRuntimeEvent("MyEvent");

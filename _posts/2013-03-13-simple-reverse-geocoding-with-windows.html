@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Simple reverse geocoding with Windows Phone 8 and MVVMLight
 date: '2013-03-13T16:07:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -15,6 +15,7 @@ tags:
 modified_time: '2013-03-13T16:07:17.233+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4457715978674132878
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/03/simple-reverse-geocoding-with-windows.html
+comment_issue_id: 133
 ---
 
 <p><a href="http://www.schaikweb.net/dotnetbyexample/Simple-reverse-geocoding-with-Windows-Ph_CC75/screenshot.png"><img title="screenshot" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; margin: 0px 0px 12px 4px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="screenshot" align="right" src="http://www.schaikweb.net/dotnetbyexample/Simple-reverse-geocoding-with-Windows-Ph_CC75/screenshot_thumb.png" width="197" height="336"></a>Having worked in Geographical Information Systems over 20 years, I can tell you rightfully the new <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> 8 mapping and location abilities are more than enough to make a map maniac like me getting twinkly eyes. It has capabilities that are unheard of even just a couple of years ago – and I don’t need a big workstation, I don’t even need a PC - it’s running on my phone. The world in my pocket – in the most literal sense possible.</p> <p>Two popular applications of GIS are <em>geocoding</em> and <em>reverse geocoding</em>. Geocoding enables you to find the position of earth for a descriptive text – say an address, city, building name, or any other phrase indicating a place on Earth. This is usually rather straightforward. <em>Reverse</em> geocoding is exactly the opposite – it’s the “what’s here?” question – given a location, <em>what do I</em>&nbsp;<em>find here? </em>Incidentally, answering questions like this is how I make a living at <a href="http://www.vicrea.nl" target="_blank">Vicrea</a>. </p> <p>Windows Phone 8 makes reverse geocoding almost embarrassingly easy. Even when using <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a>. So I made a simple app that show the address(es) found at the location where you tap on the map.</p> <p>We start off with a simple model with two properties:</p><pre>using System.Collections.ObjectModel;

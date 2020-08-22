@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Build for both-Converters for Windows Phone 8 and Windows 8.1 Store apps
 date: '2013-11-07T21:24:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -14,6 +14,7 @@ tags:
 modified_time: '2013-11-08T14:42:11.990+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-540339780010017289
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/11/build-for-both-converters-for-windows.html
+comment_issue_id: 158
 ---
 
 <p>Our Dutch DPE <a href="http://www.twitter.com/rajen_k" target="_blank">Rajen Kishna</a> has been quite <a href="http://blog.rajenki.com/2013/10/windows-starting-template-october-2013/" target="_blank">heavily banging the ‘build for both’ drum</a> for some time now, and after having spent quite some time on exclusive <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> development I decided to see if I could rewrite the code for my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a> so that it would easily work for Windows Phone 8 and Windows 8.1 store apps – of course in order to be able to port my apps for Windows 8.1 as well.</p> <p>At the moment of this writing I am still very much in the process of converting and rewriting code, but here is already the first part one of my yet-to-be-decided-number-of-parts of a build-for-both series – about how to write a <a href="http://msdn.microsoft.com/en-us/library/system.windows.data.ivalueconverter(v=vs.110).aspx" target="_blank">ValueConverter</a> that runs on both platforms. Since this handles about UI stuff, I could not go PCL, so I chose the shared code route.</p> <p>ValueConverters need to implement IValueConverter, a simple two-method interface. In Windows Phone (and Silverlight and WPF) this interface is</p><pre>Convert(object value, Type targetType, object parameter, CultureInfo culture);

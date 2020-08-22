@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Making lines selectable in your HoloLens or Windows Mixed Reality application
 date: '2019-01-17T19:24:00.000+01:00'
 orgauthor: Joost van Schaik
@@ -10,6 +10,7 @@ tags:
 modified_time: '2019-01-27T14:45:57.193+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5603198485156163221
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2019/01/making-lines-selectable-in-your.html
+comment_issue_id: 321
 ---
 
 <h2>Intro</h2><p>Using the <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank"><a href="https://github.com/Microsoft/MixedRealityToolkit-Unity" target="_blank">Mixed Reality Toolkit</a>, it's so easy to make an object selectable. You just add a behavior to your object that implements IInputClickHandler, fill in some code in the OnInputClicked method, and you are done. Consider for instance this rather naïve implementation of a behavior that toggles the color from the original to red and back when clicked: </p><pre style="font-size: 12px;">using HoloToolkit.Unity.InputModule;

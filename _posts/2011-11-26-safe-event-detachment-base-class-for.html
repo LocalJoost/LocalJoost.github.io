@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Safe event detachment base class for Windows Phone 7 behaviors
 date: '2011-11-26T19:16:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2011-12-03T13:46:36.829+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1967210838325718409
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/11/safe-event-detachment-base-class-for.html
+comment_issue_id: 96
 ---
 
 <p>Some time ago I blogged about the <a href="http://localjoost.github.io/safe-event-detachment-pattern-for" target="_blank">Safe Event Detachment ‘pattern’ for behaviors</a> and even included a snippet that made implementing this pattern easier. When I started to use this pattern more often myself I observed quite some code duplication appearing and I don’t like that. What’s more – although the pattern works well under Silverlight and WPF, there are some unique situations in <a href="http://www.microsoft.com/windowsphone/" target="_blank">Windows Phone 7</a> that need some extra attention – particularly the situation in which the user is navigating <em>back</em> to a page containing such a behavior. For when the user is navigation <em>from</em> the page, the AssociatedObject’s <em>Unloaded</em> event fires and the behavior is de-activated. If the user then moves back to the page – the AssociatedObject’s <em>OnAttached</em> event is <em>not</em> fired and the behavior is not re-initialized. </p>So I set out to create a base class taking care of most of this initalization hooplah without bothering the developer too much. This turned out to be not so simple as I thought. But anyway – thinks worked out. The initial setup of the base class is like this:<pre style="font-size: 12px">using System;

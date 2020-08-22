@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Fix for being unable to rename files after applying Visual Studio 2013 update 2
 date: '2014-06-05T18:38:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -9,6 +9,7 @@ tags:
 modified_time: '2014-06-10T08:48:07.695+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5400691393749621405
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/06/fix-for-being-unable-to-rename-files.html
+comment_issue_id: 176
 ---
 
 <p>A couple of people – me included – have been suffering from the fact that, after they applied Visual Studio 2013 update 2, it became impossible to rename files from Visual Studio. This  annoying problem was occurring only on my Surface Pro, and not my Core i7 desktop. The difference was that the Surface Pro at one point ran the public RC of VS2013.2, and the desktop did not. Even totally deleting VS2013 and reinstalling it did not work</p> <p>Today I got the golden tip from a fellow named Chung Bill (unfortunately I know only his name and e-mail address): apparently, if you did follow the upgrade path from public RC to RTM <em>and</em> you have the Multilingual Application Toolkit (MAT) installed, something goes wrong. The solution is also very simple: uninstall the MAT, then reinstall it again. If you then fire up Visual Studio 2013 again, renaming files works again. Note that you have to uninstall it from <em>Windows</em>, using Programs and Features, not from inside Visual Studio.</p> <p>Somewhere in the intricate woven components of the MAT and VS2013.2 something apparently went wrong. But fixing it ain't rocket science. No harm done. Nothing broke permanently ;-). </p>  

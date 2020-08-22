@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Safe event detachment ‘pattern’ for behaviors
 date: '2011-04-20T09:51:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2011-04-21T07:58:19.795+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4708791604548375425
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/04/safe-event-detachment-pattern-for.html
+comment_issue_id: 78
 ---
 
 <p>For the past few weeks I’ve been hacking away at my <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> game and noticed something odd. The objective is to intercept moving objects on the screen and drag/flick them to a target – but as the levels progressed interception and movement became ever more difficult and slow. At least that was reported by my #wp7nl fellow members who were kind (or crazy) enough to test drive the game into the higher levels. I won’t mention names here – yet ;-).</p>  <p>I followed the usual pattern for a behavior – at least, I <em>think</em> it is the usual pattern</p>  <pre>using System.Windows;

@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Sharing code between a Xamarin Forms/MVVMLight app and EF-code first backend using Shared Reference Project Manager
 date: '2014-07-30T13:54:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -12,6 +12,7 @@ tags:
 modified_time: '2014-08-06T11:43:39.106+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4425960267658887734
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/07/sharing-code-between-xamarin.html
+comment_issue_id: 185
 ---
 
 <h2>Disclaimer</h2> <p>I am in the very early early stages of toying with <a href="http://xamarin.com/" target="_blank">Xamarin</a> and it may well be that whatever I am doing here, is not the smartest thing in the world. This is a much as a report of my learning (may ‘struggle’ is a better word) as how-to. But what I describe here works – more or less – although it was a mighty hassle to actually get it working.</p> <h2>The objective</h2> <p>While I was having my first trials with Xamarin stuff, I turned to Entity Framework Code First because, well, when setting up a backend I am lazy. Without much thinking I made the models, using data annotations, and soon found out I had painted myself into a corner with a model that (very simplified) looks like this </p><pre>using System.ComponentModel.DataAnnotations;

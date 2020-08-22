@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Messaging class for detecting and broadcasting that your Universal app is running in the background
 date: '2014-06-24T21:27:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ tags:
 modified_time: '2014-06-24T21:27:43.345+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7940576129440201351
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/06/messaging-class-for-detecting-and.html
+comment_issue_id: 179
 ---
 
 <p>Some time ago I discovered that <a href="http://dotnetbyexample.blogspot.nl/2012/06/detecting-your-windows-8-app-is-running.html" target="_blank">you can trap Window.Current.VisibilityChanged</a> in a Windows 8 app to check if the app was running in the background, and that you can use that moment to pause a game and/or save the state to storage. The fun thing is, this now works in Universal apps too, that is – and thus, also on <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 8.1.Although we can discuss if&nbsp; the app is really running in the background or that is actually being suspended when it runs on Windows Phone – the mechanism is the same and it can be used to the same end.</p> <p>So make this more easy to use, I made this very simple class, based upon the MVVMLight MessageBase class:</p><pre>using Windows.UI.Xaml;

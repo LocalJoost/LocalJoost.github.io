@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: A screen-size independent scroll-into-view pane for Windows Phone and Windows Store apps
 date: '2014-04-30T16:25:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -12,6 +12,7 @@ tags:
 modified_time: '2014-05-01T08:34:51.726+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3962243993965437944
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/04/a-screen-size-independent-scroll-into.html
+comment_issue_id: 172
 ---
 
 <p>In <a href="http://dotnetbyexample.blogspot.nl/2013/09/a-behavior-to-implement-scroll-into.html" target="_blank">this article</a> I introduced <a href="http://wpwinnl.codeplex.com/SourceControl/latest#win81/WpWinNl/Behaviors/MoveObjectBehavior.cs" target="_blank">MoveObjectBehavior</a> and a way to use it to make Facebook-app like scroll-into-view panes. All very nice, but with a minor drawback – it basically needs a fixed screen size. That’s OK under <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> 8 (albeit it does not look so good on a Lumia 1520) but still – you got away with it.</p> <p>That is no longer the case in Windows Phone 8.1, and it never was the case in <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a>. You have to take multiple screen sizes into account now, and in the case of Windows 8 the screen size can change while the app is running – as the user can arbitrarily change the horizontal space an app is using while it’s running. </p> <p>Like this:</p> <div id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:456922bc-3d72-488a-9a12-a598a60528e6" class="wlWriterEditableSmartContent" style="float: none; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px"><div><object width="587" height="330"><param name="movie" value="http://www.youtube.com/v/n_Q6BiWg-vk?hl=en&amp;hd=1"></param><embed src="http://www.youtube.com/v/n_Q6BiWg-vk?hl=en&amp;hd=1" type="application/x-shockwave-flash" width="587" height="330"></embed></object></div><div style="width:587px;clear:both;font-size:.8em">Scroll-into-view pane for Windows 8</div></div> <p>Now MoveObjectBehavior has an ActivatedXValue Property and of course I could try, in stead of setting a fixed value, to bind that to the value of ActualWidth of the Page. Unfortunately that is not a Dependecy Property, so although it works initially, changes to it’s value are not populated. Yet, as you can see above, it can be done, and with a pretty animation as well.</p> <p>This, of course, is were a second behavior comes in handy. Meet SizeListenerBehavior:</p><pre>using Windows.UI.Xaml;

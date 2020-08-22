@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Making the Application Bar display on of top of the UI in Windows Phone 8.1 Store Apps
 date: '2014-10-23T07:45:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ tags:
 modified_time: '2014-10-23T19:14:35.677+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7956772140131912950
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/10/making-application-bar-display-on-of.html
+comment_issue_id: 191
 ---
 
 <p>In <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 7, 8 and 8.1 Silverlight apps this is very easy: you just set the Opacity of the Application bar to any value less than 1 <a href="http://msdn.microsoft.com/en-us/library/windows/apps/microsoft.phone.shell.applicationbar.opacity%28v=vs.105%29.aspx" target="_blank">as described here</a>, and the app does not reserve space for the app bar – it just displays the bar on top of the main UI like this:</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Having-the-Application-Bar-.1-Store-Apps_67FC/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Having-the-Application-Bar-.1-Store-Apps_67FC/image_thumb.png" width="244" height="109"></a></p> <p>The problem is, if you set the opacity of what is now called the CommandBar in Windows Phone 8.1 Store apps, the Application bar is translucent indeed - which you can see if you open it - but the apps still reserves space for it in it’s closed state:</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Having-the-Application-Bar-.1-Store-Apps_67FC/image_3.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Having-the-Application-Bar-.1-Store-Apps_67FC/image_thumb_3.png" width="244" height="226"></a></p> <p>The fix for this is surprisingly easy, but also pretty hard to find if you don’t know what you are looking for. In the end I got a tip by mail from my famous fellow MVP <a href="https://twitter.com/rudyhuyn" target="_blank">Rudy Huyn</a>. You just add the following, not very obvious line of code to your app. I added it to my App.Xaml.cs, just before the line “Window.Current.Activate();”</p><pre> ApplicationView.GetForCurrentView().SetDesiredBoundsMode(

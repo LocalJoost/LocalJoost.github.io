@@ -4,6 +4,7 @@ title: Crash in image creation at System.Windows.Media.Imaging.ColorConvertedBit
 date: 2020-08-05T00:00:00.0000000+02:00
 tags: .net
 featuredImageUrl: https://LocalJoost.github.io/assets/2020-08-05-Crash-in-image-creation-at-System.Windows.Media.Imaging.ColorConvertedBitmap.FinalizeCreation/CamtasiaCrash.png
+comment_issue_id: 355
 ---
 For my blog videos I tend to use [Camtasia](https://www.techsmith.com/store/camtasia) and I was not very amused when the 2019 version stopped working on my big development box - while it kept running perfectly on my laptop. Along came the 2020 version, and that did not run either. 
 

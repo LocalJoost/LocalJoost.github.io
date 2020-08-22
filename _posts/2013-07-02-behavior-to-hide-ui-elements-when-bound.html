@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Behavior to hide UI elements when a bound collection is empty
 date: '2013-07-02T20:34:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2013-07-03T13:33:43.446+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8781974001200179918
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/07/behavior-to-hide-ui-elements-when-bound.html
+comment_issue_id: 143
 ---
 
 <p><a href="http://www.schaikweb.net/dotnetbyexample/Behavior-to-hide-UI-elements-when-a-boun_10C30/screenshot1.png"><img title="screenshot1" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; float: right; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="screenshot1" align="right" src="http://www.schaikweb.net/dotnetbyexample/Behavior-to-hide-UI-elements-when-a-boun_10C30/screenshot1_thumb.png" width="148" height="244"></a>This is a fun little thingy I wrote when dealing with error lists. Suppose, you want the user to be able to see there are errors, but not directly fly them the whole detailed error list in his face. So there is, for instance a button “Show errors”, like in the application showed to the right. </p> <p>But, it’s ugly “Show errors” is always visible, even if there are no errors to display. I actually only want to have this button appear when there are errors indeed, so that it acts as an error indicator, and then the user can decide if she wants to see them or not. Of course you can fix that in your viewmodel – subscribe to the events of an ObservableCollection of errors, and turn visibility on or off when trapping those events, every time you need to do this. Perfectly viable solution. But an even better solution is to encapsulate that behavior – the word just says it – in a simple piece of reusable code.</p> <p>Meet HideWhenCollectionEmptyBehavior. It sports an INotifyCollectionChanged Collection to which you can bind, and the rest of it is actually so simple I am going to show it in one go:</p><pre style="font-size: 12px">using System.Collections;

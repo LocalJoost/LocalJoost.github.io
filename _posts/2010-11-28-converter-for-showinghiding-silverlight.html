@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Converter for showing/hiding Silverlight/WP7 GUI elements with boolean model values
 date: '2010-11-28T17:50:00.004+01:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2011-04-20T11:34:57.115+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5982013389078682851
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/11/converter-for-showinghiding-silverlight.html
+comment_issue_id: 59
 ---
 
 <p>Typically, when you are writing Silverlight or <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> applications using the MVVM pattern, your viewmodels expose boolean values indicating something is going on – for instance, your background thread is loading data and thus you want to display a progress bar. For some reason the designers of XAML choose the Visibility property of a GUI element to be of type “Visibility”, an enum with values “Visible” and “Collapsed”. </p>  <p>Anyway, you could of course make your viewmodel expose properties of type Visibility but as an architect I would call that “bad form”. It’s so much easier to create a simple converter for this:</p>  <pre>using System;

@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Windows Phone 8 navigation part 4–updating the tests, fixing the final issues
 date: '2013-05-13T18:01:00.000+02:00'
 orgauthor: Joost van Schaik
@@ -14,6 +14,7 @@ tags:
 modified_time: '2013-07-04T12:50:27.585+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1978657347509252989
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/05/windows-phone-8-navigation-part_13.html
+comment_issue_id: 140
 ---
 
 <p><font size="4">Last time: so close, yet so far:</font></p> <p>This series appears to have become a trilogy in four parts – at the end of the last episode everything worked, save for tombstoning, although we explicitly wrote test code for that. The app tombstoned, partially - two things were apparently missing:</p> <ul> <li>The route  <li>The locations to and from the route should run.</li></ul> <p><font size="4">Making the tests fail</font></p> <p>An important step when you have a bug in an app that passes all tests, is to make a test that <em>fails because of the bug</em>. In that case, you have reproduced the problem, and can start on fixing the bug. Logically, the bug is fixed when the test no longer fails – and should anyone start to mess around with your code an re-introduce the bug, the test will fail again, indicating something has gone wrong before you even ship. Your tests have become a smoke detector ;-)</p> <p>Anyway, we observe there is no selected location, nor routes or waypoints after tombstoning. When we look at the comprehensive test for RoutingViewModel written in the 2nd post of this series, we see the following Assert statement with regard to the retrieved viewmodel:</p><pre>Assert.IsTrue(vm.RouteCoordinates.Any());

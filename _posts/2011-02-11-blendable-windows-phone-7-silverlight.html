@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: A Blendable Windows Phone 7 / Silverlight clipping behavior
 date: '2011-02-11T21:34:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -14,6 +14,7 @@ tags:
 modified_time: '2011-04-20T11:34:57.097+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1368500171044150717
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/02/blendable-windows-phone-7-silverlight.html
+comment_issue_id: 67
 ---
 
 <p>If you are moving images around on a Canvas, you don’t want to show them when they get, for example, a negative Y-coordinate – for else they move outside of the Canvas and over what is above that. I’ve seen numerous examples of clipping ‘utilities’ that basically all ape <a href="http://www.codeproject.com/Articles/36495/Silverlight-ClipToBounds-Can-I-Clip-It-Yes-You-Can.aspx" target="_blank">this article on The Code Project</a>. For some reason no-one seems to have thought about making it a real behavior that can be used from Blend. So after a short discussion over Twitter and DM with Thomas Woo (aka <a href="http://twitter.com/#!/codechinchilla" target="_blank">@codechinchilla</a>) I decide to do my own take.</p>  <p>It’s not exactly rocket science:</p>  <pre>using System.Windows;

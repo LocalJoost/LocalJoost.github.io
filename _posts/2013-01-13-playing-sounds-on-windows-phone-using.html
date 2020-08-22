@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Playing sounds on Windows Phone using the MVVMLight Messenger
 date: '2013-01-13T14:01:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -15,6 +15,7 @@ modified_time: '2013-01-13T14:01:23.414+01:00'
 thumbnail: http://lh4.ggpht.com/-SVDn9rkqf88/UPKwIUZIQVI/AAAAAAAAKC8/8T2YCYocE7U/s72-c/SoundMvvm_thumb%25255B1%25255D.png?imgmax=800
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6946200399595947555
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/01/playing-sounds-on-windows-phone-using.html
+comment_issue_id: 128
 ---
 
 <p>In my never-ending quest to preach the gospel of MVVM in general and <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> in particular as the way to make a structured <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> application I show a little part of my my newest Windows Phone app, “<a href="http://windowsphone.com/s?appid=4aaf1cc1-4393-4d81-98b7-d438d7e83fac&amp;amp;ocid=aff-n-we-loc--ITPRO40939&amp;amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Pull the Rope</a>”. It’s a basically a rope pulling contest played on two phones. I think it’s quite fun to play but I am pretty sure it’s even more hilarious to watch <em>other</em> people play it, swiping like maniacs on their phones.</p> <p>The first version did not even have sounds – I decided to go the “ship early ship often” route this time – so some days ago I submitted a version that does some supportive sound. Of course my game is MVVMLight based and for adding the game sound I pulled a tried-and-tested (at least, by me) out of the hat – the Messenger-Behavior combo.Using the Messenger requires of course a message, so I started off with that:</p><pre>namespace Wp7nl.Audio

@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Returning Task<T> from a Windows Runtime Component
 date: '2014-11-11T21:31:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ tags:
 modified_time: '2014-11-12T13:32:20.007+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4290280441127684346
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/11/returning-task-from-windows-runtime.html
+comment_issue_id: 192
 ---
 
 <p>A very short tip this time, that took me some time to find out.</p> <p>You will need a <a href="http://msdn.microsoft.com/en-us/library/hh441572.aspx" target="_blank">Windows Runtime Component</a> if you want, for instance, host a background task in an Universal App. The problem with these components is that you cannot return a <strong>Task&lt;T&gt;</strong> from a public method. You can use Task&lt;T&gt; <em>inside</em> the component, but not return it to the outside world. If you have a method</p><pre>public async Task&lt;bool&gt; SomeMethod()

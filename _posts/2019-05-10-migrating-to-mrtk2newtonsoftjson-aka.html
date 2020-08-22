@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Migrating to MRTK2–NewtonSoft.JSON (aka JSON.Net) is gone
 date: '2019-05-10T09:48:00.000+02:00'
 orgauthor: Joost van Schaik
@@ -12,6 +12,7 @@ tags:
 modified_time: '2019-05-15T15:27:53.474+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-573331240578314375
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2019/05/migrating-to-mrtk2newtonsoftjson-aka.html
+comment_issue_id: 328
 ---
 
 <h2>Intro</h2><p>In ye olde days, if you set up a project using the <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank"><a href="https://github.com/Microsoft/MixedRealityToolkit-Unity" target="_blank">Mixed Reality Toolkit</a> 1, NewtonSoft.JSON (aka JSON.Net) was automatically included. This was because part of the MRTK1 had a dependency on it –something related to the gLTF stuff used it. This is (apparently) no longer the case. So if you had a piece of code that previously used something like this</p><pre style="font-size: 12px;">public class DeserializeJson : MonoBehaviour

@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Attached dependency properties for dummies
 date: '2010-05-03T20:38:00.003+02:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2011-03-12T20:20:38.221+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3396309611380680398
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/05/attached-dependency-properties-for.html
+comment_issue_id: 44
 ---
 
 <p>Recently I tried to make my first attached dependency property and it struck me as odd that I could find a lot of articles on dependency properties – but it still took me quite some time to piece together the how and the why. And basically they all parrot the same few samples. So I decided to try my own take on the subject.</p>  <p><span style="font-size: 130%">So what is an attached dependency property, then?</span></p>  <p>It helped me a lot to think of an attached dependency property as <em>being the property equivalent of an extension method</em>. You basically attach a new property to an existing object. Without actually modifying the object definition.</p>  <p><span style="font-size: 130%">What is it good for?</span></p>  <p>About the same as an extension method: you can add extra properties to existing objects, without having to go trough the hoopla of inheritance. Which is especially handy when inheritance is not possible, like in sealed objects. More importantly, these properties can play along in the WPF en Silverlight data binding. The most important application, as far as I am concerned, is that you can make something bindable that is not bindable out of the box. If some value(s) a GUI component can only be set by a method, you cannot use it from MVVM, for example. By making an attached dependency property that passes on the new value to said method you work around that. See below for how you make such a callback.</p>  <p>In fact, attached dependency properties is part of the magic of that makes <a href="http://www.galasoft.ch/mvvm/getstarted/" target="_blank">Laurent Bugnion’s MVVM Light toolkit</a> go, at least where the ButtonBaseExtensions class is concerned, and reading the code in this class actually (and finally) made the penny drop for me. </p>  <p><span style="font-size: 130%">So how do you make an attached dependency property?</span></p>  <p>You make a static class, in which the property is declared and 'hosted', as I call it. The general form is like this:</p>  <pre>public static class DependencyPropertyHoster

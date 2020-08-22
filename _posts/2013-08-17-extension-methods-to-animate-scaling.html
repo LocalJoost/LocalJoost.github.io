@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Extension methods to animate scaling and opacity on Windows Phone
 date: '2013-08-17T21:23:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2013-08-17T21:44:05.232+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6379217311365871624
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/08/extension-methods-to-animate-scaling.html
+comment_issue_id: 147
 ---
 
 <p>This is the first part of a tree-part series handling animating scaling and opacity. If you kind of wonder how the hell something that simple can require three blog posts – bear with me, it will all become clear in the end.</p> <p>For a game that – at the moment of this writing – I have just submitted to the <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> Store I have developed a number of extension methods to animate a number of properties of a GUI element. You have already seen <a href="http://dotnetbyexample.blogspot.nl/2013/07/extension-methods-to-animate-object.html">extension methods to animate an object over the screen via waypoints</a> –that’s also part of the package that will be added to my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on CodePlex</a>, just as the extension methods that below that animate scaling and opacity. They are actually pretty simple, and are built on top of the&nbsp; <a href="http://dotnetbyexample.blogspot.nl/2011/03/simple-windows-phone-7-silverlight.html" target="_blank">translation extension methods I already wrote earlier for animations</a>. If have temporarily added them to a “StoryboardExtensions3” class – in wp7nl all the methods will sit snugly together in “StoryboardExtensions” </p> <p>First, the class with the scaling methods:</p><pre style="font-size: 11px">using System.Windows;

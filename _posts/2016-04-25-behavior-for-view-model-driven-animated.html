@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Behavior for view model driven animated popups in Xamarin Forms
 date: '2016-04-25T19:50:00.000+02:00'
 orgauthor: Joost van Schaik
@@ -12,6 +12,7 @@ modified_time: '2016-04-25T19:51:02.946+02:00'
 thumbnail: https://i.ytimg.com/vi/ZZ_cQC50Ajk/default.jpg
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3350309897432567440
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/04/behavior-for-view-model-driven-animated.html
+comment_issue_id: 245
 ---
 
 <h2>Preface</h2> <p><img style="float: right; display: inline" border="1" alt="popup" src="http://www.wortell.nl/wp-content/uploads/2016/04/popup.png" width="204" align="right" height="138">In <a href="http://localjoost.github.io/behaviors-for-animated-scroll-down-and" target="_blank">my previous post</a> I showed the basics for animation behaviors in Xamarin Forms. Here’s another one I made, that in conjunction with some nifty element binding makes for a pretty fluid popup appearing from the middle. Of course, you can use the native alert box but I’d rather want to see is something as displayed to the right, especially with a nice animation. The advantage of such a custom made popup is that is looks much more consistent across platforms, which is a huge win especially for LOB apps. </p> <p>You can see the behavior in action below:</p><iframe height="365" src="https://www.youtube.com/embed/ZZ_cQC50Ajk" frameborder="0" width="650" allowfullscreen></iframe> <h2>... and all there is to it...</h2> <p>The actual code is pretty small now all the heavy lifting has been done by the base classes from the previous post:</p><pre>using Wortell.XamarinForms.Behaviors.Base;

@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: 'Gotcha: custom Microsoft Band page shows only data in last added UI element'
 date: '2015-08-12T12:08:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -10,6 +10,7 @@ tags:
 modified_time: '2015-08-12T12:10:57.863+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8026575855881348489
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/08/gotcha-custom-microsoft-band-page-shows.html
+comment_issue_id: 213
 ---
 
 <p>Today I finally nailed a very odd issue in the <a href="http://developer.microsoftband.com/bandSDK" target="_blank">Microsoft Band SDK</a> - or actually, my understanding thereof. For my current research project, I am building a custom UI on my Microsoft Band. I should contain two panels: one with a text, an icon and a button, and a second panel containing two texts. Details of how to setup up something like this, can be found in the <a href="http://developer.microsoftband.com/Content/download/Microsoft%20Band%20SDK%20and%20Samples%20for%20Windows.zip" target="_blank">band samples</a>.</p> <p>Building a Band UI is not for the faint hearted, it includes building the UI from code without any kind of designer. Filling those UI elements with a value then is a separate step, which contains quite a big gotcha that you cannot derive from the samples.</p> <p>My Band UI <em>creation</em> code is like this:</p><pre style="font-size: 12px">private IEnumerable&lt;PageLayout&gt; BuildTileUi()

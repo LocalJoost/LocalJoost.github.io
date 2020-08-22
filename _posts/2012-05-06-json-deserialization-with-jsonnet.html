@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: 'JSON deserialization with JSON.net: caching results'
 date: '2012-05-06T16:31:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -14,6 +14,7 @@ modified_time: '2012-05-06T16:35:42.541+02:00'
 thumbnail: http://lh6.ggpht.com/-WONvTyjJ954/T6aLXe1K8-I/AAAAAAAAJDU/Nx6TgnFkmzA/s72-c/JSONdemo3_thumb%25255B2%25255D.png?imgmax=800
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4252544857302986520
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/05/json-deserialization-with-jsonnet.html
+comment_issue_id: 108
 ---
 
 <p>On January 22 I promised this to be a three-part series. I’ve been kinda busy with upgrading apps, <a href="http://windows.microsoft.com/en-US/windows-8/consumer-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> experiments and trivial ;-) stuff like code camps, an MVP summit, preparing my first and second talk about Windows Phone and whatnot and made you wait for the final part for exactly three months – but those who know me, know I stick my promises, so here’s the third and final part of my JSON for <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> series. </p> <p>In <a href="http://localjoost.github.io/json-deserialization-with-jsonnet">part 1 of this series</a> I described the basics of creating classes from a JSON string and then simply deserializing the string into a (list of) classes. In <a href="http://localjoost.github.io/json-deserialization-with-jsonnet-class" target="_blank">part 2</a> I showed how to use JSONConverter subclasses to handle complex stuff the deserializer cannot handle out of the box, like class hierarchies. Part 3, as promised, shows a way to cache results - which makes your application faster, more responsive and more battery/data plan friendly.</p> <p>Using the <a href="http://www.schaikweb.net/dotnetbyexample/JSONDemo2.zip" target="_blank">demo solution of part 2</a> as a starting point, I first brought in my <a href="http://wp7nl.codeplex.com/" target="_blank">wp7nl library on codeplex</a> using NuGet. I am lazy just like any programmer (should be) and I like to defer as much heavy lifting to already existing code as I can ;-). </p> <p>When dealing with data downloaded from the web everything becomes asynchronous by nature (at least on Windows Phone), and since we don’t have the await and async keyboards aboard our platform yet, I tend to use Observables from Microsoft.Phone.Reactive. To let that work with events, I need an EventArgs child class for my “loading completed” delegate, which I have defined in the following trivial way:</p><pre>using System;

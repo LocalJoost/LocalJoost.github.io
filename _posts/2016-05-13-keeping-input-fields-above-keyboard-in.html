@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Keeping input fields above the keyboard in UWP apps
 date: '2016-05-13T19:24:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ modified_time: '2016-05-16T20:53:21.003+02:00'
 thumbnail: https://i.ytimg.com/vi/wmnbTb9CE1s/default.jpg
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1498668329882477703
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/05/keeping-input-fields-above-keyboard-in.html
+comment_issue_id: 246
 ---
 
 <p>Before you all think I am stark raving mad – it appears that it is actually possible to create XAML constructions that confuse the UWP renderer to such an extent that although it moves the user interface upwards - as it should - it does not always move it up <em>far enough</em>. This can be observed in the video below - as well as the fact that it is fixable. </p><iframe height="487" src="https://www.youtube.com/embed/wmnbTb9CE1s" frameborder="0" width="650" allowfullscreen></iframe> <p>A user observed this on my app Map Mania (it has been fixed since). I have only been able to repro this on Windows 10 mobile. Apparently it has something to do with going rampant on adaptive triggers, and another key part is the use of an bottom app bar. </p> <p>The XAML is a simplified version of what I used for the <a href="http://localjoost.github.io/an-adaptivetrigger-that-works-with" target="_blank">post about a CompositeTrigger-enabled AdaptiveTrigger</a> – basically, I use a simple viewmodel and VisualStateGroup with some Triggers to change what I see on the screen. The XAML is not too complicated:</p><pre style="font-size: 12px">&lt;Grid &gt;

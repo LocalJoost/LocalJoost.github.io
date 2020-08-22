@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Using extension methods to compress and decompress strings
 date: '2009-08-12T21:43:00.013+02:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2010-04-06T11:17:29.871+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1023432909095252716
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2009/08/using-extension-methods-to-compress-and.html
+comment_issue_id: 31
 ---
 
 After some <a href="http://twitter.com/peSHIr/status/2833760773">rightful comments</a> by <a href="http://peshir.nl/">Jarno Peschier</a> I decided to once again look into my blog post about putting compressed object on the Azure message queue and came up with the following set of extensions methods that allow you to compress a string via gzip into a byte array, and unzip a byte array containing a compressed string to a regular string again:<pre>using System.IO;

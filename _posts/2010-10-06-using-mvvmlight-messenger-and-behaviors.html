@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Using MVVMLight Messenger and behaviors to open files from local disk in Silverlight
 date: '2010-10-06T10:25:00.003+02:00'
 orgauthor: Joost van Schaik
@@ -16,6 +16,7 @@ tags:
 modified_time: '2011-02-22T17:04:06.516+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4687914817219672462
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/10/using-mvvmlight-messenger-and-behaviors.html
+comment_issue_id: 52
 ---
 
 <p>The very first Silverlight application I had to make professionally (i.e. not as a hobby/research project at home) required the possibility to open a file from (local) disk. Of course I wanted to use <a href="www.twitter.com/lbugnion" target="_blank">Laurent Bugnion</a>’s <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> and the strict separation between logic that I talked and blogged about so much – ‘practice what thou preach’, eh?</p>  <p>This proved to be an interesting challenge. The most logical way forward seemed to be: make a button, attach a command to it via the usual EventToCommand route and then use OpenFileDialog from the model – which landed me a “<strong>Dialogs must be user-initiated</strong>” error. <strike>Googling</strike> Binging around I found out that <a href="http://community.dotned.nl/blogs/dennis_blog/default.aspx" target="_blank">Dennis Vroegop had run into this thingy quite recently as well</a>.</p>  <p>Things looked ugly. Getting around it took me some code in the code behind. This kept nagging me, and only recently I found a better way to deal with this. Apart from the EventToCommand binding MVVMLight contains another gem, called the <em>Messenger</em>. This is an implementation of the Mediator pattern that - as far as I understand – is designed to broadcast property changes between different models in the application. But this mechanism can also be used as an alternative way to shuttle data from the GUI to the model in a designer-friendly – Blendable -way. The way to go for this particular problem is like this:</p>  <ul>   <li>Define a message that holds the data from an OpenFileDialog </li>    <li>Make a behavior that can attach to a button that launches an OpenFileDialog on click, and then sends a message on the Messenger </li>    <li>Register a listener on the Messenger in the model for that particular message </li> </ul>  <p>True to my blog’s title, I will demonstrate this principle with an example. First, a message containing the result of an OpenFileDialog:</p>  <pre>using System.Collections.Generic;

@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Simple way to prevent an unintended double tap in Mixed Reality apps
 date: '2018-05-30T08:15:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ modified_time: '2018-05-30T08:18:03.858+02:00'
 thumbnail: https://lh3.googleusercontent.com/-hN7x99TVNaI/Ww5B38nTW0I/AAAAAAAAP6Y/Fhx9EMNlbMkJP9RCvT0yse6nS7w6M6uRACHMYCw/s72-c/image_thumb2?imgmax=800
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-1222605576634116241
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2018/05/simple-way-to-prevent-unintend-double.html
+comment_issue_id: 307
 ---
 
 <p>This is an easy and simple tip, but one that I use in almost every <a href="https://www.microsoft.com/en-us/windows/windows-mixed-reality" target="_blank">Mixed Reality</a> app at one point. It’s mostly applicable to <a href="https://www.microsoft.com/en-us/hololens" target="_blank">HoloLens</a>: especially new users tend to double (triple, or even more) tap when the are operating an app, because the gestures are new. This can lead to undesirable and confusing results, especially with toggles. So it can help a little to ‘dampen out’ those double clicks. </p><p>I created this very simple helper class called DoubleClickPreventer:</p><pre style="font-size: 12px;">using UnityEngine;

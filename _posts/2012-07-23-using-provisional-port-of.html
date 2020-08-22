@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Using a provisional WinRT port of SilverlightSerializer to store state in MVVMLight ViewModels
 date: '2012-07-23T21:47:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2012-07-24T09:58:07.898+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6128988336495225544
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/07/using-provisional-port-of.html
+comment_issue_id: 114
 ---
 
 <p>Over 1.5 years ago I <a href="http://dotnetbyexample.blogspot.nl/2011/01/tombstoning-mvvmlight-viewmodels-with.html" target="_blank">showed</a> how to store your <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> application state (‘tombstoning’) using SilverlightSerializer by <a href="http://twitter.com/mike_talbot">Mike Talbot</a>. In my quest to leverage hard-won Windows Phones skills to be usable in <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> I made a provisional port of SilverlightSerializer 1 to <a href="http://msdn.microsoft.com/en-us/library/windows/apps/br211377.aspx?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">WinRT</a>. That is, in C#.</p> <p>Since my win8nl library port is a bit behind, I’ve stuck the class in a simple project that you can download <a href="http://www.schaikweb.net/dotnetbyexample/Win8nl.Utilities.zip" target="_blank">here</a>. </p> <p>Usage is as follows: in App.xaml.cs, you define two methods: SaveState and RestoreState:</p><pre>private async void SaveState()

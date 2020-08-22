@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: AngularJS + TypeScript – using $resource to talk to a WebApi backend
 date: '2014-08-05T08:08:00.000+02:00'
 orgauthor: Joost van Schaik
@@ -10,6 +10,7 @@ tags:
 modified_time: '2014-08-07T12:33:49.653+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6874715733403752482
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/07/angularjs-typescript-using-resource-to.html
+comment_issue_id: 186
 ---
 
 <h2>Intro – multiple stacks to choose from</h2> <p>There are a number of ways to talk to a backend (i.e. communicate over JSON services) in Angular. I know at least of two built-in: the $http api, which basically gives you a bit raw, jQuery-like API, and the $resource API, which kind of builts on top of that, using a more formalized approach. Also, you can choose to forego the whole built-in stack and use something like <a href="http://www.breezejs.com/" target="_blank">Breezejs</a> which has it own pros and cons. I used both successfully. And I don’t doubt there are more. But in this article I will concentrate on $resource.</p> <p>Once again, I don’t claim ultimate wisdom nor do I claim this is the best way, but I describe a way that <em>works</em> and is complete.</p> <h2>Setting up the backend</h2> <p>I continue where I left off in <a href="http://localjoost.github.io/angularjs-typescript-how-to-setup-watch" target="_blank">my previous post</a>, and proceed to add a model class in the Models folder. Mind you, this the folder in the root, not that in the app folder with <a href="http://www.typescriptlang.org/" target="_blank">TypeScript</a> stuff in it. We are talking C#. Our application will be extended to maintain a list of phones.</p><pre>namespace AtsDemo.Models

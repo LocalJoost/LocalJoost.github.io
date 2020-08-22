@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: 'Building a floating HoloLens ''info screen'' - 2: adding the C# behaviours'
 date: '2017-07-01T18:51:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ modified_time: '2017-07-03T08:13:28.065+02:00'
 thumbnail: https://lh3.googleusercontent.com/-uIh8659Jvtw/WVE53eFpA4I/AAAAAAAAO8A/YR3xxUCCZr07rLiv7te2D2wIDvg-VA96wCHMYCw/s72-c/image_thumb%255B26%255D?imgmax=800
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-3303129793364780709
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2017/07/building-floating-hololens-info-screen-2.html
+comment_issue_id: 283
 ---
 
 <h2>Intro</h2><p>In the <a href="http://localjoost.github.io/building-floating-hololens-info-screen-1" target="_blank">first installment of this 2-part blog post</a> we have created the UI of the info screen, now we are going to build the dynamics.</p><ul><li>First we will make the app recognize a speech command</li><li>Then we will add the dynamics to make the screen appear and disappear when we want.</li><li>Then we will make the close button work</li><li>As a finishing touch we will add some spatial sound.</li></ul><h2>Adding a speech command – the newest new way</h2><p>For the second or maybe even the third time since I have started using the <a href="https://github.com/Microsoft/HoloToolkit-Unity" target="_blank">HoloToolkit</a>, the was the way speech commands are supposed to work has changed. The keyword manager is now obsolete, you now have to use SpeechInputSource and SpeechInputHandler. </p><p>First, we add <a href="http://localjoost.github.io/using-messenger-to-communicate-between" target="_blank">a Messenger, as already described in this blog post</a>, to the Managers game object. It sits in Assets/HoloToolkitExtensions/Scripts/Messaging.</p><p>Then, since we are good boy scouts that like to keep things organized, a create a folder “Scripts” under “Assets/App”. In “Scripts” we add a “Messages” folder, and in that we create the following highly complicated message class ;) </p><pre>public class ShowHelpMessage

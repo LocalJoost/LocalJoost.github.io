@@ -4,6 +4,7 @@ title: Setting physical properties to the Spatial Mesh in MRTK2
 date: 2020-08-12T00:00:00.0000000+02:00
 tags: mrkt2 windows-mixed-reality hololens2 unity3d
 featuredImageUrl: https://LocalJoost.github.io/assets/2020-08-12-Setting-physical-properties-to-the-Spatial-Mesh-in-MRTK2/SpatialNoPhysicalSetting.png
+comment_issue_id: 356
 ---
 Long ago, when I made the [CubeBouncer for HoloLens 1](https://localjoost.github.io/hololens-cubebouncer-application-part-1/), I already noticed I could change the so called 'physical material' of holograms so they bounced off each other like bouncing balls. Weirdly enough I could not change the physical properties of the Spatial Mesh. Being fairly new to Unity back then, I kind of failed to understand why this was.
 

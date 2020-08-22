@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Utility classes to check if lines and/or rectangles intersect
 date: '2013-09-26T20:40:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -12,6 +12,7 @@ tags:
 modified_time: '2013-10-04T18:15:04.971+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7682641041914678213
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/09/utility-classes-to-check-if-lines-andor.html
+comment_issue_id: 155
 ---
 
 <p>I have a for a developer unusual confession to make: I don’t like math. As a tool, great, but as a thing, no. One thing that really infuriates me is than when you want something simple (like intersecting lines and rectangles) all you get is formulas. Even on <a href="http://stackoverflow.com/questions/1585525/how-to-find-the-intersection-point-between-a-line-and-a-rectangle?rq=1" target="_blank">StackOverflow</a>. I want code. So whenever I translate something from formulas or another computer language, I take care to ‘give back’ the resulting code to prevent other people needing to do the same.</p> <p>So when I needed a few lines of code to check if lines intersected with each other or with a rectangle – as I need to know when the ball moves over the screen of my <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> app <a href="http://www.windowsphone.com/s?appid=ed077cc6-21ce-4e99-8e19-c5b119646016" target="_blank">2 Phone Pong</a>, I was presented with the usual bunch of mathematical formulas… <a href="http://tog.acm.org/resources/GraphicsGems/gemsii/xlines.c" target="_blank">and finally some C code</a>. Which I translated back to C#, so now every sod (like me) can check if a lines intersect with lines, or with a rectangle.</p> <p>I am not even going to pretend to understand how this actually works, but it does. I have created a class LineF that you can create from two points, and that starts like this:</p><pre>using System;

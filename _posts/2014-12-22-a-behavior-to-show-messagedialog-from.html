@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: A behavior to show a MessageDialog from a MVVMLight viewmodel in Universal apps–with callbacks
 date: '2014-12-22T21:17:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -15,6 +15,7 @@ tags:
 modified_time: '2014-12-24T11:08:34.137+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6923828833048130540
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/12/a-behavior-to-show-messagedialog-from.html
+comment_issue_id: 196
 ---
 
 <p><em>Of course</em> you are now all writing MVVM based apps, after all I have been advocating that for years, and you are listening this here <strike>old</strike> venerable MVP, right? ;). Anyway, some UI interactions between UI and viewmodel can seem to be a bit complicated, but these kinds of problems are usually pretty simple to solve with a combination of a behavior, the <a href="http://mvvmlight.codeplex.com/">MVVMLight</a> messenger, and a message containing a callback. And as I hate to write things more than once, I&nbsp; made this into a reusable behavior. It ain’t rocket science, but it’s nice and clean.</p> <p>I start with a class holding the actual message, and in this class file I have defined a callback delegate as well:</p><pre>using System.Threading.Tasks;

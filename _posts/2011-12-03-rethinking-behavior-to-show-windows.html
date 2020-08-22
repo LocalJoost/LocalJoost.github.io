@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Re-imagining the behavior to show the Windows Phone 7 camera as background
 date: '2011-12-03T13:44:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2012-03-04T10:24:50.323+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7382731371873658108
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/12/rethinking-behavior-to-show-windows.html
+comment_issue_id: 97
 ---
 
 <p>This blog turns out not only to be a collection of how-to samples but also a record of my evolution as a <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone 7</a> developer. At the end of my previous post, <a href="http://localjoost.github.io/safe-event-detachment-base-class-for">Safe event detachment base class for Windows Phone 7 behaviors</a>, I promised a usage example and I decided to re-implement the <a href="http://localjoost.github.io/behavior-to-show-windows-phone-7-camera">behavior to show the Windows Phone 7 camera as background</a> using the SafeBehavior as a base class. This makes the code considerable easier.</p> <p>The base setup of the re-implemented behavior is pretty simple:</p><pre style="font-size: 12px">using System.Windows.Controls;

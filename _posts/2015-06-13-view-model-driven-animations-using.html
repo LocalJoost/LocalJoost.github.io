@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: View model driven animations using behaviors and MVVMLight in Xamarin Forms
 date: '2015-06-13T13:27:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ modified_time: '2015-06-15T08:59:41.547+02:00'
 thumbnail: https://i.ytimg.com/vi/E6PO73RDuDE/default.jpg
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4294956366165820425
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/06/view-model-driven-animations-using.html
+comment_issue_id: 209
 ---
 
 <p><font size="4">Intro<br></font>For some time now I have been making a number of <a href="https://github.com/LocalJoost/WpWinNl/tree/master/portable-win81%2Bwpa81/WpWinNl/Behaviors" target="_blank">behaviors implementing animations driven by view models</a> for <a href="http://www.windows.com" target="_blank">Windows</a> and <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a>. Implementing animations in behaviors results into reusable animation building block without the need to copy and paste the functionality into code behind – or the need to remember how the internals exactly worked (you know they say a good programmer is a lazy programmer ;) ). I wanted to check if it would be possible to make animations for <a href="http://xamarin.com/" target="_blank">Xamarin</a> Forms in a similar way, and it turns out to be possible. I have created a proof-of-concept that allows you to animate a kind of popup using a behavior, a view model and a little bit of code-behind plumbing. The popup folds open in a vertical direction from the center of the screen. It looks like this:</p><iframe height="362" src="https://www.youtube.com/embed/E6PO73RDuDE" frameborder="0" width="645" allowfullscreen></iframe> <p><font size="4">Setting the stage</font><br>I started out with a standard Xamarin Forms Portable project, and brought in my favorite MVVM framework <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a>. Then I added an empty StartPage.xaml to the portable project, and modified the constructor of the default App class to start with that page, in stead of with the default code:</p><pre>public App()

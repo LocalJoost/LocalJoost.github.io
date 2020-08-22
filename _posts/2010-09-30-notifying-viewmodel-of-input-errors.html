@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Notifying the viewmodel of input errors using MVVMLight in Silverlight
 date: '2010-09-30T21:20:00.002+02:00'
 orgauthor: Joost van Schaik
@@ -14,6 +14,7 @@ tags:
 modified_time: '2012-08-30T11:55:27.429+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2255704038289469670
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/09/notifying-viewmodel-of-input-errors.html
+comment_issue_id: 51
 ---
 
 <p>I was creating a little application that had some input fields and a submit button. I wanted the submit button only to be enabled when the user input was valid. No a very unusual use case. So I set out to create a viewmodel the usual <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> way, extending ViewModelBase and making properties using the snippets <a href="www.twitter.com/lbugnion" target="_blank">Laurent Bugnion</a> provides with the MVVMLight toolkit. To validate them, I decorated them with attributes from System.ComponentModel.DataAnnotations, and validated them with using the Validator. A typical property looks like this:</p>  <pre>/// <summary>

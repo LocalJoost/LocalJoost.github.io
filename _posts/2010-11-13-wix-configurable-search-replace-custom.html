@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: WIX configurable search & replace custom action for text files
 date: '2010-11-13T19:39:00.002+01:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ tags:
 modified_time: '2013-04-26T19:27:36.774+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6686178423430786206
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2010/11/wix-configurable-search-replace-custom.html
+comment_issue_id: 58
 ---
 
 <p>Recently I had my first encounter with actually writing setups myself using <a href="http://wix.sourceforge.net/" target="_blank">WIX</a>. This is a powerful albeit a bit complex technology that allows you to build MSI setups using XML files. It includes all kinds of tasks to modify files after installation, and thus you can for instance change the settings in configuration files based upon user input. Unfortunately good examples are few and far between, and I hope to save some poor sod a lot of time with this article</p>  <p>Trouble is that the standard tasks only know how to modify <em>XML </em>files. Now this is usually enough, but if you want to change plain text files files then you are basically on your own. WIX supports the idea of custom actions that you can write in C#, So I set out to write such a search &amp; replace custom action that was to be configured by a <em><a href="http://wix.sourceforge.net/manual-wix2/wix_xsd_customtable.htm" target="_blank">custom table</a>.</em> </p>  <p>That turned out less straightforward than I thought. Under Windows 7 and Vista, with UAC enabled, part of the installation sequence is run with elevated rights, part is not, and your custom actions are running <em>not</em> with elevated rights unless they are ‘deferred’ but <em>then</em> you don’t have access to the custom table anymore. I spent quite some time figuring out why my configuration files were virtualized by the installer but those in the program directory themselves never got changed. Finally solved that catch-22 by following what appeared to be a beaten track: split the task into two task. The first task runs immediate, reads the table, and dumps its contents in a file, the second runs deferred.</p>  <p>The actual code consist out of two methods and a property. The class declaration with the property looks like this:</p>  <pre>using System;

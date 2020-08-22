@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: 'JSON services revisited: using a Dictionary as a generic parameter'
 date: '2008-03-16T16:17:00.007+01:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2008-03-16T18:16:17.235+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-835152595425995076
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2008/03/json-services-revisited-using.html
+comment_issue_id: 12
 ---
 
 Somebody at Microsoft deserves a Nobel Prize. Well, that is maybe a bit strong, but I ran into the problem that I wanted to create JSON scriptserver that would accept a 'parameter bag' of unknown size and type. I expected problems in the serialization, since Javascript typing is at best a bit lax, but it turns out that when you define a web service with a parameter of type Dictionary&lt;string, object&gt; dict, the JSON serializer <em>automatically</em> derives the object types from the javascript data! 

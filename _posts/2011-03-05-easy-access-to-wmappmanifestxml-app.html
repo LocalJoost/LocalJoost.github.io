@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Easy access to WMAppManifest.xml App properties like version and title
 date: '2011-03-05T12:26:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -12,6 +12,7 @@ tags:
 modified_time: '2011-04-20T11:34:57.083+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5036057046843649258
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/03/easy-access-to-wmappmanifestxml-app.html
+comment_issue_id: 74
 ---
 
 <p>Every <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> application must have an <a href="http://msdn.microsoft.com/en-us/library/ff769509(v=vs.92).aspx" target="_blank">Application Manifest file called WMAppManifest.xml</a>. In this you must state title, author, version and some other things. A quote from the link above:</p>  <p><em>“The primary purpose of this file is the following:</em></p>  <ul>   <li><em>The Windows Phone Marketplace application submission process uses information from the manifest file. The manifest file supports the submission of applications to the Windows Phone Marketplace (including certification), device marketplace filtering, marketplace-to-device deployment, and device execution.</em> </li>    <li><em>The information from the manifest file is used as the application metadata that will be stored in the application database.”</em> </li> </ul>  <p>For some reason it’s not common knowledge that information in this file can accessed runtime as well. This can come in very handy, for example for showing a consistent app title and even more important, it’s version number. There are some examples of this to be found on the web but they are not very clear or pretty limited, so I cobbled together this little helper class to make retrieving attributes from the App tag a little easier:</p>  <pre>using System.Collections.Generic;

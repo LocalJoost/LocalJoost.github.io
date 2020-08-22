@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Porting the DragFlickBehavior from Windows Phone 7 to Windows 8 Metro Style
 date: '2012-04-01T14:52:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2012-04-05T08:31:18.750+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-5323651930795046595
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/04/porting-dragflickbehavior-from-windows.html
+comment_issue_id: 107
 ---
 
 <p><font size="4">Preface</font></p> <p>A little over a year ago I made <a title="DragFlickBehavior" href="http://localjoost.github.io/simple-windows-phone-7-silverlight">DragFlickBehavior</a>, a behavior for <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> that makes essentially <em>anything</em> draggable and ‘flickable’, that is, you can drag a GUI element along with your finger and it seems to have a little inertia when you let it go. In <a href="http://localjoost.github.io/attached-behaviors-for-windows-8-metro" target="_blank">my previous post</a>, I described the basics of how to make a behavior at all for <a href="http://windows.microsoft.com/en-US/windows-8/consumer-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> Metro style. The testing of this was done using a ported version of the DragFlickBehavior. I’ve retraced my steps to how I got it to work, and will describe the process of porting an existing behavior here.</p> <p>For the DragFlickBehavior to work, some groundwork needed to be layed first. For Windows Phone, I made a couple of extension methods for both FrameworkElement and StoryBoard first. To make matters worse, one of those extension methods in FrameworkElementExtensions used yet <em>another </em>extension method – GetVisualParent in VisualTreeHelperExtensions from Phone7.Fx… Nil desperandum… I’ll start at the beginning</p> <p><font size="4">Porting&nbsp; VisualTreeHelperExtensions</font></p> <p>I created a class library Win8nl.External, copied VisualTreeHelperExtensions.cs from <a href="http://phone7.codeplex.com/SourceControl/changeset/view/71274#1257675" target="_blank">it’s codeplex location</a>, and opened the it the editor. And then the process was pretty simple:</p> <ul> <li>The namespace System.Windows.Media is gone. So I deleted it’s using.  <li>I basically clicked every red line, hit Control-.&nbsp; (that’s Control-dot) and in most cases the editor would suggest a name space to add</li></ul> <p>In the end I seemed to have added <pre>using Windows.UI.Xaml;

@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Mogade powered Live Tile high score service for Windows Phone 7
 date: '2011-06-18T17:35:00.009+02:00'
 orgauthor: Joost van Schaik
@@ -14,6 +14,7 @@ modified_time: '2011-07-01T08:37:38.010+02:00'
 thumbnail: http://lh3.ggpht.com/-8_bw3GEDeWY/TfzFzlCsNMI/AAAAAAAAGeY/8gY4rl25Zek/s72-c/livetile_thumb.png?imgmax=800
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-831659670086672003
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/06/mogade-powered-live-tile-high-score.html
+comment_issue_id: 80
 ---
 
 <p>Those who are following my twitter timeline cannot have missed the fact that I recently published a little game called “<a href="http://social.zune.net/redirect/preferences/askclient?ReturnUrl=http%3a%2f%2fsocial.zune.net%2fredirect%3ftype%3dphoneApp%26id%3d48fd8097-f07e-e011-986b-78e7d1fa76f8" target="_blank">Catch’em birds</a>” for <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> in the Marketplace. This was mainly a trial project to see if I could bend <a href="http://mvvmlight.codeplex.com/" target="_blank">MVVMLight</a> far enough to use in an action&#160; game (result: yes you can). It’s not exactly a smashing success in terms of downloads and sales, and it does not use any of the Windows Phone exclusive features. So I decided to add a Live Tile showing the overall high score and if possible, the player’s rank. I’ve noticed that some people in the Dutch Windows Phone developer community (I won’t mention names here) tend to get particularly competitive when high scores are involved, so maybe this would boost download. And if not, then at least I’d have a lot of fun developing it.</p>  <p>Catch’em birds features an online leaderboard using the services of <a href="www.mogade.com" target="_blank">Mogade</a>. They have a nice and very simple to use library that you can include in your Windows Phone 7 project. You make an account, you define a game, and you define a leaderboard. This will give you 3 keys that you must include in your App and you are ready to go. Samples on their site are quite adequate so I won’t bore you with a repeat of that.</p>  <p>But now I want to use the same leaderboard services from a Live Tile service. So I defined a solution with an empty ASP.NET Web application project, and deleted all source files except for web.config. In the web.config, I defined four keys:</p>  <pre>&lt;appSettings&gt;

@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Floating ‘text balloons’ for context relevant information in Xamarin Forms
 date: '2016-06-11T09:28:00.000+02:00'
 orgauthor: Joost van Schaik
@@ -12,6 +12,7 @@ modified_time: '2016-07-26T13:03:59.361+02:00'
 thumbnail: https://i.ytimg.com/vi/rmO0SQ4K8fM/default.jpg
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8731447899003631315
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/06/floating-text-balloons-for-context.html
+comment_issue_id: 249
 ---
 
 <h2>Picking the challenge apart</h2> <p>An Italian proverb says that a fool can ask more questions than seven wise men can answer – a modern variant could be that a designer can think up more things than a developer can build. I don’t pretend to be the proverbial wise man, and neither do I want to call my designer colleague a fool, and when he came up with the idea of introducing text balloons with context relevant information, floating on top on the rest of the UI, cross-platform, and preferably appearing with a nice animation, I indeed had to do some head scratching. </p> <p>What he meant was this, and this is exactly how I created it</p><iframe height="367" src="https://www.youtube.com/embed/rmO0SQ4K8fM" frameborder="0" width="650" allowfullscreen></iframe> <p>The issues I had to tackle, were:</p> <ol> <li>How do I create a text balloon in the first place, with a kind of pointy bit pointing to the UI element it belongs to?  <li>How do I get the absolute position of a UI element - that is, the one the user taps?  <li>How do I show the text balloon <em>in situ?</em></li></ol> <h2>Text balloon 101</h2> <p><img alt="tekstballon" src="http://www.wortell.nl/wp-content/uploads/2016/06/tekstballon.png" width="333" height="107"></p> <p>This text balloon consists of a translucent grid that ties the components together. It contains two grids, one of them containing the label. The first grid is the bit that points up. This actually is a 15 by 15 square, rotated 45⁰, and moved a little bit to the left using the new Margins property that has <em>finally</em> made it to Xamarin Forms. The second and biggest grid is the green rectangle actually containing the text you want to show. Because it’s in XAML after the square, drawing precedence rules make that it be drawn <em>on top of the first one.</em> You would not see it at all, if is wasn’t for the fact this grid <em>also </em>has a margin - of 7 on the top so about <em>half of the rotated square</em>. The net result, as you can see, is a triangle sticking out of the rectangle, making the optical illusion of a kind of text balloon. In XAML, this looks like this</p><pre style="font-size: 11px">&lt;Grid x:Name="MessageGridContainer" xmlns="http://xamarin.com/schemas/2014/forms"

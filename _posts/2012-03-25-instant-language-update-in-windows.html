@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Instant language update in a Windows Phone 7 application using MVVM
 date: '2012-03-25T21:18:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -14,6 +14,7 @@ modified_time: '2012-03-27T09:16:04.112+02:00'
 thumbnail: http://lh6.ggpht.com/-crGszbshyw8/T3Fo7ubub9I/AAAAAAAAIGc/oFQG4fUcPv4/s72-c/InstantLanuage_thumb%25255B1%25255D.png?imgmax=800
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4458466024821482068
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/03/instant-language-update-in-windows.html
+comment_issue_id: 105
 ---
 
 <p>With <a href="http://windowsteamblog.com/windows_phone/b/wpdev/archive/2012/03/15/app-hub-accepting-submissions-for-new-markets-soon.aspx?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">more and more Marketplaces being added</a> to the <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> ecosystem, globalization of your app becomes all the more more important. I am happy to see a lot of apps these days support multiple languages. I usually employ a solution described in my article <a href="http://localjoost.github.io/mvvmlight-based-language-selection-for">MVVMLight based language selection for Windows Phone 7</a> – this automatically picks up the language from the phone and defaults to English/US if the default language is not supported by the app. But I also like to give the user the chance to <em>override</em> the automatically selected language. I, for instance, run the phone OS in English/US, but I’d like specific Dutch apps to run in Dutch, thank you. If you follow the globalization example <a href="http://msdn.microsoft.com/en-us/library/ff637520(v=VS.92).aspx?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">as described by MSDN</a> using my code, that unfortunately requires the app to be restarted after applying the language change. Well, no more!</p> <p>The sample as provided by MSDN provides a localized string helper that looks more or less like this:</p><pre>namespace InstantLanguage.Resources

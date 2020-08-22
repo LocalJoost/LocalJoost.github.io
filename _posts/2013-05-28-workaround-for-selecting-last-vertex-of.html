@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Workaround for selecting the last vertex of a Windows Phone MapPolyline
 date: '2013-05-28T19:46:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ tags:
 modified_time: '2013-06-11T10:47:24.534+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-7659161411923508094
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2013/05/workaround-for-selecting-last-vertex-of.html
+comment_issue_id: 141
 ---
 
 <p>Fellow MVP - and fellow map maniac - <a href="http://www.twitter.com/dotmorten" target="_blank">Morten Nielsen</a> brought me into contact with a <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> developer called Jonathan Aghachi. He was struggling to select MapPolylines drawn on a Map using Map.GetMapElementsAt. For those not familiar with he concept of selecting stuff on a Wiindows Phone 8 map – you cannot select the shapes on the map directly like on Windows RT – they do not expose any events. In stead, you can trap the Tap event of the Map object, and retrieve all objects on that location like this:</p><pre>private void Map_Tap(object sender, GestureEventArgs e)

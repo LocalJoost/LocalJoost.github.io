@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Measuring temperatures using an UWP on a Raspberry PI 2
 date: '2015-09-17T18:16:00.000+02:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ tags:
 modified_time: '2015-09-21T13:35:12.325+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2893028705331192011
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2015/09/measuring-temperatures-using-uwp-on.html
+comment_issue_id: 223
 ---
 
 &nbsp; <h4><font size="2">Part 3 of Reading temperatures &amp; controlling a fan with a RP2, Azure Service Bus and a Microsoft Band</font></h4> <p><font size="4">Intro</font><br>In this article I will show how you can measure temperature on a Raspberry PI2 using an Universal <a href="http://www.windows.com" target="_blank">Windows</a> Platform App. To this extent we will use a Keyes Analog-temperature sensor and an ADC0832 analog-digital-convertor, as well as a 2-color (red-yellow) LED to show what's happening (and whether anything is happening at all) when running headless</p><sup></sup> <p><img src="http://www.schaikweb.net/dotnetbyexample/Reading-temperatures--controlling-a-fan-_9EFF/temperaturesensor.jpg" width="207" height="150"><img src="http://www.schaikweb.net/dotnetbyexample/Reading-temperatures--controlling-a-fan-_9EFF/adconverter.jpg" width="172" height="150"><img src="http://www.schaikweb.net/dotnetbyexample/Reading-temperatures--controlling-a-fan-_9EFF/led.jpg" width="180" height="150"><br><br>The hardware configuration has already been detailed in the <a href="http://localjoost.github.io/reading-temperatures-controlling-fan" target="_blank">first post of this series</a>, this post will only detail a part of software.  <p><font size="4">Basic app setup</font><br>I have built this app using dependency injection, although not a very fancy sort, inspired by a colleague and some things I saw recently in code. The app that is intended to run on the Raspberry PI2&nbsp; is called TemperatureReader (I have never been good at original names) and (mostly) TemperatureReader.Logic. You can find all the code in the <a href="https://github.com/LocalJoost/TemperatureReaderDemo" target="_blank">demo solution</a>. But of course I will highlight the way it's done.  <p>All the UI that ss in the app it this single big TextBlock showing the temperature:<pre>&lt;Grid &gt;

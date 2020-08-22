@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: 'JSON deserialization with JSON.net: basics'
 date: '2012-01-22T20:35:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -14,6 +14,7 @@ modified_time: '2012-11-22T21:05:02.886+01:00'
 thumbnail: http://lh6.ggpht.com/-B614r5ue5rM/TxxlBC2NHHI/AAAAAAAAHEQ/Hwahqj_hsYM/s72-c/Json2Csharp_thumb%25255B1%25255D.png?imgmax=800
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-6921523340631367310
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/01/json-deserialization-with-jsonnet.html
+comment_issue_id: 99
 ---
 
 <p>I’ve been contemplating an article about handling JSON for some time now, but it turned out to be a rather long article. So I’d thought to try something new, and write a short series in three parts. </p> <ul> <li>Part 1 handles the basics  <li><a href="http://localjoost.github.io/json-deserialization-with-jsonnet-class" target="_blank">Part 2</a> handles advanced deserialization with class hierarchies  <li><a href="http://dotnetbyexample.blogspot.nl/2012/05/json-deserialization-with-jsonnet.html" target="_blank">Part 3</a> handles a caching-and-updating scenarios.</li></ul> <p>And this is part 1 ;-)</p> <p>This whole article actually boils down to <em>one line of code</em>, but I need to go trough some hooplah to show you how to use it. It all begins with the data. Consider this piece of quite readable JSON, describing a few recent <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> models. </p><pre>[

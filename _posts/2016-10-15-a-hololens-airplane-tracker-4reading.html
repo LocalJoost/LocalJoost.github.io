@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: A HoloLens airplane tracker 4–Reading data and positioning airplanes
 date: '2016-10-15T14:05:00.002+02:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ modified_time: '2016-10-15T14:12:55.631+02:00'
 thumbnail: http://2.bp.blogspot.com/-18VdaBXv2sM/T9GzlEMuu3I/AAAAAAAAAEE/SCtfkqZlEYs/s72-c/roll+pitch+yaw.png
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4004494303119930123
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2016/10/a-hololens-airplane-tracker-4reading.html
+comment_issue_id: 265
 ---
 
 <h2>Time to rock and roll</h2> <p>All right my friends, it’s time to show the heart of the matter – how to read data from an Azure Mobile App Services data service and make the airplanes appear in the right places. </p> <h2>Adding the JSON data object scripts</h2> <p>As the projects are partially regenerated, and have a total different .NET baseline, I have not found a good way to share classes as binaries between full .NET code and Unity without getting in all kinds of trouble, so I choose the easy way out: I took</p> <ul> <li>TrackType.cs  <li>Coordinate.cs  <li>Flight.cs</li></ul> <p>from the FlightDataService\DataObjects, moved them the App/Scripts/DataObjects folder in the Unity project. Then of course the service does not compile anymore, but I added the moved file <em>as link</em>. Then at least we have once source of truth as far as these classes are concerned.</p> <p>Then we need a simple class to hold a list of flights with a timestamp (add that to the DataObjects folder as well):</p><pre>using System;

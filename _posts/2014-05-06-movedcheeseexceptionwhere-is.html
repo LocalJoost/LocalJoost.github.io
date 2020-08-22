@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: MovedCheeseException–where is StorageFolder.TryGetItemAsync in Windows Phone 8.1?
 date: '2014-05-06T11:11:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -9,6 +9,7 @@ tags:
 modified_time: '2014-05-06T13:34:48.665+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-4043351192679536172
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/05/movedcheeseexceptionwhere-is.html
+comment_issue_id: 173
 ---
 
 <p>A quickie this time: when I finally started porting <a href="http://WpWinNl.codeplex.com" target="_blank">WpWinNl</a> over to <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> 8.1 (sorry, I was busy testing, preparing a talk and the <a href="https://www.youtube.com/watch?v=s9FfOs6TqOY" target="_blank">Windows Phone Code Battle</a>, so something had to give) and was getting into the nuts and bolts of some of my code I noticed something peculiar. Somewhere in my code the StorageHelper class, that sports this little method.</p><pre style="font-size: 11px">private async Task&lt;StorageFile&gt; GetDataFile()

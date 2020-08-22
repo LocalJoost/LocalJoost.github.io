@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Preventing objects made invisible by data binding to show up initially
 date: '2011-04-13T09:30:00.001+02:00'
 orgauthor: Joost van Schaik
@@ -14,6 +14,7 @@ tags:
 modified_time: '2011-04-20T11:34:57.078+02:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2559017126561122540
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/04/preventing-objects-made-invisible-by.html
+comment_issue_id: 77
 ---
 
 <p>Currently I am in the process of writing a small <a href="http://www.microsoft.com/windowsphone/en-us/default.aspx" target="_blank">Windows Phone 7</a> game . It sports a ‘game over’ panel with a ‘play again’ button and it’s visibility is controlled by a boolean value ‘IsGameOver’ in the ViewModel. My <a href="http://localjoost.github.io/converter-for-showinghiding-silverlight" target="_blank">VisibilityConverter</a> converts the true and false to Visiblity.Visible and Visibility.Collapsed.</p>  <p>Although this works well, data binding apparently takes place only <em>after</em> the complete GUI is loaded, for when the game starts, you see the panel for about half a second before it disappears again. Ugh. </p>  <p>I did not actually solve this problem, but found a workaround in the following little behavior:</p>  <pre>using System.Windows;

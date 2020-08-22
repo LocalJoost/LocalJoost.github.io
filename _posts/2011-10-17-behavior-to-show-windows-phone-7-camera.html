@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: A behavior to show the Windows Phone 7 camera as background
 date: '2011-10-17T21:31:00.004+02:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2012-03-04T10:29:37.541+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-494862941005176815
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2011/10/behavior-to-show-windows-phone-7-camera.html
+comment_issue_id: 91
 ---
 
 <p><em>This article was updated October 29, 2011, implementing correctly handling of “back” navigation</em></p> <p>In a previous post I showed how to <a href="http://localjoost.github.io/mango-augmented-reality-101-showing" target="_blank">use the camera feed as background on a page</a> of a <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone 7</a> application. Today, I make it even easier for the really <em>really</em> lazy programmer: I have created a behavior to do the same. As a bonus, this behavior also takes the page orientation into account and whether the <a href="http://msdn.microsoft.com/en-us/library/microsoft.phone.shell.systemtray(v=vs.92).aspx" target="_blank">SystemTray</a> is visible or not.</p> <p>First order of business: make a basic behavior. Using the snippet from my previous <a href="http://localjoost.github.io/safe-event-detachment-pattern-for" target="_blank">safe event detachment pattern for behaviors</a> the initial setup looks like this:</p><pre>namespace Wp7nl.Behaviors

@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: A WinRT behavior to mimic EventToCommand (take 2)
 date: '2012-11-14T10:13:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -14,6 +14,7 @@ tags:
 modified_time: '2013-01-20T16:45:55.462+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-8017519964283843716
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2012/11/a-winrt-behavior-to-mimic.html
+comment_issue_id: 122
 ---
 
 <p>(Updated with sample code January 19 2013)</p> <p>Some time ago I posted a <a href="http://dotnetbyexample.blogspot.nl/2012/07/a-winrt-behavior-to-mimic-eventtocommand.html" target="_blank">WinRT behavior to mimic EventToCommand</a>. This behavior cunningly looked for the command name in the DataContext, but it occurred to me (and some blog post commenters as well) that it actually might be more logical skip all that skullduggery and let the developer <em>bind</em> to a command in stead of letting her/him provide its name as string and then go look for it.</p> <p>Anyway, not wanting to break compatibility I added a <em>new</em> behavior to my <a href="http://win8nl.codeplex.com/" target="_blank">win8nl library on CodePlex</a>, very originally called EventTo<em>Bound</em>CommandBehavior.</p> <p>It’s working is very similar to the original EventToCommandBehavior. There are two notable differences:</p> <ul> <li>The Command property is now no longer of type string but ICommand  <li>The FireCommand method is now very simple:</li></ul><pre>private void FireCommand()

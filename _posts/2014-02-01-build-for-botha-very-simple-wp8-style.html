@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Build for both–a very simple wp8 style app bar hint control for Windows Store apps
 date: '2014-02-01T20:47:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -13,6 +13,7 @@ tags:
 modified_time: '2014-02-01T20:47:16.755+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-821950203493288447
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/02/build-for-botha-very-simple-wp8-style.html
+comment_issue_id: 163
 ---
 
 <p><a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows Phone</a> users are very familiar with the concept of an app bar at the bottom that, in collapsed state, gives a kind of indication that it’s available. In Windows Store apps app bars are just invisible, unless you specifically activate them by swiping in from the top or the bottom. There have been earlier attempts to solve this UI difference by my fellow Dutch MVP <a href="http://reflectionit.nl/Blog/2013/windows-8-xaml-tips-peeking-appbar" target="_blank">Fons Sonnemans who created the Peeking App Bar</a>. Microsoft itself has apparently become aware of the fact default invisible app bars may not always be ideal, and has created a kind of a hint of an app bar that very much looks like they had some inspiration from Windows Phone – which is now used in the Windows Mail app:</p> <p><a href="http://www.schaikweb.net/dotnetbyexample/Bu_FBBE/image.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://www.schaikweb.net/dotnetbyexample/Bu_FBBE/image_thumb.png" width="650" height="30"></a></p> <p>Now there are already solutions out there, <a href="http://code.msdn.microsoft.com/windowsapps/AppBar-Hint-control-17e23dbf" target="_blank">most notably this one by recently appointed MVP Dave Smits</a>. They work indeed. But I like to make things simple, so I made a very simple. So in a typical programmer fashion, I rolled my own :-)</p> <p>So I created my HintBar control, which is actually laughably simple. The XAML is only this, and most of it is declaration too:</p><pre>&lt;UserControl

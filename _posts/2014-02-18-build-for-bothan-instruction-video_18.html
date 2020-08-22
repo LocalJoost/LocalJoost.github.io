@@ -1,5 +1,5 @@
 ---
-
+layout: post
 title: Build for both–an instruction video pivot page for Windows Phone apps
 date: '2014-02-18T19:41:00.001+01:00'
 orgauthor: Joost van Schaik
@@ -11,6 +11,7 @@ tags:
 modified_time: '2014-02-18T21:34:18.929+01:00'
 blogger_id: tag:blogger.com,1999:blog-5295746446529817470.post-2589286984290471556
 blogger_orig_url: https://dotnetbyexample.blogspot.com/2014/02/build-for-bothan-instruction-video_18.html
+comment_issue_id: 166
 ---
 
 <p>For <a href="http://www.microsoft.com/windowsphone/?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939">Windows Phone</a> apps, the same goes a for <a href="http://windows.microsoft.com/en-US/windows-8/release-preview?ocid=aff-n-we-loc--ITPRO40939&amp;WT.mc_id=aff-n-we-loc--ITPRO40939" target="_blank">Windows 8</a> store apps – a picture tells more than a thousand words and a video even more. So <a href="http://dotnetbyexample.blogspot.nl/2014/02/build-for-bothan-instruction-video.html" target="_blank">as promised earlier</a>, I am going to show you how to make a video instruction pivot for Windows Phone, that works as showed here below.</p> <div id="scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:cac7bb82-989e-48b3-bb2d-5b5075df460f" class="wlWriterSmartContent" style="float: none; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px"> <div><embed type="application/x-shockwave-flash" height="252" width="448" src="http://www.youtube.com/v/c3itxIuBqhk?hl=en&amp;hd=1"></embed></div> <div style="font-size: 0.8em; width: 448px; clear: both">Windows Phone video instruction demo</div></div> <p>The Pivot part is easy, as this is already built-in – controlling the MediaElements proved to be substantially harder. </p> <p>A recap of the objectives:</p> <ul> <li>Start the video on the current visible pivot item automatically – and start the first video on the first pivot as soon as the user access the page.  <li>Repeat that movie automatically when it ends  <li>Stop it as soon as the user selects a different pivot item</li></ul> <p><font size="4">Setting the stage</font></p> <ul> <li>Create a blank Windows Phone app  <li>Bring in my <a href="http://WpWinNl.codeplex.com">WpWinNl</a> library from Nuget  <li>Add an empty page “Help.xaml”  <li>Open WMAppManifest.xml, look for the box “Navigation Page” and change this from “MainPage.xaml” to “Help.xaml”. This will make your app start the Help page on startup. That’s not a smart move for production code but it will make a demo app a lot easier.</li></ul> <p><font size="4">The XAML basics</font></p> <p>Basically the page (expect for the header) is filled by a StackPanel containing a PivotItem and some styling for (mostly) the MediaElementand the PivotItem. That gives every MediaElement a specific alignment and size that will make it fit just in a portrait-oriented page.</p><pre>&lt;StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,30,0,0"&gt;
