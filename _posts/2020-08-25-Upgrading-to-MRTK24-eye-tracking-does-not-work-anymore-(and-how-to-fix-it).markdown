@@ -6,8 +6,6 @@ categories: hololens2 mrtk2 unity3d windows-mixed-reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2020-08-25-Upgrading-to-MRTK24-eye-tracking-does-not-work-anymore-(and-how-to-fix-it)/EyeGazeProvider.png
 comment_issue_id: 357
 ---
-# Upgrading to MRTK2.4-eye tracking does not work anymore (and how to fix it)
-
 Is it possible to write a blog post about one single check box? Gather ye children, around the fire, and I will tell. For an app for my employer I am employing the awesome HoloLens 2 eye tracking. So I implemented it the way I was used to. And I found it did not work. Nothing at all. So to check if I was not not crazy, I took my [Eye Tracing Demo ](https://localjoost.github.io/migrating-to-mrtk2-setting-up-and/) that I wrote in September 2019 - still worked. Until I updated the MRTK (which was still 2.1) to 2.4
 
 ## Setting up - how it used to be (and mostly still is)
