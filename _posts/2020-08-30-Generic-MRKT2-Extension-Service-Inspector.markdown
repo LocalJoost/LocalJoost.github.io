@@ -10,7 +10,7 @@ I make extensive use of the MRTK2 extension service feature and it's dependency 
 
 ## The lazy developer's approach
 
-So I started thinking: wouldn't it be possible to write something that just iterates over the properties of a service using reflection and draw a UI on the fly? And then using the property type info to determine a field type - and fall back to a `ToString()` value in a text field. It turned out I could... although I had to solve the slight matter of recursively diving into child objects. I use a rather primitive approach to determine whether a property is a complex type or a simple type: if its `ToString()` value equals its type's `FullName`, it's a complex type and I have to dive into render it's properties in a nested way. If not, it's just a field. That works for *almost* everything. QED.
+So I started thinking: wouldn't it be possible to write something that just iterates over the properties of a service using reflection and draw a UI on the fly? And then using the property type info to determine a field type - and fall back to a `ToString()` value in a text field. It turned out I could... although I had to solve the slight matter of recursively diving into child objects. I use a rather primitive approach to determine whether a property is a complex type or a simple type: if its `ToString()` value equals its type's `FullName`, it's a complex type and I have to dive into render it's properties in a nested way. If not, it's just a field. That works for *almost* everything. QED. 
 
 ![](/assets/2020-08-30-Generic-MRKT2-Extension-Service-Inspector/ServiceDisplay.png)
 
