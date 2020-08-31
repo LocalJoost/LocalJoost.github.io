@@ -1,4 +1,4 @@
-﻿---
+---
 layout: post
 title: Generic MRKT2 Extension Service Inspector
 date: 2020-08-30T00:00:00.0000000+02:00
@@ -90,7 +90,7 @@ It simply iterates over every property, and draws a field for it. Unless the pro
 ## Actually drawing fields
 Now this is pretty easy in itself. There's actually two methods drawing fields. One draws most of the common fields, falling back to a `ToString()` value in a text field for none-specific fields or text:
 ```csharp
-private void DrawField(string name, object propVal)
+protected void DrawField(string name, object propVal)
 {
     // Check if there's a custom field drawer first
     if (DrawCustomField(name, propVal))
