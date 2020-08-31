@@ -1,4 +1,4 @@
----
+﻿---
 layout: post
 title: Generic MRKT2 Extension Service Inspector
 date: 2020-08-30T00:00:00.0000000+02:00
@@ -52,6 +52,10 @@ Basically, in `BaseGenericServiceInspector`, this routine does most of the work:
 ```csharp
 private void RenderObjectFields(object target)
 {
+    if (target == null)
+    {
+        return;
+    }
     foreach (var prop in target.GetType().GetProperties(
         BindingFlags.Public | BindingFlags.Instance))
     {
