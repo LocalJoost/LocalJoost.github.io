@@ -50,7 +50,7 @@ In stead of adding inspector fields yourself, literally all you have to do is:
 Basically, in `BaseGenericServiceInspector`, this routine does most of the work:
 
 ```csharp
-private void RenderObjectFields(object target)
+protected void RenderObjectFields(object target)
 {
     if (target == null)
     {
@@ -123,7 +123,7 @@ protected void DrawField(string name, object propVal)
     }
 }
 
-public virtual bool DrawCustomField(string name, object propVal)
+protected virtual bool DrawCustomField(string name, object propVal)
 {
     return false;
 }
