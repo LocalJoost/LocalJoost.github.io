@@ -53,19 +53,19 @@ scripts.
 
 Fortunately you can coax Visual Studio Code into be a bit more helpful as well. Click File/Preferences/Settings. Then, in the search box on top, enter "files:exclude". Here you can add "glob patterns" that hide files you *don't* want to see. I added quite a lot:
 * .vs
-* **/*.anim
-* **/*.asset
-* **/*.controller
-* **/*.csproj
-* **/*.fbx
-* **/*.mat
-* **/*.meta
-* **/*.mp3
-* **/*.nuspec
-* **/*.prefab
-* **/*.sln
-* **/*.unity
-* **/*.wav
+* \*\*/*.anim
+* \*\*/*.asset
+* \*\*/*.controller
+* \**/*.csproj
+* \*\*/*.fbx
+* \*\*/*.mat
+* \*\*/*.meta
+* \*\*/*.mp3
+* \*\*/*.nuspec
+* \*\*/*.prefab
+* \*\*/*.sln
+* \*\*/*.unity
+* \*\*/*.wav
 * Assets/links.xml
 * Library
 * obj
@@ -83,6 +83,6 @@ And most likely I still forgot a few that I will add later. You can, by the way,
 ```
 ## Conclusion
 
-I have no idea why selecting *Visual Studio Code* as External Script Editor makes both Unity *and* Visual Studio 2019 working together a lot faster. I can speculate - I guess Unity is trying to do some magic tricks to coax Visual Studio 2019 into some kind of desired behavior, but as a result makes it reload the entire project structure on every single name change or file add, locking Unity in the process (or something), sometimes throwing in errors for extra fun and generally creating a lot of mayhem. 
+I have no idea why selecting *Visual Studio Code* as External Script Editor makes both Unity *and* Visual Studio 2019 work together a lot faster. I can speculate - I guess Unity is trying to do some magic tricks to coax Visual Studio 2019 into some kind of desired behavior, but as a result makes it reload the entire project structure on every single name change or file add. This locks Unity in the process (or something), and sometimes throws in errors for extra fun and generally creates a lot of mayhem. 
 
-By select Visual Studio Code, all this mayhem goes away. It doesn't make sense, but it works. As this is a no code blog post, no sample project today. Sorry ;).
+By selecting Visual Studio Code, all this mayhem goes away. It doesn't make sense, but it works. As this is a no code blog post, no sample project today. Sorry ;).
