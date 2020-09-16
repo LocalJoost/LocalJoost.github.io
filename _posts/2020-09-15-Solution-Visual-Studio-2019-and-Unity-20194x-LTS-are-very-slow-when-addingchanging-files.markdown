@@ -6,7 +6,7 @@ tags: unity3d visual-studio-2019 visual-studio-code
 featuredImageUrl: https://LocalJoost.github.io/assets/2020-09-15-Solution-Visual-Studio-2019-and-Unity-20194x-LTS-are-very-slow-when-addingchanging-files/SetVsCodeAsEditor.png
 comment_issue_id: 359
 ---
-Although I like to stay at the minimum recommended version for the MRTK (currently 2018.4.20f1), for the app we are currently developing for my employer we need to target ARM64 and for that you need 2091.4.8f1 (until short, the latest LTS). This has an unintended and very unwanted side effect: adding files to your solution becomes slow. Like *extremely* slow. You might wait well over 15 seconds, especially by scripts. Renaming files - same problem. Visual Studio asks you to reload the project, all 99 (or 101, depending on your settings) are unloaded and reloaded, you might even get some errors as extra. And all the while it's doing that both Unity and Visual Studio itself are not responsive. It's maddening.
+Although I like to stay at the minimum recommended version for the MRTK (currently 2018.4.20f1), for the app we are currently developing for my employer we need to target ARM64 and for that you need 2091.4.8f1 (until short, the latest LTS). This has an unintended and very unwanted side effect: adding files to your solution becomes slow. Like *extremely* slow. You might wait well over 15 seconds, especially with scripts. Renaming files - same problem. Visual Studio asks you to reload the project, all 99 (or 101, depending on your settings) are unloaded and reloaded, you might even get some errors as extra. And all the while it's doing that both Unity and Visual Studio itself are not responsive. It's maddening.
 
 But there are ways to get around it.
 
