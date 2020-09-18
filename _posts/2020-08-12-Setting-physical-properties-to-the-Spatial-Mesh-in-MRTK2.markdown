@@ -2,7 +2,12 @@
 layout: post
 title: Setting physical properties to the Spatial Mesh in MRTK2
 date: 2020-08-12T00:00:00.0000000+02:00
-tags: mrkt2 windows-mixed-reality hololens2 unity3d
+categories: []
+tags:
+- MRKT2
+- Windows Mixed Reality
+- HoloLens2
+- Unity3D
 featuredImageUrl: https://LocalJoost.github.io/assets/2020-08-12-Setting-physical-properties-to-the-Spatial-Mesh-in-MRTK2/SpatialNoPhysicalSetting.png
 comment_issue_id: 356
 ---

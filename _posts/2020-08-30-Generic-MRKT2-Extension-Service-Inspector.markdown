@@ -2,7 +2,12 @@
 layout: post
 title: Generic MRKT2 Extension Service Inspector
 date: 2020-08-30T00:00:00.0000000+02:00
-categories: hololens2 mrtk2 unity3d windows-mixed-reality
+categories: []
+tags:
+- Hololens2
+- MRKT2
+- Unity3d
+- Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2020-08-30-Generic-MRKT2-Extension-Service-Inspector/ServiceDisplay.png
 comment_issue_id: 358
 ---
@@ -52,10 +57,6 @@ Basically, in `BaseGenericServiceInspector`, this routine does most of the work:
 ```csharp
 protected void RenderObjectFields(object target)
 {
-    if (target == null)
-    {
-        return;
-    }
     foreach (var prop in target.GetType().GetProperties(
         BindingFlags.Public | BindingFlags.Instance))
     {
@@ -90,7 +91,7 @@ It simply iterates over every property, and draws a field for it. Unless the pro
 ## Actually drawing fields
 Now this is pretty easy in itself. There's actually two methods drawing fields. One draws most of the common fields, falling back to a `ToString()` value in a text field for none-specific fields or text:
 ```csharp
-protected void DrawField(string name, object propVal)
+private void DrawField(string name, object propVal)
 {
     // Check if there's a custom field drawer first
     if (DrawCustomField(name, propVal))
@@ -123,7 +124,7 @@ protected void DrawField(string name, object propVal)
     }
 }
 
-protected virtual bool DrawCustomField(string name, object propVal)
+public virtual bool DrawCustomField(string name, object propVal)
 {
     return false;
 }

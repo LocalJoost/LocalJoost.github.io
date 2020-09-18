@@ -2,7 +2,7 @@
 layout: post
 title: Crash in image creation at System.Windows.Media.Imaging.ColorConvertedBitmap.FinalizeCreation
 date: 2020-08-05T00:00:00.0000000+02:00
-tags: .net
+tags: .NET
 featuredImageUrl: https://LocalJoost.github.io/assets/2020-08-05-Crash-in-image-creation-at-System.Windows.Media.Imaging.ColorConvertedBitmap.FinalizeCreation/CamtasiaCrash.png
 comment_issue_id: 355
 ---

@@ -2,7 +2,12 @@
 layout: post
 title: Upgrading to MRTK2.4-eye tracking does not work anymore (and how to fix it)
 date: 2020-08-25T00:00:00.0000000+02:00
-categories: hololens2 mrtk2 unity3d windows-mixed-reality
+categories: []
+tags:
+- HoloLens2
+- MRTK2
+- Unity3d
+- Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2020-08-25-Upgrading-to-MRTK24-eye-tracking-does-not-work-anymore-(and-how-to-fix-it)/EyeGazeProvider.png
 comment_issue_id: 357
 ---

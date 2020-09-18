@@ -2,7 +2,11 @@
 layout: post
 title: 'Solution: Visual Studio 2019 and Unity 2019.4.x LTS are very slow when adding/changing files'
 date: 2020-09-15T00:00:00.0000000+02:00
-tags: unity3d visual-studio-2019 visual-studio-code
+categories: []
+tags:
+- Unity3D
+- Visual Studio 2019
+- Visual Studio Code
 featuredImageUrl: https://LocalJoost.github.io/assets/2020-09-15-Solution-Visual-Studio-2019-and-Unity-20194x-LTS-are-very-slow-when-addingchanging-files/SetVsCodeAsEditor.png
 comment_issue_id: 359
 ---
