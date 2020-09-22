@@ -4,7 +4,7 @@ title: Generic MRKT2 Extension Service Inspector
 date: 2020-08-30T00:00:00.0000000+02:00
 categories: []
 tags:
-- Hololens2
+- HoloLens2
 - MRKT2
 - Unity3d
 - Windows Mixed Reality
