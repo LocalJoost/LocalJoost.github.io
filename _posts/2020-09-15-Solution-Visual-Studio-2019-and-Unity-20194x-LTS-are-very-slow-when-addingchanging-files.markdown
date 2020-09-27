@@ -60,7 +60,7 @@ Fortunately you can coax Visual Studio Code into be a bit more helpful as well. 
 * \*\*/*.anim
 * \*\*/*.asset
 * \*\*/*.controller
-* \**/*.csproj
+* \*\*/*.csproj
 * \*\*/*.fbx
 * \*\*/*.mat
 * \*\*/*.meta
