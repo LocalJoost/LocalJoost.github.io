@@ -9,22 +9,21 @@ tags:
 - Unity3d
 - Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2020-11-20-Model-driven-Mixed-Reality-apps-using-UniRx-and-a-MRKT-extension-service,-part-1/spagetti.png
-comment_issue_id: 362
 ---
-Unity, my preferred platform for making Mixed Reality apps, is a gaming engine. The mindset of people using platforms like this is definitely different from those of us who grew up in Enterprise environments. The stuff saw in Unity tutorials, or apps developed by Unity aficionados looked to me, frankly, a lot like this:
+Unity, my preferred platform for making Mixed Reality apps, is a gaming engine. The mindset of people using platforms like this is definitely different from those of us who grew up in Enterprise environments. The stuff I saw in Unity tutorials, or apps developed by Unity aficionados, looked to me, frankly, a lot like this:
 ![](/assets/2020-11-20-Model-driven-Mixed-Reality-apps-using-UniRx-and-a-MRKT-extension-service,-part-1/spagetti.png)
-Now this may just be my lack of skill or imagination, but I frequently lost track of the flow of event, what state was kept where - even in my own apps. When I became the lead Senior Mixed Reality Architect of Velicus and needed to build apps that are a magnitude more larger and complex than my own store apps, I new I had to find a radical new way to keep on top of things.
+Now this may just be my lack of skill or imagination, but I frequently lost track of the flow of events, what state was kept where - even in my own apps. When I became the lead Senior Mixed Reality Architect at [Velicus](https://velicus.nl/) and needed to build apps that are a magnitude larger and more complex than my own store apps, I knew I had to find a radical new way to keep on top of things.
 
 ## Requirements
 1. I need to have a mechanism that kept the state of the app in a central, easily accessible way - kind of like I built my XAML apps using MVVMLight.
 2. To make this testable, I should be able to use a form of dependency injection
 3. I need to have a kind of pub/sub mechanism like INotifyPropertyChanged, that allowed me to respond to property changes
-4. A kind of messenger that allows me to send messages between separate parts of the model that have no knowledge of each other.
+4. I need a kind of messenger that allows me to send messages between separate parts of the model that have no knowledge of each other.
 
 ## Analysis 
-Requirement 1 was easy enough to fill: the Mixed Reality Toolkit sports the idea of Extension Services. Using the service locator pattern, I could easily define a service to keep the state alive over scenes during the lifetime of the app. And since you can obtain reference to MRTK extension services by *interface* name, I could use that for simple testing or mocking. A messenger I [already created myself once ](https://localjoost.github.io/using-messenger-to-communicate-between/) and that was easy enough to make into a service as well. But how about INotifyPropertyChanged?
+Requirement 1 was easy enough to fill: the Mixed Reality Toolkit sports the idea of Extension Services. Using the service locator pattern, I could easily define a service to keep the state alive over scenes during the lifetime of the app. And since you can obtain a reference to MRTK extension services by *interface* name, I could use that for simple testing or mocking. A messenger I [already created myself once ](https://localjoost.github.io/using-messenger-to-communicate-between/) and that was easy enough to make into a service as well. But how about INotifyPropertyChanged?
 
-Enter UniRx - [Reactive Extensions for Unity](https://github.com/neuecc/UniRx), created by MVP:[Yoshifumi Kawai](https://twitter.com/neuecc), who I am not sure I have had the honor of meeting.
+Enter UniRx - [Reactive Extensions for Unity](https://github.com/neuecc/UniRx), created by MVP [Yoshifumi Kawai](https://twitter.com/neuecc), who I am not sure I have had the honor of meeting.
 
 ## Simple demo
 <iframe width="650" height="365" src="https://www.youtube.com/embed/GrNxpIr0cps" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
@@ -33,9 +32,7 @@ You can see the following:
 * If I select both toggles, the square on top of the menu turns green
 * If I click the reset button, both toggles spring back to unselected - and the square on top becomes red again.
 
-There is no interaction between UI components at all. Every UI element *only* interacts with the model.
-
-So how does this work?
+There is no interaction between UI components at all. Every UI element *only* interacts with the model. So how does this work?
 
 ## One model service to rule them all
 I created a simple MRTK service that is the hat stand for my application's models. Right now, it hosts only one model, the TwoButtonModel:
