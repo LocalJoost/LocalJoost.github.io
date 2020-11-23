@@ -9,6 +9,7 @@ tags:
 - Unity3d
 - Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2020-11-20-Model-driven-Mixed-Reality-apps-using-UniRx-and-a-MRKT-extension-service,-part-1/spagetti.png
+comment_issue_id: 362
 ---
 Unity, my preferred platform for making Mixed Reality apps, is a gaming engine. The mindset of people using platforms like this is definitely different from those of us who grew up in Enterprise environments. The stuff I saw in Unity tutorials, or apps developed by Unity aficionados, looked to me, frankly, a lot like this:
 ![](/assets/2020-11-20-Model-driven-Mixed-Reality-apps-using-UniRx-and-a-MRKT-extension-service,-part-1/spagetti.png)
