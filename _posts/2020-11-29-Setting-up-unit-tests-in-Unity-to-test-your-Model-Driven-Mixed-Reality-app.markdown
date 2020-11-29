@@ -55,7 +55,7 @@ namespace Tests
         public void TestAddModel()
         {
             var list = new ObjectListModel();
-            var model = new SimpleDemoModel();
+            var model = new SimpleDemoModel(new Vector3(1f, 1f, 1f));
             list.Shapes.Add(model);
             Assert.Contains(model, list.Shapes.ToList());
         }
