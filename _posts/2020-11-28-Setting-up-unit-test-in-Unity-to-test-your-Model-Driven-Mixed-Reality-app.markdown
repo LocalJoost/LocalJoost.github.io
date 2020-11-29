@@ -10,6 +10,7 @@ tags:
 - Windows Mixed Reality
 - UniRx
 featuredImageUrl: https://LocalJoost.github.io/assets/2020-11-28-Setting-up-unit-test-in-Unity-to-test-your-Model-Driven-Mixed-Reality-app/yakshavingday.png
+comment_issue_id: 365
 ---
 One benefit of writing model driven Mixed Reality apps, as I demonstrated in [this](https://localjoost.github.io/Model-driven-Mixed-Reality-apps-using-UniRx-and-a-MRKT-extension-service,-part-1/) and [this](https://localjoost.github.io/Model-driven-Mixed-Reality-apps-using-UniRx-and-a-MRKT-extension-service,-part-2-showing-a-'list'/) post, is that you are using a consistent architecture that makes it easier to keep oversight of your Mixed Reality app's internal working (at least, that is my opinion). Another benefit is that you can actually write *unit tests for the models*. While writing and running unit tests is more or less the same as in ordinary .NET code, Unity actually makes you jump through some rather curious hoops before you can actually *get* to writing unit test.
 
