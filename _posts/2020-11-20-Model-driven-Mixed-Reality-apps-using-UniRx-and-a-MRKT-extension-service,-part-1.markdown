@@ -8,6 +8,7 @@ tags:
 - MRKT2
 - Unity3d
 - Windows Mixed Reality
+- UniRx
 featuredImageUrl: https://LocalJoost.github.io/assets/2020-11-20-Model-driven-Mixed-Reality-apps-using-UniRx-and-a-MRKT-extension-service,-part-1/spagetti.png
 comment_issue_id: 362
 ---
