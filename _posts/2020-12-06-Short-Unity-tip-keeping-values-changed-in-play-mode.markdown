@@ -29,7 +29,7 @@ Start play mode, do whatever you need to do to your poor game object (a cube in 
 
 ![](/assets/2020-12-06-Short-Unity-tip-keeping-values-changed-in-play-mode/pastcomponentvalues.png)
 
-...and click Past Component Values
+...and click Paste Component Values
 
 ![](/assets/2020-12-06-Short-Unity-tip-keeping-values-changed-in-play-mode/copiedvalues.png)
 
