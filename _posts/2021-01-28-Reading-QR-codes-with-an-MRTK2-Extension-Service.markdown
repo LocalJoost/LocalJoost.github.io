@@ -32,7 +32,10 @@ A behaviour using the service to show the internal working of QR tracking (usefu
 
 ## Setting up the project
 I used Unity 2019.4.17f1 and - mind you - 'Legacy XR settings'. 
-![](/assets/2021-01-28-Reading-QR-codes-with-an-MRTK2-Extension-Service/legacyxrsettings.png). After I created the project, I changed the platform to "Universal Windows" and I proceeded with:
+
+![](/assets/2021-01-28-Reading-QR-codes-with-an-MRTK2-Extension-Service/legacyxrsettings.png). 
+
+After I created the project, I changed the platform to "Universal Windows" and I proceeded with:
 
 * importing the MRTK2 using the [Unity Package Manager procedure](https://microsoft.github.io/MixedRealityToolkit-Unity/Documentation/usingupm.html). 
 * installing the [NuGet for Unity](https://github.com/GlitchEnzo/NuGetForUnity/releases)
