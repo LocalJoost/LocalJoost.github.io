@@ -211,7 +211,7 @@ private void SetupTracking()
     SendProgressMessage("QR tracker initialized");
 }
 ```
-``ProcessTrackerCapabilityReturned` is called when access is successfully granted or denied, but at least is no longer blocked. It only sets the field `accessStatus` to the parameter value it got supplied. The `Update` method then, that is called every frame just like in a `MonoBehaviour`, checks `accessStatus` and if the `qrTracker` is not yet initialized. In that case it, creates the tracker, connects to its `Updated` event and does some housekeeping to notify the outside world of its status. 
+`ProcessTrackerCapabilityReturned` is called when access is successfully granted or denied, but at least is no longer blocked. It only sets the field `accessStatus` to the parameter value it got supplied. The `Update` method then, that is called every frame just like in a `MonoBehaviour`, checks `accessStatus` and if the `qrTracker` is not yet initialized. In that case it, creates the tracker, connects to its `Updated` event and does some housekeeping to notify the outside world of its status. 
 
 Note, I only observe the `Updated` event. There are also  `Added` and `Removed` events in the `QRCodeWatcher` but I have not been able to reliably make use of those. Basically `Updated` is (continuously) being fired as soon as the QR code comes into view.
 
