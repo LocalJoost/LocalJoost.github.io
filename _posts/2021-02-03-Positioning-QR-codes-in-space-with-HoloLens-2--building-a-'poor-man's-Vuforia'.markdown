@@ -250,7 +250,7 @@ This is based upon the [SpatialGraphCoordinateSystem](https://github.com/chgatla
 * The *rotation* returned has *forward* pointing horizontally from the center to the top of the QR code, and *up* points up from the flat surface of the QR code. 
 * Finally, I have moved as much out from the between `#if WINDOWS_UWP` and `#endif` preprocessor directives to have more IntelliSense joy 
 
-The difference difference in location and rotation calculation between the original code (right) and mine (left). 
+The difference difference in location and rotation calculation between the original code (left) and mine (right). 
 
 ![](/assets/2021-02-03-Positioning-QR-codes-in-space-with-HoloLens-2--building-a-'poor-man's-Vuforia'/locationcalculation.png)
 
