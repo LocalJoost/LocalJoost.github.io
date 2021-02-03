@@ -405,7 +405,7 @@ private void UpdateLocation(Guid spatialGraphNodeId, float physicalSideLength)
         pose = pose.GetTransformedBy(CameraCache.Main.transform.parent);
     }
 ```
-As far as I can see spatialGraphNodeId, containing a `Guid`, goes in; this returns a `SpatialCoordinateSystem` whatever that may be, then it gets another `SpatialCoordinateSystem` that is the root coordinate system, and then it does some matrix calculus that is a bit my head - finally resulting in a `Pose` (which holds a rotation and a position). This `Pose` returns the top left point of the QR code like I said, and the rotation which makes an object point upwards out of the QR code.
+As far as I can see spatialGraphNodeId, containing a `Guid`, goes in; this returns a `SpatialCoordinateSystem` whatever that may be, then it gets another `SpatialCoordinateSystem` that is the root coordinate system, and then it does some matrix calculus that is a bit over my head - finally resulting in a `Pose` (which holds a rotation and a position). This `Pose` returns the top left point of the QR code like I said, and the rotation which makes an object point upwards out of the QR code.
 
 **NOTE: this code is nicked from the unity2018-old branch from the Microsoft sample, because I am using 'Legacy XR'.** I already mentioned that in the previous blog.
 
