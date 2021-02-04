@@ -480,7 +480,7 @@ To be more specific - the Boeing 737 you might recognize from my [AMS HoloATC](h
 
 And finally there's the hand menu that has no code at all:
 
-![](/assets/2021-02-03-Positioning-QR-codes-in-space-with-HoloLens-2--building-a-'poor-man's-Vuforia'/handmenu.png)!
+![](/assets/2021-02-03-Positioning-QR-codes-in-space-with-HoloLens-2--building-a-'poor-man's-Vuforia'/handmenu.png)
 
 It has only one button - Reset - which calls the public ResetTracking method of the `QRTrackerController` in the Tracker1 game object.
 
