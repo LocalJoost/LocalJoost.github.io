@@ -495,3 +495,10 @@ Lessons learned while testing QR code positioning:
 * For continuous tracking of QR codes - like you can do with Vuforia - the internal QR code tracker is simply too slow (still). But for one shot positioning, determining real locations (and rotations) in a 3D environment and aligning your holographic space accordingly, as I have done for a few commercial projects, this is very usable and reliable. 
 
 You can view and download the full code at [here](https://github.com/LocalJoost/QRCodeService/tree/blog2).
+
+**PLEASE NOTE**
+* Build with Unity 2019.4.17 or higher 2019 version **but *not* Unity 2020 or 2021**
+* Set Target Platform versions to 18632 or higher
+* Deploy to HoloLens 2 using Visual Studio 2019, platform toolset 142 and build settings **Master/ARM64**
+
+![](/assets/2021-02-03-Positioning-QR-codes-in-space-with-HoloLens-2--building-a-'poor-man's-Vuforia'/buildsettings.png)
