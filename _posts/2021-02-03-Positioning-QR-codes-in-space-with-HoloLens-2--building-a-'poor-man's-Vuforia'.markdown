@@ -497,8 +497,15 @@ Lessons learned while testing QR code positioning:
 You can view and download the full code at [here](https://github.com/LocalJoost/QRCodeService/tree/blog2).
 
 **PLEASE NOTE**
-* Build with Unity 2019.4.17 or higher 2019 version **but *not* Unity 2020 or 2021**
-* Set Target Platform versions to 18632 or higher
+* Build with Unity 2019.4.17 LTS or higher 2019 LTS version **but *not* Unity 2020 or 2021**
+* Make sure you have selected Target SDK and Minimum platform version 18362
+* Make sure you have selected Universal Windows Platform
+* Make sure you have selected ARM64 and D3D.   
+  
+![](/assets/2021-02-03-Positioning-QR-codes-in-space-with-HoloLens-2--building-a-'poor-man's-Vuforia'/unitybuildsettings.png)
+
+In the generated Visual Studio 2019 project, make sure
+* Target Platform versions are set to 18632 or higher
 * Deploy to HoloLens 2 using Visual Studio 2019, platform toolset 142 and build settings **Master/ARM64**
 
 ![](/assets/2021-02-03-Positioning-QR-codes-in-space-with-HoloLens-2--building-a-'poor-man's-Vuforia'/buildsettings.png)
