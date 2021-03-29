@@ -504,8 +504,8 @@ You can view and download the full code at [here](https://github.com/LocalJoost/
   
 ![](/assets/2021-02-03-Positioning-QR-codes-in-space-with-HoloLens-2--building-a-'poor-man's-Vuforia'/unitybuildsettings.png)
 
-In the generated Visual Studio 2019 project, make sure
+In the generated Visual Studio project, make sure
 * Target Platform versions are set to 18632 or higher
-* Deploy to HoloLens 2 using Visual Studio 2019, platform toolset 142 and build settings **Master/ARM64**
+* Deploy to HoloLens 2 using Visual Studio **2019**, platform toolset **142** and build settings **Master/ARM64**
 
 ![](/assets/2021-02-03-Positioning-QR-codes-in-space-with-HoloLens-2--building-a-'poor-man's-Vuforia'/buildsettings.png)
