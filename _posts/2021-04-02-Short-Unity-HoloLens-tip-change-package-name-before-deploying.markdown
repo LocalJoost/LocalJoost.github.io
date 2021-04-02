@@ -27,6 +27,6 @@ And here you have a potential problem. All apps you create in Unity this way ess
 
 Some pretty weird things might happen. I have seen apps simply not show up in the app list - because the update process supposed it was an update to an app already on the HoloLens and put that update in the already deployed app but did not change the name. I also have seen the app appear in the app list, but not working correctly - or not at all. In all cases apps (can) get mangled during the deploy - a pretty undesirable situation. 
 
-The moral of this story: always always always *change the name in the Package name text field* after creating the project. Choose whatever you like, something unique per project, and never, ever commit a project with default values to a GitHub rep. Especially not in a public repo. Unless you to have a lot of weird inexplicable issues opened at your name
+The moral of this story: always always always *change the name in the Package name text field* after creating the project. Choose whatever you like, something unique per project, and never, ever commit a project with default values to a GitHub rep. Especially not in a public repo. Unless you enjoy receiving e-mails with weird error message and/or having a lot of weird inexplicable issues opened at your name.
 
 Take it from me ;)
