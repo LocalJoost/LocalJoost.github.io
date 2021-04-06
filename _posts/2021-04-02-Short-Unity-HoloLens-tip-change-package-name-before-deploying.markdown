@@ -3,7 +3,11 @@ layout: post
 title: 'Short Unity / HoloLens tip: change package name before deploying'
 date: 2021-04-02T00:00:00.0000000+02:00
 categories: []
-tags: []
+tags:
+- HoloLens2
+- MRKT2
+- Unity3d
+- Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2021-04-02-Short-Unity-HoloLens-tip-change-package-name-before-deploying/createproject.png
 comment_issue_id: 375
 ---
