@@ -7,7 +7,7 @@ tags: []
 featuredImageUrl: https://LocalJoost.github.io/assets/2021-04-15-Controlling-a-Unity-animation-using-HoloLens-2-hand-tracking/level1.png
 comment_issue_id: 378
 ---
-The whole point of my previous two blog posts, in which I first described [DYI hand gesture recognition](https://localjoost.github.io/Short-Unity-HoloLens-tip-change-package-name-before-deploying/), then some way to use that to [move stuff along a multi point line path](https://localjoost.github.io/Moving-an-object-over-a-multi-line-path-using-HoloLens-2-hand-tracking/) - was to actually lay groundwork for *this* blog post. Because what I actually wanted to achieve, was something like this:
+The whole point of my previous two blog posts, in which I first described [DIY hand gesture recognition](https://localjoost.github.io/Basic-hand-gesture-recognition-with-MRTK-on-HoloLens-2/), then some way to use that to [move stuff along a multi point line path](https://localjoost.github.io/Moving-an-object-over-a-multi-line-path-using-HoloLens-2-hand-tracking/) - was to actually lay groundwork for *this* blog post. Because what I actually wanted to achieve, was something like this:
 
 <iframe width="650" height="365" src="https://www.youtube.com/embed/BID2ahcyQ9c" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
