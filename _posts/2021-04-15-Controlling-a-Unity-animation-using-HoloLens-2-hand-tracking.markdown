@@ -162,6 +162,6 @@ Note in the configuration above you can only move the lever by *grabbing* it - p
 
 ## Final words & credits
 
-I didn't know you could actually control animations like this, and credits for showing that to me, as well as coming up with the idea of using a hand position to control animation progress in a simple 2-point-scenario go to my esteemed colleague [Timmy Kokke aka Sorskoot](https://twitter.com/sorskoot). After that I went a bit berserk and greatly expanded on the idea to create a reusable standard solution for multi line segments.
+I didn't know you could actually control animations with a motion time parameter, and credits for showing that to me, as well as coming up with the idea of using a hand position to control animation progress in a simple 2-point-scenario go to my esteemed colleague [Timmy Kokke aka Sorskoot](https://twitter.com/sorskoot). After that I went a bit berserk and greatly expanded on the idea to create a reusable standard solution for multi line segments.
 
 You can [download the actual finished project with all components here](https://github.com/LocalJoost/HandRailsDemo/tree/blog2). The hand controlled animation sits in SampleScene2.
