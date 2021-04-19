@@ -41,7 +41,7 @@ In SampleScene2 you will find a prefab Lever1. If you select that in the hierarc
  
  Now that we know this, we can actually interactively control an animation from code. And this is exactly what the next part is about.
  
- ## Controlling an animation from code
+## Controlling an animation from code
  
  With all the groundwork we did in the previous blog posts, controlling an animation is as simple as this:
  
