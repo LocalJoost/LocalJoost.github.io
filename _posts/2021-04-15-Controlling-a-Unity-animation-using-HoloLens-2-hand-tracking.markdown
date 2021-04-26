@@ -3,7 +3,11 @@ layout: post
 title: Controlling a Unity animation using HoloLens 2 hand tracking
 date: 2021-04-15T00:00:00.0000000+02:00
 categories: []
-tags: []
+tags:
+- HoloLens2
+- MRKT2
+- Unity3d
+- Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2021-04-15-Controlling-a-Unity-animation-using-HoloLens-2-hand-tracking/level1.png
 comment_issue_id: 378
 ---
