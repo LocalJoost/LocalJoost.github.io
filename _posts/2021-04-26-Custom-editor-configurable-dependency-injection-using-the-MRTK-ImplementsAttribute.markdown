@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Custom editor configurable dependecy injection using the MRTK ImplementsAttribute
+title: Custom editor configurable dependency injection using the MRTK ImplementsAttribute
 date: 2021-04-26T00:00:00.0000000+02:00
 categories: []
 tags:
@@ -13,7 +13,7 @@ comment_issue_id: 379
 ---
 If you ever have created or used the Mixed Reality Toolkit's Extension Services, you have probably seen this:
 
-![](/assets/2021-04-26-Custom-editor-configurable-dependecy-injection-using-the-MRTK-ImplementsAttribute/mrktextensionservices.png)
+![](/assets/2021-04-26-Custom-editor-configurable-dependency-injection-using-the-MRTK-ImplementsAttribute/mrktextensionservices.png)
 
 If you did *create* services using the Mixed Reality Toolkit/Utilities/Create Extension Service menu, your  services showed up in that list as well. So apparently there is *something* in the MRTK that allows
 1. the editor to find custom implementation of `IMixedRealityExtensionService`
@@ -81,28 +81,28 @@ namespace Application.Configuration
 Unpacking this:
 * Near the bottom you see the actual use of `ImplementsAttribute`. You simply define which classes you want the UI to find - that is, what interface you want them to implement, and then something about the grouping. The result of using `ByNamespaceFlat` is this:
 
-![](/assets/2021-04-26-Custom-editor-configurable-dependecy-injection-using-the-MRTK-ImplementsAttribute/namespaces.png)
+![](/assets/2021-04-26-Custom-editor-configurable-dependency-injection-using-the-MRTK-ImplementsAttribute/namespaces.png)
 
     One level with namespaces, a second with classes. There are a 3 other options: `None`, `ByNameSpace` and `ByAddComponentMenu`, but I feel `ByNamespaceFlat` one makes the most sense to me. Feel free check out the other options at your leisure.
 * On the *top* you see an attribute that creates an asset menu. Because you see, creating scriptable object *classes* is nice, but it's the *concrete serialized instances* we need for configuration. 
 
 You see, the result of this CreateAssetMenu is this:
 
-![](/assets/2021-04-26-Custom-editor-configurable-dependecy-injection-using-the-MRTK-ImplementsAttribute/assetmenu.png)
+![](/assets/2021-04-26-Custom-editor-configurable-dependency-injection-using-the-MRTK-ImplementsAttribute/assetmenu.png)
 
 There is a new entry in the Assets/Create menu: LocalJoost/CalculatorConfig, exactly as described in the attribute. Now if you click "CalculatorConfig" a new file "CalculatorConfig" will be created in the active folder in the Project tab. The name is "CalculatorConfig" because we specified that in the `fileName` attribute of `CreateAssetMenu`
 
 And lo and behold, if we click the drop down next to "Calculation Module", that is standard set to "None", we can select one of the calculation classes.
 
-![](/assets/2021-04-26-Custom-editor-configurable-dependecy-injection-using-the-MRTK-ImplementsAttribute/calculatorconfig.png)
+![](/assets/2021-04-26-Custom-editor-configurable-dependency-injection-using-the-MRTK-ImplementsAttribute/calculatorconfig.png)
 
 If you look in the Configuration folder you will see the three already defined configurations:
 
-![](/assets/2021-04-26-Custom-editor-configurable-dependecy-injection-using-the-MRTK-ImplementsAttribute/configurations-unity.png)
+![](/assets/2021-04-26-Custom-editor-configurable-dependency-injection-using-the-MRTK-ImplementsAttribute/configurations-unity.png)
 
 In the Windows File Explorer, they will show up as ".asset" files:
 
-![](/assets/2021-04-26-Custom-editor-configurable-dependecy-injection-using-the-MRTK-ImplementsAttribute/configurations-file_explorer.png)
+![](/assets/2021-04-26-Custom-editor-configurable-dependency-injection-using-the-MRTK-ImplementsAttribute/configurations-file_explorer.png)
 
 and the contents will be something like this:
 ```yaml
@@ -169,7 +169,7 @@ public void Execute()
 }
 ```
 In the editor, you configure a button click like this:
-![](/assets/2021-04-26-Custom-editor-configurable-dependecy-injection-using-the-MRTK-ImplementsAttribute/configurebutton.png)
+![](/assets/2021-04-26-Custom-editor-configurable-dependency-injection-using-the-MRTK-ImplementsAttribute/configurebutton.png)
 
 Every button calls the same script method (`CalculationController.Execute`) but that script has a different configuration, each with a different concrete `ICalculateOperation` implementation.
 
