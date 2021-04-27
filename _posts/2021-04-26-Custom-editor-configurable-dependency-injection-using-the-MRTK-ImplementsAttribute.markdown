@@ -83,7 +83,7 @@ Unpacking this:
 
 ![](/assets/2021-04-26-Custom-editor-configurable-dependency-injection-using-the-MRTK-ImplementsAttribute/namespaces.png)
 
-    One level with namespaces, a second with classes. There are a 3 other options: `None`, `ByNameSpace` and `ByAddComponentMenu`, but I feel `ByNamespaceFlat` one makes the most sense to me. Feel free check out the other options at your leisure.
+* One level with namespaces, a second with classes. There are a 3 other options: `None`, `ByNameSpace` and `ByAddComponentMenu`, but I feel `ByNamespaceFlat` one makes the most sense to me. Feel free check out the other options at your leisure.
 * On the *top* you see an attribute that creates an asset menu. Because you see, creating scriptable object *classes* is nice, but it's the *concrete serialized instances* we need for configuration. 
 
 You see, the result of this CreateAssetMenu is this:
