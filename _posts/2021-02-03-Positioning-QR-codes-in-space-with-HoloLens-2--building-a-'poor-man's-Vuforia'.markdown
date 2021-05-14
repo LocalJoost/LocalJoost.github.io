@@ -498,6 +498,7 @@ You can view and download the full code as described in this blog at [here](http
 
 
 **PLEASE NOTE**
+
 * Build with Unity 2019.4.17 LTS or higher 2019 LTS version **but *not* Unity 2020 or 2021**
 * Make sure you have selected Target SDK and Minimum platform version 18362
 * Make sure you have selected Universal Windows Platform
@@ -512,4 +513,5 @@ In the generated Visual Studio project, make sure
 ![](/assets/2021-02-03-Positioning-QR-codes-in-space-with-HoloLens-2--building-a-'poor-man's-Vuforia'/buildsettings.png)
 
 **IF ALL ELSE FAILS**
+
 For some reason people regularly seem to be unable to build a package that actually works. Typically the app reads the QR code, but does not show the airplane. Even if pull the code from GitHub, build it directly, and deploy, it always works. If all else fails, you can [download a fully built package here](https://1drv.ms/u/s!AjesCJDYqwYk2Zc7XqpooYbolCqA5A?e=aE3SZq). If even *this* does not work, there might be some kind of environmental issue. Try, for instance, setting you HoloLens to English/US.
