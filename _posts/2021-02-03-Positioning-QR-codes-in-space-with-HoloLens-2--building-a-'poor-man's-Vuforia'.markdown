@@ -514,4 +514,6 @@ In the generated Visual Studio project, make sure
 
 **IF ALL ELSE FAILS**
 
-For some reason people regularly seem to be unable to build a package that actually works. Typically the app reads the QR code, but does not show the airplane. Even if pull the code from GitHub, build it directly, and deploy, it always works. If all else fails, you can [download a fully built package here](https://1drv.ms/u/s!AjesCJDYqwYk2Zc7XqpooYbolCqA5A?e=aE3SZq). If even *this* does not work, there might be some kind of environmental issue. Try, for instance, setting you HoloLens to English/US.
+For some reason people regularly seem to be unable to build a package that actually works. Typically the app reads the QR code, but does not show the airplane. Even if I pull the code from GitHub, build it in Unity, and deploy it from Visual Studio following the steps above, it *always* works. So I would like to suggest *carefully* checking your steps if something does not work.
+
+If all else fails, you can [download a fully built package here](https://1drv.ms/u/s!AjesCJDYqwYk2Zc7XqpooYbolCqA5A?e=aE3SZq). If even *this* does not work, there might be some kind of environmental issue. Try, for instance, setting you HoloLens to English/US.
