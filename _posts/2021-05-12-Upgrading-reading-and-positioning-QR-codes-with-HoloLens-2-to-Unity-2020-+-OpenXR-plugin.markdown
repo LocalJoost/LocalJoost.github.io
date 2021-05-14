@@ -92,7 +92,7 @@ Then you get this screen. You can now only select Windows Mixed Reality plugin. 
 
 At the moment this is 2020.3.7, so you might have to install a new version first - or just use the 2020.3 version you have available. I have currently 11 different Unity versions on my development PC - welcome to the wonderful world of XR development with Unity ;)
 
-If you open the the project with the a Unity 2020.3 LTS version you will be greeted by this.
+If you open the project with the a Unity 2020.3 LTS version you will be greeted by this.
 
 ![](/assets/2021-05-12-Upgrading-reading-and-positioning-QR-codes-with-HoloLens-2-to-Unity-2020-+-OpenXR-plugin/ignore.png)
 
@@ -220,7 +220,7 @@ which will need to be fixed as well by dragging the TrackerHolder object now spo
 
 And voila, if you deploy this to a HoloLens it will work. It will work exactly as the same - it will show an airplane on top of the QR code that I included in [the first blog post.](https://localjoost.github.io/Reading-QR-codes-with-an-MRTK2-Extension-Service/). The only difference you will see is that the splash screen is bigger and is more close by.
 
-## Step 11: Update QR code related NuGet packages (optional)
+## Step 12: Update QR code related NuGet packages (optional)
 
 For good measure, I also updated the NuGet package needed to read QR codes - which seem to have made *some* progress judging by the version numbers, but I didn't notice any difference, and it worked already before I did, so this is optional.
 
