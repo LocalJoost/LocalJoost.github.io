@@ -494,7 +494,7 @@ Lessons learned while testing QR code positioning:
 * The simpler, the better. Less QR code payload = more coarse QR code = easier scanned.
 * For continuous tracking of QR codes - like you can do with Vuforia - the internal QR code tracker is simply too slow (still). But for one shot positioning, determining real locations (and rotations) in a 3D environment and aligning your holographic space accordingly, as I have done for a few commercial projects, this is very usable and reliable. 
 
-You can view and download the full code as described in this blog at [here](https://github.com/LocalJoost[here](https://github.com/LocalJoost/QRCodeService/tree/slightly_improved_version)/QRCodeService/tree/blog2) and a slightly improved version here. 
+You can view and download the full code as described in this blog [here](https://github.com/LocalJoost/QRCodeService/tree/blog2) and a slightly improved version [here](https://github.com/LocalJoost/QRCodeService/tree/slightly_improved_version). 
 
 
 **PLEASE NOTE**
