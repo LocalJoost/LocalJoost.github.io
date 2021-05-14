@@ -494,7 +494,8 @@ Lessons learned while testing QR code positioning:
 * The simpler, the better. Less QR code payload = more coarse QR code = easier scanned.
 * For continuous tracking of QR codes - like you can do with Vuforia - the internal QR code tracker is simply too slow (still). But for one shot positioning, determining real locations (and rotations) in a 3D environment and aligning your holographic space accordingly, as I have done for a few commercial projects, this is very usable and reliable. 
 
-You can view and download the full code at [here](https://github.com/LocalJoost/QRCodeService/tree/blog2).
+You can view and download the full code as described in this blog at [here](https://github.com/LocalJoost[here](https://github.com/LocalJoost/QRCodeService/tree/slightly_improved_version)/QRCodeService/tree/blog2) and a slightly improved version here. 
+
 
 **PLEASE NOTE**
 * Build with Unity 2019.4.17 LTS or higher 2019 LTS version **but *not* Unity 2020 or 2021**
@@ -509,3 +510,6 @@ In the generated Visual Studio project, make sure
 * Deploy to HoloLens 2 using Visual Studio **2019**, platform toolset **142** and build settings **Master/ARM64**
 
 ![](/assets/2021-02-03-Positioning-QR-codes-in-space-with-HoloLens-2--building-a-'poor-man's-Vuforia'/buildsettings.png)
+
+**IF ALL ELSE FAILS**
+For some reason people regularly seem to be unable to build a package that actually works. Typically the app reads the QR code, but does not show the airplane. Even if pull the code from GitHub, build it directly, and deploy, it always works. If all else fails, you can [download a fully built package here](https://1drv.ms/u/s!AjesCJDYqwYk2Zc7XqpooYbolCqA5A?e=aE3SZq). If even *this* does not work, there might be some kind of environmental issue. Try, for instance, setting you HoloLens to English/US.
