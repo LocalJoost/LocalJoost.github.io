@@ -2,13 +2,13 @@
 layout: post
 title: Getting the Unity Localization Package to work with HoloLens
 date: 2021-06-23T00:00:00.0000000+02:00
-categories:
+categories: []
+tags:
 - HoloLens2
 - MRKT2
 - Unity3d
 - Windows Mixed Reality
 - Localization
-tags: []
 featuredImageUrl: https://LocalJoost.github.io/assets/2021-06-23-Getting-the-Unity-Localization-Package-to-work-with-HoloLens/sampletext.png
 comment_issue_id: 382
 ---
