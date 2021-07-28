@@ -5,7 +5,7 @@ date: 2021-05-12T00:00:00.0000000+02:00
 categories: []
 tags:
 - HoloLens2
-- MRKT2
+- MRTK2
 - Unity3d
 - Windows Mixed Reality
 - QRCode
@@ -32,7 +32,7 @@ After I wrote my last post about QR codes, I made a few little improvements in t
 ## Step 1: install the Mixed Reality Feature Tool
 Microsoft now offers the [Mixed Reality Feature Tool for Unity](https://docs.microsoft.com/en-us/windows/mixed-reality/develop/unity/welcome-to-mr-feature-tool), which is a new way for installing Mixed Reality features into Unity. It has definite advantages over the Unity package manager - most notably showing packages available, their dependencies, and showing upgrade suggestions. Although it still says "beta" in the version label at the moment, it works perfectly fine for me.
 
-## Step 2: upgrade to the newest MRKT
+## Step 2: upgrade to the newest MRTK
 My app was built using the MRTK, like all my apps, and although some people do not seem to like it because it is allegedly complex and opinionated, I happen to like it very much - and it proves a nice level of cross platform features and abstracts that insulate you from the underlying platform implementation. This latter part has proven to be a huge boon when upgrading for me as I hardly had to change *anything* in my own code and setup. 
 
 Enough of that - start the Mixed Reality Feature Tool (don't start Unity yet) and point it to your project:
@@ -62,7 +62,7 @@ Use the version of Unity *the project was created in* for this step, in for this
 
 ![](/assets/2021-05-12-Upgrading-reading-and-positioning-QR-codes-with-HoloLens-2-to-Unity-2020-+-OpenXR-plugin/shaderupgrade.png)
 
-I am too dumb to customize shaders, so I always hit "Yes". Next up is the MRKT configurator that wants to do some settings:
+I am too dumb to customize shaders, so I always hit "Yes". Next up is the MRTK configurator that wants to do some settings:
 
 ![](/assets/2021-05-12-Upgrading-reading-and-positioning-QR-codes-with-HoloLens-2-to-Unity-2020-+-OpenXR-plugin/projectconfig.png)
 
@@ -116,7 +116,7 @@ Hit "Yes". Unity will indeed close and restart
 
 ![](/assets/2021-05-12-Upgrading-reading-and-positioning-QR-codes-with-HoloLens-2-to-Unity-2020-+-OpenXR-plugin/ignore.png)
 
-Hit "Ignore" again. The MRKT project configuration now will suggest enabling the input simulation system. This is mightily handy for development inside the Unity editor, so hit "Yes". Unity will restart *again*...
+Hit "Ignore" again. The MRTK project configuration now will suggest enabling the input simulation system. This is mightily handy for development inside the Unity editor, so hit "Yes". Unity will restart *again*...
 
 ![](/assets/2021-05-12-Upgrading-reading-and-positioning-QR-codes-with-HoloLens-2-to-Unity-2020-+-OpenXR-plugin/projectconfig2.png)
 
@@ -142,7 +142,7 @@ The plugin is now succesfully configured.
 
 ## Step 9: Update MRTK profile settings
 
-Microsoft are providing some excellent step-by-step guidance on how to configure the MRKT for use with the OpenXR plugin, explaining how to set up a new project as well as updating an existing configuration. I don't quite feel like repeating that. [Just follow the steps here.](https://docs.microsoft.com/en-us/windows/mixed-reality/mrtk-unity/configuration/getting-started-with-mrtk-and-xrsdk#configuring-mrtk-for-the-xr-sdk-pipeline). Updating is a bit more complex than starting anew, but is certainly advisable if you have a lot of custom profile settings (which I usually have, as I am using the [censored] out of the MRKTs configuration options). Do be careful to follow the instructions to the letter - instructions for the soon-to-be-deprecated Windows Mixed Reality XR plugin and the OpenXR plugin are provided *in the same text*, and mixing up is easy - with very undesirable results. It's not hard, just double check every setting to make sure it's accurate. 
+Microsoft are providing some excellent step-by-step guidance on how to configure the MRTK for use with the OpenXR plugin, explaining how to set up a new project as well as updating an existing configuration. I don't quite feel like repeating that. [Just follow the steps here.](https://docs.microsoft.com/en-us/windows/mixed-reality/mrtk-unity/configuration/getting-started-with-mrtk-and-xrsdk#configuring-mrtk-for-the-xr-sdk-pipeline). Updating is a bit more complex than starting anew, but is certainly advisable if you have a lot of custom profile settings (which I usually have, as I am using the [censored] out of the MRTKs configuration options). Do be careful to follow the instructions to the letter - instructions for the soon-to-be-deprecated Windows Mixed Reality XR plugin and the OpenXR plugin are provided *in the same text*, and mixing up is easy - with very undesirable results. It's not hard, just double check every setting to make sure it's accurate. 
 
 Also, *make sure to follow the tip about link.xml at the very end of the section*.
 

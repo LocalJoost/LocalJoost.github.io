@@ -32,7 +32,7 @@ Then, simply set up an Eye Tracking Target
 And when I run it, nothing happened. I can look at the blue orb all I want, never once the eye target events are fired. WT....H?
 
 ## And the culprit is....
-After quite some time hunting in the MRKT configuration, I spotted this little checkbox.
+After quite some time hunting in the MRTK configuration, I spotted this little checkbox.
 
 ![](/assets/2020-08-25-Upgrading-to-MRTK24-eye-tracking-does-not-work-anymore-(and-how-to-fix-it)/Pointers.png)  
 

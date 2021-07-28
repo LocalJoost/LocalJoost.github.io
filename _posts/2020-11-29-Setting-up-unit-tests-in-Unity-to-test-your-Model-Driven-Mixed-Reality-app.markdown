@@ -5,7 +5,7 @@ date: 2020-11-29T00:00:00.0000000+01:00
 categories: []
 tags:
 - HoloLens2
-- MRKT2
+- MRTK2
 - Unity3d
 - Windows Mixed Reality
 - UniRx
@@ -99,7 +99,7 @@ Name the file whatever you want. I called it "ReactNativeDemo"
 
 ![](/assets/2020-11-29-Setting-up-unit-tests-in-Unity-to-test-your-Model-Driven-Mixed-Reality-app/asmdef.png)
 
-The result: first we had three compiler errors, now we have *well over fifty*. All MRKT references are apparently gone, as are the UniRx references. The yak definitely still needs more attention.
+The result: first we had three compiler errors, now we have *well over fifty*. All MRTK references are apparently gone, as are the UniRx references. The yak definitely still needs more attention.
 
 ### Re-creating the references
 So what the *bleep* is going on here? Well, first of all, your Assembly-CSharp is gone, and all your (non-test) code is now sitting in a project called "ReactNativeDemo" 

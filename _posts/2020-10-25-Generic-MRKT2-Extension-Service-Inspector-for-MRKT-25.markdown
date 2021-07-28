@@ -5,7 +5,7 @@ date: 2020-10-25T00:00:00.0000000+02:00
 categories: []
 tags:
 - HoloLens2
-- MRKT2
+- MRTK2
 - Unity3d
 - Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2020-10-25-Generic-MRKT2-Extension-Service-Inspector-for-MRKT-25/afterupgrade.png

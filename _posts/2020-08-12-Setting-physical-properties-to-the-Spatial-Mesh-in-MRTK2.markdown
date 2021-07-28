@@ -4,7 +4,7 @@ title: Setting physical properties to the Spatial Mesh in MRTK2
 date: 2020-08-12T00:00:00.0000000+02:00
 categories: []
 tags:
-- MRKT2
+- MRTK2
 - Windows Mixed Reality
 - HoloLens2
 - Unity3D
@@ -24,7 +24,7 @@ You will see *you simply cannot assign a physical material to the spatial mesh*.
 
 At least, not now. ;). To make this possible, we actually have to enhance the MRTK2 a little bit. 
 
-## ~~Hacking~~ Enhancing the MRKT2
+## ~~Hacking~~ Enhancing the MRTK2
 We will want to make sure both the 'real' spatial mesh observer (`WindowsMixedRealitySpatialMeshObserver`) as well as the [`SpatialObjectMeshObserver` (that can be used to simulate a spatial mesh inside the Unity editor)](https://localjoost.github.io/migrating-to-mrtk2-using-spatial-mesh/) will support changing the psychical properties of the spatial mesh. To make this possible, we will need to change the following files in the MRTK2. I have used the MRTK 2.4.1 as a starting point.
 
 In order of appearance:
@@ -189,7 +189,7 @@ The aim of this blog is to add physical properties to the spatial mesh and have 
 
 You should realize that by making these changes you are messing with some basic functionality of the MRTK2. This may complicate future upgrade paths. If you update the MRKT2 later, any changes you make yourself might be reverted and this might break your app. If you apply these changes *you* are taking responsibility for future problems, not me ;).
 
-You could also simply wait for [the pull request I made on the MRKT2 implementing this same self functionality](https://github.com/microsoft/MixedRealityToolkit-Unity/pull/8264) to be accepted. At the point of this writing, it still needs some work, apparently. 
+You could also simply wait for [the pull request I made on the MRTK2 implementing this same self functionality](https://github.com/microsoft/MixedRealityToolkit-Unity/pull/8264) to be accepted. At the point of this writing, it still needs some work, apparently. 
 
 ## Conclusion
 

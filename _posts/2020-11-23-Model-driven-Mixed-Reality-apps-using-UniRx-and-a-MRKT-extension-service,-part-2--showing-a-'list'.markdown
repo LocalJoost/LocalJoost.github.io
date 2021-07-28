@@ -5,7 +5,7 @@ date: 2020-11-23T00:00:00.0000000+01:00
 categories: []
 tags:
 - HoloLens2
-- MRKT2
+- MRTK2
 - Unity3d
 - Windows Mixed Reality
 - UniRx
@@ -408,7 +408,7 @@ In the actual scene, there is very little code. Basically you will only find  th
 ![](/assets/2020-11-23-Model-driven-Mixed-Reality-apps-using-UniRx-and-a-MRKT-extension-service,-part-2--showing-a-'list'/scenescripts.png)
 And thus you can, just like in my previous post, keep the business logic and the 'UI' separate, and test it separately. The fact that we hardly have any business logic does not matter - this sample show you how to keep that separated from the UI, and what to put where. A golden rule is - if there is something that remotely resembles state, or data that needs to be accessed or changed from more than one place - it belongs in a model, not in a behaviour.
 
-Notice you can also see the internal state of your model using my [Generic MRKT2 Extension Service Inspector](https://localjoost.github.io/Generic-MRKT2-Extension-Service-Inspector-for-MRKT-25/) that I described a few blog posts ago. This really helps you in seeing is the model changes are properly processed by your controllers
+Notice you can also see the internal state of your model using my [Generic MRTK2 Extension Service Inspector](https://localjoost.github.io/Generic-MRKT2-Extension-Service-Inspector-for-MRKT-25/) that I described a few blog posts ago. This really helps you in seeing is the model changes are properly processed by your controllers
 ![](/assets/2020-11-23-Model-driven-Mixed-Reality-apps-using-UniRx-and-a-MRKT-extension-service,-part-2--showing-a-'list'/showstatemodel.png)
 
 I hope this helped your further understanding of this way of developing applications. As always, you can [find complete project to play around with on GitHub, branch blog2](https://github.com/LocalJoost/unirxmodeldrivenmr/tree/blog2).

@@ -5,7 +5,7 @@ date: 2021-01-03T00:00:00.0000000+01:00
 categories: []
 tags:
 - HoloLens2
-- MRKT2
+- MRTK2
 - Unity3d
 - Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2021-01-03-HandSmashService--an-MRTK2-extension-service-to-smash-holograms-at-high-speed/Handdirection.png

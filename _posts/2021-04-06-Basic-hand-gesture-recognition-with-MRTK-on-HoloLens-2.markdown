@@ -5,7 +5,7 @@ date: 2021-04-06T00:00:00.0000000+02:00
 categories: []
 tags:
 - HoloLens2
-- MRKT2
+- MRTK2
 - Unity3d
 - Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2021-04-06-Basic-hand-gesture-recognition-with-MRTK-on-HoloLens-2/hero.png
@@ -29,7 +29,7 @@ In the `Microsoft.MixedReality.Toolkit.Utilities` namespace there is a little hi
 ```csharp
 using Microsoft.MixedReality.Toolkit.Utilities;
 
-namespace MRKTExtensions.Gesture
+namespace MRTKExtensions.Gesture
 {
     public static class GestureUtils
     {
