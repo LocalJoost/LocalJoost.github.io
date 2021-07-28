@@ -5,7 +5,7 @@ date: 2021-07-28T00:00:00.0000000+02:00
 categories: []
 tags:
 - HoloLens2
-- MRKT2
+- MRTK2
 - Unity3d
 - Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2021-07-28-Rounded-corners-in-MRTK-UI/rounded2.png
@@ -35,10 +35,10 @@ Including, of course, cool rounded 3D visual effects like these when hit boxes a
 
 ![](/assets/2021-07-28-Rounded-corners-in-MRTK-UI/rounded3.png)
 
-I am a great proponent of using COTS where ever possible - I would *not* like to build my own UI stack as the MRKT already offers so much, especially not for some minor visual effects. For the same reason I don't want to *fork* the MRTK because that will probably come back to haunt me when in some future the time comes to upgrade. It's best just to find out how we can fix this without too much work and too much things breaking -  staying as close to the original as possible. As the screen shots probably tell you, this is entirely doable.
+I am a great proponent of using COTS where ever possible - I would *not* like to build my own UI stack as the MRTK already offers so much, especially not for some minor visual effects. For the same reason I don't want to *fork* the MRTK because that will probably come back to haunt me when in some future the time comes to upgrade. It's best just to find out how we can fix this without too much work and too much things breaking -  staying as close to the original as possible. As the screen shots probably tell you, this is entirely doable.
 
 ## Analysis
-To my great surprise and joy I found *this* in the Mixed Reality Toolkit Standard Shader that is used is almost all (if not all) MRKT materials, under Fluent options. 
+To my great surprise and joy I found *this* in the Mixed Reality Toolkit Standard Shader that is used is almost all (if not all) MRTK materials, under Fluent options. 
 
 ![](/assets/2021-07-28-Rounded-corners-in-MRTK-UI/shader.png)
 
@@ -48,7 +48,7 @@ So what we need, is *already prepared* in the MRTK. This is the material "Hologr
 
 The problem with this: it does not 'stick'. You are basically adapting a material that is *part of and inside the MRTK*. And since that comes in a couple of .tgz packages file in Packages\MixedReality nothing about this material is actually in your source files. The material in question is unpacked in Library\PackageCache\com.microsoft.mixedreality.toolkit.foundation@a05dc7578209-1624820429212\SDK\Features\UX\Interactable\Materials. Everything in Library is stuff that is generated from source and packages - and this you typically *don't* commit to source control (you don't, do you? Please tell me you don't). If your co-worker pulls your solution from source control all the buttons and slates will be square again. And even if you were committing this to source control - if you later were to upgrade to a *newer* version of MRTK, you will loose your changes.
 
-The best way to go about this, is making a copy of the material *outside* of the MRKT, adapt it, and *replace* it in the UI elements concerned. 
+The best way to go about this, is making a copy of the material *outside* of the MRTK, adapt it, and *replace* it in the UI elements concerned. 
 
 ## Finding and adapting materials
 
@@ -61,11 +61,11 @@ In a button, they are used in these places:
 
 ![](/assets/2021-07-28-Rounded-corners-in-MRTK-UI/materiallocations.png)
 
-The files live in various place in the MRKT, and are easy to find. Just, for instance, click the HighLightPlate in the hierarchy, then click the material in the Mesh plate's MeshRender, this will make it show up in the assets pane - right-click it, then select "Show in Explorer" and you have it selected in a File Explorer Window.
+The files live in various place in the MRTK, and are easy to find. Just, for instance, click the HighLightPlate in the hierarchy, then click the material in the Mesh plate's MeshRender, this will make it show up in the assets pane - right-click it, then select "Show in Explorer" and you have it selected in a File Explorer Window.
 
 ![](/assets/2021-07-28-Rounded-corners-in-MRTK-UI/FindMaterial.png)
 
-Now of course you might go about and change the three materials in every UI element in your app. Apart from this being a lot of work, this might cause other problems if the material in the MRKT is updated, and your material starts to lag behind - then you will have to repeat the adapt and replace routine for all UI elements *again*. Also, I am a bit lazy, as you might know, so I tend to solve things like that with code.
+Now of course you might go about and change the three materials in every UI element in your app. Apart from this being a lot of work, this might cause other problems if the material in the MRTK is updated, and your material starts to lag behind - then you will have to repeat the adapt and replace routine for all UI elements *again*. Also, I am a bit lazy, as you might know, so I tend to solve things like that with code.
 
 I first copied the three materials from the MRTK into my Assets. I renamed the copies - they all got the prefix "Round".
 
@@ -123,7 +123,7 @@ So the first line in Start actually creates a dictionary with the material names
 
 ## Why not an editor script?
 
-It would be also possible to create an *editor* script for this that makes the change permanent. There are advantages to this, as well as disadvantages. It's easier to configure a behaviour, and make that configuration stick. Also, the stuff in the scene just stays stock MRTK. That is also it's main *dis*advantage: no design time view of the final result - and of course, a bit of a performance penalty at the start. I took what I thought to be an easy and quick fix, that does nothing permanent to MRKT components.
+It would be also possible to create an *editor* script for this that makes the change permanent. There are advantages to this, as well as disadvantages. It's easier to configure a behaviour, and make that configuration stick. Also, the stuff in the scene just stays stock MRTK. That is also it's main *dis*advantage: no design time view of the final result - and of course, a bit of a performance penalty at the start. I took what I thought to be an easy and quick fix, that does nothing permanent to MRTK components.
 
 ## Concluding words
 
