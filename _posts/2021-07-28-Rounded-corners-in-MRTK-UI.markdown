@@ -9,6 +9,7 @@ tags:
 - Unity3d
 - Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2021-07-28-Rounded-corners-in-MRTK-UI/rounded2.png
+comment_issue_id: 385
 ---
 Rounded corners are suddenly hip again and all the rage, even in Microsoft land, as is clearly visible in [Windows 11.](https://blogs.windows.com/windowsexperience/2021/06/24/introducing-windows-11/)
 
