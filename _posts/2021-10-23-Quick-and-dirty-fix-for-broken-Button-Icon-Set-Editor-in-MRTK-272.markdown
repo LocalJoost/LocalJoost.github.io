@@ -29,4 +29,4 @@ And lo and behold:
 
 ![](/assets/2021-10-23-Quick-and-dirty-fix-for-broken-Button-Icon-Set-Editor-in-MRTK-272/fixed.png)
 
-*Mind you* this is a band aid, a little fix to be able to edit icons, and nothing more. It won't 'stick' - if you reinstall the MRTK it will be overwritten, and you will have to to this on every machine that you or you co-workers develop on. But it's a way to move forward while still using the stable version of the MRTK - while we wait for an official fix release.
+*Mind you* this is a band aid, a little fix to be able to edit icons, and nothing more. It won't 'stick' - if you reinstall the MRTK it will be overwritten, and you will have to apply this on every machine you and you co-workers develop on. But it's a way to move forward while still using the stable version of the MRTK - while we wait for an official fix release.
