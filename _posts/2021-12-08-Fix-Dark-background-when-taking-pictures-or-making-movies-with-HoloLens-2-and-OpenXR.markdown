@@ -10,6 +10,7 @@ tags:
 - Windows Mixed Reality
 - OpenXR
 featuredImageUrl: https://LocalJoost.github.io/assets/2021-12-08-Fix-Dark-background-when-taking-pictures-or-making-movies-with-HoloLens-2-and-OpenXR/dark.png
+comment_issue_id: 396
 ---
 ## The problem 
 A short tip this time. At [Velicus](https://velicus.nl), we are currently working on two apps. One is built with Unity 2019.4 LTS, the other with Unity 2020.3 LTS. The latter uses the the OpenXR plugin. Last week, after hearing complaints from a customer about dark backgrounds when shooting movies of HoloLens apps, I decided to take a look at the latter app, and saw the following at our login screen:
