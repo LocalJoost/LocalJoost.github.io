@@ -42,7 +42,7 @@ public class ButtonStatusController : MonoBehaviour
 Then we get the Awake method, that basically grabs all the component we need, as well as the current color of the text and the icon (which are white, if you have stuck to the standard, but they need not be). Since finding component is an expensive operation, those values are stored in the private variables I already mentioned, so we make sure this will happen only once and keep the result. Although I don't think Awake methods are ever called more than once, we explicitly check for that:
 
 ```csharp
-private void OnEnable()
+private void Awake()
 {
     if (!isInitialized)
     {
