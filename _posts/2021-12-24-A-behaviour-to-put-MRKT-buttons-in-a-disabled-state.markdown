@@ -1,6 +1,6 @@
 ---
 layout: post
-title: A behaviour to put MRKT buttons in a disabled state
+title: A behaviour to put MRTK buttons in a disabled state
 date: 2021-12-24T00:00:00.0000000+01:00
 categories: []
 tags:
