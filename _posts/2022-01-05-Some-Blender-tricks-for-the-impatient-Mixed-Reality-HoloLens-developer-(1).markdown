@@ -40,7 +40,7 @@ I have no idea how these things are actually called in Blender lingo, but in my 
 ## Cleaning out the Blender scene
 * Make sure the Mode Selector is in Object Mode
 * Click Select/All in the Edit Menu
-* Hit the delete key on your 
+* Hit the delete key on your keyboard
 
 ## Importing an existing model into Blender
 This is an easy one: click File/Import in the Edit menu and choose the type. Like I wrote before, I imported an helicopter model - an FBX - I used in AMS HoloATC that has multiple problems. 
@@ -91,7 +91,7 @@ We want to rotate the nose to the left, so we carefully position the mouse curso
 Assuming the object consists out of separate parts, this is very easy.
 * Make sure the Mode Selector is in Object Mode
 * Click the part you want to delete (The right tail rotor)
-* Hit the delete button
+* Hit the delete button on your keyboard
 
 ![](/assets/2022-01-05-Some-Blender-tricks-for-the-impatient-Mixed-Reality-HoloLens-developer-(1)/tailrotor.png)
 
