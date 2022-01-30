@@ -27,7 +27,7 @@ The Animation pane has another tab: Curves
 
 And if you click that, you see how Unity tries to be helpful. In the natural world, a physical object wants to change speed needs to overcome it's own *inertia*. When it starts moving it doesn't instantly reach it's speed - it *accelerates*. and when it stops moving, it slows down first before coming to a full stop. So this makes stuff that moves, move more naturally. Unless, of course, if you want to make a repeating animation like a rotating arrow - then it messes it up completely.
 
-So what you need to do is, *carefully* click the point top left in the curve, right click the select "Auto"
+So what you need to do is, *carefully* click the point top left in the curve, right click, then select "Auto"
 
 ![](/assets/2022-01-30-Removing-the-'hiccup'-from-repeating-Unity-animations/point1.png)  
 
