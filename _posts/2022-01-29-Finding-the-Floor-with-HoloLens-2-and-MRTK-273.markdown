@@ -17,7 +17,7 @@ Time flies... this blog is now past it's 14th anniversary, in internet time this
 * The app will prompt you to look at the floor
 * If it finds a floor, it will show an indicator where it thinks the floor is, and ask you to confirm
 * If you say "no" it will try again
-* If you say "yes" it will show a the model Cessna 152 [from my previous blog post](https://localjoost.github.io/Some-Blender-tricks-for-the-impatient-Mixed-Reality-HoloLens-developer-(2)/).
+* If you say "yes" it will show the model Cessna 152 [from my previous blog post](https://localjoost.github.io/Some-Blender-tricks-for-the-impatient-Mixed-Reality-HoloLens-developer-(2)/).
 
 ![](/assets/2022-01-29-Finding-the-Floor-with-HoloLens-2-and-MRTK-273/floorfinder.gif)
 
