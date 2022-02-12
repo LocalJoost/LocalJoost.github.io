@@ -8,6 +8,7 @@ tags:
 - HoloLens2
 - Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2022-01-30-Removing-the-'hiccup'-from-repeating-Unity-animations/rotation1.gif
+comment_issue_id: 403
 ---
 This is one of those trivial things 'everyone' knows - every Unity game developer, that is - except for wierdos like me who come from a enterprise development background and learned Unity as his or her front-end of choice for HoloLens development. 
 
