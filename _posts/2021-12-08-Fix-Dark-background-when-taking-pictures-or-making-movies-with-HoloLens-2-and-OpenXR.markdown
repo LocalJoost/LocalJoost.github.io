@@ -5,7 +5,7 @@ date: 2021-12-08T00:00:00.0000000+01:00
 categories: []
 tags:
 - HoloLens2
-- MRKT2
+- MRTK2
 - Unity3d
 - Windows Mixed Reality
 - OpenXR

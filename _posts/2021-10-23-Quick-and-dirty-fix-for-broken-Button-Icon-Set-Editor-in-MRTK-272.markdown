@@ -5,7 +5,7 @@ date: 2021-10-23T00:00:00.0000000+02:00
 categories: []
 tags:
 - HoloLens2
-- MRKT2
+- MRTK2
 - Unity3d
 - Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2021-10-23-Quick-and-dirty-fix-for-broken-Button-Icon-Set-Editor-in-MRTK-272/error.png

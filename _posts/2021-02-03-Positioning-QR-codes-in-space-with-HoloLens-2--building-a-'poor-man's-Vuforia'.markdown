@@ -5,7 +5,7 @@ date: 2021-02-03T00:00:00.0000000+01:00
 categories: []
 tags:
 - HoloLens2
-- MRTK22
+- MRTK2
 - Unity3d
 - Windows Mixed Reality
 - QRCode

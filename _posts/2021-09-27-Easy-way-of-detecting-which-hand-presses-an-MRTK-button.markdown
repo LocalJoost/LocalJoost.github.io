@@ -5,7 +5,7 @@ date: 2021-09-27T00:00:00.0000000+02:00
 categories: []
 tags:
 - HoloLens2
-- MRKT2
+- MRTK2
 - Unity3d
 - Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2021-09-27-Easy-way-of-detecting-which-hand-presses-an-MRTK-button/eventhookup.png
