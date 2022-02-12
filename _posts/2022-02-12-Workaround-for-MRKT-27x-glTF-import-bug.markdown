@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Workaround for MRKT 2.7.x glTF import bug
+title: Workaround for MRTK 2.7.x glTF import bug
 date: 2022-02-12T00:00:00.0000000+01:00
 categories: []
 tags:
