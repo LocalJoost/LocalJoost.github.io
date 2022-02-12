@@ -5,7 +5,7 @@ date: 2022-02-12T00:00:00.0000000+01:00
 categories: []
 tags:
 - HoloLens2
-- MRKT2
+- MRTK2
 - Unity3d
 - Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2022-02-12-Workaround-for-MRKT-27x-glTF-import-bug/cessna1.png
@@ -27,7 +27,7 @@ And it appears thus in the HoloLens app as well - looking completely crappy.
 
 Well, you see: Unity, by itself, does not understand glTF or glb *at all*. You can see this easily for yourself when you try to use a glTF or glb model in a bog standard Unity project, so without the MRTK configured in it. You can't drag in the scene. It's not even recognized as a model. It's 'just a file'. 
 
-What is happening, behind the scenes, is code from the *MRKT* kicking in, doing the import in the background. If you look at the console, you will see a couple of warnings indicating the Mixed Reality Toolkit Standard Shaders are not available:
+What is happening, behind the scenes, is code from the *MRTK* kicking in, doing the import in the background. If you look at the console, you will see a couple of warnings indicating the Mixed Reality Toolkit Standard Shaders are not available:
 
 ![](/assets/2022-02-12-Workaround-for-MRKT-27x-glTF-import-bug/warnings.png)
 
@@ -35,11 +35,11 @@ And on closer inspection, you can see the `ConstructGltf` class failing
 
 ![](/assets/2022-02-12-Workaround-for-MRKT-27x-glTF-import-bug/fail.png)
 
-What happens, my friends, is pretty easy to explain - the MRKT importer kicks in *before Unity is done importing the MRKT itself*.
+What happens, my friends, is pretty easy to explain - the MRTK importer kicks in *before Unity is done importing the MRTK itself*.
 
 ## A simple workaround
 
-First, you disable the MRKT glTF asset importer, like this
+First, you disable the MRTK glTF asset importer, like this
 
 ![](/assets/2022-02-12-Workaround-for-MRKT-27x-glTF-import-bug/disable.png)
 
@@ -47,7 +47,7 @@ Then, you re-import your assets and wait till Unity is done
 
 ![](/assets/2022-02-12-Workaround-for-MRKT-27x-glTF-import-bug/reimport.png)
 
-And finally, you enable the MRKT glTF asset importer again.
+And finally, you enable the MRTK glTF asset importer again.
 
 ![](/assets/2022-02-12-Workaround-for-MRKT-27x-glTF-import-bug/enable.png)
 

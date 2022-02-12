@@ -5,7 +5,7 @@ date: 2022-01-29T00:00:00.0000000+01:00
 categories: []
 tags:
 - HoloLens2
-- MRKT2
+- MRTK2
 - Unity3d
 - Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2022-01-29-Finding-the-Floor-with-HoloLens-2-and-MRTK-273/floorfinder.gif
@@ -24,7 +24,7 @@ Time flies... this blog is now past it's 14th anniversary, in internet time this
 ## Base software and configuration
 I made the new solution using:
 * Unity 2020.3.18f1
-* MRKT 2.7.3
+* MRTK 2.7.3
 * OpenXR
 
 Using the [MRTK Feature tool](https://docs.microsoft.com/en-us/windows/mixed-reality/develop/unity/welcome-to-mr-feature-tool), I installed the following components in the project:
@@ -36,7 +36,7 @@ Using the [MRTK Feature tool](https://docs.microsoft.com/en-us/windows/mixed-rea
 I'm going to assume you know how to set up a project using these components - in any case, the MRTK does its best to guide you through the process. If that doesn't work for you, let me know, and I will write another blog post detailing the process.
 
 ## Attack of the cloning
-If you have worked with the MRKT before, you know the drill - if you want to configure stuff, you will need to do a lot of profile cloning and adapting. 
+If you have worked with the MRTK before, you know the drill - if you want to configure stuff, you will need to do a lot of profile cloning and adapting. 
 * First, clone the DefaultHoloLens2ConfigurationProfile (I've called mine AppConfigurationProfile)
 * Select Diagnostics at top level, Disable diagnostics so we don't get the profiler float before our eyes by default
 * Select Spatial Awareness at top level, and check the Enable Spatial Awareness checkbox
@@ -153,6 +153,6 @@ I have added the Spatial Object Mesh Observer. This creates a fake spatial mesh 
 
 ## Conclusion
 
-Looking for the floor via this method of ray casting did not change that much, chiefly it is more configuring in the MRKT profiles and knowing how to get the layer mask from it. Otherwise it's still pretty simple. I hope I did help Ivan getting started - and any other developer joining the fast-growing ranks of Mixed Reality developers as well.
+Looking for the floor via this method of ray casting did not change that much, chiefly it is more configuring in the MRTK profiles and knowing how to get the layer mask from it. Otherwise it's still pretty simple. I hope I did help Ivan getting started - and any other developer joining the fast-growing ranks of Mixed Reality developers as well.
 
 You can find the [complete code in the original repo, branch "hl2mrkt273".](https://github.com/LocalJoost/FloorFinder/tree/hl2mrkt273)
