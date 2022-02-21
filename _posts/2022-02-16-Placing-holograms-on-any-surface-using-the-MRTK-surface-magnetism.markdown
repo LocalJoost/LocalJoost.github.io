@@ -173,7 +173,7 @@ private void CheckLocationOnSurface()
     }
 }
 ```
-* If `initTime` is over and the `radialView` is still active, we assume the app now has had enough time to build a Spatial Mesh for `SurfaceMagnetism` to work on. So we disable the `radialView`, enable `surfaceMagnet` and give the user 2 seconds time to position the object on the surface before we start proposing to place it on a location.
+* When `initTime` is over and the `radialView` is still active, we assume the app now has had enough time to build a Spatial Mesh for `SurfaceMagnetism` to work on. So we disable the `radialView`, enable `surfaceMagnet` and give the user 2 seconds time to position the object on the surface before we start proposing to place it on a location.
 * If `surfaceMagnet` reports it hit a surface, we retain it in `foundPosition`
 * If we find a position and the distance between `foundPosition` and `previousPosition` is larger than 0.005, the user is apparently still moving his or her head so has not decided on where to place the object. Since the initial `previousPosition` is set to `Vector3.positiveInfinity`, the first position will always be rejected and only stored in `previousPosition`
 * And if the user is not moving,
@@ -223,7 +223,7 @@ public class ObjectPlacer : MonoBehaviour
 
 ## One more thing
 
-I promised to explain why the ObjectPlacer did not use the Cessna model directly, but had it wrapper in a prefab. There is some weird stuff going on that I have not quite been able to put my finger on. You see, if you use the model 'just like that' in surface magnetism, it rotate the airplane 90° forward, so basically nose down on a floor:
+I promised to explain why the ObjectPlacer did not use the Cessna model directly, but had it wrapper in a prefab. There is some weird stuff going on that I have not quite been able to put my finger on. You see, if you use the model 'just like that' in surface magnetism, it rotates the airplane 90° forward, so basically nose down on a floor:
 
 ![](/assets/2022-02-16-Placing-holograms-on-any-surface-using-the-MRTK-surface-magnetism/rotateddown.png)
 
