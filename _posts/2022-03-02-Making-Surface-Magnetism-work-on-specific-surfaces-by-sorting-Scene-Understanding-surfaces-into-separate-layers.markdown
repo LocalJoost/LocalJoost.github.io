@@ -3,7 +3,11 @@ layout: post
 title: Making Surface Magnetism work on specific surfaces by sorting Scene Understanding surfaces into separate layers
 date: 2022-03-02T00:00:00.0000000+01:00
 categories: []
-tags: []
+tags:
+- HoloLens2
+- MRTK2
+- Unity3d
+- Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2022-03-02-Making-Surface-Magnetism-work-on-specific-surfaces-by-sorting-Scene-Understanding-surfaces-into-separate-layers/spatialunderstanding.gif
 comment_issue_id: 408
 ---

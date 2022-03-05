@@ -3,9 +3,12 @@ layout: post
 title: Using Scene Understanding in the Unity Editor
 date: 2022-03-05T00:00:00.0000000+01:00
 categories: []
-tags: []
+tags:
+- HoloLens2
+- MRTK2
+- Unity3d
+- Windows Mixed Reality
 featuredImageUrl: https://LocalJoost.github.io/assets/2022-03-05-Using-Scene-Understanding-in-the-Unity-Editor/sceneunderstanding1.png
-comment_issue_id: 409
 ---
 A short tip this time, but nevertheless one that merits its own post. 
 
