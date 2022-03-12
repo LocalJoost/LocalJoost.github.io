@@ -3,7 +3,10 @@ layout: post
 title: Some Blender tricks for the impatient Mixed Reality / HoloLens developer (2)
 date: 2022-01-26T00:00:00.0000000+01:00
 categories: []
-tags: []
+tags:
+- HoloLens2
+- Mixed Reality
+- Blender
 featuredImageUrl: https://LocalJoost.github.io/assets/2022-01-26-Some-Blender-tricks-for-the-impatient-Mixed-Reality-HoloLens-developer-(2)/onegroup.png
 comment_issue_id: 402
 ---
