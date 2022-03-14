@@ -11,19 +11,19 @@ tags:
 featuredImageUrl: https://LocalJoost.github.io/assets/2022-03-12-Make-a-3D-HoloLens-app-launcher-appear-above-the-launcher-controls/mrtk1.png
 comment_issue_id: 412
 ---
-A very, very small tip this time. In HoloLens 2 - or actually Windows Mixed Reality - you can create these awesome 3D launchers that look a lot better than the default floating windows. These can be simple glb files, that you can create with [Blender](https://www.blender.org/). But anyway, have a look at this beautiful logo: that's from the MRTK demo app itself.
+A very, very small tip this time. In HoloLens 2 - or actually Windows Mixed Reality - you can create these awesome 3D launchers that look a lot better than the default floating windows. These can be simple glb files, that you can create with [Blender](https://www.blender.org/). Have a look at this beautiful logo: that's from the MRTK demo app itself.
 
 ![](/assets/2022-03-12-Make-a-3D-HoloLens-app-launcher-appear-above-the-launcher-controls/mrtk1.png)
 
-Also, since Unity 2020 or some version of the MRTK - I am not quite sure what made it happen - you don't have to add this manually edit the Package.appxmanifest, you can just assign the logo in Unity:
+Also, since Unity 2020 or some version of the MRTK - I am not quite sure what made it happen - you don't have to add manually edit the Package.appxmanifest in the generated C++ solution, you can just assign the logo in Unity:
 
 ![](/assets/2022-03-12-Make-a-3D-HoloLens-app-launcher-appear-above-the-launcher-controls/assigninunity.png)
 
-But there's something that annoys me - if you look at the MRTK logo you can see the bottom controls (right pointing arrow, slanted rectangle and X are being projected *over* the bottom of the logo). Smart *ss that I was, I tried to import the logo into Blender and move it up a little from the global origin
+But there's something that annoys me - if you look at the MRTK logo you can see the bottom controls (right pointing arrow, slanted rectangle and X) are being projected *over* the bottom of the logo. Smart *ss that I was, I tried to import the logo into Blender and move it up a little from the global origin
 
 ![](/assets/2022-03-12-Make-a-3D-HoloLens-app-launcher-appear-above-the-launcher-controls/blender1.png)
 
-Of course, that did not work. My 2nd attempt was a bit smarter: I joined all the parts together and moved the resulting object's origin down using the 'world cursor':
+Of course, that did not work. My 2nd attempt was a bit smarter: I [joined all the parts together](https://localjoost.github.io/Some-Blender-tricks-for-the-impatient-Mixed-Reality-HoloLens-developer-(1)/#joining-multiple-objects-into-one-in-blender) and [moved the resulting object's pivot point](https://localjoost.github.io/Some-Blender-tricks-for-the-impatient-Mixed-Reality-HoloLens-developer-(1)/#joining-multiple-objects-into-one-in-blender) down using the 'world cursor':
 
 ![](/assets/2022-03-12-Make-a-3D-HoloLens-app-launcher-appear-above-the-launcher-controls/blender2.png)
 
@@ -39,7 +39,7 @@ Tadaaa!
 
 The cube is so small is stays invisible, but it stretches the object area far enough to pull the controls down below the actual logo. The right distance between logo and the invisible cube depends on the shape and size of the actual logo - you can find this with a bit of fiddling. Unfortunately every test requires a deployment to HoloLens, so best try this with an as small as possible test app.
 
-There are two important details to observe. First and foremost: the cube, and basically *every* element in the logo *must have a material*. Default your cube has no material, and then the import in Unity (by the MRTK) will fail. 
+There are two important details to observe. First and foremost: the cube, and basically *every* element in the logo, *must have a material*. Default your cube has no material, which will make the import in Unity (by the MRTK) fail. 
 
 If you have created the cube in the right spot, select the little beach ball icon:
 
@@ -49,7 +49,7 @@ hit the large "New" button shown at the bottom of this image below:
 
 ![](/assets/2022-03-12-Make-a-3D-HoloLens-app-launcher-appear-above-the-launcher-controls/new.png)
 
-And then it will show this and you are done. You don't have to change any material settings, as the cube is so small you won't see in anyway.
+And then it will show this, and you are done. You don't have to change any material settings, as the cube is so small you won't see in anyway.
 
 ![](/assets/2022-03-12-Make-a-3D-HoloLens-app-launcher-appear-above-the-launcher-controls/material.png)
 
