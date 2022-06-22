@@ -32,7 +32,7 @@ public interface IMixedRealityPointerHandler : IEventSystemHandler
 
 The new MRTK3 works with Interactables and Interactors, which is all very fine, but what if you want to have the user perform a regular air tap as a confirmation gesture, without anything specific to tap *on*? Now `IMixedRealityPointerHandler` is gone, this is not straightforward.
 
-Basic procedure is a follows:
+Basic procedure is as follows:
 * You have to find a ControllerLookup in your scene
 * This has both a LeftHandController and a RightHandController property of type `ArticulatedHandController`
 * If you look at `controller.currentControllerState.selectInteractionState.value` you get a value between 0 and 1 that gives you an idea if the user is performing an air tap, and if to, how far they are with it.
@@ -139,7 +139,7 @@ public UnityEvent<bool> LeftHandStatusTriggered { get; } =
 public UnityEvent<bool> RightHandStatusTriggered { get; } = 
   new UnityEvent<bool>();
 ```
-the fields that are used keep track of whether or not the status flips, and the events are used to tell the world what happened: the hand is going of the pinch threshold - or back under it. These events correspond to `IMixedRealityPointerHandler`'s `OnPointerUp` and `OnPointerDown`. You can now simply add a listener to these events to get notified of what the hands are doing:
+the fields that are used keep track of whether or not the status flips, and the events are used to tell the world what happened: the hand gesture is passing the  the pinch threshold - or falling back back under it. These events correspond to `IMixedRealityPointerHandler`'s `OnPointerUp` and `OnPointerDown`. You can now simply add a listener to these events to get notified of what the hands are doing:
 
 ## The proof of the pudding 
 
