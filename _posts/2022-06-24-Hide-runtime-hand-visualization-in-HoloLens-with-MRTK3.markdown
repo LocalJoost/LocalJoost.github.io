@@ -11,7 +11,7 @@ tags:
 featuredImageUrl: https://LocalJoost.github.io/assets/2022-06-24-Hide-runtime-hand-visualization-in-HoloLens-with-MRTK3/visualizer.png
 comment_issue_id: 422
 ---
-A rather simple thingy this time, but one that was slightly irksome while I was playing with the MRTK3 private preview. As you may have seen in the 'video' [in my previous post](https://localjoost.github.io/MRTK2-to-MRTK3-intercepting-a-raw-air-tap-like-with-IMixedRealityPointerHandler/), by default MRTK3 shows a hand visualization. This is of course very handy while simulating hand gestures in in the Unity editor, but not always desirable run time - where users can actually see their own real hands.
+A rather simple thingy this time, but one that was slightly irksome while I was playing with the MRTK3 private preview. As you may have seen in the 'video' [in my previous post](https://localjoost.github.io/MRTK2-to-MRTK3-intercepting-a-raw-air-tap-like-with-IMixedRealityPointerHandler/), by default MRTK3 shows a hand visualization. This is of course very handy while simulating hand gestures in the Unity editor, but not always desirable run time - where users can actually see their own real hands.
 
 Poking a bit around in the MRTK XR Rig prefab, I quickly found this:
 
@@ -68,7 +68,7 @@ Which allows you to change the selected environments to your liking:
 
 ![](/assets/2022-06-24-Hide-runtime-hand-visualization-in-HoloLens-with-MRTK3/enum.png)
 
-## Conclusion:
+## Conclusion
 
 It's not always rocket science that I post, and I always say that people who want to start blogging but don't know what about: just start somewhere. Write what you learned. Some desperate fellow developer might just need the little thing you just discovered or made. ;). And if not, then at least you have an easy reference for your future self. 
 
