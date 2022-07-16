@@ -3,7 +3,13 @@ layout: post
 title: MRTK2 to MRTK3 - migrating the QRCode sample
 date: 2022-07-02T00:00:00.0000000+02:00
 categories: []
-tags: []
+tags:
+- MRTK3
+- HoloLens2
+- Unity
+- Windows Mixed Reality
+- Service Framework
+- Reality Collective
 featuredImageUrl: https://LocalJoost.github.io/assets/2022-07-02-MRTK2-to-MRTK3--migrating-the-QRCode-sample/packages.png
 comment_issue_id: 423
 ---

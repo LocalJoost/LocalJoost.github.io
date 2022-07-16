@@ -13,6 +13,8 @@ tags:
 featuredImageUrl: https://LocalJoost.github.io/assets/2022-06-19-MRTK2-to-MRTK3--intercepting-a-raw-'air-tap'-like-with-IMixedRealityPointerHandler/controllerlookup.png
 comment_issue_id: 421
 ---
+**NOTE: there is a [simpler way of doing this](../MRTK2-to-MRTK3-a-MUCH-SIMPLER-way-to-intercept-a-raw-air-tap-like-with-IMixedRealityPointerHandler/)**
+
 In ye olden days it was simple: you created a behaviour that implemented `IMixedRealityPointerHandler` and you got this methods to play with:
 
 ```csharp
