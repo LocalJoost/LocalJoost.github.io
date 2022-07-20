@@ -11,7 +11,7 @@ tags:
 featuredImageUrl: https://LocalJoost.github.io/assets/2022-06-08-MRTK2-to-MRTK3--tapping-selecting-holograms/inspector.png
 comment_issue_id: 419
 ---
-I have a confession to make: as a Microsoft MVP I got a bit earlier in on MRTK3 than the rest of the world. I've spent the time porting [AMS HoloATC](https://www.microsoft.com/store/productId/9P6SVQQCP2SQ) over to MRTK3 - banging my head against all kinds of things I did not see coming and dropping into pitfalls I didn't know they were there - basically running into all kinds of stuff I did not understand - so I could learn and document things, so you, dear reader, would not have to suffer half the pain I did. 
+I have a confession to make: as a Microsoft MVP I got a bit earlier in on MRTK3 than the rest of the world. I've spent the time porting [AMS HoloATC](https://www.microsoft.com/store/productId/9NBLGGH52SZP) over to MRTK3 - banging my head against all kinds of things I did not see coming and dropping into pitfalls I didn't know they were there - basically running into all kinds of stuff I did not understand - so I could learn and document things, so you, dear reader, would not have to suffer half the pain I did. 
 
 You are *welcome*. ;)
 
