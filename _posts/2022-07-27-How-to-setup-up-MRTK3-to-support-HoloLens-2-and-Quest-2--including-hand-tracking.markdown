@@ -171,7 +171,7 @@ Simply check both check boxes, hit "install" and prepare to wait ;). Curiously, 
 
 ## Caveat Emptor 
 
-First of all, MRTK3 support for hand tracking is still limited now. You don't get any 'hand rays' like in HoloLens 2, and grabbing does not work either. It seems you can only poke at things. For now, full control is only available using the Quest 2 controllers - but I assume this will be fixed in the (near) future. 
+First of all, MRTK3 support for hand tracking on Oculus is still limited now. You don't get any 'hand rays' like in HoloLens 2, and grabbing does not work either. It seems you can only poke at things. For now, full control is only available using the Quest 2 controllers - but I assume this will be fixed in the (near) future. 
 
 Second, don't think these settings will gain you simple entry into the Oculus Store. I think there's a whole lot more to do - setting permissions in a custom manifest, for instance - as well as set icons, and heaven knows what else. I haven't come to that part yet. I guess that will be *another* blog post.
 
