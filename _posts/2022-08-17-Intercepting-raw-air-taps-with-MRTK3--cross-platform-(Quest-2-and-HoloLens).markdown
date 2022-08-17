@@ -170,6 +170,6 @@ And wouldn't you know it - you can attach to the performed event like this:
 ```csharp
 LeftHand.selectActionValue.reference.action.performed += ProcessContext;
 ```
-Just like a reference that's dragged on your behaviour. So when the interaction profile comes, I can just tap this event in my service and be done with it. To be honest, I am more a proponent explicit access via code paths than implicit access via drag & drop Unity references anyway. Moreover, a service like this can be mocked and tested. So for the moment, I think I will stick with accessing input events via this service after all.
+Just like a reference that's dragged on your behaviour. So when the interaction profile comes, I can just tap this event in my service and be done with it. To be honest, I am more a proponent of explicit access via code paths than via implicit access via drag & drop Unity references anyway. Moreover, a service like this can be mocked and tested. So for the moment, I think I will stick with accessing input events via this service after all.
 
 Project can be [downloaded from GitHub as usual](https://github.com/LocalJoost/MRKTAirTap/tree/crossplatairtap).
