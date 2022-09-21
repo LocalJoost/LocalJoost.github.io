@@ -268,9 +268,22 @@ and we are done. Tapping on the screen 'on a cube' now works as a kind of toggle
 
 ![](/assets/2022-09-21-Running-an-MRTK3-app-on-an-Android-Phone/phone.gif)
 
-## Concluding words
+## UPDATE: and does it still work on the Quest 2?
 
-As you can see, MRTK is pretty flexible, it even runs on ARCore. The first question I got, when I talked about this with a fellow MVP, was: "will it still run on Quest 2 after all these changes?" Unfortunately the answer is no. That is, I have not yet looked in having a single code base, setting or other trickery to have the app run on HoloLens, Quest 2 and phone. I will look into that later. The purpose was now simply to get it working, and it does. 
+ The first question I got, when I talked about this with a fellow MVP, was: "will it still run on Quest 2 after all these changes?" The answer is no. If you deploy it as-is, the answer is no. 
+
+*However*, if you follow the following procedure, it actually will:
+
+1. Go to the player settings
+2. Select XR Plug-in Management
+3. Disable the ARCore plugin again
+4. Build the APK anew and deploy
+
+![](/assets/2022-09-21-Running-an-MRTK3-app-on-an-Android-Phone/arcore.png)
+
+And that is *all*. As you can see, MRTK is pretty flexible, it even runs on ARCore. To say I am suitably flabbergasted is an understatement. 
+
+## Concluding words
 
 As always, there's a project to go with a post like this. [You can find the resulting code here.](https://github.com/LocalJoost/MRTK3PhoneInteraction). If you want to have the starter code (the app that runs on HoloLens 2 and Quest 2), [have a look at this branch](https://github.com/LocalJoost/MRTK3PhoneInteraction/tree/hl2_quest2). 
 
