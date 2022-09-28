@@ -17,7 +17,7 @@ On September 6 2022, fellow MVP [Zaid Zaim](https://twitter.com/ZaidZaim2k), who
 
 ## So close, yet so far
 
-So I took ARS HoloATC, that I recently showed off running on the Quest 2 without any code changes, and deployed the Android version to my phone. The good news was: deployment worked. The bad news:
+So I took AMS HoloATC, that I recently showed off running on the Quest 2 without any code changes, and deployed the Android version to my phone. The good news was: deployment worked. The bad news:
 * The camera position was not tracked - it was just a faux 3D visualization on a flat screen. If I rotated or moved the phone, I could not change my view or move over the airfield. 
 * The background was simply black - not an AR view
 * Since I had no hand tracking, I could not perform a 'raw air tap' to indicate I was satisfied with the position
@@ -281,7 +281,7 @@ and we are done. Tapping on the screen 'on a cube' now works as a kind of toggle
 
 ![](/assets/2022-09-21-Running-an-MRTK3-app-on-an-Android-Phone/arcore.png)
 
-And that is *all*. As you can see, MRTK is pretty flexible, it even runs on ARCore. To say I am suitably flabbergasted is an understatement. 
+And that is *all*. As you can see, MRTK3 is pretty flexible, it even runs on ARCore. To say I am suitably flabbergasted is an understatement. 
 
 ## Concluding words
 
