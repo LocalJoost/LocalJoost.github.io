@@ -3,7 +3,8 @@ layout: post
 title: MagSafe your HoloLens
 date: 2022-09-28T00:00:00.0000000+02:00
 categories: []
-tags: []
+tags:
+- HoloLens2
 featuredImageUrl: https://LocalJoost.github.io/assets/2022-09-28-MagSafe-your-HoloLens/scratch.jpg
 ---
 In 2006, Apple introduced the concept of using powerful magnets to a connect a power supply to a device with the MagSafe connector, that made its debut with the first Intel based MacBook Pro. This concept found its way onto other devices: Microsoft, for instance, has been using magnetic power connectors since the first Surface devices in 2012. Most smaller and wearable devices come with physical connectors - MicroUSB or (lately) USB-C. HoloLens 1 sports the first one, HoloLens 2 the second. The trouble with these connectors it that they are small and relatively vulnerable. If you are not careful, a damaged power port might turn your expensive device into a paperweight. And even if you *are* careful, eventually wear and tear will take it's toll. When you are in a develop/test/deploy cycle, and especially when you are testing things that only work on a device (\*cough\* Bluetooth \*cough\*), you  easily plug and unplug a device 50 times or more a day while deploying test apps over the USB cable - this is by far the fastest option, and our apps at [Velicus](https://velicus.nl/) are easily half a gigabyte, the biggest well over 2GB.
@@ -28,6 +29,6 @@ And it attaches very easily and solidly, as Kerwin already showed, and with this
 
 ![](/assets/2022-09-28-MagSafe-your-HoloLens/magsafe.gif)
 
-Using something like this, which come at a price of about 0.5% of an actual HoloLens, can help a developer save time, hassle and most importantly: keep the device safe and most likely in a better state, even under heavy develop/deploy/test use. I highly recommend it, I thought it important enough to merit a separate blog post. I would recommend going for one (like this) with a high data throughput. If you are only using the HoloLens in production or for demo purposes. a bit cheaper device may work as well, but compared to the list price of a HoloLens this is penny shaving anyway.
+Using something like this, which come at a price of about 0.5% of an actual HoloLens, can help a developer save time, hassle and most importantly: keep the device safe and most likely in a better state, even under heavy develop/deploy/test use. I highly recommend it, I thought it important enough to merit a separate blog post. I would recommend going for one (like this) with a high data throughput. If you are only using the HoloLens running production apps or for demo purposes, a bit cheaper device may work as well, but compared to the list price of a HoloLens this is penny shaving anyway.
 
-Once again thanks to [Kevin Kassulke](https://www.linkedin.com/in/kerwink/) for this awesome tip!
+Once again thanks to [Kerwin Kassulke](https://www.linkedin.com/in/kerwink/) for this awesome tip!
