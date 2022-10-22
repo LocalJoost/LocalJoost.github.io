@@ -6,6 +6,7 @@ categories: []
 tags:
 - HoloLens2
 featuredImageUrl: https://LocalJoost.github.io/assets/2022-09-28-MagSafe-your-HoloLens/scratch.jpg
+comment_issue_id: 430
 ---
 In 2006, Apple introduced the concept of using powerful magnets to a connect a power supply to a device with the MagSafe connector, that made its debut with the first Intel based MacBook Pro. This concept found its way onto other devices: Microsoft, for instance, has been using magnetic power connectors since the first Surface devices in 2012. Most smaller and wearable devices come with physical connectors - MicroUSB or (lately) USB-C. HoloLens 1 sports the first one, HoloLens 2 the second. The trouble with these connectors it that they are small and relatively vulnerable. If you are not careful, a damaged power port might turn your expensive device into a paperweight. And even if you *are* careful, eventually wear and tear will take it's toll. When you are in a develop/test/deploy cycle, and especially when you are testing things that only work on a device (\*cough\* Bluetooth \*cough\*), you  easily plug and unplug a device 50 times or more a day while deploying test apps over the USB cable - this is by far the fastest option, and our apps at [Velicus](https://velicus.nl/) are easily half a gigabyte, the biggest well over 2GB.
 
