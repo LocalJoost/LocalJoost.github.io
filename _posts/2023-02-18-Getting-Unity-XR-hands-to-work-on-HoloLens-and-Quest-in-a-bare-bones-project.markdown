@@ -31,7 +31,7 @@ After that - as the Unity documentation says - you should also import the sample
 
 ## Installing Microsoft Mixed Reality OpenXR plugin
 
-For that, we need the [MRTK feature tool](https://aka.ms/MRFeatureTool). The only thing we are going to install is the OpenXR plugin
+For that, we need the [MRTK feature tool](https://aka.ms/MRFeatureTool). The only thing we are going to install is the OpenXR plugin. Note: the Unity XR Hands does not even seem to *use* this plugin, but it comes with some nice project validation tools and that makes life a bit easier. But once you are done configuring and running the project for both HoloLens and Android, you might as well uninstalling it again.
 
 ![](/assets/2023-02-18-Getting-Unity-XR-hands-to-work-on-HoloLens-and-Quest-in-a-bare-bones-project/openxrplugin.png)
 
