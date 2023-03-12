@@ -10,11 +10,11 @@ tags:
 featuredImageUrl: https://LocalJoost.github.io/assets/2023-03-11-Passthrough-transparency-with-MRTK2-and-3-on-Quest-2Pro/QuestSeeThrough.gif
 comment_issue_id: 440
 ---
-Recently I had an informal talk with a fellow Mixed Reality developer who was convinced was it was not possible to use Quest passtrough transparency with MRTK. However, that is perfectly possible - as you can see below, on my Quest 2
+Recently I had an informal talk with a fellow Mixed Reality developer who was convinced  it was not possible to use Quest passtrough transparency with MRTK. However, that is perfectly possible - as you can see below, on my Quest 2
 
 ![](/assets/2023-03-11-Passthrough-transparency-with-MRTK2-and-3-on-Quest-2Pro/QuestSeeThrough.gif)
 
-I was a bit surpised, I thought this was common knowlegde after [Davide Zordan](https://twitter.com/DavideZordan) [tweeted about it](https://twitter.com/DavideZordan/status/1586315761227661313) in October 2022 and although that was not the complete story, there was very little missing. However, I decided to write a little blog post about it, if only because that's easier for myself to find back someone else's tweet from 5 months ago.
+I was a bit surpised, I thought this was common knowlegde after [Davide Zordan](https://twitter.com/DavideZordan) [tweeted about it](https://twitter.com/DavideZordan/status/1586315761227661313) in October 2022 and although that was not the complete story, there was very little missing. However, I decided to write a little blog post about it, if only because that's easier for myself to find back than someone else's tweet from 5 months ago.
 
 ## Set up an MRTK project
 
@@ -53,7 +53,7 @@ And on the OVR PassTrough Layer, set the Opacity to 0.3
 
 ![](/assets/2023-03-11-Passthrough-transparency-with-MRTK2-and-3-on-Quest-2Pro/passtroughmgr.png)
 
-Make sure the Placement is *Overlay*, otherwise it won't work. Now this may look odd, because you would like to have the transparent background as, well, background, so you would be inclined to set it to Underlay. Funny thing is, then you will simply get a black background. It probably conflicts with the way the MRTK camera works. However, by using a partly transparent *overlay* on top, you will get a very HoloLens-like effect: the reality a bit darker than with passthrough on the Quest home itself, and the virtual objects are just that little bit transparent - but that enables you to navigate through reality with confidence while still being able to the virtual objects. The key difference is reality look *really* cr*p compared to HoloLens - grainy and in black and white - but for situations where this is not important, this solution might just be 'good enough'. Choose the transparency value that suits your use case. I found 0.3 to be pretty good for most cases.
+Make sure the Placement is *Overlay*, otherwise it won't work. Now this may look odd, because you would like to have reality as background, so you would be inclined to set it to Underlay (as I did initially). Funny thing is, then you will simply get a black background. It probably conflicts with the way the MRTK camera works. However, by using a partly transparent *overlay* on top, you will get a very HoloLens-like effect: the reality isa bit darker than with passthrough on the Quest home itself, and the virtual objects are just that little bit transparent - but that enables you to navigate through reality with confidence while still being able to the virtual objects. The key difference is reality looks *really* cr*p compared to HoloLens - grainy and in black and white - but for situations where this is not important, this solution might just be 'good enough'. Choose the transparency value that suits your use case. I found 0.3 to be pretty good for most cases.
 
 The amusing thing is: even after adding all the Oculus stuff, *the app still works on HoloLens*. I usually make a script that disables the "Oculus PassThrough" gameobject when the app is on a HoloLens, to make sure it does not interfere or uses resources unnecessarily.
 
