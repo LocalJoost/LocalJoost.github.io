@@ -159,7 +159,7 @@ Unity creates it in the scene root, I moved mine to Managers. At this point, whe
 
 ## Create and configure touch input actions
 
-Select the Configuration folder in your assets, click Assets/Input Settings (all the way to the bottom) and call the file TouchInputActions. Double click the file. Then,
+Select the Configuration folder in your assets, right-click, then select Input Settings (all the way to the bottom) and call the file TouchInputActions. Double click the file. Then,
 * Click the "+"" button next to Action Maps
 * Call your action map "TouchInput" (or whatever you like)
 * Check the "Auto-Save" checkbox if you value your sanity
