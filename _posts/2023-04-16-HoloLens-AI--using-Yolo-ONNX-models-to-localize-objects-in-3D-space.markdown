@@ -108,7 +108,7 @@ while (true)
 ```
 The ToTexture extension method, [that I nicked from Stack Overflow](//https://stackoverflow.com/questions/44264468/convert-rendertexture-to-texture2d), simply converts a RenderTexure to a Texture2D
 
-Then the picture is simply fed into the yoloProcessor and out come recognized objects. Now you might have seen `YoloProcessor` is a [Reality Collective](https://realitycollective.io/) [ServiceFramework](https://service-framework.realitycollective.io/) Service. We are going to pick that apart.
+Then the picture is simply fed into the yoloProcessor and out come recognized objects. Now you might have seen `YoloProcessor` is a [Reality Collective](https://realitycollective.io/) [ServiceFramework](https://service-framework.realitycollective.io/) Service. If you have never heard of the ServiceFramework before, [have a look at this article I wrote before](https://localjoost.github.io/MRTK2-to-MRTK3-migrating-Extension-Services-to-the-Reality-Collective-Service-Framework/#introducing-the-reality-collective-service-framework). In the next few paragraphs, we are going to pick the `YoloProcessor` service apart.
 
 ## Get the recognitions out of the model
 
@@ -174,7 +174,7 @@ This list comes 1:1 from the Netron output. In the Unity editor, the service con
 
 ![](/assets/2023-04-16-HoloLens-AI--using-Yolo-ONNX-models-to-localize-objects-in-3D-space/serviceconfig.png)
 
- ### The YoloProcessor service
+### The YoloProcessor service
  
  This basically does all the recognizing work. It is, as stated before, a service. The `Initialize` method loads the model, and the by calling `RecognizeObjects` with the texture you got from the webcam you get your recognitions back. It's simpele as that.
 
