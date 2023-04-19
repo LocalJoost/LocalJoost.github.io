@@ -14,7 +14,7 @@ comment_issue_id: 443
 ---
 For building Mixed Reality applications I use an Azure virtual machine, because reasons. The great thing about virtual machines is they can be deployed pretty easily without having to order real hardware - the *problem* with virtual machines is they can rack up quite an Azure bill when left unattended, and although my friends at Microsoft won't mind, my credit card certainly will. 
 
-Recentely I attended a session by [Barbara Forbes](https://twitter.com/ba4bes), on [FurtureTech 2023](https://futuretech.nl/), where she showed you you could use a credential that allowed a GitHub action to login into an Azure tenant. It was actually a very tiny part of the talk, but it stuck in my mind: since I already knew you could startup and shutdown a virtual machine using the Azure Cloud Shell, I wondered: would it be possible to do that from a GitHub action as well? And yes indeed, you can.
+Recentely I attended a session by [Barbara Forbes](https://twitter.com/ba4bes), on [FurtureTech 2023](https://futuretech.nl/), where she showed you could use a credential that allowed a GitHub action to login into an Azure tenant. It was actually a very tiny part of the talk, but it stuck in my mind: since I already knew you could startup and shutdown a virtual machine using the Azure Cloud Shell, I wondered: would it be possible to do that from a GitHub action as well? And yes indeed, you can.
 
 ## Getting the login credential
 
@@ -136,6 +136,6 @@ jobs:
     runs-on: somerunner
 ```
 
-And now the build server spins up whenever the first merge of the day is coming in. Technically, I could have it shutdown again afterwards and *really* pinch down on virtual machine costs, but since merges tend to come in flocks, that's not very practical so I decided against it - but that would be prefectly possible as well, I guess. But I did add two stop moments, in case a merge happens after 5:15. 
+And now the build server spins up whenever the first merge of the day is coming in. Technically, I could have it shutdown again afterwards and *really* pinch down on virtual machine costs, but since merges tend to come in flocks, that's not very practical so I decided against it. But it would be prefectly possible. But I did add two stop moments, in case a merge happens after 5:15. 
 
 Since you can copy and paste all the code off this blog post, I will dispense with an actual demo project this time.
