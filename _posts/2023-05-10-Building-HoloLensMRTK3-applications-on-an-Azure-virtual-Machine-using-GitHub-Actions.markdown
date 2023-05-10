@@ -92,7 +92,7 @@ Then, do the following steps:
 
 Next up is quite some YAML interspersed with a lot of PowerShell. I am deeply sorry. Please contact your local therapist if you experience anxiety attacks after reading the following.
 
-In the .github\workflows sits a file buildfile.yaml. I am going to describe this in detail because the code is hard to read and sometimes does not seem to make sense at all.
+In the .github\workflows folder sits a file **buildfile.yaml**. I am going to describe this in detail because the code is hard to read and sometimes does not seem to make sense at all.
 
 ### Top definitions
 
@@ -245,7 +245,7 @@ Stop-Process $proc;
 
 This actually opens the manifest file, and updates the version number. That is, the build number. So if the version number in the manifest file is 1.2.3.0, it changes the "3". It uses the GitHub Run number to set the value. The version number in the manifest file of the [demo project](https://github.com/LocalJoost/DemoBuildProject/) is 1.0.0.0, so if you recall this image:
 
-![](/assets/2023-05-10-Building-HoloLensMRTK3-applications-on-an-Azure-virtual-Machine-using-GitHub-Actions/building.png)top
+![](/assets/2023-05-10-Building-HoloLensMRTK3-applications-on-an-Azure-virtual-Machine-using-GitHub-Actions/building.png)
 
 You will see the topmost build will get version number 1.0.7.0. *However*, if you update for instance the major and/or minor version to for instance 2.1.0.0, you might want to make the first build of that version 0 again. This is where VERSION_OFFSET comes in. This is an external variable that you can set using repository variables
 
