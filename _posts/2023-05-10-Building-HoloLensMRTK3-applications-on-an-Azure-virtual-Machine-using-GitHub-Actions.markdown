@@ -379,7 +379,7 @@ While creating this I wondered whether the Universal Declaration of Human Rights
 * Writing YAML is *hard*, especially with lots of PowerShell in it. 
 * Environment variables in PowerShell are accessible as $Env:ENV_VAR, but in YAML code it's ${% raw %}{{ env.ENV_VAR }}{% endraw %}}
 * For getting your parameters for both Unity and MSbuild correct, first create simple batch files with those parameters and *run those on the server*
-* Craft the build file step by step. If one step works, comment it out and build the next step. If you are for instance trying to fix the MSbuild step, it saves an enormous amount of time if you disable the steps that check out the repo and the make the C++ application.
+* Craft the build file step by step. If one step works, comment it out and build the next step. If you are for instance trying to fix the MSbuild step, it saves an enormous amount of time if you disable the steps that check out the repo and the building of the C++ application.
 * Use [Visual Studio Code](https://code.visualstudio.com/) to write YAML, and install an appropriate extension, for instance the YAML support extension by Red Hat.
 * Virtual machines are expensive. Make sure you shut them down automatically at the end of a day and spin them up only on demand. [In my previous post, I showed you how to do that](https://localjoost.github.io/Turning-Azure-virtual-machines-on-and-off-from-a-GitHub-action/).  
 
