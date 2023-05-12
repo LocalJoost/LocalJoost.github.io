@@ -61,7 +61,7 @@ If you don't install Git, the GitHub runner will download the whole archive and 
 
 ### Long path
 
-Windows drags a *long* history behind it, and one of them is the 260 character maximum file path length. This will potentially make us run into problems, partly because the runners extract the project into an already deep folder structure (C:\\actions-runner\\_work\\projectname\\projectname), partly because the packages in the MRTK3 have a long name, and parlty because Unity itself unpacks that in a very verbose way. Long story short: you will probably need to make [the long path registry setting](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry#enable-long-paths-in-windows-10-version-1607-and-later)
+Windows drags a *long* history behind it, and one of them is the 260 character maximum file path length. This will potentially make us run into problems, partly because the runners extract the project into an already deep folder structure (C:\\actions-runner\\_work\\projectname\\projectname), partly because the packages in the MRTK3 have a long name, and partly because Unity itself unpacks that in a very verbose way. Long story short: you will probably need to make [the long path registry setting](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry#enable-long-paths-in-windows-10-version-1607-and-later)
 
 ### Log folder
 
