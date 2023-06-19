@@ -13,7 +13,7 @@ permalink:
 featuredImageUrl: https://LocalJoost.github.io/assets/2023-06-19-Accessing-and-recording-eye-tracking-data-with-MRTK3/eytracking.gif
 comment_issue_id: 449
 ---
-Recently a community member asked me how to record eye tracking data into a CSV file. I decided to turn the answer into a blog post, so it can benefit the whole community and not only the person asking the question.
+Recently a community member asked me how to set up eye tracking data and record that into a CSV file. I decided to turn the sample I created into a blog post, so it can benefit the whole community and not only the person asking the question.
 
 I created a little script that uses the MRTK3 Gaze Interactor to shoot a ray from the eyes in the gaze direction until it hits the object of interest, visualizes that point with a little green sphere, and writes the relative coordinates into a csv file on the HoloLens. If you know how to to it, it's extremely simple, but then again - so is almost everything. 
 
