@@ -93,7 +93,7 @@ private void OnDestroy()
 
 ## Getting the tracking file
 
-Access the HoloLens' device portal either by WiFi or by connecting the HoloLens to your PC using a USB cable, go to the File Manager, then browse to 
+Access the HoloLens' device portal either by WiFi or by connecting the HoloLens to your PC using a USB cable, go to the System/File Explorer tab, then browse to 
 *LocalAppData\MRTK3EyeTracking_1.0.0.0_arm64__9w1r0z46k1jc2\LocalState*
 and there you will find eyetracking.csv.
 
