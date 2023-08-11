@@ -2,13 +2,13 @@
 layout: post
 title: HoloLens AI - training a YoloV8 model locally on custom pictures to recognize objects in 3D space
 date: 2023-08-11T00:00:00.0000000+02:00
-categories:
+categories: []
+tags:
 - HoloLens
 - MRTK
 - Machine Learning
 - Artificial Intelligence
 - ONNX
-tags: []
 featuredImageUrl: https://LocalJoost.github.io/assets/2023-08-11-HoloLens-AI--training-a-YoloV8-model-locally-on-custom-pictures-to-recognize-objects-in-3D-space/Airplanes.gif
 comment_issue_id: 452
 ---
