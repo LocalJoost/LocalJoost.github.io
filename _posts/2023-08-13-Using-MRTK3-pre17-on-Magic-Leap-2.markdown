@@ -21,11 +21,12 @@ Well, actually, it's pretty simple. Microsoft has changed the return value of `X
 
 ## Simple hack fix
 
-* Open com.magicleap.mrtk3-1.0.0-pre.1.tgz with a suitable tool, for instance [7-Zip](https://www.7-zip.org/).
+* Open com.magicleap.mrtk3-1.0.0-pre.1.tgz (in the project's packages folder) with a suitable tool, for instance [7-Zip](https://www.7-zip.org/).
 * Find the three offending files:
   * MagicLeapAuxiliaryHandDevice.cs, 
   * MagicLeapControllerHandProximityDisabler.cs
   * TrackedHandJointVisualizer.cs
+* Extract those files to a folder on your disk (using drag & drop)
 * In every file, find the line that says something like:
 
 ```csharp
@@ -46,7 +47,7 @@ The real lazy people [might also just download the fixed archive](www.schaikweb.
 
 ## No panic
 
-Yeah, I have a Magic Leap 2 lying here for a few days. No, it's not mine. No, I am not abandoning HoloLens 2. Yes, I do like Magic Leap 2 although it has some clear cons compared to HoloLens 2. Yes, it also has some very clear pros. Anyway, it's just that I am very much a proponent of cross-platform development. You have seen me porting my app to Quest 2/Pro and even Android ARCore phones - and even putting them up for download in their various stores. I think choice is important, cross-platform development is important (and fun, as well as challenging), and I intend to write about some findings and pitfalls I come across. So other people don't need to fall into the same pit. Basically, what I have been doing since 2007.
+Yeah, I have a Magic Leap 2 lying here since a few days. No, it's not mine. No, I am not abandoning HoloLens 2. Yes, I do like Magic Leap 2 although it has some clear cons compared to HoloLens 2. Yes, it also has some very clear pros. Anyway, it's just that I am very much a proponent of cross-platform development. You have seen me porting my app to Quest 2/Pro and even Android ARCore phones - and even putting them up for download in their various stores. I think choice is important, cross-platform development is important (and fun, as well as challenging), and I intend to write about some findings and pitfalls I come across. So other people don't need to fall into the same pit. Basically, what I have been doing since 2007.
 
 ## So how, why?
 
