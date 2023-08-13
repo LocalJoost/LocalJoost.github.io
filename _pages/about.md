@@ -1,4 +1,4 @@
-﻿---
+---
 permalink: /about/
 title: "About"
 ---
@@ -7,7 +7,7 @@ This blog attempts to be a collection of how-to examples in the Microsoft softwa
 
 ## About me  
 * Joost van Schaik, pronounced [like this](http://www.schaikweb.net/dotnetbyexample/jvs.wma).   
-* Senior Mixed Reality Software Architect.
+* Senior Lead Unity Developer.
 * Windows Development MVP & Windows Insider MVP.
 * Mixed Reality, HoloLens (2), Unity, C#, Xamarin, .NET.  
 * Rogue R&D hacker.  
