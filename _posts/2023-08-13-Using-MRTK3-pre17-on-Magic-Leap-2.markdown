@@ -43,7 +43,7 @@ IHandsAggregatorSubsystem HandSubsystem => XRSubsystemHelpers.HandsAggregator;
 
 And presto. No more errors, no more crashes.
 
-The real lazy people [might also just download the fixed archive](www.schaikweb.net/ML2/com.magicleap.mrtk3-1.0.0-pre.1.tgz) from my old website and plonk it directly over the one in packages ;)
+The real lazy people [might also just download the fixed archive](https://www.schaikweb.net/ML2/com.magicleap.mrtk3-1.0.0-pre.1.tgz) from my old website and plonk it directly over the one in packages ;)
 
 ## No panic
 
