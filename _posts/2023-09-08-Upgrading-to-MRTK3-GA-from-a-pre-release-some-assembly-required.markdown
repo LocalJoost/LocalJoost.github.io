@@ -28,6 +28,14 @@ To fix that, take the following steps:
 
 Then came the second surprise: when I opened the project again after this step, Unity still complains about errors, but in my case, there were now only 42, instead of 999+. This is because everything that used to be in the namespace "Microsoft.MixedReality" is now in "MixedReality". They removed the "Microsoft" prefix *everywhere*. The fix is simple: in Visual Studio, do a global search & replace of "Microsoft.MixedReality" with "MixedReality". My project compiled and ran after that.
 
+The third thing you might want to have a *very* good look at. If you have used the *default* MRKT3 profile in Project Settings, everything you have selected will be selected correctly in the new profile. However, if you have created a *custom* profile - for instance, because you wanted to have the speech recognition subsystem enable, of because there needed to be an additional subsystem, like the people at Magic Leap needed for their hand tracking, you might be in for a nasty surpise:
+
+![](/assets/2023-09-08-Upgrading-to-MRTK3-GA-from-a-pre-release-some-assembly-required/subsystems.png)
+
+Some of the subsystems your profile pointed to have changed names, so now your profile points to systems that no longer exist (see warning at the top), while the subsystems that were selected in the pre-release versions are now no longer selected. This might lead to, for instance, hand tracking no longer working. The trick is to make a new, empty MRTK profile and add whatever you need back to it, or make a fresh copy of the MRTK3 profile and change the settings to what they were before the upgrade
+
+## Concluding thoughts
+
 The namespace thing, of course, is a logical side-effect from the MRTK3 [coming under the stewardship of an extended steering committee in which not only Microsoft has a seat at the table, but also Qualcomm and Magic Leap](https://techcommunity.microsoft.com/t5/mixed-reality-blog/microsoft-mixed-reality-toolkit-3-mrtk3-moves-to-an-independent/ba-p/3898941), as Robin Seiler, Corporate Vice President and Chief Operating Officer of the Windows + Devices organization, announced on August 21. I feel it might have been a good idea to release a preview first, with a change as radical as this - but then again, I am just a developer looking from the outside, I don't have an overview of all the details involved that resulted in implementing this directly into the GA.
 
 The important thing is: the MRTK is GA, and its future seems secured - an important thing for the future of XR!
