@@ -7,8 +7,6 @@ tags:
 - MRTK3
 - Service Framework
 - Magic Leap 2
-published: true
-permalink: 
 featuredImageUrl: https://LocalJoost.github.io/assets/2023-09-15-A-ServiceFramework-Service-to-help-update-Magic-Leap-2-MRTK3-apps/MLUpdater.gif
 comment_issue_id: 456
 ---
@@ -161,7 +159,7 @@ The demo features two simple screens. The first one is shown when there is an up
 
 ![](/assets/2023-09-15-A-ServiceFramework-Service-to-help-update-Magic-Leap-2-MRTK3-apps/newversion.png)
 
-and uses this little behavior as a driver:
+and uses this little behaviour as a driver:
 
 ```csharp
 public class HandleNewVersionBehaviour : MonoBehaviour
@@ -225,7 +223,7 @@ The second screen is displayed when there is no new version:
 
 ![](/assets/2023-09-15-A-ServiceFramework-Service-to-help-update-Magic-Leap-2-MRTK3-apps/nonewversion.png)
 
-And its behavior is rather trivial:
+And its behaviour is rather trivial:
 
 ```csharp
 public class HandleNewNoVersionBehaviour : MonoBehaviour
@@ -269,4 +267,4 @@ Using this service and a little bit of UI, you can now easily let users update t
 * After that, click the downloaded APK in the file manager that pops open
 * Finally, click "Yes" on the OS confirmation screen.
 
-But it works for me. As always, you can download a [sample project with all code from GitHub](https://github.com/LocalJoost/MLUpdater). For those who just want to try out the sample and see how the process works, you can also simply download and install v1.0.0.0, which will then ask for 1.0.1.0, just like in the video at the beginning of this post.
+But it works for me. As always, you can download a [sample project with all code from GitHub](https://github.com/LocalJoost/MLUpdater). For those who just want to try out the sample and see how the process works, you can also simply [download and install v1.0.0.0](https://www.schaikweb.net/VersionDemo/MLUpdater_1.0.0.0.apk), which will then ask for 1.0.1.0, just like in the video at the beginning of this post.
