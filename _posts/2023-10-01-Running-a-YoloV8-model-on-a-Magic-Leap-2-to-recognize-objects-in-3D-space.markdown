@@ -9,6 +9,8 @@ tags:
 - Machine Learning
 - MRTK
 - Magic Leap 2
+- Service Framework
+- Reality Collective
 published: true
 permalink: 
 featuredImageUrl: https://LocalJoost.github.io/assets/2023-10-01-Running-a-YoloV8-model-on-a-Magic-Leap-2-to-recognize-objects-in-3D-space/YoloMLHolo.gif
