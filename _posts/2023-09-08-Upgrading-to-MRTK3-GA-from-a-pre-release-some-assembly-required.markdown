@@ -48,7 +48,7 @@ There is a fourth thing you need to check: *prefabs* or even *scenes* might have
 
 ![](/assets/2023-09-08-Upgrading-to-MRTK3-GA-from-a-pre-release-some-assembly-required/prefab.png)
 
-you will find no less than 10 references to namespaces and even assemblies that have changed names. So I did a global search & replace using Notepad++ to replace all references to "Microsoft.MixedReality" with "MixedReality".
+you will find no less than 10 references to namespaces and even assemblies that have changed names. So I did a global search & replace using Notepad++ to replace all references to "Microsoft.MixedReality" with "MixedReality" in prefab and scene files.
 
 ## Fixing assembly references
 
