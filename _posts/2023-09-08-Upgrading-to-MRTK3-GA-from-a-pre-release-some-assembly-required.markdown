@@ -11,7 +11,7 @@ permalink:
 featuredImageUrl: https://LocalJoost.github.io/assets/2023-09-08-Upgrading-to-MRTK3-GA-from-a-pre-release-some-assembly-required/featuretool.png
 comment_issue_id: 454
 ---
-[Update - September 6, 2023]
+[Update - October 6, 2023]
 
 Last Wednesday, the XR community received some *great* news: [MRTK3 finally entered the General Availability (GA) state](https://github.com/orgs/MixedRealityToolkit/discussions/452), which means this is the first real (non-pre-release) version. So today, I had some time to experiment with it and upgrade [HoloATC](https://www.microsoft.com/store/apps/9NVHWRS1V9ZH) to it. I was able to deploy and run it successfully on my HoloLens 2. However, let's say the upgrade story is a *bit* more rocky this time. So far, it was simply a matter of selecting the new libraries - new ones were installed, old ones were deleted, and Bob's your uncle. Now, we need to do a bit more work.
 
