@@ -14,7 +14,7 @@ permalink:
 featuredImageUrl: http://localjoost.github.io/assets/2023-10-24-A-cross-platform-Service-Framework-service-to-write-Unity-log-messages-into-files-on-device/portal.png
 comment_issue_id: 461
 ---
-HoloLens  applications conveniently dump all the Unity log messages in a text file - including all run time errors. This file can be very useful for tracking down weird occasional errors that only happen at run time. Getting to the file from HoloLens is a bit cumbersome, you have to go via the device portal and you really have to know where to look, it is always called UnityPlayer.log and at least you can *get* to it 
+HoloLens  applications conveniently dump all the Unity log messages in a text file - including all run time errors. This file can be very useful for tracking down weird occasional errors that only happen at run time. Getting to the file from HoloLens is a bit cumbersome, you have to go via the device portal and you really have to know where to look, it is always called UnityPlayer.log and at least you can *get* to it.
 
 ![](/assets/2023-10-24-A-cross-platform-Service-Framework-service-to-write-Unity-log-messages-into-files-on-device/portal.png)
 
