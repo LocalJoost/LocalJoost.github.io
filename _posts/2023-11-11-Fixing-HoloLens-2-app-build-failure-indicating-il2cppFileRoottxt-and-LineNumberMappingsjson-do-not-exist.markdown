@@ -18,7 +18,7 @@ This seems to be a very rare case, and one that I have not been able to reproduc
 Il2CppOutputProject\Source\il2cppOutput\Symbols\il2cppFileRoot.txt does not exist
 Il2CppOutputProject\Source\il2cppOutput\Symbols\LineNumberMappings.json does not exist
 
-There is very little to find online; about the only real source of information I found was [this one, from June 2023, in the Unity forums](https://forum.unity.com/threads/uwp-build-crashing.1454554/#post-9140083). Basically, the solution is: edit the "Unity Data.vcxproj" and remove the entries describing that file. This, of course, does not work when you make a fresh build or run into this in a CI/CD pipeline, which was exactly how I learned about this when I upgraded [Augmedit](https://www.augmedit.com/)'s Lumi to a new major Unity solution.
+There is very little to find online; about the only real source of information I found was [this one, from June 2023, in the Unity forums](https://forum.unity.com/threads/uwp-build-crashing.1454554/#post-9140083). Basically, the solution is: edit the "Unity Data.vcxproj" and remove the entries describing those files. This, of course, does not work when you make a fresh build or run into this in a CI/CD pipeline, which was exactly how I learned about this when I upgraded [Augmedit](https://www.augmedit.com/)'s Lumi to a new major Unity solution.
 
 The short version: if you are not interested in the how and why and want this issue fixed and you want it fixed *now*, just download [this file](https://www.schaikweb.net/blog/UWPBuildFixer.cs), put it somewhere in your project, build the project again and be done with it forever.
 
