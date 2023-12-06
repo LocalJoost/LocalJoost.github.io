@@ -22,14 +22,15 @@ So, in ye olden days, you defined your speech command input in the MRTK Speech C
 Digging into the MRTK3 code, beneath some layers of code, I found code that, when all is said and done, boiled down to this:
 
 ```csharp
-phraseRecognitionSubsystem.CreateOrGetEventForPhrase("keyword").
+phraseRecognitionSubsystem.CreateOrGetEventForKeyword("keyword").
   AddListener(SomeMethod);
 ```
 
 So how to get a reference to the Phrase Recognition Subsystem?
 
 ```csharp
-var phraseRecognitionSubsystem = SpeechUtils.GetSubsystem();
+var phraseRecognitionSubsystem = 
+  XRSubsystemHelpers.KeywordRecognitionSubsystem;
 ```
 
 Of course, to *enable* speech recognition, you will need to select the Phrase Recognition Subsystem in the MRTK3 configuration profile
