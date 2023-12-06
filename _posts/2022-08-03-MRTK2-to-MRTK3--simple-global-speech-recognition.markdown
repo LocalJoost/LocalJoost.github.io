@@ -8,9 +8,13 @@ tags:
 - HoloLens2
 - Unity
 - Windows Mixed Reality
+published: true
+permalink: 
 featuredImageUrl: https://LocalJoost.github.io/assets/2022-08-03-MRTK2-to-MRTK3--simple-global-speech-recognition/profile.png
 comment_issue_id: 426
 ---
+Updated December 6, 2023
+
 So, in ye olden days, you defined your speech command input in the MRTK Speech Command Profile, then somewhere in your scene you put a `SpeechInputHandler`, and configured methods that should be executed upon the phrases being recognized. No trace of all of that in MRTK3. The only thing I could find was `SpeechInteractor` and to be honest, I have yet to get a clear idea what that is for, or how to use it. In the mean time, I really wanted to use global speech commands. And I did. With a little help from a script.
 
 ## So how does speech recognition work now?
@@ -66,14 +70,15 @@ public class SpeechInputHandler : MonoBehaviour
 
     private void Start()
     {
-        var phraseRecognitionSubsystem = SpeechUtils.GetSubsystem();
+        var phraseRecognitionSubsystem =
+          XRSubsystemHelpers.KeywordRecognitionSubsystem;
         foreach (var phraseAction in phraseActions)
         {
             if (!string.IsNullOrEmpty(phraseAction.Phrase) &&
               phraseAction.Action.GetPersistentEventCount() > 0)
             {
                phraseRecognitionSubsystem.
-                 CreateOrGetEventForPhrase(phraseAction.Phrase).
+                 CreateOrGetEventForKeyword(phraseAction.Phrase).
                    AddListener(() => phraseAction.Action.Invoke());
             }
         }
@@ -148,4 +153,4 @@ It's simply to be able to skip an empty configuration.
 
 ## Conclusion
 
-After everything is said and done, global speech recognition with MRTK3 is not that hard, especially not with this little helper behaviour. I hope this helps you going forward. Note: speech recognition, for now, *only works on HoloLens*.
+After everything is said and done, global speech recognition with MRTK3 is not that hard, especially not with this little helper behaviour. I hope this helps you going forward. Note: speech recognition, for now, works on HoloLens and, with my implementation of a `KeywordRecognitionSubsystem`, [on Magic Leap 2](https://localjoost.github.io/An-MRTK3-KeywordRecognitionSubsystem-for-Magic-Leap-2/). It also works in the Unity Editor - on Windows, that is.
