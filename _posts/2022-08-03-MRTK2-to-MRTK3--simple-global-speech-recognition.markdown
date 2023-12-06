@@ -96,7 +96,8 @@ private void OnValidate()
     if (multipleEntries.Any())
     {
         var errorMessage = new StringBuilder();
-        errorMessage.AppendLine("Some phrases defined are more than once, this is not allowed");
+        errorMessage.AppendLine(
+         "Some phrases defined are more than once, this is not allowed");
         foreach (var phraseGroup in multipleEntries)
         {
             errorMessage.AppendLine($"- {phraseGroup.Key}");
