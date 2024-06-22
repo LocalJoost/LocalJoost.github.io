@@ -71,6 +71,12 @@ html {
     height: 12px; 
     width: 12px!important;
   }
+}
 
+.downloadheader:hover { text-decoration-line: underline;}
 
+.downloadheader:hover .downloaditems {display: block;}
+.downloaditems 
+{
+  display: none;
 }
