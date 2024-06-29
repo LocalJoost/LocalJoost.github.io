@@ -117,7 +117,7 @@ If you click the tempting button "Assign MRTK default," it looks like you are do
 
 ![](/assets/2024-06-29-Making-an-MRTK3-based-HoloLens-2-app-run-on-Magic-Leap-2/openxrsettings.png)
 
-I added the two interaction profiles in the red square by clicking the little plus indicated by the arrow top left and turned on the Hand Tracking System. I turned *off* the Magic Leap Spatial Anchor Storage because I noticed a lot of errors in the Unity Application Log when I checked that using my [ServiceFramework-based FileLoggerService](https://localjoost.github.io/A-cross-platform-Service-Framework-service-to-write-Unity-log-messages-into-files-on-device/). The Pixel sensor thing was already off by default, so I left it off. I am not sure whether you can turn off other things and still have it work, nor what kind of advantages that might have. I haven't gone deep into this.
+I added the two interaction profiles in the red square by clicking the little plus icon indicated by the arrow top right, and turned on the Hand Tracking System. I turned *off* the Magic Leap Spatial Anchor Storage because I noticed a lot of errors in the Unity Application Log when I checked that using my [ServiceFramework-based FileLoggerService](https://localjoost.github.io/A-cross-platform-Service-Framework-service-to-write-Unity-log-messages-into-files-on-device/). The Pixel sensor thing was already off by default, so I left it off. I am not sure whether you can turn off other things and still have it work, nor what kind of advantages that might have. I haven't gone deep into this.
 
 ## Turning off the old Unity Input System
 
@@ -125,7 +125,8 @@ If you build and get this error:
 
 ![](/assets/2024-06-29-Making-an-MRTK3-based-HoloLens-2-app-run-on-Magic-Leap-2/inputsystem.png)
 
-Change this in Other settings (in Player settings)
+Change this in Other settings (in Player settings
+comment_issue_id: 472)
 
 ![](/assets/2024-06-29-Making-an-MRTK3-based-HoloLens-2-app-run-on-Magic-Leap-2/inputsystems.png)
 
