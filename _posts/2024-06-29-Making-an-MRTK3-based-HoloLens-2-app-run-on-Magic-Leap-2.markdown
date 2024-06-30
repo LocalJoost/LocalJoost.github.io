@@ -67,7 +67,7 @@ The choice is yours, but I prefer to go with OpenXR, and in any case, the Magic 
 
 The Project Setup Tool will pop up, and all kinds of stuff is being imported into Unity. Wait till it's done. Then it asks *again* the same question:
 
-![](/assets/2024-06-29-Making-an-MRTK3-based-HoloLens-2-app-run-on-Magic-Leap-2/setuptoolpackagemanager.png)
+![](/assets/2024-06-29-Making-an-MRTK3-based-HoloLens-2-app-run-on-Magic-Leap-2/sdkchoice.png)
 
 Click OpenXR again. Then nothing seems to happen for a while (be patient), but finally, the Project Setup Tool shows a bunch of green and yellow buttons.
 
