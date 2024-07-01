@@ -31,7 +31,7 @@ I found the [MRTK3 setup instructions for Magic Leap 2](https://developer-docs.m
 
 You first need to pull the [template Magic Leap MRTK3 project](https://github.com/magicleap/MixedRealityToolkit-Unity), which is actually a fork of MRTK3 made by Magic Leap, from GitHub.
 
-Then, compare the manifest file of the template project with the manifest file of your project using [the little tool](https://github.com/LocalJoost/UnityManifestCompare/releases/download/1.0.0.0/UnityManifestCompare.zip) I made for [my previous blog post](https://localjoost.github.io/A-little-tool-to-compare-two-Unity-Manifest-files/). You will find the dev template manifest in MixedRealityToolkit-Unity\UnityProjects\MRTKDevTemplate\Packages. Use your manifest file as the first argument, the Magic Leap MRTK3 one as the second.
+Then, compare the manifest file of the template project with the manifest file of your project using [the little tool](https://github.com/LocalJoost/UnityManifestCompare/releases/download/1.0.0.0/UnityManifestCompare.zip) I made for [my previous blog post](https://localjoost.github.io/A-little-tool-to-compare-two-Unity-Manifest-files/). You will find the dev template manifest in MixedRealityToolkit-Unity\UnityProjects\MRTKDevTemplate\Packages. Use the Magic Leap MRTK3 manifest file as the first argument, and your manifest file as the second.
 
 Finally, you will need to add the Magic Leap scope and the missing packages as [described and explained in my previous blog post](https://localjoost.github.io/A-little-tool-to-compare-two-Unity-Manifest-files/).
 
@@ -66,7 +66,7 @@ After it's done importing, this box will pop up:
 The choice is yours, but I prefer to go with OpenXR, and in any case, the Magic Leap SDK is deprecated, so that's a dead end anyway. This tutorial uses OpenXR, so I'd suggest you click "OpenXR."
 
 The Project Setup Tool will pop up, and all kinds of stuff is being imported into Unity. Wait till it's done. Then it asks *again* the same question:
-
+s
 ![](/assets/2024-06-29-Making-an-MRTK3-based-HoloLens-2-app-run-on-Magic-Leap-2/sdkchoice.png)
 
 Click OpenXR again. Then nothing seems to happen for a while (be patient), but finally, the Project Setup Tool shows a bunch of green and yellow buttons.
