@@ -91,7 +91,7 @@ At this point, all the buttons should be green.
 
 Now it's time to review the permissions. We know these in HoloLens as *capabilities*. Some capabilities are just granted when they are selected - like internet access - but some require explicit user consent - like microphone access. But all the capabilities for HoloLens 2 are in one list; you can't really see which require consent or not - but in any case, HoloLens 2 will automatically ask for consent when necessary.
 
-Magic Leap 2 knows a similar concept called *permissions*. The difference is: they are *explicitly divided into two groups*: normal and 'dangerous' permissions. Dangerous permissions need explicit user consent. It's neat you can easily see what permissions are considered dangerous - although it's also rather odd spatial maaping is considered a dangerous permission. Magic Leap is a Mixed Reality device, and *the very point and USP* of such a device is the ability to *interact with reality*. It feels a bit like buiding a boat but not putting it into water without special permission. I can't really see how it possibly would open doors to surreptitious activities like, for instance, getting microphone access would - but hey, whoever makes the devices, writes the rules.
+Magic Leap 2 knows a similar concept called *permissions*. The difference is: they are *explicitly divided into two groups*: normal and 'dangerous' permissions. Dangerous permissions need explicit user consent. It's neat you can easily see what permissions are considered dangerous - although it's also rather odd spatial maaping is considered a dangerous permission. Magic Leap is a Mixed Reality device, and *the very point and USP* of such a device is the ability to *interact with reality*. It feels a bit like buiding a boat but not putting it into water without special permission. I can't really see how it possibly would open doors to surreptitious activities like, for instance, getting microphone access would - but hey, whoever makes the devices, writes the rules. Anyway, the Magic Leap 2 can also ask for permissions automatically, provided you actually set that option. 
 
 Anyway, we need (or want) to use the app with hand tracking, and we also require spatial mapping as we want to be able to put the map on the floor:
 
@@ -101,7 +101,7 @@ Also different is that permissions need to be set twice, in two different places
 
 ![](/assets/2024-06-29-Making-an-MRTK3-based-HoloLens-2-app-run-on-Magic-Leap-2/permissions2.png)
 
-Notice the "Auto Request Dangerous Permissions". That used to work nicely, making the experience on par with how HoloLens 2 handles it, but with the SDK 2.2.0 I used, that does not seem to work anymore. So you will need to ask for permissions in code, which I will come to later.
+Notice the "Auto Request Dangerous Permissions". Do not forget to set that.
 
 ## Setting the MRTK 3 profile
 
@@ -150,30 +150,6 @@ private void Update()
 }
 #endif
 ```
-
-## Add code to ask for permissions
-
-Automatic dangerous permission did not work, so I had to add explicit code to ask for permissions. I assume this to be a bug (I reported it as such), so this requirement will probably go away.
-```csharp
-public override void Initialize()
-{
-#if MAGICLEAP   
-    Permissions.RequestPermissions(new[]{
-        MLPermission.SpatialMapping} ,
-        OnPermissionGranted, OnPermissionDenied, OnPermissionDenied);
-#endif
-    model.Initialize();
-}
-private void OnPermissionDenied(string permission)
-{
-    // Do something
-}
-
-private void OnPermissionGranted(string permission)
-{
-    // Do something
-}
-```
 ## Change some input settings
 
 These are not mandatory but *highly* recommended. Go to Player Settings/InputSettings/Other settings and change these settings:
@@ -198,6 +174,6 @@ Also not mandatory but recommended: after you have confirmed the app runs, you m
 
 After you have completed the mandatory steps, your app should simply be able to compile, and you should be able to deploy and run it on Magic Leap 2. Of course, your mileage may vary if you use very specific HoloLens 2 functionality, like iris login or tracking QR codes.
 
-There is only one thing I could not get to work: while the hand tracking works perfectly, I could *not* get the Magic Leap 2 *controller* to work. It fails in a very weird way. First of all, it does not show a ray. But the really weird thing is this: if you point the controller at a button (which is a bit tricky without a ray, but if you point carefully, you can do it) and press the trigger - the button animates as if it is pressed, the click sound is audible, but the `OnClick` event in the `StatefulInteractable` is not fired. So apart from that animation and sound, nothing happens. Very odd. I assume this to be a bug, and I reported it.
+A word of warning: when I got the Magic Leap 2 some time ago, it was running OS 1.4.0. In the mean time, we had at least 4 upgrades and are now at 1.8.0. When I initially developed this app (on 1.7.0), I could not get the automatic "ask for permission" to work, the wrong controller model showed up, I did not get hand visualization, and I could not operate canvas buttons with the controller. I tested it with 1.7.0 and 1.8.0. After [a lengthy discussion with the folks on the ML2 forums](https://forum.magicleap.cloud/t/issues-using-2-2-0-on-1-7-0-with-mrtk3-and-openxr), who could not repro my problems even if sent them an APK, It was concluded there might be something with the device. That was the right call - a factory reset made all my issues disappear without having to change any code. Maybe I did something wrong during update; I also remember at one point having a preview installed. Long story short: if you see weird stuff like this, and someone else does not: factory reset!
 
 Enjoy your cross-platform XR development. If you use this 'recipe', let me know how it worked out for you.
