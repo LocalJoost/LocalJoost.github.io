@@ -3,16 +3,15 @@ permalink: /about/
 title: "About"
 ---
 ## About this blog
-This blog attempts to be a collection of how-to examples in the Microsoft software stack - things that may take forever to find out, especially for the beginner. I see it as my way to return something to the Microsoft community in exchange for what I learned from it. I continue the journey here that I started on [DotNetByExample on Blogger](https://dotnetbyexample.blogspot.com). All content has been migrated to this new blog.
+This blog attempts to be a collection of how-to examples - things that may take forever to find out, especially for the beginner. I see it as my way to return something to the developer community in exchange for what I learned from it. I continue the journey here that I started on [DotNetByExample on Blogger](https://dotnetbyexample.blogspot.com). All content has been migrated to this new blog.
 
 ## About me  
 * Joost van Schaik, pronounced [like this](http://www.schaikweb.net/dotnetbyexample/jvs.wma).   
-* Senior Lead Unity Developer.
-* Windows Development MVP & Windows Insider MVP.
-* Mixed Reality, HoloLens (2), Unity, C#, Xamarin, .NET.  
+* Senior Lead Unity Developer & technical software architect.
+* Windows Development MVP & Windows Mixed Reality MVP, former Windows Insider MVP.
+* Mixed Reality, Magic Leap 2, Quest, HoloLens 2, Unity, C#, .NET.  
 * Rogue R&D hacker.  
 * Gardener, Lover of Nature, Amateur philosopher.  
-* Twitter High Volume Achievement Unlocked.  
 * Most likely place to find me: in front of a keyboard.  
 * Most likely place for me to die: in front of a keyboard. 
 
@@ -35,7 +34,7 @@ But…
 Yet, if something does not work and you really need help and you do this:
 
 * Make a simple solution that shows your problem with as little other stuff in it as possible
-* Put it on a OneDrive or some other place where I can download it from
+* Put it on GitHub, OneDrive or some other place where I can download it from
 * Explain as clearly as possible what your problem is
 
 I will help you to the best of my abilities. Deal?
@@ -45,7 +44,7 @@ Although I take great care in providing quality samples, all postings, articles 
 
 I usually make original content, sometimes building upon other people's work. Sometimes I explain things that can be found elsewhere because I felt what I read was not clear enough for my limited mind so I explain it the way it finally clicked with me. In all cases I take great pains to be sure to link to people or articles who deserve the credit. If you think I have shortchanged you on the credits please let me know.
 
-Please note, I do not work for Microsoft and while I proudly wear the title of "Microsoft Most Valuable Professional", my opinions, files offered, etc. do not represent, are approved of, endorsed by or paid for by Microsoft. The only power behind it is me and my sometimes runaway passion for parts of Microsoft's technology.
+Please note, I do not work for Microsoft and while I proudly wear the title of "Microsoft Most Valuable Professional", my opinions, files offered, etc. do not represent, are approved of, endorsed by or paid for by Microsoft. 
 
 
 
