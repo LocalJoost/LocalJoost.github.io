@@ -14,6 +14,7 @@ tags:
 published: true
 permalink: 
 featuredImageUrl: https://LocalJoost.github.io/assets/2024-10-20-Cross-platform-Yolo-object-detection-with-Sentis-on-Magic-Leap-2-and-HoloLens-2/ovensink.png
+comment_issue_id: 475
 ---
 Some time ago, I wrote about [Yolo object recognition using HoloLens 2 and the Unity Barracuda](https://localjoost.github.io/HoloLens-AI-using-Yolo-ONNX-models-to-localize-objects-in-3D-space/) inference engine. However, Unity seems to have stopped developing this engine and is now pushing the [Sentis](https://unity.com/products/sentis) inference engine. On the same vein: [Microsoft have announced they have stopped producing HoloLens 2](https://www.uploadvr.com/microsoft-discontinuing-hololens-2/), with no successor being announced. I have been banging the cross-platform drum for quite a while now, and I think this proves me right.
 
