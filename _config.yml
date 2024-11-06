@@ -64,9 +64,6 @@ author:
   bio    : "Senior Mixed Reality Software Architect, Mixed Reality & Windows Development MVP. Talks about Mixed/Augmented Reality Cross platform MR development, HoloLens 2, Magic Leap 2, Quest, Unity, .NET, Azure"
   location: Amersfoort, the Netherlands
   links:
-    - label: "Twitter"
-      icon: "fab fa-fw fa-twitter-square"
-      url: "https://twitter.com/localjoost"
     - label: "GitHub"
       icon: "fab fa-fw fa-github"
       url: "https://github.com/LocalJoost"
