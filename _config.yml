@@ -18,7 +18,6 @@ email: joostvanschaik@outlook.com
 description: "Code samples and how-to's in the Microsoft stack, currently concentrating on Mixed Reality"
 subtitle: "\"Talk is cheap, show me the code\""
 
-twitter_username: localjoost
 github_username: LocalJoost
 minimal_mistakes_skin: mint
 search: true
@@ -73,9 +72,6 @@ author:
 
 footer:
   links:
-    - label: "Twitter"
-      icon: "fab fa-fw fa-twitter-square"
-      url: "https://twitter.com/localjoost"
     - label: "GitHub"
       icon: "fab fa-fw fa-github"
       url: "https://github.com/LocalJoost"
