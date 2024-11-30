@@ -237,7 +237,7 @@ However, if you use the standard RoomMeshBuildingBlock your spatial map will loo
 
 ![](/assets/2024-11-30-CubeBouncer-revisited--setting-up-Mixed-Reality-for-Quest-3-with-MRTK3-and-Unity-6/wireframe.png)
 
-And although a wireframe material is fine for debugging purposes, it is not what you would like to have for a proper Mixed Reality experience. For that, you can use my OcclusionMeshBuildingBlock. This is basically a copy of this block, but then with the MeshVolume's material set to MRTK_Occlusion instead of RoomMeshMat
+And although a wireframe material is fine for debugging purposes, it is not what you would like to have for a proper Mixed Reality experience. For that, you can use my OcclusionMeshBuildingBlock, as I wrote before. This is basically a copy of RoomMeshBuildingBlock, but then with the MeshVolume's material set to MRTK_Occlusion instead of RoomMeshMat
 
 ![](/assets/2024-11-30-CubeBouncer-revisited--setting-up-Mixed-Reality-for-Quest-3-with-MRTK3-and-Unity-6/OcclusionMeshBuildingBlock1.png)
 
