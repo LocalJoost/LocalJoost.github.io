@@ -132,7 +132,7 @@ Next steps:
 * Find the prefab MRUK and drag it into the QuestSettings game object
 * Find the main Camera's "Camera Settings Manager", expand "Opaque display" and change "Clear mode" from "Sky Box" to "Solid color". 
 
-![](/assets/2024-11-30-CubeBouncer-revisited--setting-up-Mixed-Reality-for-Quest-3-with-MRTK3-and-Unity-6/solid%20color.png)
+![](/assets/2024-11-30-CubeBouncer-revisited--setting-up-Mixed-Reality-for-Quest-3-with-MRTK3-and-Unity-6/solidcolor.png)
  
 * Drag my script "RoomMeshDetector" on the QuestSetting game object and drag my OcclusionMeshBuildingBlock game object on it (I will explain this [later in this post](##%20About%20scanning%20and%20using%20the%20spatial%20map%20on%20Quest))
   
