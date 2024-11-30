@@ -84,8 +84,6 @@ Agree, and this will indeed restart the editor. The Meta XR Audio SDK is not str
 
 ## OpenXR setup
 
-![](/assets/2024-11-30-CubeBouncer-revisited--setting-up-Mixed-Reality-for-Quest-3-with-MRTK3-and-Unity-6/openxrsetup1.png)
-
 In Project Settings/XR Plugin management select OpenXR:  
 
 ![](/assets/2024-11-30-CubeBouncer-revisited--setting-up-Mixed-Reality-for-Quest-3-with-MRTK3-and-Unity-6/openxrsetup1.png)
