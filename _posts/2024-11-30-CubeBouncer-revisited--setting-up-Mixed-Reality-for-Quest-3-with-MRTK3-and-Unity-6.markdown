@@ -134,7 +134,7 @@ Next steps:
 
 ![](/assets/2024-11-30-CubeBouncer-revisited--setting-up-Mixed-Reality-for-Quest-3-with-MRTK3-and-Unity-6/solidcolor.png)
  
-* Drag my script "RoomMeshDetector" on the QuestSetting game object and drag my OcclusionMeshBuildingBlock game object on it (I will explain this [later in this post](##%20About%20scanning%20and%20using%20the%20spatial%20map%20on%20Quest))
+* Drag my script "RoomMeshDetector" on the QuestSetting game object and drag my OcclusionMeshBuildingBlock game object on it (I will explain this [later in this post](#scanning-and-using-the-spatial-map-on-quest))
   
 ![](/assets/2024-11-30-CubeBouncer-revisited--setting-up-Mixed-Reality-for-Quest-3-with-MRTK3-and-Unity-6/roommeshdetector.png)
  
@@ -188,49 +188,49 @@ In addition, the Building Block that builds a Spatial Mesh leaves a few things t
 
 ```csharp
 public class RoomMeshDetector : MonoBehaviour
-    {
-        [SerializeField]
-        private GameObject roomMeshBuildingBlock;
-        
-        private GameObject roomMesh;
-        private float lastTimeCreated;
-        private bool isRoomMeshActive = false;
-        
-        public UnityEvent OnRoomMeshCreated;
+{
+    [SerializeField]
+    private GameObject roomMeshBuildingBlock;
+    
+    private GameObject roomMesh;
+    private float lastTimeCreated;
+    private bool isRoomMeshActive = false;
+    
+    public UnityEvent OnRoomMeshCreated;
 
-        private void Start()
-        {
-            lastTimeCreated = Time.time -5;
+    private void Start()
+    {
+        lastTimeCreated = Time.time -5;
 #if UNITY_EDITOR
+        isRoomMeshActive = true;
+        OnRoomMeshCreated?.Invoke();
+#endif
+    }
+
+    private async void Update()
+    {
+        if(isRoomMeshActive)
+        {
+            return;
+        }
+
+        if (!(lastTimeCreated + 5 < Time.time)) return;
+        if(roomMesh != null)
+        {
+            Destroy(roomMesh);
+        }
+        roomMesh = Instantiate(roomMeshBuildingBlock);
+        await Task.Delay(100);
+        var roomMeshAnchor = FindAnyObjectByType<RoomMeshAnchor>();
+        if(roomMeshAnchor != null)
+        {
             isRoomMeshActive = true;
             OnRoomMeshCreated?.Invoke();
-#endif
+            return;
         }
-
-        private async void Update()
-        {
-            if(isRoomMeshActive)
-            {
-                return;
-            }
-
-            if (!(lastTimeCreated + 5 < Time.time)) return;
-            if(roomMesh != null)
-            {
-                Destroy(roomMesh);
-            }
-            roomMesh = Instantiate(roomMeshBuildingBlock);
-            await Task.Delay(100);
-            var roomMeshAnchor = FindAnyObjectByType<RoomMeshAnchor>();
-            if(roomMeshAnchor != null)
-            {
-                isRoomMeshActive = true;
-                OnRoomMeshCreated?.Invoke();
-                return;
-            }
-            lastTimeCreated = Time.time;
-        }
+        lastTimeCreated = Time.time;
     }
+}
 ```
 
 You are supposed to configure the `roomMeshBuildingBlock` with the RoomMeshBuildingBlock, it will try every 5 seconds if it sees a `RoomMeshAnchor` in the scene, and if not, it will destroy the old game object, then and create a new one, until the `RoomMeshAnchor` is found. It is kind of crude, but since Meta made the building block with all kinds of internal classes, this was the best sure-fire way I could think of. This will always show a spatial map, whether you had to scan first or not. The event `OnRoomMeshCreated` can be used to fire off some process that needs to wait until the spatial map is around. In the full CubeBouncer demo I have used it to make my HologramCollection active, effectively enabling the hand menu and showing the first grid of cubes.
