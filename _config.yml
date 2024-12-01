@@ -60,7 +60,7 @@ plugins:
 author:
   name   : "Joost van Schaik"
   avatar : "/assets/images/bio-photo.jpg"
-  bio    : "Senior Mixed Reality Software Architect, Mixed Reality & Windows Development MVP. Talks about Mixed/Augmented Reality Cross platform MR development, HoloLens 2, Magic Leap 2, Quest, Unity, .NET, Azure"
+  bio    : "Senior Mixed Reality Software Architect, Windows Development & Mixed Reality MVP. Talks about Mixed/Augmented Reality Cross platform MR development, HoloLens 2, Magic Leap 2, Quest, Unity, .NET, Azure"
   location: Amersfoort, the Netherlands
   links:
     - label: "GitHub"
