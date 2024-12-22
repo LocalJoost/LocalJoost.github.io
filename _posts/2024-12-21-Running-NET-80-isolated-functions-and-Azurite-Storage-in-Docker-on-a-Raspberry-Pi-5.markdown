@@ -11,14 +11,14 @@ tags:
 - Azure Functions
 published: true
 permalink: 
-featuredImageUrl: https://LocalJoost.github.io/assets/2024-12-21-Running-NET-80-isolated-functions-and-Azurite-Storage-in-Docker-on-a-Raspberry-Pi-5/windowsfeatures.png
+featuredImageUrl: https://LocalJoost.github.io/assets/2024-12-22-Running-NET-80-isolated-functions-and-Azurite-Storage-in-Docker-on-a-Raspberry-Pi-5/windowsfeatures.png
 comment_issue_id: 477
 ---
 Regular readers might be a bit confused reading this title: why would someone whose shtick is Mixed Reality development suddenly be interested in Docker? Well, first of all, any Mixed Reality app worth its weight has a backend - and my HoloATC backend runs on Azure. And let me just say I had some reasons to check if it would be possible to 'repatriate' the backend of my HoloATC app, if I really needed to do that. One thing led to another. The short answer is - yes, because it only runs on Azure functions that use some storage for caching, and it's not like I have 100s of consecutive users. The long answer...
 
 ## Setting up your development environment
 
-I develop on Windows 11, so before I even can think about deploying anywhere, I need to have a Docker installation on my dev box as well to actually be able to develop and *build* my container using Visual Studio. Getting the environment for that ready was quite [a yak shaving experience.](https://www.hanselman.com/blog/yak-shaving-defined-ill-get-that-done-as-soon-as-i-shave-this-yak). Basically, it came down to this:
+I develop on Windows 11, so before I even can think about deploying anywhere, I need to have a Docker installation on my dev box as well to actually be able to develop and *build* my container using Visual Studio. Getting the environment for that ready was quite [a yak shaving experience](https://www.hanselman.com/blog/yak-shaving-defined-ill-get-that-done-as-soon-as-i-shave-this-yak). Basically, it came down to this:
 * I installed Docker Desktop, and had to choose between Hyper-V or Windows Subsystem for Linux for virtualization. I took the WSL because I assumed that would already be there.
 * It was not, so I installed WSL. This is as easy as entering **wsl --install** into a Windows Terminal.
 * However, that requires virtualization and WSL to be turned on in Windows features.
@@ -53,7 +53,7 @@ Choose a host name, a login and password, and if so desired, settings for your W
 
 Under services, enable SSH and select your preferred method of authentication. Hit save, then yes. It will warn you all existing data will be erased - proceed, the card will be written. When it's done, stick it into the Pi 5 and after that, connect it to the power supply. It will boot up and appear on your network soon.
 
-## Configuring Pi 5.
+## Configuring the Pi 5
 
 You should now be able to ssh into your Pi 5. Suppose you called your Pi 5 "xrbackend2", used password authentication and indeed took "joost" as login (this is not mandatory ;) you can enter "ssh joost@xrbackend2.local", hit enter - it might ask you a question about authenticity not being established the first time - then enter your password when being asked.
 
@@ -215,7 +215,7 @@ And you can even connect the Azure Storage Explorer to it:
 
 ![](/assets/2024-12-21-Running-NET-80-isolated-functions-and-Azurite-Storage-in-Docker-on-a-Raspberry-Pi-5/storageexplorer.png)
 
-However, there is apparently a weird bug in Azurite - as you can see I could not use the DNS name to connect, but I had to use the IP address. So basically you take the connection string from the docker compose file, replace host.docker.local by the actual IP address of your Pi 5
+However, there is apparently a weird bug in Azurite - I could not use the DNS name to connect, but I had to use the IP address. So basically you take the connection string from the docker compose file, replace host.docker.local by the actual IP address of your Pi 5
 
 ![](/assets/2024-12-21-Running-NET-80-isolated-functions-and-Azurite-Storage-in-Docker-on-a-Raspberry-Pi-5/storageconnection.png)
 
