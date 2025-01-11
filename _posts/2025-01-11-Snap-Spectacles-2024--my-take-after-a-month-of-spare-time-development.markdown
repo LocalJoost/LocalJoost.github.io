@@ -9,6 +9,7 @@ tags:
 published: true
 permalink: 
 featuredImageUrl: https://LocalJoost.github.io/assets/2025-01-11-Snap-Spectacles-2024--my-take-after-a-month-of-spare-time-development/spectacles.png
+comment_issue_id: 478
 ---
 ## How it started
 
