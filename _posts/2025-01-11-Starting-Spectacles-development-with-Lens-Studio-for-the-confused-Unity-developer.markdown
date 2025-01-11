@@ -80,7 +80,7 @@ The final button on this little bar - you guessed it - is for pausing/continuing
 
 ![](/assets/2025-01-11-Starting-Spectacles-development-with-Lens-Studio-for-the-confused-Unity-developer/resetlens.png)
 
-The middle button is for 'resetting' your lens. That is particularly useful in full interactive mode if you have moved your point of view to somewhere you don't like - this will set it all back. Never use the right button - that will switch to a back camera, your PC might have one if it's a laptop, the use for that in Lens development is very limited. 
+The middle button is for 'resetting' your lens. That is particularly useful in full interactive mode if you have moved your point of view to somewhere you don't like - this will set it all back. Never use the left button - that will switch to a back camera, your PC might have one if it's a laptop, the use for that in Lens development is very limited. 
 
 The gears button goes to a settings menu. You can change what kind of device you use, and things like FPS settings. Keep in mind Lens Studio was originally designed for SnapChat lenses (for example, making people look like a [talking potato](https://time.com/5813683/boss-turns-herself-into-a-potato/)) so lots of options might not make any sense if you are developing a Mixed Reality *application*. 
 
