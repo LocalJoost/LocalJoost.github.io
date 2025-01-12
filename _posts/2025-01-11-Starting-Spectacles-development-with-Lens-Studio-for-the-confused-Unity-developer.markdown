@@ -9,6 +9,7 @@ tags:
 published: true
 permalink: 
 featuredImageUrl: https://LocalJoost.github.io/assets/2025-01-11-Starting-Spectacles-development-with-Lens-Studio-for-the-confused-Unity-developer/lensstudio.png
+dontStripH1Header: false
 comment_issue_id: 479
 ---
 This blog post is intended for seasoned Unity developers who would like to tinker with Lens Studio to make a Spectacles 2024 app, have read the nice
@@ -74,9 +75,9 @@ One of the things you will notice as being absent: Scene view and your Scene hie
 
 ![](/assets/2025-01-11-Starting-Spectacles-development-with-Lens-Studio-for-the-confused-Unity-developer/buttonsongameview2.png)
 
-This pauses the lens, but then objects in your Scene hierarchy show values corresponding to what's happening in the preview, like their actual position and rotation. It's not as helpful as the play mode scene view in Unity - it can only do snapshots, and every time you switch it on or off it loses selection, so you have to constantly select your object again - but it's better than nothing, and it helps with debugging stuff.
+This pauses the lens, but then objects in your Scene hierarchy show values corresponding to what's happening in the preview, like their actual position and rotation. It's not as helpful as the play mode scene view in Unity - it can only do snapshots, and every time you switch it on or off it loses selection, so you have to constantly select your object again - but it's better than nothing, and it helps with debugging stuff. The final button on this little bar, witht the pause button on it is - you guessed it - for pausing/continuing your lens.
 
-The final button on this little bar - you guessed it - is for pausing/continuing your lens.
+To the right op the Preview pane there's another little bar: 
 
 ![](/assets/2025-01-11-Starting-Spectacles-development-with-Lens-Studio-for-the-confused-Unity-developer/resetlens.png)
 
