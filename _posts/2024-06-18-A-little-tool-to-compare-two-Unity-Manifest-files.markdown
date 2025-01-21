@@ -11,6 +11,7 @@ tags:
 published: true
 permalink: 
 featuredImageUrl: 
+dontStripH1Header: false
 comment_issue_id: 471
 ---
 I recently published a [Walk the World version for Magic Leap 2](https://www.linkedin.com/feed/update/urn:li:activity:7208123082929025024/), but I would be lying if I said it was as easy this time as when I ported HoloATC. Things have changed massively since Magic Leap fully embraced the OpenXR standard, and the process of re-configuring an existing MRKT3 HoloLens 2 app to run on Magic Leap 2 has become a bit more complex. One of the things I could not really figure out definitively from the documentation was: what extra packages I needed to install, and what versions. At the first try, my app did not show anything; at the second, it crashed at startup.
@@ -33,10 +34,10 @@ As I said, the manifest file is simply a JSON structure, so first, I defined two
 internal class Manifest
 {
     [JsonProperty("scopedRegistries")]
-    public List<ScopedRegistry> ScopedRegistries { get; set; }
+    public List<ScopedRegistry> ScopedRegistries { get; set; } = new();
 
     [JsonProperty("dependencies")]
-    public Dictionary<string,string> Dependencies { get; set; }
+    public Dictionary<string,string> Dependencies { get; set; } = new();
 }
 ```
 
@@ -49,10 +50,10 @@ internal class ScopedRegistry
     public string Name { get; set; }
 
     [JsonProperty("url")]
-    public string Url { get; set; }
+    public string Url { get; set; } = new();
 
     [JsonProperty("scopes")]
-    public List<string> Scopes { get; set; }
+    public List<string> Scopes { get; set; } = new();
 }
 ```
 
