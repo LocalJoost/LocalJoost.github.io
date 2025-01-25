@@ -10,7 +10,7 @@ tags:
 published: true
 permalink: 
 featuredImageUrl: https://LocalJoost.github.io/assets/2025-01-17-Lens-Studio-Cube-Bouncer-for-the-confused-Unity-developer-smash-boxes-with-your-hands-against-the-spatial-map/handsmasheradded.png
-comment_issue_id: 480
+comment_issue_id: 482
 ---
 In this blog, I take you, the confused Unity developer trying to understand Lens Studio, by the hand and introduce you to doing hand tracking, sphere casting, smashing things away, and how to let them bounce off the spatial map. This is a continuation of [my previous post](https://localjoost.github.io/Lens-Studio-Cube-Bouncer-for-the-confused-Unity-developer-set-up,-create-box,-create-a-grid-of-boxes/). If you have not read that, I strongly suggest you do; otherwise, it will make little sense. At the end of this blog, the app will do this:
 
