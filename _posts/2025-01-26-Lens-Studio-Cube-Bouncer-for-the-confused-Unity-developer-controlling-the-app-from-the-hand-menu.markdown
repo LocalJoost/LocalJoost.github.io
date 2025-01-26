@@ -2,11 +2,11 @@
 layout: post
 title: 'Lens Studio Cube Bouncer for the confused Unity developer: controlling the app from the hand menu'
 date: 2025-01-26T00:00:00.0000000+01:00
-categories:
+categories: []
+tags:
 - Lens Studio
 - Spectacles
 - TypeScript
-tags: []
 published: true
 permalink: 
 featuredImageUrl: https://LocalJoost.github.io/assets/2025-01-26-Lens-Studio-Cube-Bouncer-for-the-confused-Unity-developer-controlling-the-app-from-the-hand-menu/whatever.png
