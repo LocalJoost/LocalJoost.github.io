@@ -15,7 +15,7 @@
 # in the templates via {{ site.myvariable }}.
 title: DotNetByExample - The Next Generation
 email: joostvanschaik@outlook.com
-description: "Code samples and how-to's in the Microsoft stack, currently concentrating on Mixed Reality"
+description: "Code samples and how-to's, mostly in the Microsoft stack, currently concentrating on Mixed Reality"
 subtitle: "\"Talk is cheap, show me the code\""
 
 github_username: LocalJoost
