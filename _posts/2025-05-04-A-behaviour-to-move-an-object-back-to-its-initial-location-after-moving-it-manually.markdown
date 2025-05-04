@@ -11,11 +11,7 @@ permalink:
 featuredImageUrl: https://LocalJoost.github.io/assets/2025-05-04-A-behaviour-to-move-an-object-back-to-its-initial-location-after-moving-it-manually/bounceback.gif
 comment_issue_id: 487
 ---
-Here is a rewritten version of the text with minimal changes:
-
-# A Behaviour to Move an Object Back to its Initial Location after Moving it Manually
-
-Sometimes I create things on request, like recently when someone approached me who uses MRTK3 to make basic Mixed Reality applications without coding skills. He couldn't find a specific functionality in the MRTK3 and this wasn't a surprise, as it simply wasn't there. It was a simple task for me, so I wrote it in a few minutes just for fun. The functionality he asked for was: when you stop manipulating an object, you want it to be moved back to its original location.
+Recently I was approached by someone who uses MRTK3 to make basic Mixed Reality applications - without coding skills. He couldn't find a specific functionality in the MRTK3 and this wasn't a surprise, as it simply wasn't there. It was a simple task for me, so I wrote it in a few minutes just for fun. The functionality he asked for was: when you stop manipulating an object, you want it to be moved back to its original location.
 
 So like this:
 
