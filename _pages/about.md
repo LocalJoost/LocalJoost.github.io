@@ -8,7 +8,7 @@ This blog attempts to be a collection of how-to examples - things that may take 
 ## About me  
 * Joost van Schaik, pronounced [like this](http://www.schaikweb.net/dotnetbyexample/jvs.wma).   
 * Senior Lead Unity Developer & technical software architect.
-* Microsoft Windows Development MVP & Developer Technologie MVP, former Windows Insider MVP.
+* Microsoft Windows Development MVP & Developer Technologies MVP, former Windows Insider MVP.
 * Mixed Reality, Magic Leap 2, Quest, HoloLens 2, Snap Spectacles Unity, C#, .NET, TypeScript
 * Rogue R&D hacker.  
 * Gardener, Lover of Nature, Amateur philosopher.  
