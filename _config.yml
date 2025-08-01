@@ -60,7 +60,7 @@ plugins:
 author:
   name   : "Joost van Schaik ('LocalJoost')"
   avatar : "/assets/images/bio-photo.jpg"
-  bio    : "Senior Mixed Reality Software Architect, Windows Development & Mixed Reality MVP. Talks about Mixed/Augmented Reality Cross platform MR development, HoloLens 2, Magic Leap 2, Quest, Unity, Snap Spectacles, Lens Studio, .NET, Azure"
+  bio    : "Senior Mixed Reality Software Architect, Windows Development & Developer Technologies MVP. Talks about Mixed/Augmented Reality Cross platform MR development, HoloLens 2, Magic Leap 2, Quest, Unity, Snap Spectacles, Lens Studio, .NET, Azure"
   location: Amersfoort, the Netherlands
   links:
     - label: "GitHub"
