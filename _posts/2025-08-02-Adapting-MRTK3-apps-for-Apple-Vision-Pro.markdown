@@ -14,7 +14,7 @@ featuredImageUrl: https://LocalJoost.github.io/assets/2025-08-02-Adapting-MRTK3-
 ---
 "In fair annum of Lady Hopper, the hundred and nineteenth, did Joost of Local - valiant champion of Microsoft, and sworn foe to fruity contraptions - receive with trembling hand a Mac most miniature, and a vision'd orb of Apple make. Forsooth, the priests of Mount Cupertino were appeased, their altar heavy with tributes vast and rare. Then spake Joost's liege lords, their voices thunderous as tempest: “Thou shalt breathe life into MRTK3, that it may dance upon these devices with grace and fire.”
 
-Thus girded he his resolve, and forth did he stride into the mire of code and challenge. And lo! With craft and cunning, he did bend the task to his will, and the deed was wrought!""
+Thus girded he his resolve, and forth did he stride into the mire of code and challenge. And lo! With craft and cunning, he did bend the task to his will, and the deed was wrought!"
 
 Yes, I have an Apple Vision Pro here. Yes, and a Mac too. It finally happened.
 
