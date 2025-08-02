@@ -61,7 +61,7 @@ And you will need a Unity Pro license as well. Unity, cash-strapped as they alwa
 
 Nothing unusual here. Just make sure a valid MRTK3 profile is selected in the Vision OS tab:
 
-![M R T K3](MRTK3.png)
+![MRTK3](/assets/2025-08-02-Adapting-MRTK3-apps-for-Apple-Vision-Pro/MRTK3.png)
 
 MRTK3 complains about a whole host of missing stuff - just ignore that; it's no problem.
 
@@ -69,13 +69,13 @@ MRTK3 complains about a whole host of missing stuff - just ignore that; it's no 
 
 Alas, no OpenXR here; standards are for plebs, not for the Cupertino Crew. Select the Apple visionOS plugin. Fortunately, Unity takes care of (most of the) pain.
 
-![X R Plugin](XRPlugin.png)
+![XRPlugin](/assets/2025-08-02-Adapting-MRTK3-apps-for-Apple-Vision-Pro/XRPlugin.png)
 
 ## Install polyspatial packages
 
 Search for "polyspatial" in the Unity registry and install these two packages. If you don't have at least a Pro license, you will get a warning and they will be uninstalled again.
 
-![polyspatial packages](polyspatial_packages.png)
+![polyspatialpackages](/assets/2025-08-02-Adapting-MRTK3-apps-for-Apple-Vision-Pro/polyspatial_packages.png)
 
 ## Fix settings
 
