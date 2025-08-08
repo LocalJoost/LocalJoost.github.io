@@ -11,6 +11,7 @@ tags:
 published: true
 permalink: 
 featuredImageUrl: https://LocalJoost.github.io/assets/2025-08-02-Adapting-MRTK3-apps-for-Apple-Vision-Pro/Darthvader.gif
+comment_issue_id: 489
 ---
 "In fair annum of Lady Hopper, the hundred and nineteenth, did Joost of Local - valiant champion of Microsoft, and sworn foe to fruity contraptions - receive with trembling hand a Mac most miniature, and a vision'd orb of Apple make. Forsooth, the priests of Mount Cupertino were appeased, their altar heavy with tributes vast and rare. Then spake Joost's liege lords, their voices thunderous as tempest: “Thou shalt breathe life into MRTK3, that it may dance upon these devices with grace and fire.”
 
