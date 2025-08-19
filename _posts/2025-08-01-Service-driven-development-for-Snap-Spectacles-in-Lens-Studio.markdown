@@ -8,6 +8,7 @@ tags:
 - Spectacles
 - Services
 - Architecture
+- TypeScript
 published: true
 permalink: 
 featuredImageUrl: http://localjoost.github.io/assets/2025-07-30-Service-driven-development-for-Snap-Spectacles-in-Lens-Studio/handmenu.png
