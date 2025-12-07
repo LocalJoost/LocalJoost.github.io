@@ -7,6 +7,7 @@ tags:
 - Lens Studio
 - Spectacles
 - ScriptComponent
+- TypeScript
 published: true
 permalink: 
 featuredImageUrl: https://LocalJoost.github.io/assets/2025-12-06-Finding-all-script-components-of-a-type-in-a-Lens-Studio-scene/found.png
