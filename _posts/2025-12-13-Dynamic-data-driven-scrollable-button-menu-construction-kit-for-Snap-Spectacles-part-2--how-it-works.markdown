@@ -7,6 +7,7 @@ tags:
 - Lens Studio
 - Spectacles
 - TypeScript
+- UIKit
 published: true
 permalink: 
 featuredImageUrl: https://LocalJoost.github.io/assets/2025-12-13-Dynamic-data-driven-scrollable-button-menu-construction-kit-for-Snap-Spectacles-part-2--how-it-works/scrollprefab.png
@@ -234,4 +235,4 @@ It basically sets the `scrollPositionNormalized` to 0, 1, which translates to "v
 
 So that's kind of it. I do hope it's useful for you and also gives you some insights into how you can cajole some UIKit elements into the shape you want. There is actually another little helper class in here, but I will deal with that later in yet another blog post.
 
-The demo project is [(still) here at GitHub](https://localjoost.github.io/Dynamic-data-driven-scrollable-button-menu-construction-kit-for-Snap-Spectacles-part-1-usage/).
+The demo project is [(still) here at GitHub](https://github.com/LocalJoost/DynamicScrollMenu).
