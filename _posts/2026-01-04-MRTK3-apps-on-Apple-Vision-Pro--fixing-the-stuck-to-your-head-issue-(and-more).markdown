@@ -2,12 +2,12 @@
 layout: post
 title: MRTK3 apps on Apple Vision Pro - fixing the stuck to your head issue (and more)
 date: 2026-01-04T00:00:00.0000000+01:00
-categories:
+categories: []
+tags:
 - Apple
 - MRTK3
 - Unity
 - Vision Pro
-tags: []
 published: true
 permalink: 
 featuredImageUrl: https://LocalJoost.github.io/assets/2026-01-04-MRTK3-apps-on-Apple-Vision-Pro--fixing-the-stuck-to-your-head-issue-(and-more)/Headlock.gif
