@@ -58,7 +58,7 @@ The app can now be deployed on the Vision Pro, but when you run it, you will mos
 
 ![](/assets/2026-01-04-MRTK3-apps-on-Apple-Vision-Pro--fixing-the-stuck-to-your-head-issue-(and-more)/yoffset.png)
 
-This is normally not a problem, but apparently it is now. If it's Unity does not like this, the Vision Pro packages, or something else, I don't know.
+This is normally not a problem, but apparently it is now. If it's Unity that does not like this, the Vision Pro packages, or something else, I don't know.
 
 ## Fix view being stuck to camera
 
