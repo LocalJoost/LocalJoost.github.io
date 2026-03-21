@@ -420,6 +420,9 @@ interface ITokenStore {
 To demonstrate the principle, I have created a very simple implementation that stores the `AccessToken` as JSON in Spectacles' persistent storage system:
 
 ```typescript
+import { AccessToken } from "./AccessToken";
+import { ITokenStore } from "./ITokenStore";
+
 export class PersistentStorageTokenStore implements ITokenStore {
     private store: GeneralDataStore = global.persistentStorageSystem.store;
     private readonly tokenKey: string = "access_token";
@@ -427,7 +430,7 @@ export class PersistentStorageTokenStore implements ITokenStore {
     getToken(): AccessToken | null {
         const token = this.store.getString(this.tokenKey);
         if (token) {
-            return JSON.parse(token) as AccessToken;
+            return AccessToken.fromJSON(JSON.parse(token));
         }
         return null;
     }
@@ -441,6 +444,7 @@ export class PersistentStorageTokenStore implements ITokenStore {
     }
 }
 ```
+
 
 This works fine, but you have to take one important issue into consideration. As long as the refresh token is valid, *the lens will log in with your credentials, regardless of who wears the device*, until you log out. And Spectacles *itself* does not have login or authentication we can use to protect it. So if your Spectacles get nicked, the thief can use the lens on your behalf and access your data. This is no different than someone stealing your Xbox where you logged in to. For an actual enterprise deployment, it behooves to think a bit about securing the login in a simple way, like with a PIN code or something. And store the data encrypted, although I wonder how useful that is, because as far as I know, there is no way to access the data in a lens' persistent storage by anything but the lens itself. However, your Compliance Officer might get very nervous about it. I might write a better `ITokenStore` fix in a follow-up post - this one is long enough as it goes.
 
