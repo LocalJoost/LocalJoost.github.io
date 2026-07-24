@@ -130,4 +130,4 @@ For most cases I think it can - but so can the Meta Quest 3, which is considerab
 
 As you might have gathered by now: this is not a 1:1 replacement for HoloLens 2. But it is a very capable and usable device for a lot of scenarios that required a HoloLens 2, and porting is not hard. It is also very encouraging P&C Solution are very open and communicative, extremely open to feedback, they keep improving, and I wonder - given the fact that this device is from late 2025 - whether a MetaLense 3 is already in the works. Time will tell. At this point in time, anyone making a decent see-through XR device is *more* than welcome. 
 
-Disclaimer: I have no affiliation with P&C Solutions, I was not paid or compensated in any way - nor is there any agreement about future compensation. I got a loaner device, examined it, did some development with it, gave feedback, and ported my HoloATC app for it.
+Disclaimer: I have no affiliation with P&C Solution, I was not paid or compensated in any way - nor is there any agreement about future compensation. I got a loaner device, examined it, did some development with it, gave feedback, and ported my HoloATC app for it.
